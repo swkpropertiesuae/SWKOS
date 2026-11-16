@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { config } from '../config'
 import { inDemo, q, tx } from '../db'
 import { assertCan, createRecord, deleteRecord, getDef, getRecord, listRecords, patchRecord, SYSTEM_CTX, updateRecord, audit } from '../engine'
-import { bad, notFound, nowLocal } from '../util'
+import { bad, notFound, nowIso, nowLocal } from '../util'
 import { body, idOf, need } from './helpers'
 import { addJobEvent, duplicateJob, generateInvoicesFromJob, generateBillFromJobCosts, recomputeJobTotals, convertProforma, jobKpi } from '../domain/jobs'
 import { queueEmail } from '../mailer'
@@ -96,14 +96,20 @@ export default async function (app: FastifyInstance) {
     } else assertCan(req.ctx, 'sales', 'view')
     // Re-opening the share dialog must not break links already sent or printed as QR codes: reuse the token unless a new one is explicitly requested.
     const rotate = (req.body as any)?.rotate === true
-    let token = rotate ? undefined : q.val<string>(`SELECT token FROM job_tracking_tokens WHERE job_id = ?`, id) ?? undefined
+    let token = rotate ? undefined : q.val<string>(`SELECT token FROM job_tracking_tokens WHERE job_id = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`, id, nowIso()) ?? undefined
     if (!token) {
       token = (inDemo() ? 'demo-' : '') + randomBytes(16).toString('hex')
-      q.run(`INSERT INTO job_tracking_tokens (job_id, token, created_at) VALUES (?, ?, ?) ON CONFLICT(job_id) DO UPDATE SET token = excluded.token, created_at = excluded.created_at`, id, token, nowLocal())
+      q.run(`INSERT INTO job_tracking_tokens (job_id, token, created_at, expires_at, revoked_at) VALUES (?, ?, ?, ?, NULL) ON CONFLICT(job_id) DO UPDATE SET token = excluded.token, created_at = excluded.created_at, expires_at = excluded.expires_at, revoked_at = NULL`, id, token, nowIso(), new Date(Date.now() + 90 * 864e5).toISOString())
     }
     // Build the link from the configured public address, never from the Host header the caller supplied.
     const base = (config.baseUrl || `${req.protocol}://${req.headers.host}`).replace(/\/+$/, '')
     return { token, url: `${base}/t/${token}` }
+  })
+
+  app.delete('/api/jobs/:id/tracking-token', async (req) => {
+    assertCan(req.ctx, 'sales', 'edit')
+    q.run(`UPDATE job_tracking_tokens SET revoked_at = ? WHERE job_id = ?`, nowIso(), idOf((req.params as any).id))
+    return { ok: true }
   })
 
   // Client-facing deal status (no financials) for /t/<token> links and document QR codes.
@@ -111,7 +117,7 @@ export default async function (app: FastifyInstance) {
   const getPublicDeal = async (req: any) => {
     const token = String((req.params as any).token)
     if (!token || token.length > 80) throw bad('Tracking link not found')
-    const jobId = q.val<number>(`SELECT job_id FROM job_tracking_tokens WHERE token = ?`, token)
+    const jobId = q.val<number>(`SELECT job_id FROM job_tracking_tokens WHERE token = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`, token, nowIso())
     if (!jobId) throw notFound('Tracking link not found')
     const j: any = q.get(`SELECT id, job_no, deal_name, deal_type, job_status, operational_status, target_close, deal_date, client_id, property_id FROM jobs WHERE id = ? AND deleted_at IS NULL`, jobId)
     if (!j) throw notFound('This deal is no longer available')

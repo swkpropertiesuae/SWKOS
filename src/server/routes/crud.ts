@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify'
+import crypto from 'node:crypto'
 import { q, qi, tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue, recordTitle, type EntityDef, type FieldDef } from '../../shared/types'
-import { attachLabels, createRecord, deleteRecord, requestDeleteOrExecute, getDef, getRecord, labelsFor, listRecords, rowToApi, updateRecord, can, assertCan, titleCols, customFieldsFor, invalidateCustomFields, type Ctx } from '../engine'
-import { bad, forbidden, notFound, parseCsv, safeJson, toCsv, nowLocal, todayStr } from '../util'
+import { attachLabels, createRecord, deleteRecord, requestDeleteOrExecute, getDef, getRecord, labelsFor, listRecords, rowToApi, updateRecord, can, assertCan, maskRecs, maskedFieldsFor, MASK, titleCols, customFieldsFor, invalidateCustomFields, type Ctx } from '../engine'
+import { bad, HttpError, forbidden, notFound, parseCsv, safeJson, toCsv, nowLocal, nowIso, todayStr } from '../util'
 import { body, idOf, parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
 
@@ -71,7 +72,9 @@ export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------ list
   app.get('/api/e/:entity', async (req) => {
     const def = guard(getDef((req.params as any).entity))
-    return listRecords(def, parseListParams(req.query as any), req.ctx)
+    const res = listRecords(def, parseListParams(req.query as any), req.ctx)
+    maskRecs(def, res.rows, req.ctx)
+    return res
   })
 
   // ------------------------------------------------------------ export / template / import
@@ -81,6 +84,7 @@ export default async function (app: FastifyInstance) {
     const p = parseListParams(req.query as any)
     const res = listRecords(def, { ...p, page: 1, pageSize: 100000 }, req.ctx)
     checkBulkExportDlp(def.key, res.rows.length, req.ctx)
+    maskRecs(def, res.rows, req.ctx)
     const fields = def.fields.filter(f => !f.secret && !f.virtual && f.type !== 'json' && !f.hidden || f.list)
     const csv = toCsv(['ID', ...fields.map(f => f.label)], res.rows.map(r => [r.id, ...fields.map(f => cell(f, r))]))
     reply.header('content-type', 'text/csv; charset=utf-8').header('content-disposition', `attachment; filename="${def.key}-${todayStr()}.csv"`)
@@ -97,7 +101,11 @@ export default async function (app: FastifyInstance) {
     const def = guard(getDef((req.params as any).entity))
     assertCan(req.ctx, def.module, 'create')
     if (def.readonlyApi || def.children?.length) throw bad('This record type cannot be imported from CSV')
-    const b = body<{ csv: string; dryRun?: boolean }>(req)
+    const b = body<{ csv: string; dryRun?: boolean; force?: boolean }>(req)
+    const fileHash = crypto.createHash('sha256').update(String(b.csv ?? '')).digest('hex')
+    // Same file into the same record type twice would post every row twice; refuse unless the caller says so.
+    const prior = !b.dryRun && !b.force ? q.get(`SELECT id, imported_at FROM import_batches WHERE entity = ? AND file_hash = ?`, def.key, fileHash) : null
+    if (prior) throw new HttpError(409, `This exact file was already imported as batch #${prior.id} on ${String(prior.imported_at).slice(0, 10)}. Send force=true only if you really want the rows again.`)
     const rows = parseCsv(String(b.csv ?? ''))
     if (rows.length < 2) throw bad('The file has no data rows')
     if (rows.length > 5001) throw bad('Import is limited to 5,000 rows at a time')
@@ -126,7 +134,14 @@ export default async function (app: FastifyInstance) {
         errors.push({ row: i + 1, error: e?.message ?? String(e) })
       }
     }
-    return { created, errors: errors.slice(0, 200), failed: errors.length, dryRun: !!b.dryRun }
+    let batchId: number | null = null
+    if (!b.dryRun) {
+      q.run(`INSERT INTO import_batches (entity, file_hash, created, failed, imported_by, imported_at) VALUES (?,?,?,?,?,?) ON CONFLICT(entity, file_hash) DO UPDATE SET created = excluded.created, failed = excluded.failed, imported_at = excluded.imported_at`, def.key, fileHash, created, errors.length, req.user?.id ?? null, nowIso())
+      batchId = q.val<number>(`SELECT id FROM import_batches WHERE entity = ? AND file_hash = ?`, def.key, fileHash) ?? null
+    }
+    // Failed rows come back as a CSV (original columns plus the reason) so they can be corrected and re-sent.
+    const failedCsv = errors.length ? toCsv([...rows[0], 'import_error'], errors.map(e => [...rows[e.row - 1], e.error])) : null
+    return { created, errors: errors.slice(0, 200), failed: errors.length, dryRun: !!b.dryRun, batchId, failedCsv }
   })
 
   // ------------------------------------------------------------ bulk
@@ -151,7 +166,7 @@ export default async function (app: FastifyInstance) {
   app.get('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    return getRecord(def, idOf(p.id), req.ctx)
+    return maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
   })
   // Party blocks for print documents (invoices, quotations, …): { [party_id]: { name, address… } }
   app.get('/api/print/:entity/:id/parties', async (req) => {
@@ -171,6 +186,36 @@ export default async function (app: FastifyInstance) {
     for (const r of rows) out[r.id] = { ...r, _labels: { country_id: countryNames[r.country_id] ?? null } }
     return out
   })
+  // ------------------------------------------------------------ offline sync
+  // The web app queues these field-work saves while offline and replays them here. Each action carries a client-made key:
+  // a replay returns the stored result instead of creating the record again, and an edit made on a stale version is reported as a conflict.
+  const OFFLINE_ENTITIES = new Set(['inspections', 'viewings', 'property_visits', 'snagging_items', 'activities'])
+  app.post('/api/sync/actions', async (req) => {
+    const b = body<{ device_id?: string; actions: { key: string; op: 'create' | 'update'; entity: string; id?: number; payload: Record<string, any>; queued_at?: string }[] }>(req)
+    if (!Array.isArray(b.actions) || b.actions.length > 100) throw bad('Send between 1 and 100 actions')
+    const results: any[] = []
+    for (const a of b.actions) {
+      const key = String(a?.key ?? '')
+      if (!/^[\w-]{8,80}$/.test(key)) { results.push({ key, status: 'rejected', error: 'Invalid action key' }); continue }
+      const prior = q.get(`SELECT result_json FROM offline_sync_queue_log WHERE idempotency_key = ?`, key)
+      if (prior) { results.push({ ...JSON.parse(prior.result_json), key, replay: true }); continue }
+      let result: any
+      try {
+        if (!OFFLINE_ENTITIES.has(a.entity)) throw bad('This record type cannot be saved offline')
+        const def = guard(getDef(a.entity))
+        if (a.op === 'create') result = { status: 'synced', id: tx(() => createRecord(def, a.payload ?? {}, req.ctx)).id }
+        else if (a.op === 'update') result = { status: 'synced', id: tx(() => updateRecord(def, idOf(a.id), a.payload ?? {}, req.ctx)).id }
+        else throw bad('Unknown operation')
+      } catch (e: any) {
+        result = { status: e?.status === 409 ? 'conflict' : 'rejected', error: e?.message ?? String(e) }
+      }
+      q.run(`INSERT INTO offline_sync_queue_log (idempotency_key, user_id, device_id, action_type, payload_json, result_json, queued_at, synced_at) VALUES (?,?,?,?,?,?,?,?)`,
+        key, req.user!.id, String(b.device_id ?? '').slice(0, 80) || null, `${a.op}:${a.entity}`, JSON.stringify(a.payload ?? {}), JSON.stringify(result), a.queued_at ?? nowIso(), nowIso())
+      results.push({ ...result, key })
+    }
+    return { results }
+  })
+
   app.post('/api/e/:entity', async (req, reply) => {
     const def = guard(getDef((req.params as any).entity))
     const rec = createRecord(def, body(req), req.ctx)
@@ -180,7 +225,10 @@ export default async function (app: FastifyInstance) {
   app.put('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    return updateRecord(def, idOf(p.id), body(req), req.ctx)
+    // A masked field comes back as the placeholder; sending it back must not overwrite the real value.
+    const b = body<Record<string, any>>(req)
+    for (const f of maskedFieldsFor(def, req.ctx)) if (b[f] === MASK) delete b[f]
+    return maskRecs(def, [updateRecord(def, idOf(p.id), b, req.ctx)], req.ctx)[0]
   })
   app.delete('/api/e/:entity/:id', async (req) => {
     const p = req.params as any

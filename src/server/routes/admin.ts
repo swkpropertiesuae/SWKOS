@@ -9,9 +9,10 @@ import { loadSettings, publicSettings, setSettings, SETTING_DEFAULTS, SECRET_SET
 import { audit, getDef, getRecord, SYSTEM_CTX, createRecord } from '../engine'
 import { bad, forbidden, nowIso, safeJson, todayStr, notFound } from '../util'
 import { idOf, need } from './helpers'
-import { retryOutbox, verifySmtp, smtpConfigured } from '../mailer'
+import { retryOutbox, verifySmtp, smtpConfigured, queueEmail } from '../mailer'
 import { generatePayroll, lastIssued } from '../domain/misc'
-import { destroyUserSessions, loadUser } from '../auth'
+import { destroyUserSessions, loadUser, hashPassword, validatePasswordStrength } from '../auth'
+import crypto from 'node:crypto'
 import { ENTITY_LIST } from '../../shared/entities'
 import { isOwnerSwkUser } from '../../shared/swk-staff-access'
 
@@ -108,6 +109,42 @@ export default async function (app: FastifyInstance) {
   app.post('/api/admin/users/:id/unlock', async (req) => { const id = manageUser(req); q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`, id); audit(req.ctx, getDef('users'), id, 'unlock', null, ''); return { ok: true } })
   app.post('/api/admin/users/:id/reset-2fa', async (req) => { const id = manageUser(req); q.run(`UPDATE users SET totp_secret = NULL WHERE id = ?`, id); audit(req.ctx, getDef('users'), id, 'reset-2fa', null, ''); return { ok: true } })
   app.post('/api/admin/users/:id/sign-out', async (req) => { const id = manageUser(req); destroyUserSessions(id); audit(req.ctx, getDef('users'), id, 'force-signout', null, ''); return { ok: true } })
+
+  // ---- Invitations and password recovery: one-time link, stored hashed, never reveals whether an address exists
+  const sha = (t: string) => crypto.createHash('sha256').update(t).digest('hex')
+  function sendLink(user: { id: number; email: string; name: string }, kind: 'invite' | 'reset') {
+    const token = crypto.randomBytes(24).toString('hex')
+    const hours = kind === 'invite' ? 72 : 1
+    q.run(`UPDATE user_invites SET used_at = ? WHERE user_id = ? AND used_at IS NULL`, nowIso(), user.id)
+    q.run(`INSERT INTO user_invites (user_id, token_hash, kind, expires_at, created_at) VALUES (?,?,?,?,?)`, user.id, sha(token), kind, new Date(Date.now() + hours * 3600_000).toISOString(), nowIso())
+    const link = `${(config.baseUrl || '').replace(/\/+$/, '')}/accept-invite?token=${token}`
+    queueEmail({ to: user.email, userId: user.id, subject: kind === 'invite' ? 'You have been invited to SWK OS' : 'Reset your SWK OS password', body: `Hello ${user.name},\n\n${kind === 'invite' ? 'Set your password to start using SWK OS' : 'Choose a new password'}: ${link}\n\nThis link works once and expires in ${hours} hour${hours > 1 ? 's' : ''}. If you did not expect it, ignore this email.` })
+    return link
+  }
+  app.post('/api/admin/users/:id/invite', async (req) => {
+    const id = manageUser(req)
+    const u = loadUser(id)
+    if (!u?.email) throw bad('This user has no email address')
+    sendLink({ id, email: u.email, name: u.name }, 'invite')
+    audit(req.ctx, getDef('users'), id, 'invite', null, u.email)
+    return { ok: true, emailed: smtpConfigured() }
+  })
+  app.post('/api/public/invite/forgot', { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } }, async (req) => {
+    const email = String(z.object({ email: z.string().email().max(160) }).parse(req.body).email).toLowerCase()
+    const u = q.get(`SELECT id, name, email FROM users WHERE lower(email) = ? AND deleted_at IS NULL AND active = 1 AND party_id IS NULL`, email)
+    if (u) sendLink({ id: u.id, email: u.email, name: u.name }, 'reset')
+    return { ok: true }
+  })
+  app.post('/api/public/invite/accept', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (req) => {
+    const b = z.object({ token: z.string().min(20).max(100), password: z.string().max(200) }).parse(req.body)
+    const inv = q.get(`SELECT id, user_id FROM user_invites WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?`, sha(b.token), nowIso())
+    if (!inv) throw bad('This link is invalid or has expired. Ask for a new one.')
+    validatePasswordStrength(b.password)
+    q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`, hashPassword(b.password), nowIso(), inv.user_id)
+    q.run(`UPDATE user_invites SET used_at = ? WHERE id = ?`, nowIso(), inv.id)
+    destroyUserSessions(inv.user_id)
+    return { ok: true }
+  })
 
   // ---- API keys: show the key once at creation
   app.post('/api/admin/api-keys', async (req) => {

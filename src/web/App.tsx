@@ -1,5 +1,4 @@
 import EmailPage from './pages/EmailPage'
-import {ExtractionPage} from './pages/ExtractionPage'
 import {CompetencyPage} from './pages/EnterprisePages'
 import { Navigate, Route, Routes, useLocation, Link } from 'react-router-dom'
 import { Suspense, lazy, type ReactNode } from 'react'
@@ -20,6 +19,7 @@ import { RolesPage, SettingsPage, AuditPage, BackupPage } from './pages/AdminPag
 import { CompliancePage } from './pages/CompliancePage'
 import { WorkQueuePage,HandoverPage } from './pages/WorkPages'
 import { PublicTrack } from './pages/PublicTrack'
+import { AcceptInvite } from './pages/AcceptInvite'
 import { IntegrationsPage } from './pages/IntegrationsPage'
 import { AiPage } from './pages/AiPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
@@ -58,6 +58,7 @@ export default function App() {
   const { me, loading } = useMeta()
   const loc = useLocation()
   const defaultLanding = '/home'
+  if (loc.pathname === '/accept-invite') return <AcceptInvite />
   if (loc.pathname.startsWith('/t/')) return <Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes>
   const isStandaloneReceptionQr =
     loc.pathname === '/qr-checkin' ||
@@ -155,7 +156,6 @@ export default function App() {
           <Route path="/workspace-tools" element={<WorkspaceUtilities />} />
           <Route path="/e/:entity" element={<EntityListPage />} />
           <Route path="/e/:entity/:id" element={<EntityRecordPage />} />
-          <Route path="/extractions/:id" element={<Guard module="documents"><ExtractionPage /></Guard>} />
           <Route path="/competency" element={<Guard module="hr"><CompetencyPage /></Guard>} />
           <Route path="/work/queues" element={<Guard module="projects"><WorkQueuePage /></Guard>} />
           <Route path="/work/handovers" element={<Guard module="projects"><HandoverPage /></Guard>} />
