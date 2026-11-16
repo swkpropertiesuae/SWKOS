@@ -345,7 +345,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3 font-bold">10 files</td>
                         <td className="p-3 font-mono font-bold">2,506 LOC</td>
                         <td className="p-3">98 KB</td>
-                        <td className="p-3">Docker multi-stage build on an Oracle Cloud VM, Cloudflare Tunnel for HTTPS, GitHub Actions CI</td>
+                        <td className="p-3">Cloudflare Workers + Cloudflare Containers, Docker multi-stage build, GitHub Actions zero-downtime CD</td>
                       </tr>
                       <tr className="bg-[#f3ead8] font-extrabold text-[#08142a]">
                         <td className="p-3 rounded-bl-xl">TOTAL ENGINEERED SYSTEM</td>
@@ -353,7 +353,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3">240 Files</td>
                         <td className="p-3 font-mono">39,599 LOC</td>
                         <td className="p-3">2,905 KB</td>
-                        <td className="p-3 rounded-br-xl">100% TypeScript Strict-Typed · Production-Verified on Oracle Cloud</td>
+                        <td className="p-3 rounded-br-xl">100% TypeScript Strict-Typed · Production-Verified on Cloudflare Edge</td>
                       </tr>
                     </tbody>
                   </table>
@@ -491,8 +491,8 @@ export default function HandoverPortalPage() {
                         <td className="p-3">32/32 PWA checks passed, 100% corporate footer &amp; logo compliance</td>
                       </tr>
                       <tr>
-                        <td className="p-3 font-bold">Oracle Cloud + Docker DevOps &amp; QA</td>
-                        <td className="p-3">Docker multi-stage build, Oracle Cloud VM, Cloudflare Tunnel, GitHub Actions CI, 34 test suites</td>
+                        <td className="p-3 font-bold">Cloudflare Edge + Containers DevOps &amp; QA</td>
+                        <td className="p-3">Docker multi-stage build, Cloudflare Worker + Containers, GitHub Actions CI/CD, 34 test suites</td>
                         <td className="p-3 font-mono font-bold">190 hrs</td>
                         <td className="p-3">Automated container health checks &amp; zero-downtime rollout on os.swk.properties</td>
                       </tr>
@@ -566,7 +566,7 @@ export default function HandoverPortalPage() {
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>Primary Production DB:</strong> Managed PostgreSQL (`pg` pool with SSL CA verification)</li>
                     <li><strong>Embedded / Demo DB:</strong> `better-sqlite3` WAL mode for zero-dependency local/demo isolation</li>
-                    <li><strong>Edge Routing:</strong> Cloudflare Tunnel to a Docker container on an Oracle Cloud VM</li>
+                    <li><strong>Edge Routing:</strong> Cloudflare Worker (`swk-os`) + Cloudflare Containers (`SwkOs` Durable Object)</li>
                     <li><strong>Custom Domain:</strong> `https://os.swk.properties`</li>
                   </ul>
                 </div>
@@ -633,8 +633,8 @@ npm run test:compliance       # UAE RERA / DLD / VAT Compliance Suite
 npx tsx tests/company-documents.ts  # SWK Properties LLC Letterhead & Footer Suite
 npx tsx tests/pwa.ts          # PWA Manifest, Icons, Service Worker & Offline Suite
 
-# 4. Production deployment to https://os.swk.properties (Oracle VM)
-git pull && docker compose up -d --build`}
+# 4. Zero-Downtime Production Deployment to https://os.swk.properties
+git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml`}
                 </pre>
               </section>
             </div>
@@ -858,7 +858,7 @@ git pull && docker compose up -d --build`}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     {[
                       'Full Source Code Repository (github.com/swkpropertiesuae/swkpropertiesOS — 240 files, 39,599 LOC)',
-                      'Live Production Deployment on Oracle Cloud (https://os.swk.properties)',
+                      'Live Production Deployment on Cloudflare Edge & Containers (https://os.swk.properties)',
                       'SWK OS Brand Architecture Package (Royal Midnight Navy #08142a & Champagne Gold Logos, Icons & Favicons)',
                       'Sign-In Interactive Dubai Developer Hot Projects Showcase & High-Clarity Brand Header',
                       'Official SWK Properties LLC Document Studio & Print Engine (www.swk.properties · www.swkpropertiesuae.com · www.swk.rent)',
