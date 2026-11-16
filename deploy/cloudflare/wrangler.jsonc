@@ -13,6 +13,13 @@
     "PG_SCHEMA": "swk",
     "RELEASE_ID": "swkproperties-os-v4"
   },
+  // The web app (JS, CSS, images, index.html) is served from Cloudflare's edge, so opening the app never waits for the container.
+  // Only /api/* reaches the Worker and the container. The workflow builds dist/web before deploying.
+  "assets": {
+    "directory": "../../dist/web",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
   "observability": { "enabled": true },
 
   // Wakes the app every 5 minutes so its own scheduler keeps running (reminders, e-mail outbox, nightly backup).
