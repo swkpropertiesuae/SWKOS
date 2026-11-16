@@ -1161,6 +1161,8 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
 
   // ------------------------------------------------------------------ 4. Bayut & Dubizzle Portal Syndication + 3rd-Party A2A Match
+  // No Bayut/Dubizzle/Property Finder API or XML feed is wired up yet: say so instead of showing a fake "Live" status.
+  const NO_FEED = 'No live feed connected: publish manually on the portal, then record it here'
   app.get('/api/swk-ops/portals/status', async () => {
     const props = q.all(`
       SELECT id, property_no as prop_code, title, department_division, COALESCE(sub_community, building_name, address, '') as community,
@@ -1175,9 +1177,9 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const leadsBySource = q.all(`SELECT source, COUNT(*) as count FROM leads WHERE deleted_at IS NULL GROUP BY source ORDER BY count DESC`)
     return {
       portals: [
-        { key: 'bayut', name: 'Bayut UAE (Connected Feed)', activeListings: props.filter((p: any) => p.portal_bayut).length, account: 'SWK Properties LLC — Bayut Pro Agency #BRN-SWK', status: 'Connected & Live XML/API Feed' },
-        { key: 'dubizzle', name: 'Dubizzle Property (Connected Feed)', activeListings: props.filter((p: any) => p.portal_dubizzle).length, account: 'SWK Properties LLC — Dubizzle Verified Agency', status: 'Connected & Live XML/API Feed' },
-        { key: 'pf', name: 'Property Finder UAE', activeListings: props.filter((p: any) => p.portal_pf).length, account: 'SWK Properties LLC — PF Enterprise', status: 'Connected & Live XML/API Feed' },
+        { key: 'bayut', name: 'Bayut UAE', activeListings: props.filter((p: any) => p.portal_bayut).length, account: 'SWK Properties LLC — Bayut Pro Agency #BRN-SWK', status: NO_FEED },
+        { key: 'dubizzle', name: 'Dubizzle Property', activeListings: props.filter((p: any) => p.portal_dubizzle).length, account: 'SWK Properties LLC — Dubizzle Verified Agency', status: NO_FEED },
+        { key: 'pf', name: 'Property Finder UAE', activeListings: props.filter((p: any) => p.portal_pf).length, account: 'SWK Properties LLC — PF Enterprise', status: NO_FEED },
       ],
       byDepartment: {
         offplan: props.filter((p: any) => p.department_division === 'Sales of Off-Plan Projects').length,
@@ -1190,20 +1192,21 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     }
   })
 
+  // Records a publish REQUEST for every listing flagged for a portal. Nothing is sent: a person publishes on the portal and then enters the real ad reference.
   app.post('/api/swk-ops/portals/sync', async (req) => {
     const body = (req.body ?? {}) as { portal?: string; department_division?: string }
     const portalName = body.portal || 'Bayut & Dubizzle'
-    const publishable = q.all(`SELECT id, property_no as prop_code, title, department_division, rera_permit_no as trakheesi_permit, syndicate_bayut as portal_bayut, syndicate_dubizzle as portal_dubizzle FROM properties WHERE deleted_at IS NULL AND status IN ('Available','Off-Plan','Under Offer')`)
-    let syncedCount = 0
+    const publishable = q.all(`SELECT id, department_division, syndicate_bayut, syndicate_dubizzle, syndicate_pf FROM properties WHERE deleted_at IS NULL AND status IN ('Available','Off-Plan','Under Offer') AND (syndicate_bayut = 1 OR syndicate_dubizzle = 1 OR syndicate_pf = 1)`)
+    let requested = 0
     for (const p of publishable) {
       q.run(
-        `INSERT INTO portal_syndication_logs (portal_name, property_id, department_division, action, feed_status, external_listing_ref, synced_by, synced_at) VALUES (?, ?, ?, 'PUBLISH_SYNC', 'Active', ?, ?, ?)`,
-        portalName, p.id, p.department_division || body.department_division || 'Secondary Projects', `BAYUT-DBZ-${p.prop_code}`, req.user?.id ?? null, nowIso(),
+        `INSERT INTO portal_syndication_logs (portal_name, property_id, department_division, action, feed_status, external_listing_ref, synced_by, synced_at) VALUES (?, ?, ?, 'PUBLISH_REQUEST', 'Pending manual publish', NULL, ?, ?)`,
+        portalName, p.id, p.department_division || body.department_division || 'Secondary Projects', req.user?.id ?? null, nowIso(),
       )
-      syncedCount++
+      requested++
     }
-    notifyLeadership(`Bayut & Dubizzle Portal Sync Complete`, `${syncedCount} active SWK inventory listings syndicated to ${portalName}.`, `/pipeline`, 'info')
-    return { ok: true, portal: portalName, syncedListings: syncedCount, synced: ['Bayut', 'Dubizzle'], syncedAt: nowIso() }
+    notifyLeadership(`Portal publish requests logged`, `${requested} listings need manual publishing on ${portalName}. No automatic feed is connected.`, `/pipeline`, 'info')
+    return { ok: true, portal: portalName, requested, automatic: false, syncedAt: nowIso() }
   })
 
   app.get('/api/swk-ops/a2a-match', async (req) => {

@@ -9,6 +9,7 @@ import { Modal, Loading, Badge } from '../ui/kit'
 import { useToast } from '../lib/toast'
 import { cls, fmtMoney, nowIsoLocal, todayIso } from '../lib/format'
 import { useVatRates } from '../lib/lookups'
+import { canQueue, enqueue } from '../lib/offlineQueue'
 
 
 function initial(def: MetaEntity, record: Row | null, presets: Row | undefined, meId: number | undefined): Row {
@@ -87,6 +88,12 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
       if (edit) {
         body.version = record!.version
         body._audit_reason = auditReason.trim()
+      }
+      if (canQueue(def.key)) {
+        enqueue({ op: edit ? 'update' : 'create', entity: def.key, id: edit ? record!.id : undefined, payload: body })
+        toast.ok(`${def.label} saved on this device. It will sync when you are back online.`)
+        window.history.back()
+        return
       }
       const saved = edit
         ? await put<Row>(`/api/e/${def.key}/${record!.id}`, body, { 'x-swk-audit-reason': encodeURIComponent(auditReason.trim()) })

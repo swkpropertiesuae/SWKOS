@@ -193,8 +193,8 @@ export default function PipelinePage() {
   const syncPortals = async () => {
     setSyncingPortals(true)
     try {
-      const r = await post<{ syncedListings: number; portal: string }>('/api/swk-ops/portals/sync', { portal: 'Bayut & Dubizzle' })
-      setToast({ tone: 'ok', text: `Synced ${r.syncedListings} active listings to ${r.portal}` })
+      const r = await post<{ requested: number; portal: string }>('/api/swk-ops/portals/sync', { portal: 'Bayut & Dubizzle' })
+      setToast({ tone: 'ok', text: `${r.requested} listings logged for manual publishing on ${r.portal}. No automatic feed is connected.` })
       void qc.invalidateQueries({ queryKey: ['swk-portals-status'] })
     } catch (e: any) {
       setToast({ tone: 'err', text: e.message })
@@ -230,7 +230,7 @@ export default function PipelinePage() {
         subtitle="Inventory → Bayut & Dubizzle Promotion → Platform Leads → Calls/Follow-Ups → Site Visits → Conversion / Form F / Ejari (or Lost Reason) → Legal UAE Payment (Zero Personal Accounts) → Handover & 50–50% Net Commission Split."
         actions={<>
           <button type="button" className="swk-btn swk-btn-ghost" disabled={syncingPortals} onClick={() => void syncPortals()}>
-            <RefreshCw size={15} className={syncingPortals ? 'animate-spin' : ''} /> {syncingPortals ? 'Syncing…' : 'Sync Bayut & Dubizzle Ads'}
+            <RefreshCw size={15} className={syncingPortals ? 'animate-spin' : ''} /> {syncingPortals ? 'Logging…' : 'Log portal publish requests'}
           </button>
           <Link to="/withdrawals" className="swk-btn swk-btn-ghost"><Scale size={15} />Deal Withdrawals & Refunds</Link>
           <Link to="/e/jobs?new=1" className="swk-btn swk-btn-gold"><FileSignature size={15} />New Deal File</Link>
@@ -360,11 +360,11 @@ export default function PipelinePage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         <div className="xl:col-span-5">
           <Card
-            title={<span className="flex items-center gap-2"><Megaphone size={17} /> Bayut & Dubizzle Connected Portal Feed</span>}
-            subtitle="Live portal ad syndication & incoming platform lead attribution."
+            title={<span className="flex items-center gap-2"><Megaphone size={17} /> Bayut & Dubizzle portal publishing</span>}
+            subtitle="Listings flagged for each portal. Publishing is manual: no live feed is connected."
             actions={
               <button type="button" className="btn green sm" disabled={syncingPortals} onClick={() => void syncPortals()}>
-                <RefreshCw size={13} /> Sync Now
+                <RefreshCw size={13} /> Log requests
               </button>
             }
           >
@@ -376,7 +376,7 @@ export default function PipelinePage() {
                     <div className="text-xs text-muted">{p.account}</div>
                   </div>
                   <div className="text-right">
-                    <Pill tone="oasis">{p.activeListings} Active Ads</Pill>
+                    <Pill tone="oasis">{p.activeListings} flagged</Pill>
                     <div className="text-[11px] text-muted mt-0.5">{p.status}</div>
                   </div>
                 </div>

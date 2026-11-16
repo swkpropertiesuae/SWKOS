@@ -252,10 +252,6 @@ function buildWhere(def: EntityDef, p: ListParams, ctx: Ctx): { where: string; a
   if (ctx.user?.party_id && !ctx.system) {
     if (!scope) { cl.push('1=0') } else { cl.push(`${qi(scope)} = ?`); args.push(ctx.user.party_id) }
   }
-  if(!ctx.system&&def.key==='document_extractions'){
-    const readable=Object.values(ENTITIES).filter(e=>can(ctx.user,e.module,'view')).map(e=>e.key)
-    cl.push(`attachment_id IN (SELECT id FROM attachments WHERE deleted_at IS NULL AND (link_entity IS NULL OR link_entity=''${readable.length?` OR link_entity IN (${readable.map(()=>'?').join(',')})`:''}))`);args.push(...readable)
-  }
   if(!ctx.system&&def.key==='work_items'){
     const sources=Object.values(ENTITIES).filter(e=>can(ctx.user,e.module,'view')).map(e=>e.key)
     if(!sources.length)cl.push('1=0');else{cl.push(`source_entity IN (${sources.map(()=>'?').join(',')})`);args.push(...sources)}
@@ -394,11 +390,6 @@ export function getRecord(def: EntityDef, id: number, ctx: Ctx, opts: { children
       const myAgent = row.agent_id ? q.val<number>(`SELECT 1 FROM agents WHERE id = ? AND deleted_at IS NULL AND (lower(email) = ? OR employee_id IN (SELECT id FROM employees WHERE user_id = ? AND deleted_at IS NULL))`, row.agent_id, uemail, uid) : null
       if (!myEmp && !myAgent) throw notFound()
     }
-  }
-  if(!ctx.system&&def.key==='document_extractions'){
-    const file=q.get('SELECT link_entity,link_id FROM attachments WHERE id=? AND deleted_at IS NULL',row.attachment_id)
-    if(!file)throw notFound()
-    if(file.link_entity)getRecord(getDef(file.link_entity),file.link_id,ctx,{children:false})
   }
   const rec = rowToApi(def, row)
   attachLabels(def, [rec])

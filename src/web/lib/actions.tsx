@@ -15,7 +15,6 @@ const fin = (h: ActionHelpers) => h.can('finance', 'edit')
 
 export const ACTIONS: Record<string, ActionDef[]> = {
   attachments:[{key:'download',label:'Open source file',tone:'outline',show:()=>true,run:h=>{window.open(`/api/files/${h.rec.id}/download`,'_blank','noopener')}},{key:'extract',label:'Extract text and match deal',tone:'outline',show:(r,h)=>h.can('documents','edit')&&h.can('jobs','view'),run:async h=>{try{const r=await post<any>(`/api/files/${h.rec.id}/extract`);h.nav(`/extractions/${r.id}`)}catch(e:any){h.toast.error(e.message)}}}],
-  document_extractions:[{key:'review',label:'Review extraction',tone:'outline',show:()=>true,run:h=>h.nav(`/extractions/${h.rec.id}`)}],
   knowledge_articles:[
     {key:'publish',label:'Publish reviewed revision',tone:'green',show:(r,h)=>r.status==='Draft'&&h.can('projects','approve')&&r.owner_id!==h.userId&&r.updated_by!==h.userId,run:h=>run(h,()=>post(`/api/knowledge/${h.rec.id}/publish`),'Reviewed version published')},
     {key:'revise',label:'Start new revision',tone:'outline',show:(r,h)=>r.status==='Published'&&h.can('projects','edit'),run:async h=>{const reason=await h.dlg.prompt({title:'Start a new revision',label:'Reason (at least 10 characters)',required:true,multiline:true});if(reason)await run(h,()=>post(`/api/knowledge/${h.rec.id}/revise`,{reason}),'Draft revision opened; published history retained')}},

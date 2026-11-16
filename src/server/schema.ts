@@ -194,6 +194,29 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     CREATE INDEX ix_contemptor_emp ON late_contemptor_alerts(employee_id, work_date);
     CREATE INDEX ix_login_events_user ON login_events(user_id);
   ` },
+  { id: '006_import_batches', sql: `
+    CREATE TABLE import_batches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity TEXT NOT NULL,
+      file_hash TEXT NOT NULL,
+      created INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      imported_by INTEGER,
+      imported_at TEXT NOT NULL,
+      UNIQUE(entity, file_hash)
+    );
+  ` },
+  { id: '007_lead_source_events', sql: `
+    CREATE TABLE lead_source_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_key TEXT NOT NULL UNIQUE,
+      source TEXT NOT NULL,
+      lead_id INTEGER,
+      new_lead INTEGER NOT NULL DEFAULT 0,
+      payload_json TEXT NOT NULL,
+      received_at TEXT NOT NULL
+    );
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

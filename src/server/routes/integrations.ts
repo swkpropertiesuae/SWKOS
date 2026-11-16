@@ -26,7 +26,9 @@ import { importLines, parseStatement, autoMatch } from '../integrations/bank'
 import { renderPrintPdf, pdfAvailable } from '../integrations/pdf'
 import { logIntegration } from '../integrations/log'
 import { ENTITIES } from '../../shared/entities'
-import { createRecord } from '../engine'
+import { createRecord, SYSTEM_CTX } from '../engine'
+import { LEAD_SOURCES, MODES } from '../../shared/entities/crm'
+import { leadByPhone } from '../ai/tools'
 
 const same = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && crypto.timingSafeEqual(x, y) }
 const origin = (req: any) => String(config.baseUrl || `${req.protocol}://${req.headers.host}`).replace(/\/+$/, '')
@@ -62,7 +64,7 @@ export default async function (app: FastifyInstance) {
   app.post('/api/integrations/webhook-secret/:which', async (req) => {
     need(req, 'admin', 'edit')
     const which = (req.params as any).which
-    const key = which === 'tracking' ? 'tracking_webhook_secret' : which === 'bank' ? 'bank_webhook_secret' : which === 'voice' ? 'voice_secret' : null
+    const key = which === 'tracking' ? 'tracking_webhook_secret' : which === 'bank' ? 'bank_webhook_secret' : which === 'voice' ? 'voice_secret' : which === 'lead' ? 'lead_webhook_secret' : null
     if (!key) throw bad('Unknown webhook')
     const secret = crypto.randomBytes(20).toString('hex')
     setSettings({ [key]: secret })
@@ -93,6 +95,34 @@ export default async function (app: FastifyInstance) {
     const acct = b.bank_account_id ?? q.val<number>(`SELECT id FROM bank_accounts WHERE replace(iban,' ','') = ? AND deleted_at IS NULL`, (b.iban ?? '').replace(/\s/g, ''))
     if (!acct) return reply.status(422).send({ error: 'Bank account not found for that IBAN' })
     return importLines(acct, b.transactions.map(t => ({ date: t.date.slice(0, 10), description: t.description ?? '(bank feed)', reference: t.reference ?? '', debit: t.debit ?? (t.amount && t.amount < 0 ? -t.amount : 0), credit: t.credit ?? (t.amount && t.amount > 0 ? t.amount : 0) })), 'feed')
+  })
+
+  // Website / landing-page / portal-forwarder lead intake. The sender's own id (or, failing that, the whole body) is the event key,
+  // so a retried delivery returns the same lead; a different enquiry from a known phone or email is added to that open lead as a comment.
+  app.post('/api/public/lead/:secret', limit, async (req, reply) => {
+    const secret = String(getSetting('lead_webhook_secret') || '')
+    if (!secret || !same(secret, String((req.params as any).secret))) return reply.status(404).send({ error: 'Not found' })
+    const b = z.object({
+      external_id: z.string().max(120).optional(), name: z.string().max(120).optional(), email: z.string().email().max(160).optional(),
+      phone: z.string().max(40).optional(), message: z.string().max(2000).optional(), source: z.string().max(60).optional(),
+      interest: z.string().max(60).optional(), consent: z.boolean().optional(),
+    }).refine(v => v.email || v.phone, 'Send an email or a phone number').parse(req.body ?? {})
+    const key = crypto.createHash('sha256').update(b.external_id ? `id:${b.source ?? ''}:${b.external_id}` : JSON.stringify(b)).digest('hex')
+    const seen = q.get(`SELECT lead_id FROM lead_source_events WHERE event_key = ?`, key)
+    if (seen) return { ok: true, lead_id: seen.lead_id, duplicate_delivery: true }
+    const phone = b.phone ? normalizePhone(b.phone) : ''
+    const existing = (phone ? leadByPhone(phone) : null) ?? (b.email ? q.get(`SELECT id, lead_no, company FROM leads WHERE deleted_at IS NULL AND status NOT IN ('Converted','Unqualified') AND lower(email) = ? ORDER BY id DESC LIMIT 1`, b.email.toLowerCase()) : null)
+    const source = LEAD_SOURCES.includes(b.source as string) ? (b.source as string) : 'Website'
+    let leadId: number, created = false
+    if (existing) {
+      leadId = existing.id
+      q.run(`INSERT INTO comments(entity, record_id, user_id, body, created_at) VALUES ('leads', ?, (SELECT MIN(id) FROM users), ?, ?)`, leadId, `New enquiry via ${source}: ${(b.message ?? '').slice(0, 500)}`, nowIso())
+    } else {
+      leadId = createRecord(getDef('leads'), { company: b.name || b.email || `+${phone}`, contact_name: b.name ?? null, email: b.email ?? null, phone: phone ? '+' + phone : null, source, status: 'New', interest: MODES.includes(b.interest as string) ? b.interest : null, marketing_consent: b.consent === true ? 'Opted in' : 'Unknown', notes: b.message ?? null }, SYSTEM_CTX).id
+      created = true
+    }
+    q.run(`INSERT INTO lead_source_events (event_key, source, lead_id, new_lead, payload_json, received_at) VALUES (?,?,?,?,?,?)`, key, source, leadId, created ? 1 : 0, JSON.stringify(b), nowIso())
+    return reply.status(created ? 201 : 200).send({ ok: true, lead_id: leadId, new_lead: created })
   })
 
   // =================================================================== finance

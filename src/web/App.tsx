@@ -1,5 +1,4 @@
 import EmailPage from './pages/EmailPage'
-import {ExtractionPage} from './pages/ExtractionPage'
 import {CompetencyPage} from './pages/EnterprisePages'
 import { Navigate, Route, Routes, useLocation, Link } from 'react-router-dom'
 import { Suspense, lazy, type ReactNode } from 'react'
@@ -155,7 +154,6 @@ export default function App() {
           <Route path="/workspace-tools" element={<WorkspaceUtilities />} />
           <Route path="/e/:entity" element={<EntityListPage />} />
           <Route path="/e/:entity/:id" element={<EntityRecordPage />} />
-          <Route path="/extractions/:id" element={<Guard module="documents"><ExtractionPage /></Guard>} />
           <Route path="/competency" element={<Guard module="hr"><CompetencyPage /></Guard>} />
           <Route path="/work/queues" element={<Guard module="projects"><WorkQueuePage /></Guard>} />
           <Route path="/work/handovers" element={<Guard module="projects"><HandoverPage /></Guard>} />
