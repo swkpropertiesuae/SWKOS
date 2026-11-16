@@ -68,8 +68,11 @@ Secrets are encrypted by Cloudflare and never go into the code or Git. Run each 
 ```bash
 npx wrangler secret put DATABASE_URL        # the Session-pooler string from Step 1, with the NEW password
 npx wrangler secret put APP_SECRET          # a long random text – make one with:  openssl rand -hex 32
-npx wrangler secret put ADMIN_PASSWORD      # first-login password for admin@swkpropertiesuae.com
-npx wrangler secret put MANAGER_PASSWORD    # first-login password for manager@swkpropertiesuae.com
+npx wrangler secret put OWNER_PASSWORD      # shabib@swk.properties (Owner)
+npx wrangler secret put ADMIN_SWK_PASSWORD  # admin@swk.properties (Admin)
+npx wrangler secret put MANAGER_PASSWORD    # haseeb@swk.properties (Manager)
+npx wrangler secret put BDM_PASSWORD        # initial password for the staff accounts (talha, fareed, shahid, umar, saifullah, samarth @swk.properties)
+npx wrangler secret put ADMIN_PASSWORD      # required by the Worker; not used for a login
 ```
 
 * **Write `APP_SECRET` in your password manager.** It encrypts the integration keys you save inside the app; if you lose it you must re-enter them. Never change it casually.
@@ -104,9 +107,9 @@ The first start also creates all tables in Supabase (schema `swk`) and can take 
 
 ## 7. First sign-in
 
-Open your address. Sign in as `admin@swkpropertiesuae.com` with the `ADMIN_PASSWORD` you set. The app makes you choose a personal password, then:
+Open your address. Sign in as `shabib@swk.properties` with the `OWNER_PASSWORD` you set (or `admin@swk.properties` with `ADMIN_SWK_PASSWORD`), then:
 1. *Profile → Two-step verification* → turn it on.
-2. Do the same for `manager@swkpropertiesuae.com`.
+2. Do the same for `haseeb@swk.properties`.
 3. *Administration → Company Settings → UAE compliance*: confirm the licence details, enter your **TRN** once you have it.
 
 ## 8. Permanent file storage with R2 (do this before real use)

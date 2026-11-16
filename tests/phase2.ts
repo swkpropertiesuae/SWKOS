@@ -59,7 +59,7 @@ const waPost = (value: any) => { const raw = JSON.stringify({ entry: [{ changes:
 
 async function main() {
   await new Promise<void>(r => server.listen(9099, r))
-  let r = await api('POST', '/api/auth/login', { email: 'admin@swkpropertiesuae.com', password: 'SWK@Admin2026' }); ok('admin signs in', r.status === 200, r.data)
+  let r = await api('POST', '/api/auth/login', { email: 'admin@swk.properties', password: 'Admin@swk.properties' }); ok('admin signs in', r.status === 200, r.data)
 
   sec('Bootstrap (production workspace starts empty)')
   await api('PUT', '/api/admin/settings', { company_trn: '100123456700003' })
@@ -220,7 +220,7 @@ async function main() {
   r = await api('GET', '/api/integrations/supabase/schema.sql', undefined, true); const sql = await r.text(); ok('Supabase schema SQL generated with RLS', sql.includes('create table if not exists public."invoices"') && sql.includes('enable row level security') && !sql.includes('password_hash'))
 
   sec('Permissions')
-  r = await api('POST', '/api/auth/login', { email: 'manager@swkpropertiesuae.com', password: 'SWK@Manager2026' }); ok('manager sees AI team', (await api('GET', '/api/ai/status')).status === 200)
+  r = await api('POST', '/api/auth/login', { email: 'haseeb@swk.properties', password: 'SWK@Manager2026' }); ok('manager sees AI team', (await api('GET', '/api/ai/status')).status === 200)
   cookie = ''
   r = await api('GET', '/api/ai/status'); ok('AI API requires sign-in', r.status === 401)
   r = await api('POST', '/api/public/tracking/x', {}); ok('public webhooks do not leak when unconfigured', r.status === 404 || r.status === 401)

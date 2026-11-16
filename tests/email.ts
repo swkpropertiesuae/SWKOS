@@ -21,9 +21,9 @@ let cookie = ''
 const request = (url: string, method = 'GET', payload?: any, bearer?: string) => app.inject({ url, method: method as any, payload, headers: { 'x-swk-client': 'web', ...(bearer ? { authorization: `Bearer ${bearer}` } : { cookie }) } })
 const waitStatus = async (id: number, status: string) => { for (let i = 0; i < 100; i++) { if (q.val('SELECT status FROM email_outbox WHERE id=?', id) === status) return true; await new Promise(r => setTimeout(r, 20)) } return false }
 try {
-  const login = await request('/api/auth/login', 'POST', { email: config.accounts.adminEmail, password: config.accounts.adminPassword })
+  const login = await request('/api/auth/login', 'POST', { email: config.accounts.adminSwkEmail, password: config.accounts.adminSwkPassword })
   cookie = 'swk_sid=' + login.cookies.find(c => c.name === 'swk_sid')!.value
-  await request('/api/auth/change-password', 'POST', { current: config.accounts.adminPassword, next: 'Mail-Regression2026!' })
+  await request('/api/auth/change-password', 'POST', { current: config.accounts.adminSwkPassword, next: 'Mail-Regression2026!' })
   const account = (email: string) => ({ email, provider: 'resend', host: '', port: 465, secure: true, user: '', password: '', apiKey: 'mock-private-key', enabled: true })
   check('five company addresses are available', (await request('/api/email/senders')).json().length === 5)
   const message = { from: 'sales@swkpropertiesuae.com', to: 'customer@example.com', cc: 'accounts@example.com', subject: 'Viewing update', body: 'The unit is ready. <script>not HTML</script>' }

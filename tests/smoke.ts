@@ -19,11 +19,11 @@ const id = (r: any) => r.data?.id
 
 async function main() {
   sec('Auth')
-  let r = await api('POST', '/api/auth/login', { email: 'admin@swkpropertiesuae.com', password: 'wrong-password' }, { noAuth: true }); ok('wrong password rejected', r.status === 401)
+  let r = await api('POST', '/api/auth/login', { email: 'admin@swk.properties', password: 'wrong-password' }, { noAuth: true }); ok('wrong password rejected', r.status === 401)
   r = await api('GET', '/api/e/jobs', undefined, { noAuth: true }); ok('unauthenticated API call rejected', r.status === 401)
-  r = await api('POST', '/api/auth/login', { email: 'manager@swkpropertiesuae.com', password: 'SWK@Manager2026' }); ok('manager can sign in', r.status === 200 && r.data.ok, r.data)
+  r = await api('POST', '/api/auth/login', { email: 'haseeb@swk.properties', password: 'SWK@Manager2026' }); ok('manager can sign in', r.status === 200 && r.data.ok, r.data)
   const mgrCookie = cookie
-  r = await api('POST', '/api/auth/login', { email: 'admin@swkpropertiesuae.com', password: 'SWK@Admin2026' }); ok('admin can sign in', r.status === 200 && r.data.ok, r.data)
+  r = await api('POST', '/api/auth/login', { email: 'admin@swk.properties', password: 'Admin@swk.properties' }); ok('admin can sign in', r.status === 200 && r.data.ok, r.data)
   r = await api('GET', '/api/auth/me'); ok('me returns full permissions for admin', r.data.permissions === '*' && r.data.defaultPassword === false, r.data)
   r = await api('GET', '/api/meta'); ok('meta lists entities and navigation', r.data.entities.length > 70 && r.data.nav.length >= 8, Object.keys(r.data))
   r = await api('PUT', '/api/admin/settings', { company_trn: '100123456700003' }); ok('company TRN saved (needed to post tax invoices)', r.status === 200 && r.data.company_trn === '100123456700003', r.data)
