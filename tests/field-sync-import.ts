@@ -78,6 +78,33 @@ async function main() {
   ok('administrator can send an invitation', inv.status === 200, inv)
   ok('bad invite token is refused', (await a.post('/api/public/invite/accept', { token: 'x'.repeat(48), password: 'Whatever-Pass-2026!' })).status === 400)
   ok('forgot-password never reveals whether an address exists', (await a.post('/api/public/invite/forgot', { email: 'nobody@example.com' })).data.ok === true)
+
+  sec('Off-plan holds, commercial terms, assignments')
+  const prop = (await a.post('/api/e/properties', { title: 'Hold Tower', property_type: 'Apartment', status: 'Off-Plan' })).data.id
+  const unit = (await a.post('/api/e/units', { unit_no: 'H-101', property_id: prop, status: 'Available' })).data.id
+  const b1 = (await a.post('/api/e/parties', { name: 'Buyer One', is_customer: true, status: 'Active' })).data.id
+  const b2 = (await a.post('/api/e/parties', { name: 'Buyer Two', is_customer: true, status: 'Active' })).data.id
+  const h1 = (await a.post('/api/e/unit_holds', { unit_id: unit, party_id: b1 })).data
+  ok('first hold is Active and reserves the unit', h1.status === 'Active' && (await a.get(`/api/e/units/${unit}`)).data.status === 'Reserved', h1)
+  const h2 = (await a.post('/api/e/unit_holds', { unit_id: unit, party_id: b2 })).data
+  ok('second buyer queues behind it', h2.status === 'Queued' && h2.queue_position === 1, h2)
+  const dup = await a.post('/api/e/unit_holds', { unit_id: unit, party_id: b2 })
+  ok('same buyer cannot queue twice', dup.status === 400, dup)
+  await a.put(`/api/e/unit_holds/${h1.id}`, { status: 'Released', version: h1.version })
+  ok('releasing promotes the next buyer', (await a.get(`/api/e/unit_holds/${h2.id}`)).data.status === 'Active')
+  const bad2 = await a.put(`/api/e/unit_holds/${h2.id}`, { status: 'Queued', version: (await a.get(`/api/e/unit_holds/${h2.id}`)).data.version })
+  ok('status cannot be set by hand to Queued', bad2.status === 400, bad2)
+
+  const ct = { job_id: job, party_id: cust, data_room_access: 'Granted', nda_status: 'Requested' }
+  ok('data room needs a signed NDA', (await a.post('/api/e/commercial_terms', ct)).status === 400)
+  const t = (await a.post('/api/e/commercial_terms', { ...ct, nda_status: 'Signed', nda_signed_date: '2026-10-01', commencement_date: '2026-11-01', break_clause_months: 24, break_notice_months: 6 })).data
+  ok('break date and notice deadline are calculated', t.break_date === '2028-11-01' && t.break_notice_deadline === '2028-05-01', t)
+
+  const asg = (await a.post('/api/e/offplan_assignments', { unit_id: unit, seller_id: b1, buyer_id: b2 })).data
+  const done = await a.put(`/api/e/offplan_assignments/${asg.id}`, { status: 'Completed', version: asg.version })
+  ok('assignment cannot complete with an open checklist', done.status === 400 && /Still needed/.test(done.data.error), done)
+  const fin = await a.put(`/api/e/offplan_assignments/${asg.id}`, { status: 'Completed', version: asg.version, developer_consent: true, paid_to_date_confirmed: true, fees_paid: true, assignee_approved: true, assignee_kyc_cleared: true, revised_spa_ref: 'OQD-1' })
+  ok('assignment completes once everything is confirmed', fin.status === 200, fin)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

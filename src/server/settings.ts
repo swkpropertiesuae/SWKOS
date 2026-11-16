@@ -7,7 +7,7 @@ import path from 'node:path'
 
 export const SETTING_DEFAULTS: Record<string, any> = {
   company_name: 'SWK Properties LLC',
-  branch_scoped_roles: '', masked_fields: '',
+  branch_scoped_roles: '', masked_fields: '', unit_hold_hours: 48,
   company_address: 'Bur Dubai, Dubai, UAE',
   company_phone: '',
   company_email: 'sales@swkpropertiesuae.com',

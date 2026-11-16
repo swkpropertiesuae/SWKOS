@@ -14,6 +14,7 @@ import { properties } from './properties'
 import { mandates } from './mandates'
 import { transactions } from './transactions'
 import { leases } from './leases'
+import { commercial } from './commercial'
 import { jobs } from './jobs'
 import { job_charges } from './job_charges'
 import { job_events } from './job_events'
@@ -32,6 +33,7 @@ export const ENTITY_LIST: EntityDef[] = [
   ...job_events,
   ...transactions,
   ...leases,
+  ...commercial,
   ...finance,
   ...people,
   ...ops,

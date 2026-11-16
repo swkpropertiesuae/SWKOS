@@ -11,6 +11,7 @@ import { can, type Ctx, type Rec } from './engine'
 import { q } from './db'
 import { bad, forbidden } from './util'
 import { jobHooks } from './domain/jobs'
+import { unitHoldHooks, commercialTermsHooks, assignmentHooks } from './domain/commercial'
 import { quoteHooks, partyHooks, leadHooks, opportunityHooks, contractHooks } from './domain/sales'
 import { invoiceHooks, billHooks, receiptHooks, paymentHooks, journalHooks, expenseHooks, bankTxnHooks } from './domain/finance'
 import { leaseHooks, salesContractHooks, agentCommissionHooks, dealWithdrawalHooks, dldFilingHooks, kycCheckHooks, amlReportHooks } from './domain/uae'
@@ -34,6 +35,7 @@ const registry: Record<string, () => Hooks> = {
   transactions: () => transactionHooks, communications: () => communicationHooks, commission_entitlements: () => commissionEntitlementHooks,
   automation_rules: () => automationRuleHooks, sla_policies: () => slaHooks, work_items: () => workHooks,
   jobs: () => jobHooks,
+  unit_holds: () => unitHoldHooks, commercial_terms: () => commercialTermsHooks, offplan_assignments: () => assignmentHooks,
   quotations: () => quoteHooks, parties: () => partyHooks, leads: () => leadHooks, opportunities: () => opportunityHooks, contracts: () => contractHooks,
   invoices: () => invoiceHooks, bills: () => billHooks, receipts: () => receiptHooks, payments: () => paymentHooks, journal_entries: () => journalHooks,
   expenses: () => expenseHooks, bank_transactions: () => bankTxnHooks,
