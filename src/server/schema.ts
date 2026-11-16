@@ -217,6 +217,19 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       received_at TEXT NOT NULL
     );
   ` },
+  { id: '008_links_and_invites', sql: `
+    ALTER TABLE job_tracking_tokens ADD COLUMN expires_at TEXT;
+    ALTER TABLE job_tracking_tokens ADD COLUMN revoked_at TEXT;
+    CREATE TABLE user_invites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL
+    );
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

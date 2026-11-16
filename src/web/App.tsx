@@ -19,6 +19,7 @@ import { RolesPage, SettingsPage, AuditPage, BackupPage } from './pages/AdminPag
 import { CompliancePage } from './pages/CompliancePage'
 import { WorkQueuePage,HandoverPage } from './pages/WorkPages'
 import { PublicTrack } from './pages/PublicTrack'
+import { AcceptInvite } from './pages/AcceptInvite'
 import { IntegrationsPage } from './pages/IntegrationsPage'
 import { AiPage } from './pages/AiPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
@@ -57,6 +58,7 @@ export default function App() {
   const { me, loading } = useMeta()
   const loc = useLocation()
   const defaultLanding = '/home'
+  if (loc.pathname === '/accept-invite') return <AcceptInvite />
   if (loc.pathname.startsWith('/t/')) return <Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes>
   const isStandaloneReceptionQr =
     loc.pathname === '/qr-checkin' ||

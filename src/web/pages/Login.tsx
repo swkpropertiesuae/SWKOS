@@ -479,6 +479,7 @@ export function Login() {
                   </AnimatePresence>
                 </span>
               </button>
+              <a href="/accept-invite" className="text-sm underline mt-3 inline-block">Forgot your password?</a>
             </motion.div>
 
             {demo?.enabled && (

@@ -3,6 +3,7 @@ import { isPg, db, q, qi, tx, currentDb, type Row } from './db'
 import { ENTITIES } from '../shared/entities'
 import { recordTitle, optValue, type EntityDef, type FieldDef, type Action } from '../shared/types'
 import { bad, conflict, forbidden, fromCents, nowIso, nowLocal, notFound, safeJson, todayStr, toCents, HttpError, clamp } from './util'
+import { getSetting } from './settings'
 import { hooksFor, type HookArgs } from './hooks'
 import { runAutomations } from './automation'
 import { emitWebhooks } from './webhooks'
@@ -234,6 +235,27 @@ const likeEsc = (s: string) => s.replace(/[\\%_]/g, m => '\\' + m)
 // support CAST AS TEXT; PostgreSQL cannot apply ILIKE directly to a bigint.
 const searchCol = (name: string) => `CAST(${qi(name)} AS TEXT)`
 
+// Opt-in record scoping: roles listed in the branch_scoped_roles setting (comma separated) only see rows of their own branch, plus rows with no branch.
+function branchScope(def: EntityDef, ctx: Ctx): number | null {
+  const u = ctx.user
+  if (ctx.system || !u || u.party_id || !u.branch_id || !def.fields.some(f => f.name === 'branch_id')) return null
+  const roles = String(getSetting('branch_scoped_roles') || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
+  return roles.includes(u.role_name.toLowerCase()) ? u.branch_id : null
+}
+
+export const MASK = '••••'
+/** Fields named in the masked_fields setting ("employees.basic_salary, parties.passport_no") show as •••• to everyone except administrators. */
+export function maskedFieldsFor(def: EntityDef, ctx: Ctx): string[] {
+  const u = ctx.user
+  if (ctx.system || !u || u.permissions === '*' || can(u, 'admin', 'edit')) return []
+  return String(getSetting('masked_fields') || '').split(',').map(x => x.trim().split('.')).filter(x => x[0] === def.key && x[1]).map(x => x[1])
+}
+export function maskRecs(def: EntityDef, recs: Rec[], ctx: Ctx): Rec[] {
+  const f = maskedFieldsFor(def, ctx)
+  if (f.length) for (const r of recs) for (const n of f) if (r[n] !== null && r[n] !== undefined && r[n] !== '') r[n] = MASK
+  return recs
+}
+
 function refSearchSubquery(f: FieldDef, op: string, value: any): { sql: string; args: any[] } | null {
   const rdef = ENTITIES[f.ref!]
   if (!rdef) return null
@@ -248,6 +270,8 @@ function buildWhere(def: EntityDef, p: ListParams, ctx: Ctx): { where: string; a
   const cl: string[] = []; const args: any[] = []
   if (!p.includeDeleted) cl.push('deleted_at IS NULL')
   if (p.ids?.length) { cl.push(`id IN (${p.ids.map(() => '?').join(',')})`); args.push(...p.ids) }
+  const bs = branchScope(def, ctx)
+  if (bs) { cl.push('(branch_id = ? OR branch_id IS NULL)'); args.push(bs) }
   const scope = ctx.user?.party_id && !ctx.system ? SCOPE[def.key] : undefined
   if (ctx.user?.party_id && !ctx.system) {
     if (!scope) { cl.push('1=0') } else { cl.push(`${qi(scope)} = ?`); args.push(ctx.user.party_id) }
@@ -375,6 +399,8 @@ export function getRecord(def: EntityDef, id: number, ctx: Ctx, opts: { children
   }
   const row = q.get(`SELECT * FROM ${qi(def.key)} WHERE id = ?`, id)
   if (!row || (row.deleted_at && !opts.includeDeleted)) throw notFound()
+  const bs = branchScope(def, ctx)
+  if (bs && row.branch_id && row.branch_id !== bs) throw notFound()
   const scope = ctx.user?.party_id && !ctx.system ? SCOPE[def.key] : undefined
   if (ctx.user?.party_id && !ctx.system && (!scope || row[scope] !== ctx.user.party_id)) throw notFound()
   if(!ctx.system&&def.key==='work_items'&&!can(ctx.user,getDef(row.source_entity).module,'view'))throw notFound()

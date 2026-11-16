@@ -43,6 +43,41 @@ async function main() {
   ok('a new enquiry from the same phone joins the open lead', l3.data.lead_id === l1.data.lead_id && l3.data.new_lead === false, l3)
   const l4 = await a.post(path.replace(/[^/]+$/, 'wrong'), lead)
   ok('wrong secret is a 404', l4.status === 404, l4)
+
+  sec('Access: links, masking, branch scope, invites')
+  const dxb = (await a.get('/api/e/branches')).data.rows[0].id
+  const cust = (await a.post('/api/e/parties', { name: 'Link Co', is_customer: true, status: 'Active' })).data.id
+  const job = (await a.post('/api/e/jobs', { deal_name: 'Link deal', deal_type: 'Sale', client_id: cust, branch_id: dxb, deal_date: '2026-10-01' })).data.id
+  const t1 = (await a.post(`/api/jobs/${job}/tracking-token`)).data
+  ok('tracking link works', (await a.call('GET', '/api/public/track/' + t1.token)).status === 200)
+  await a.del(`/api/jobs/${job}/tracking-token`)
+  ok('revoked tracking link is gone', (await a.call('GET', '/api/public/track/' + t1.token)).status === 404)
+  const t2 = (await a.post(`/api/jobs/${job}/tracking-token`)).data
+  ok('a new link is issued after revoke', t2.token !== t1.token && (await a.call('GET', '/api/public/track/' + t2.token)).status === 200)
+
+  const roles = (await a.get('/api/e/roles?pageSize=50')).data.rows
+  const roleId = roles.find((r: any) => r.name === 'Sales').id
+  await a.post('/api/e/users', { name: 'Scoped PM', email: 'scoped@a.example', password: 'Manager-Pass-2026!', role_id: roleId, branch_id: dxb, active: true })
+  await a.put('/api/admin/settings', { branch_scoped_roles: 'Sales', masked_fields: 'parties.phone' })
+  await a.put(`/api/e/parties/${cust}`, { phone: '+971500000001' })
+  const w = new Api(); ok('scoped user signs in', await w.login('scoped@a.example', 'Manager-Pass-2026!'))
+  const seen = (await w.get('/api/e/parties?pageSize=50')).data.rows.find((r: any) => r.id === cust)
+  ok('masked field shows the placeholder to a non-admin', seen?.phone === '••••', seen)
+  ok('administrator still sees the real value', (await a.get(`/api/e/parties/${cust}`)).data.phone === '+971500000001')
+  const put = await w.put(`/api/e/parties/${cust}`, { ...seen, name: 'Link Co 2', version: seen.version })
+  ok('saving with the placeholder does not overwrite the value', put.status === 200 && (await a.get(`/api/e/parties/${cust}`)).data.phone === '+971500000001', put)
+
+  const br2 = (await a.post('/api/e/branches', { name: 'Abu Dhabi', code: 'AUH' })).data.id
+  const otherJob = (await a.post('/api/e/jobs', { deal_name: 'AUH deal', deal_type: 'Sale', client_id: cust, branch_id: br2, deal_date: '2026-10-01' })).data.id
+  const jobs = (await w.get('/api/e/jobs?pageSize=50')).data.rows.map((r: any) => r.id)
+  ok('branch-scoped role sees its own branch only', jobs.includes(job) && !jobs.includes(otherJob), jobs)
+  ok('direct read of another branch record is hidden', (await w.get(`/api/e/jobs/${otherJob}`)).status === 404)
+
+  const uid = (await a.get('/api/e/users?q=scoped@a.example')).data.rows[0].id
+  const inv = await a.post(`/api/admin/users/${uid}/invite`)
+  ok('administrator can send an invitation', inv.status === 200, inv)
+  ok('bad invite token is refused', (await a.post('/api/public/invite/accept', { token: 'x'.repeat(48), password: 'Whatever-Pass-2026!' })).status === 400)
+  ok('forgot-password never reveals whether an address exists', (await a.post('/api/public/invite/forgot', { email: 'nobody@example.com' })).data.ok === true)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

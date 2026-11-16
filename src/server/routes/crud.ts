@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { q, qi, tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue, recordTitle, type EntityDef, type FieldDef } from '../../shared/types'
-import { attachLabels, createRecord, deleteRecord, requestDeleteOrExecute, getDef, getRecord, labelsFor, listRecords, rowToApi, updateRecord, can, assertCan, titleCols, customFieldsFor, invalidateCustomFields, type Ctx } from '../engine'
+import { attachLabels, createRecord, deleteRecord, requestDeleteOrExecute, getDef, getRecord, labelsFor, listRecords, rowToApi, updateRecord, can, assertCan, maskRecs, maskedFieldsFor, MASK, titleCols, customFieldsFor, invalidateCustomFields, type Ctx } from '../engine'
 import { bad, HttpError, forbidden, notFound, parseCsv, safeJson, toCsv, nowLocal, nowIso, todayStr } from '../util'
 import { body, idOf, parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
@@ -72,7 +72,9 @@ export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------ list
   app.get('/api/e/:entity', async (req) => {
     const def = guard(getDef((req.params as any).entity))
-    return listRecords(def, parseListParams(req.query as any), req.ctx)
+    const res = listRecords(def, parseListParams(req.query as any), req.ctx)
+    maskRecs(def, res.rows, req.ctx)
+    return res
   })
 
   // ------------------------------------------------------------ export / template / import
@@ -82,6 +84,7 @@ export default async function (app: FastifyInstance) {
     const p = parseListParams(req.query as any)
     const res = listRecords(def, { ...p, page: 1, pageSize: 100000 }, req.ctx)
     checkBulkExportDlp(def.key, res.rows.length, req.ctx)
+    maskRecs(def, res.rows, req.ctx)
     const fields = def.fields.filter(f => !f.secret && !f.virtual && f.type !== 'json' && !f.hidden || f.list)
     const csv = toCsv(['ID', ...fields.map(f => f.label)], res.rows.map(r => [r.id, ...fields.map(f => cell(f, r))]))
     reply.header('content-type', 'text/csv; charset=utf-8').header('content-disposition', `attachment; filename="${def.key}-${todayStr()}.csv"`)
@@ -163,7 +166,7 @@ export default async function (app: FastifyInstance) {
   app.get('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    return getRecord(def, idOf(p.id), req.ctx)
+    return maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
   })
   // Party blocks for print documents (invoices, quotations, …): { [party_id]: { name, address… } }
   app.get('/api/print/:entity/:id/parties', async (req) => {
@@ -222,7 +225,10 @@ export default async function (app: FastifyInstance) {
   app.put('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    return updateRecord(def, idOf(p.id), body(req), req.ctx)
+    // A masked field comes back as the placeholder; sending it back must not overwrite the real value.
+    const b = body<Record<string, any>>(req)
+    for (const f of maskedFieldsFor(def, req.ctx)) if (b[f] === MASK) delete b[f]
+    return maskRecs(def, [updateRecord(def, idOf(p.id), b, req.ctx)], req.ctx)[0]
   })
   app.delete('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
