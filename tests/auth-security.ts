@@ -18,7 +18,9 @@ async function request(path: string, method = 'GET', payload?: any, cookie?: str
 }
 const sid = (r: any) => 'swk_sid=' + r.cookies.find((c: any) => c.name === 'swk_sid').value
 try {
-  const credentials = { email: config.accounts.adminEmail, password: config.accounts.adminPassword }
+  // The official accounts start without a forced change, so flag one as a fresh account to exercise the first-login rule.
+  q.run('UPDATE users SET must_change_password = 1 WHERE lower(email) = ?', config.accounts.adminSwkEmail.toLowerCase())
+  const credentials = { email: config.accounts.adminSwkEmail, password: config.accounts.adminSwkPassword }
   const login = await request('/api/auth/login', 'POST', credentials)
   check('fresh login requires a personal password', login.json().mustChangePassword)
   const cookie = sid(login), id = login.json().user.id

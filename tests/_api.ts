@@ -9,7 +9,7 @@ export const finish = () => { console.log(`\n${pass} passed, ${fail} failed`); i
 
 export class Api {
   cookie = ''
-  async login(email = 'admin@swkpropertiesuae.com', password = 'SWK@Admin2026') {
+  async login(email = 'admin@swk.properties', password = 'Admin@swk.properties') {
     const res = await signInReady(BASE, { email, password })
     const sc = res.headers.get('set-cookie'); if (sc) this.cookie = sc.split(';')[0]
     return res.status === 200

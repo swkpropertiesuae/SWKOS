@@ -6,8 +6,17 @@ import { SYSTEM_CTX } from './engine'
 import { nowIso } from './util'
 import { businessDataSummary, clearStarterDeclined, loadSwkStarterData, resetBusinessData, starterDeclined, starterLoaded } from './domain/business-data'
 import { ensureHardcodedSwkStaffAccounts } from './seed'
+import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
 
-const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-owner-admin-2026-11'
+const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
+
+/** Removes every internal login that is not one of the official staff accounts (old @swkpropertiesuae.com and @swk.property users). Customer-portal users are kept. */
+function removeUnlistedStaffUsers() {
+  const keep = SWK_STAFF_ACCOUNTS.map(a => a.email.toLowerCase())
+  const where = `party_id IS NULL AND lower(email) NOT IN (${keep.map(() => '?').join(',')})`
+  q.run(`DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE ${where})`, ...keep)
+  q.run(`DELETE FROM users WHERE ${where}`, ...keep)
+}
 
 /** Fictional demo databases left from an earlier start are deleted when the demo workspace is switched off. */
 function removeDisabledDemo() {
@@ -27,6 +36,7 @@ export async function runStartupDataTasks() {
   removeDisabledDemo()
   if (!q.val(`SELECT 1 FROM settings WHERE key = ?`, FRESH_OWNER_ADMIN_RESET_KEY)) {
     const r = await resetBusinessData({ user: null, system: true })
+    removeUnlistedStaffUsers()
     ensureHardcodedSwkStaffAccounts()
     q.run(
       `INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
@@ -34,7 +44,7 @@ export async function runStartupDataTasks() {
       nowIso(),
     )
     clearStarterDeclined()
-    console.log(`Fresh Owner/Admin workspace reset completed (${r.total} rows cleared). Backup: ${r.backup}`)
+    console.log(`Fresh staff workspace reset completed (${r.total} rows cleared). Backup: ${r.backup}`)
   }
   const key = `reset:${config.resetToken}`
   if (config.resetToken && !q.val(`SELECT 1 FROM settings WHERE key = ?`, key)) {

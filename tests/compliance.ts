@@ -16,7 +16,7 @@ const sec = (t: string) => console.log('\n' + t)
 const today = todayStr()
 
 async function main() {
-  let r = await api('POST', '/api/auth/login', { email: 'admin@swkpropertiesuae.com', password: 'SWK@Admin2026' }); ok('admin signs in', r.data.ok, r.data)
+  let r = await api('POST', '/api/auth/login', { email: 'admin@swk.properties', password: 'Admin@swk.properties' }); ok('admin signs in', r.data.ok, r.data)
 
   sec('Company licence data (entered by the administrator, never pre-filled)')
   r = await api('GET', '/api/admin/settings')

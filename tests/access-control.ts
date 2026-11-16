@@ -60,7 +60,7 @@ async function main() {
   await a.post('/api/e/users', { name: 'Limited Admin', email: 'limited@a.example', password: 'Limited-Pass-2026!', role_id: limitedRole.id, branch_id: dxb, active: true, must_change_password: false })
   const l = new Api()
   ok('limited administrator signs in', await l.login('limited@a.example', 'Limited-Pass-2026!'))
-  const fullAdminId = (await a.get('/api/e/users?pageSize=50')).data.rows.find((u: any) => u.email === 'admin@swkpropertiesuae.com').id
+  const fullAdminId = (await a.get('/api/e/users?pageSize=50')).data.rows.find((u: any) => u.email === 'admin@swk.properties').id
   r = await l.post('/api/e/users', { name: 'Sneaky', email: 'sneaky@a.example', password: 'Sneaky-Pass-2026!', role_id: roleId('Admin'), branch_id: dxb, active: true, must_change_password: false }); ok('cannot create a user with a full-access role', r.status === 400, r.data)
   r = await l.put(`/api/e/users/${fullAdminId}`, { password: 'Hijacked-Pass-2026!' }); ok('cannot change the password of a full administrator', r.status === 400, r.data)
   r = await l.post(`/api/admin/users/${fullAdminId}/reset-2fa`); ok('cannot reset 2-step verification of a full administrator', r.status === 400, r.data)
