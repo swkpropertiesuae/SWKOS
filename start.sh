@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 export NODE_ENV=production
 export PORT=8080
 export DATA_DIR="${DATA_DIR:-$PWD/data}"
-export PUBLIC_URL=https://os.swkpropertiesuae.com
+export PUBLIC_URL=https://os.swk.properties
 export TRUST_PROXY=true
 export COOKIE_SECURE=true
 export APP_TIMEZONE=Asia/Dubai
