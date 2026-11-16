@@ -74,7 +74,7 @@ SWK Properties OS is built around a clear governance chain between **Shabib Sira
 Every screen in **SWK Properties OS** follows the same four rules so you can supervise the entire brokerage effortlessly:
 
 ### Rule 1: Sign In at the Private Gate
-Open `https://os.swkpropertiesuae.com` in your browser (or open the **SWK ONE** app on your Android phone). Sign in with your Operations Manager credentials (`manager@swkpropertiesuae.com`).
+Open `https://os.swk.properties` in your browser (or open the **SWK ONE** app on your Android phone). Sign in with your Operations Manager credentials (`manager@swkpropertiesuae.com`).
 
 ![Chapter 1 — Secure Sign-In Screen](./handbook-assets/hb-01-login.png)
 

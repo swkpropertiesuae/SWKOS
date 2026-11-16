@@ -4,7 +4,7 @@
   <img src="public/brand/logo-png/swk-logo-gold-512.png" alt="SWK Properties LLC" width="180" />
 </p>
 
-**Complete UAE Real Estate Operating System (ERP, CRM, Portal Syndication & DLD Market Pulse)** built for **SWK Properties LLC (Dubai, UAE)** — live at **[https://os.swkpropertiesuae.com](https://os.swkpropertiesuae.com)**.
+**Complete UAE Real Estate Operating System (ERP, CRM, Portal Syndication & DLD Market Pulse)** built for **SWK Properties LLC (Dubai, UAE)** — live at **[https://os.swk.properties](https://os.swk.properties)**.
 
 ---
 
@@ -105,4 +105,4 @@ npm run build                # Build Web (dist/web) + API (dist/server/index.mjs
 npm run test:all             # Complete acceptance runner
 ```
 
-See [docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md) for Cloudflare Containers deployment.
+See [docs/DEPLOY.md](docs/DEPLOY.md) for the Oracle Cloud deployment behind a Cloudflare Tunnel.
