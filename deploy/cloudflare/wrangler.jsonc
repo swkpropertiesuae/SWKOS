@@ -30,8 +30,8 @@
       "class_name": "SwkOs",
       "image": "../../Dockerfile",
       "image_build_context": "../..",
-      // 4 GiB: Node + the Chromium used for PDFs. Do not go below "basic" (1 GiB) and expect PDFs to work.
-      "instance_type": "standard-1",
+      // standard-3: 2 vCPU, 8 GiB. Node, the scheduler and the Chromium used for PDFs were CPU-starved on standard-1 (1/2 vCPU).
+      "instance_type": "standard-3",
       // Allow up to 5 instances so rolling deployments can start the new release container before previous ones finish draining.
       "max_instances": 5
     }
