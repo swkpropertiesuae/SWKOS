@@ -11,7 +11,6 @@
   X-DNS-Prefetch-Control: off
   X-Download-Options: noopen
   X-XSS-Protection: 0
-  Cache-Control: no-cache
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
