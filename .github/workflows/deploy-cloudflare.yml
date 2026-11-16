@@ -39,11 +39,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: deploy/cloudflare/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            deploy/cloudflare/package-lock.json
       - name: Check deploy secrets
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+      - name: Build the web app (served from Cloudflare's edge)
+        run: |
+          node -e "const fs=require('fs');fs.writeFileSync('public/release.json', JSON.stringify({sha: process.env.GITHUB_SHA, brand: 'swk-os-brand-pack'}) + '\n');"
+          npm ci
+          npm run build:web
       - name: Install Worker dependencies
         working-directory: deploy/cloudflare
         run: npm ci

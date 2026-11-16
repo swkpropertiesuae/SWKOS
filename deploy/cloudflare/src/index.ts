@@ -161,10 +161,19 @@ async function ensureRunning(env: Env) {
   return c
 }
 
+/** The full check (several Durable Object round trips) runs at most once a minute per isolate; between checks a request goes straight to the container. */
+let readyUntil = 0
+async function container(env: Env) {
+  if (Date.now() < readyUntil) return getContainer(env.SWK_OS, `os-${(env.RELEASE_ID || env.RELEASE_SHA || DEFAULT_RELEASE).slice(0, 24)}`)
+  const c = await ensureRunning(env)
+  readyUntil = Date.now() + 60_000
+  return c
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
-      const c = await ensureRunning(env)
+      const c = await container(env)
       const url = new URL(request.url)
       const headers = new Headers(request.headers)
       headers.set('x-forwarded-proto', url.protocol.replace(':', ''))
@@ -191,6 +200,7 @@ export default {
       }
       return await c.fetch(new Request(request, { headers }))
     } catch (e) {
+      readyUntil = 0 // run the full check on the next request
       return new Response('SWK OS is starting or temporarily unavailable. Please retry in a minute.\n' + (e instanceof Error ? e.message : ''), { status: 503, headers: { 'retry-after': '30' } })
     }
   },
