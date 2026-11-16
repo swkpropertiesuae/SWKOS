@@ -96,7 +96,7 @@ function AppSidebar({ pathname, collapsed, onToggle }: { pathname: string; colla
         <div className="swk-sidebar-head">
           <div className="swk-sidebar-toprow">
             <Link to="/home" className="swk-sidebar-monogram" title="All apps · SWK Properties OS">
-              <img src="/brand/swk-os/portal-arch-emblem-transparent.png" alt="SWK OS" width={28} height={28} />
+              <img src="/brand/site/swk-emblem.svg" alt="SWK OS" width={28} height={28} />
               {!collapsed && (
                 <span className="swk-sidebar-back-lbl">
                   <ArrowLeft size={12} />
@@ -184,8 +184,8 @@ export function Shell() {
       <div className="swk-main-col">
         <header className="swk-top no-print">
           <Link to="/home" className="swk-brand" aria-label="SWK Properties LLC Business Workspace home">
-            <img src="/brand/swk-os/portal-arch-emblem-transparent.png" alt="SWK OS Portal Arch Emblem" className="swk-brand-monogram" />
-            <img src="/brand/swk-os/primary-logo-transparent.png" alt="SWK OS" className="swk-brand-wordmark" />
+            <img src="/brand/site/swk-emblem.svg" alt="SWK OS Portal Arch Emblem" className="swk-brand-monogram" />
+            <img src="/brand/site/swk-wordmark.svg" alt="SWK OS" className="swk-brand-wordmark" />
             <span className="swk-os-tag">
               <b>OS</b>
               <small className="swk-hide-md">SWK Properties LLC</small>

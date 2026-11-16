@@ -15,6 +15,7 @@
     "build:web": "vite build",
     "build:api": "esbuild src/server/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/server/index.mjs --packages=external --sourcemap",
     "start": "node --env-file-if-exists=.env dist/server/index.mjs",
+    "brand:sync": "node tools/brand/sync-brand.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --env-file-if-exists=.env tests/smoke.ts",
     "test:integrations": "tsx --env-file-if-exists=.env tests/phase2.ts",
