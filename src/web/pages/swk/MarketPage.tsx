@@ -142,7 +142,7 @@ export default function MarketPage() {
           <Card
             title={
               <span className="flex items-center gap-2 flex-wrap">
-                <img src="/brand/swk-os/portal-map-pin-transparent.png" alt="" className="w-6 h-6 object-contain" />
+                <img src="/brand/site/swk-emblem.svg" alt="" className="w-6 h-6 object-contain" />
                 <span>Site-Visit Area Companion — Stock-Market Brief & 15-Year Outlook (2026–2041)</span>
                 <Pill tone="champ">{companionArea.ticker}</Pill>
               </span>
@@ -723,7 +723,7 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(11,26,51,.1), rgba(11,26,51,.9))' }} />
           <button type="button" onClick={onClose} autoFocus className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 grid place-items-center text-ink hover:bg-white" aria-label="Close"><X size={18} /></button>
           <div className="absolute left-5 right-5 bottom-4 text-white">
-            <div className="flex gap-1.5 mb-2"><Pill tone="champ">{c.ticker ?? c.segment}</Pill><Pill tone="grey"><img src="/brand/swk-os/portal-map-pin-transparent.png" alt="" className="w-3.5 h-3.5 object-contain" /> {c.lat.toFixed(3)}, {c.lng.toFixed(3)}</Pill></div>
+            <div className="flex gap-1.5 mb-2"><Pill tone="champ">{c.ticker ?? c.segment}</Pill><Pill tone="grey"><img src="/brand/site/swk-emblem.svg" alt="" className="w-3.5 h-3.5 object-contain" /> {c.lat.toFixed(3)}, {c.lng.toFixed(3)}</Pill></div>
             <div className="font-display text-[28px] font-semibold leading-tight">{c.name}</div>
           </div>
         </div>

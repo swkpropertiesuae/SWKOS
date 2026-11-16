@@ -48,12 +48,12 @@ export default function HandoverPortalPage() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#c9a96e]/40">
                 <img
-                  src="/brand/swk-os/portal-arch-emblem-transparent.png"
+                  src="/brand/site/swk-emblem.svg"
                   alt="SWK OS Emblem"
                   className="h-10 w-10 object-contain"
                 />
                 <img
-                  src="/brand/swk-os/primary-logo-transparent.png"
+                  src="/brand/site/swk-wordmark.svg"
                   alt="SWK OS"
                   className="h-9 w-auto object-contain"
                 />
@@ -211,7 +211,7 @@ export default function HandoverPortalPage() {
                 }}
               >
                 <img
-                  src="/brand/swk-os/horizontal-portal-lockup-transparent.png?v=swk-os-navy-2"
+                  src="/brand/site/swk-logo-horizontal.svg"
                   alt="SWK Properties LLC"
                   style={{ height: 46, width: 'auto', display: 'block', objectFit: 'contain' }}
                 />
@@ -939,7 +939,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                   autoPlay
                   loop
                   playsInline
-                  poster="/og.png?v=swk-os-brand-5"
+                  poster="/brand/site/og-default.jpg"
                   className="w-full aspect-video block bg-[#08142a]"
                   src="/handover/SWK_OS_Explanatory_Video_By_Shameem_Harfath.webm"
                 >

@@ -14,8 +14,8 @@ export function ProductBrand({ compact = false }: { compact?: boolean }) {
         textDecoration: 'none',
       }}
       aria-label="SWK Properties LLC · Business Workspace">
-      <img src="/brand/swk-os/portal-arch-emblem-transparent.png" alt="" width={compact ? 28 : 34} height={compact ? 28 : 34} style={{ height: compact ? 28 : 34, width: compact ? 28 : 34, objectFit: 'contain' }} />
-      <img src="/brand/swk-os/primary-logo-transparent.png" alt="SWK OS" width={compact ? 84 : 104} height={compact ? 36 : 44} style={{ height: compact ? 26 : 32, width: 'auto', objectFit: 'contain' }} />
+      <img src="/brand/site/swk-emblem.svg" alt="" width={compact ? 28 : 34} height={compact ? 28 : 34} style={{ height: compact ? 28 : 34, width: compact ? 28 : 34, objectFit: 'contain' }} />
+      <img src="/brand/site/swk-wordmark.svg" alt="SWK OS" width={compact ? 84 : 104} height={compact ? 36 : 44} style={{ height: compact ? 26 : 32, width: 'auto', objectFit: 'contain' }} />
       <span className="swk-os-badge">{compact ? 'OS' : 'SWK Properties LLC'}</span>
     </a>
   )

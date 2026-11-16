@@ -5,7 +5,7 @@
 const BUILD = '__BUILD_ID__'
 const SHELL = 'swk-shell-' + BUILD
 const ASSETS = 'swk-assets-' + BUILD
-const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/app-icon-192.png', '/app-icon-512.png', '/favicon/apple-touch-icon.png']
+const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/favicon/favicon-192.png', '/app-icon-512.png', '/favicon/apple-touch-icon.png']
 const CACHEABLE = /^\/(assets|fonts|brand)\//
 
 self.addEventListener('install', event => {

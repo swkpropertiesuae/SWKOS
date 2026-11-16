@@ -82,13 +82,16 @@ The entire web OS (`/home` Launcher, `AppSidebar`, `/dashboard`, and `/swk/pipel
 
 ---
 
-## 🎨 7. SWK OS Brand Kit
+## 🎨 7. Brand — single source: swkpropertiesuae.com
 
-All web surfaces use the official **SWK OS** brand identity (`public/brand/`):
-- **Primary Gold**: `#B89040` / `#D6B46C`
-- **Obsidian Surface**: `#17191C`
-- **Warm Ivory Canvas**: `#FBF8F1`
-- Complete favicons, PWA icons, and OpenGraph banners.
+Logo, emblem, favicons, PWA icon, OG image and the shared hero/community photos are the **Matte Gold** assets of the company website ([swkpropertiesuae.com](https://www.swkpropertiesuae.com), repo `swkpropertiesuae/swkpropertiesuae.com`). Committed copies live in `public/brand/site/`, `public/favicon/`, `public/media/{hero,communities}`; code reads them via `src/web/lib/brand.ts`.
+
+```bash
+npm run brand:sync                                              # pull from the live website
+BRAND_SOURCE=../swkpropertiesuae.com/public npm run brand:sync   # or from a local website checkout
+```
+
+Never edit synced files by hand; update the website, then re-run the sync and commit. Gold artwork is for dark surfaces (navy/onyx plates); use the `-charcoal` variants on light backgrounds.
 
 ---
 

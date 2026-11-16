@@ -38,7 +38,7 @@ try {
   const cached = await page.evaluate(async () => { const out = []; for (const k of await caches.keys()) for (const r of await (await caches.open(k)).keys()) out.push(new URL(r.url).pathname); return out })
   assert.ok(cached.length > 0, 'something static was cached')
   assert.ok(!cached.some(u => u.startsWith('/api/')), 'API responses must never be cached: ' + cached.filter(u => u.startsWith('/api/')).join(','))
-  assert.ok(!cached.some(u => !/^\/(assets|fonts|brand)\//.test(u) && !['/offline.html', '/manifest.webmanifest', '/app-icon-192.png', '/app-icon-512.png', '/favicon/apple-touch-icon.png'].includes(u)), 'unexpected cached entries: ' + cached.join(','))
+  assert.ok(!cached.some(u => !/^\/(assets|fonts|brand)\//.test(u) && !['/offline.html', '/manifest.webmanifest', '/favicon/favicon-192.png', '/app-icon-512.png', '/favicon/apple-touch-icon.png'].includes(u)), 'unexpected cached entries: ' + cached.join(','))
   console.log(`  ✓ ${cached.length} static files cached, no API data and no pages`)
 
   // 4. offline: pages show the offline page, API calls fail (not served from a cache)
