@@ -105,4 +105,4 @@ npm run build                # Build Web (dist/web) + API (dist/server/index.mjs
 npm run test:all             # Complete acceptance runner
 ```
 
-See [docs/DEPLOY.md](docs/DEPLOY.md) for the Oracle Cloud deployment behind a Cloudflare Tunnel.
+See [docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md) for Cloudflare Containers deployment.
