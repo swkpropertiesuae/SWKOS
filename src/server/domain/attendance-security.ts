@@ -4,7 +4,7 @@ import { HttpError, nowIso } from '../util'
 import { getSetting, setSettings } from '../settings'
 import { verifyPassword } from '../auth'
 
-// ---------------------------------------------------------------- rotating reception QR token
+// ---------------------------------------------------------------- encrypted, rotating reception QR payload
 const STEP_MS = 30_000
 const VALID_STEPS = 3 // current 30 s window plus the two before it: about 90 s to scan and sign in
 function secret(): string {
@@ -12,18 +12,49 @@ function secret(): string {
   if (!s) { s = crypto.randomBytes(32).toString('hex'); setSettings({ qr_token_secret: s }) }
   return s
 }
-const sign = (w: number) => crypto.createHmac('sha256', secret()).update('qr:' + w).digest('hex').slice(0, 16)
+const key = () => crypto.createHash('sha256').update('swk-qr-v1:' + secret()).digest()
+const b64u = (b: Buffer) => b.toString('base64url')
+/** The code on the reception screen is AES-256-GCM encrypted, so it looks like random text and cannot be read, edited or made up. It is not a link: only the in-app camera can use it. */
 export function currentQrToken(now = Date.now()) {
-  const w = Math.floor(now / STEP_MS)
-  return { token: `${w}.${sign(w)}`, expires_in: Math.ceil(((w + 1) * STEP_MS - now) / 1000), step_s: STEP_MS / 1000 }
+  const w = Math.floor(now / STEP_MS), iv = crypto.randomBytes(12)
+  const c = crypto.createCipheriv('aes-256-gcm', key(), iv)
+  const enc = Buffer.concat([c.update(JSON.stringify({ w, n: crypto.randomBytes(6).toString('hex') })), c.final()])
+  return { token: 'SWK1.' + b64u(Buffer.concat([iv, c.getAuthTag(), enc])), expires_in: Math.ceil(((w + 1) * STEP_MS - now) / 1000), step_s: STEP_MS / 1000 }
 }
 export function qrTokenValid(token: unknown, now = Date.now()): boolean {
-  const m = /^(\d{1,12})\.([0-9a-f]{16})$/.exec(String(token ?? ''))
+  const m = /^SWK1\.([A-Za-z0-9_-]{40,200})$/.exec(String(token ?? ''))
   if (!m) return false
-  const w = Number(m[1]), cur = Math.floor(now / STEP_MS)
-  if (cur - w < 0 || cur - w >= VALID_STEPS) return false
-  const a = Buffer.from(m[2]), b = Buffer.from(sign(w))
-  return a.length === b.length && crypto.timingSafeEqual(a, b)
+  try {
+    const raw = Buffer.from(m[1], 'base64url')
+    const d = crypto.createDecipheriv('aes-256-gcm', key(), raw.subarray(0, 12)); d.setAuthTag(raw.subarray(12, 28))
+    const w = Number(JSON.parse(Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString()).w), cur = Math.floor(now / STEP_MS)
+    return Number.isInteger(w) && cur - w >= 0 && cur - w < VALID_STEPS
+  } catch { return false }
+}
+
+// ---------------------------------------------------------------- device key: a signature proves this is the same phone, and the key cannot be copied out of it
+const challenges = new Map<string, { ip: string; exp: number }>()
+export function newChallenge(ip: string) {
+  for (const [k, v] of challenges) if (v.exp < Date.now()) challenges.delete(k)
+  if (challenges.size > 5000) challenges.clear()
+  const c = crypto.randomBytes(24).toString('base64url')
+  challenges.set(c, { ip, exp: Date.now() + 120_000 })
+  return c
+}
+/** Consumes the challenge (single use) and returns the device id, or throws. The device id is the hash of the public key, so it cannot be typed in or copied by hand. */
+export function verifyDeviceProof(p: { challenge: string; payload: string; pub: any; sig: string }, ip: string): string {
+  const c = challenges.get(String(p.challenge))
+  challenges.delete(String(p.challenge))
+  if (!c || c.exp < Date.now() || c.ip !== ip) throw new HttpError(400, 'The check-in expired. Scan the reception code again.')
+  const jwk = p.pub
+  if (!jwk || jwk.kty !== 'EC' || jwk.crv !== 'P-256' || typeof jwk.x !== 'string' || typeof jwk.y !== 'string') throw new HttpError(400, 'This device cannot prove its identity. Use the SWK OS page on your own phone with a current browser.')
+  let ok = false
+  try {
+    const pk = crypto.createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: jwk.x, y: jwk.y }, format: 'jwk' })
+    ok = crypto.verify('sha256', Buffer.from(`${p.challenge}.${p.payload}`), { key: pk, dsaEncoding: 'ieee-p1363' }, Buffer.from(String(p.sig), 'base64url'))
+  } catch { ok = false }
+  if (!ok) throw new HttpError(400, 'Device check failed. Scan the reception code again.')
+  return crypto.createHash('sha256').update(`${jwk.x}.${jwk.y}`).digest('hex').slice(0, 40)
 }
 
 // ---------------------------------------------------------------- check-in sign-in that cannot lock another person out
@@ -47,11 +78,13 @@ export function checkPasswordForCheckin(email: string, password: string, ip: str
 // ---------------------------------------------------------------- device binding
 /** A person's phone or computer must be approved by the Owner or Manager before it can check in. Owner and Manager devices approve themselves. */
 export function deviceGate(userId: number, deviceId: string, label: string, selfApprove: boolean): 'Approved' | 'Pending' {
-  if (!getSetting('device_binding_enforce')) return 'Approved'
   if (!deviceId) throw new HttpError(400, 'This device could not be identified. Reload the page and try again.')
+  const owner = q.get(`SELECT user_id FROM staff_devices WHERE device_id = ? AND user_id <> ? LIMIT 1`, deviceId, userId)
+  if (owner) throw new HttpError(403, 'This device is registered to another person. Each person must use their own phone.')
   const row = q.get(`SELECT id, status FROM staff_devices WHERE user_id = ? AND device_id = ?`, userId, deviceId)
   if (row) {
     q.run(`UPDATE staff_devices SET last_seen = ? WHERE id = ?`, nowIso(), row.id)
+    if (row.status === 'Blocked') throw new HttpError(403, 'This device has been blocked by the Owner or Manager.')
     return row.status === 'Approved' ? 'Approved' : 'Pending'
   }
   const status = selfApprove ? 'Approved' : 'Pending'

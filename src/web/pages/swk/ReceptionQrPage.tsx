@@ -1,452 +1,167 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import QRCode from 'qrcode'
-import { CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Printer, QrCode, Wifi, WifiOff } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import jsQR from 'jsqr'
+import { CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, ScanLine, Wifi, WifiOff } from 'lucide-react'
 import { get, post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
-import { canPrintReceptionQr } from '@shared/swk-staff-access'
-import { SWK_OFFICIAL_WEBSITES_TEXT } from '@shared/corporate-footer'
+import { signProof } from '../../lib/deviceKey'
 
-const PRINTED_QR_CODE = 'SWK-RECEPTION-STAND-DXB-1'
+type Net = { ssid: string; detected_client_ip: string; ip_matches_office: boolean; office_ip_locked?: boolean }
+type Step = 'scan' | 'signin' | 'done'
 
-interface BrowserDeviceIdentity {
-  device_id: string
-  device_name: string
-}
-
-function getBrowserDeviceIdentity(): BrowserDeviceIdentity {
-  const storageKey = 'swk.browser.device_id'
-  let id = ''
-  try {
-    id = localStorage.getItem(storageKey) || ''
-    if (!id) {
-      id = `WEB-${Math.random().toString(36).slice(2, 10).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`
-      localStorage.setItem(storageKey, id)
-    }
-  } catch {
-    id = 'WEB-BROWSER'
-  }
-  return {
-    device_id: id,
-    device_name: typeof navigator !== 'undefined' ? navigator.platform || 'Web Browser' : 'Web Browser',
-  }
-}
-
+/**
+ * Office check-in terminal. Check-in works only on the office Wi-Fi, only by scanning the code on the reception screen with the live camera
+ * in this page (there is no upload or gallery option, and the code is not a link), and only from this person's own registered phone.
+ */
 export default function ReceptionQrPage() {
   const { me } = useMeta()
-  const [searchParams, setSearchParams] = useSearchParams()
-  // HARD RULE: Only Owner (Shabib Siraj) and Haseeb (Mohammad Haseeb) can view or print the QR code.
-  const allowPrintQr = canPrintReceptionQr(me)
-  const isPrintMode = allowPrintQr && searchParams.get('print') === '1'
-
-  useEffect(() => {
-    if (searchParams.get('print') === '1' && !allowPrintQr) {
-      const next = new URLSearchParams(searchParams)
-      next.delete('print')
-      setSearchParams(next, { replace: true })
-    }
-  }, [searchParams, allowPrintQr, setSearchParams])
-
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [checkInResult, setCheckInResult] = useState<any | null>(null)
-
-  const [device, setDevice] = useState<BrowserDeviceIdentity | null>(null)
-  const [connectionType, setConnectionType] = useState<string>('wifi')
-  const [networkInfo, setNetworkInfo] = useState<{
-    ssid: string
-    detected_client_ip: string
-    ip_matches_office: boolean
-    strict_ip: boolean
-    office_ip_locked?: boolean
-  } | null>(null)
-  const [qrDataUrl, setQrDataUrl] = useState<string>('')
-
-  useEffect(() => {
-    setDevice(getBrowserDeviceIdentity())
-
-    const detectConn = () => {
-      const navConn =
-        (navigator as any).connection ||
-        (navigator as any).mozConnection ||
-        (navigator as any).webkitConnection
-      const rawType = String(navConn?.type || navConn?.effectiveType || 'wifi').toLowerCase()
-      if (rawType.includes('cellular') || rawType === '3g' || rawType === '2g') {
-        setConnectionType('cellular')
-      } else {
-        setConnectionType('wifi')
-      }
-    }
-    detectConn()
-
-    void get<any>('/api/public/reception-qr/wifi-config')
-      .then(cfg => setNetworkInfo(cfg))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (!isPrintMode) return
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://os.swk.properties'
-    const scanUrl = `${origin}/reception-qr?scan=1&stand=${PRINTED_QR_CODE}`
-    void QRCode.toDataURL(scanUrl, {
-      width: 420,
-      margin: 2,
-      color: { dark: '#1c1c1c', light: '#ffffff' },
-      errorCorrectionLevel: 'H',
-    }).then(setQrDataUrl)
-  }, [isPrintMode])
-
-  const onOfficeNetwork = Boolean(networkInfo?.office_ip_locked && networkInfo?.ip_matches_office)
-  const networkApproved = true // the server decides: office network, or a location fix (office or field)
-  const [gpsNote, setGpsNote] = useState('')
-  const [setupMsg, setSetupMsg] = useState('')
-  const getFix = () => new Promise<{ lat: number; lng: number; acc: number } | null>(resolve => {
-    if (!navigator.geolocation) return resolve(null)
-    navigator.geolocation.getCurrentPosition(p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }), () => resolve(null), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 })
-  })
+  const [net, setNet] = useState<Net | null>(null)
+  const [step, setStep] = useState<Step>('scan')
+  const [payload, setPayload] = useState('')
+  const [camErr, setCamErr] = useState('')
+  const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [totp, setTotp] = useState(''), [needTotp, setNeedTotp] = useState(false), [show, setShow] = useState(false)
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [result, setResult] = useState<any>(null)
+  const video = useRef<HTMLVideoElement>(null), canvas = useRef<HTMLCanvasElement>(null)
   const canSetup = Boolean(me && ['shabib@swk.properties', 'haseeb@swk.properties'].includes(String(me.email).toLowerCase()))
-  const [control, setControl] = useState<{ devices: any[]; field: any[] } | null>(null)
-  const loadControl = () => { void get<any>('/api/swk-ops/attendance-control').then(setControl).catch(() => {}) }
-  useEffect(() => { if (canSetup) loadControl() }, [canSetup]) // eslint-disable-line react-hooks/exhaustive-deps
-  const decide = async (kind: 'device' | 'field', id: number, approve: boolean) => { try { setControl(await post<any>(`/api/swk-ops/attendance-control/${kind}/${id}`, { approve })) } catch (e: any) { setSetupMsg(e?.message || 'Could not save.') } }
-  const saveSetup = async (kind: 'wifi' | 'gps') => {
-    setSetupMsg('Working…')
-    try {
-      if (kind === 'wifi') { const r = await post<any>('/api/swk-ops/attendance-setup', { lock_current_ip: true }); setNetworkInfo(r); setSetupMsg(`Office network locked to ${r.detected_client_ip}. Anyone on ${r.ssid} can now check in without location.`) }
-      else { const f = await getFix(); if (!f) return setSetupMsg('Allow location access, then try again.'); await post('/api/swk-ops/attendance-setup', { use_current_gps: true, gps_lat: f.lat, gps_lng: f.lng }); setSetupMsg(`Office location set to ${f.lat.toFixed(5)}, ${f.lng.toFixed(5)} (±${Math.round(f.acc)} m).`) }
-    } catch (e: any) { setSetupMsg(e?.message || 'Could not save.') }
-  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+  const loadNet = () => { void get<Net>('/api/public/reception-qr/wifi-config').then(setNet).catch(() => {}) }
+  useEffect(loadNet, [])
 
-    if (!email.trim() || !password) {
-      setError('Please enter your company email and password.')
-      return
+  // live camera only: frames go straight from the video element to the decoder, nothing is saved or uploaded
+  useEffect(() => {
+    if (step !== 'scan') return
+    let stream: MediaStream | null = null, raf = 0, stopped = false
+    const start = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) { setCamErr('This browser has no camera access. Open this page in Chrome or Safari over https.'); return }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 960 } }, audio: false })
+        if (stopped) return stream.getTracks().forEach(t => t.stop())
+        const v = video.current!; v.srcObject = stream; v.setAttribute('playsinline', 'true'); await v.play()
+        const c = canvas.current!, ctx = c.getContext('2d', { willReadFrequently: true })!
+        const tick = () => {
+          if (stopped) return
+          if (v.readyState >= 2 && v.videoWidth) {
+            const k = Math.min(1, 640 / v.videoWidth); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k)
+            ctx.drawImage(v, 0, 0, c.width, c.height)
+            const img = ctx.getImageData(0, 0, c.width, c.height), hit = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })
+            if (hit && /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(hit.data)) { setPayload(hit.data); setStep('signin'); return }
+          }
+          raf = window.setTimeout(tick, 120)
+        }
+        tick()
+      } catch { setCamErr('Allow the camera for this page. Check-in only works with the live camera.') }
     }
+    void start()
+    return () => { stopped = true; clearTimeout(raf); stream?.getTracks().forEach(t => t.stop()) }
+  }, [step])
 
-    setBusy(true)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(''); setBusy(true)
     try {
-      setGpsNote('Getting your location…')
-      const fix = await getFix()
-      setGpsNote(fix ? '' : 'Location not shared.')
-      const res = await post<any>('/api/public/reception-qr/scan-login-checkin', {
-        qr_token: searchParams.get('t') || undefined,
-        gps_lat: fix?.lat, gps_lng: fix?.lng, gps_accuracy_m: fix?.acc,
-        email: email.trim(),
-        password,
-        require_login: true,
-        strict_anti_loophole: true,
-        qr_code_or_token: searchParams.get('stand') || PRINTED_QR_CODE,
-        device_id: device?.device_id || undefined,
-        device_name: device?.device_name || undefined,
-        network_ssid: networkInfo?.ssid || 'XAVIER BUSINESS',
-        connection_type: connectionType,
-        camera_verified: true,
-      })
-      setCheckInResult(res)
+      const { challenge } = await get<{ challenge: string }>('/api/public/reception-qr/challenge')
+      const proof = await signProof(`${challenge}.${payload}`)
+      const r = await post<any>('/api/public/reception-qr/scan-login-checkin', { email: email.trim(), password, totp: needTotp ? totp : undefined, qr_payload: payload, challenge, device_pub: proof.pub, device_sig: proof.sig, device_name: navigator.platform || 'Phone' })
+      if (r.needsTotp) { setNeedTotp(true); return }
+      setResult(r); setStep('done')
     } catch (err: any) {
-      setError(err?.message || 'Sign-in or network verification failed. Please check your credentials and Office Wi-Fi.')
-    } finally {
-      setBusy(false)
-    }
+      const msg = err?.message || 'Check-in failed.'
+      setError(msg)
+      if (/scan|expired|code|older/i.test(msg)) { setPayload(''); setStep('scan') }
+    } finally { setBusy(false) }
   }
 
-  // Printable single QR sheet mode (?print=1) — Strictly restricted to Owner & Haseeb
-  if (isPrintMode) {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://os.swk.properties'
-    const scanUrl = `${origin}/reception-qr?scan=1&stand=${PRINTED_QR_CODE}`
-    return (
-      <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white text-[#1c1c1c] rounded-3xl p-8 shadow-2xl border-4 border-[#ff5b1f] text-center space-y-5">
-          <div
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl px-5 py-3.5 mx-auto"
-            style={{
-              background: 'linear-gradient(135deg, #0d0d0d 0%, #102445 100%)',
-              border: '1px solid rgba(255,91,31,.55)',
-              WebkitPrintColorAdjust: 'exact',
-              printColorAdjust: 'exact',
-            }}
-          >
-            <img src="/brand/site/swk-logo-horizontal.svg" alt="SWK Properties LLC" className="h-12 w-auto object-contain" />
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#e6c88f] font-bold">
-              SWK Properties LLC · Office Attendance QR
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-2xl border-2 border-[#e7e8e6] inline-block mx-auto">
-            {qrDataUrl ? (
-              <img src={qrDataUrl} alt="SWK Properties LLC Office Attendance QR Code" className="w-64 h-64 mx-auto block" />
-            ) : (
-              <div className="w-64 h-64 grid place-items-center text-xs text-slate-400">Generating QR…</div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <h1 className="font-display font-bold text-xl text-[#1c1c1c]">Scan to Sign In &amp; Check In</h1>
-            <p className="text-xs text-[#5a6578] leading-relaxed">
-              1. Connect your phone to <b>{networkInfo?.ssid || 'XAVIER BUSINESS'}</b> Wi-Fi.
-              <br />
-              2. Scan this QR code with your phone camera.
-              <br />
-              3. Sign in with your SWK email &amp; password.
-            </p>
-            <div className="pt-1 text-[11px] font-bold text-[#0d0d0d]">
-              SWK Properties LLC
-            </div>
-            <div className="text-[10px] font-semibold text-[#8d6e35]">
-              {SWK_OFFICIAL_WEBSITES_TEXT}
-            </div>
-          </div>
-
-          <div className="pt-2 flex items-center justify-center gap-3 print:hidden">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-5 py-2.5 rounded-xl bg-[#1c1c1c] text-[#fff0e8] font-bold text-xs border-0 cursor-pointer inline-flex items-center gap-2"
-            >
-              <Printer size={15} /> Print QR Code
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchParams({}, { replace: true })}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 text-[#1c1c1c] font-semibold text-xs border border-slate-300 cursor-pointer"
-            >
-              Scan &amp; Check-In View
-            </button>
-          </div>
-          <div className="text-[10px] font-mono text-slate-400 break-all">{scanUrl}</div>
-        </div>
-      </div>
-    )
-  }
-
-  // Scanned from camera -> ONLY Sign-In page, then ONLY Check-In confirmation message
+  const onOffice = Boolean(net?.office_ip_locked && net?.ip_matches_office)
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-[400px] rounded-3xl bg-[#0d1f3c] border border-[#ff5b1f]/35 p-6 shadow-2xl">
-        {/* Header */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <div className="flex items-center justify-center px-4 py-2.5 rounded-2xl bg-[#0d0d0d] border border-[#ff5b1f]/35 mb-3">
-            <img src="/brand/site/swk-logo-horizontal.svg" alt="SWK Properties LLC" className="h-10 w-auto object-contain" />
-          </div>
-          <h1 className="font-display font-bold text-xl text-white m-0">
-            {checkInResult ? (checkInResult.verification_summary?.pending_review ? 'Recorded · waiting for approval' : 'Attendance Confirmed') : 'Office Attendance Sign-In'}
-          </h1>
-          <div className="text-[11px] text-[#ffd9c4] font-semibold mt-1">
-            SWK Properties LLC
-          </div>
+      <div className="w-full max-w-[420px] rounded-3xl bg-[#141416] border border-white/10 p-6 shadow-2xl">
+        <div className="flex flex-col items-center text-center mb-5">
+          <img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" className="h-14 w-auto" />
+          <h1 className="font-display font-bold text-xl m-0 mt-2">{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
         </div>
 
-        {checkInResult ? (
-          /* ONLY the Check-In message after signing in on approved network */
-          <div className="text-center space-y-4 py-2">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 flex items-center justify-center mx-auto">
-              <CheckCircle2 size={34} />
-            </div>
+        <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-[12.5px] mb-4 ${onOffice ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200' : 'bg-rose-500/10 border-rose-500/40 text-rose-200'}`}>
+          {onOffice ? <Wifi size={16} /> : <WifiOff size={16} />}
+          <div className="leading-snug">{!net ? 'Checking your network…' : !net.office_ip_locked ? 'Check-in is not set up yet. The Owner or Manager must lock the office network.' : onOffice ? <>Connected to the office network (<b>{net.ssid}</b>)</> : <>Not on the office Wi-Fi. Connect to <b>{net.ssid}</b> to check in. Mobile data is not accepted.</>}</div>
+        </div>
 
-            <div className="space-y-1">
-              <div className="text-lg font-bold text-emerald-300">Checked In Successfully</div>
-              <div className="text-sm font-semibold text-white">
-                {checkInResult.employee?.name || checkInResult.user?.name || email}
-              </div>
-              {checkInResult.employee?.designation && (
-                <div className="text-xs text-[#a9b6cd]">{checkInResult.employee.designation}</div>
-              )}
-            </div>
+        {error && <div role="alert" className="mb-4 px-3.5 py-2.5 rounded-2xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs font-medium">{error}</div>}
 
-            <div className="rounded-2xl bg-[#0d0d0d]/90 border border-white/10 p-4 text-xs space-y-2 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-[#8a9ab5]">Check-In Time (GST)</span>
-                <span className="font-mono font-bold text-white">
-                  {String(
-                    checkInResult.attendance_event?.check_in_at ||
-                      checkInResult.verification_summary?.timestamp_gst ||
-                      new Date().toISOString()
-                  )
-                    .slice(0, 16)
-                    .replace('T', ' ')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#8a9ab5]">Status</span>
-                <span
-                  className={`font-bold ${
-                    checkInResult.verification_summary?.is_late ? 'text-amber-300' : 'text-emerald-300'
-                  }`}
-                >
-                  {checkInResult.verification_summary?.is_late
-                    ? `Late (+${checkInResult.verification_summary.late_minutes} min)`
-                    : 'On Time ✓'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#8a9ab5]">Network</span>
-                <span className="font-semibold text-emerald-300">
-                  {checkInResult.verification_summary?.office_wifi_ssid ||
-                    networkInfo?.ssid ||
-                    'Office Wi-Fi Verified'}
-                </span>
-              </div>
-              {checkInResult.attendance_event?.event_no && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[#8a9ab5]">Reference</span>
-                  <span className="font-mono text-[#ffd9c4]">{checkInResult.attendance_event.event_no}</span>
-                </div>
-              )}
+        {step === 'scan' && (
+          <div className="space-y-3">
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-square border border-white/10">
+              <video ref={video} muted playsInline className="w-full h-full object-cover" />
+              <canvas ref={canvas} className="hidden" />
+              <div className="absolute inset-6 border-2 border-[#ff5b1f]/80 rounded-2xl pointer-events-none" />
+              <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#ff5b1f]" size={20} />
             </div>
+            <p className="text-xs text-[#c3cde0] m-0">{camErr || 'Point the camera at the code on the reception screen. It scans by itself. There is no photo or file option.'}</p>
           </div>
-        ) : (
-          /* ONLY the Sign-In form before check-in */
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Network Status Indicator */}
-            <div
-              className={`px-3.5 py-2.5 rounded-2xl border text-xs flex items-center gap-2.5 ${
-                networkApproved
-                  ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200'
-                  : 'bg-rose-950/60 border-rose-500/50 text-rose-200'
-              }`}
-            >
-              {onOfficeNetwork ? (
-                <Wifi size={16} className="text-emerald-400 shrink-0" />
-              ) : (
-                <WifiOff size={16} className="text-rose-400 shrink-0" />
-              )}
-              <div className="leading-snug">
-                {onOfficeNetwork ? (
-                  <>
-                    Connected to <b>{networkInfo?.ssid || 'Office Wi-Fi / Approved Network'}</b>
-                  </>
-                ) : (
-                  <>
-                    In the office? Scan the QR on the reception screen. Out on duty? Allow location access.
-                  </>
-                )}
-              </div>
-            </div>
+        )}
 
-            {gpsNote && <div className="text-xs text-[#c3cde0]">{gpsNote}</div>}
-            {canSetup && (
-              <div className="rounded-2xl border border-white/15 bg-white/[.04] p-3 text-xs text-[#c3cde0] space-y-2">
-                <div className="font-semibold text-white">Office setup (Owner / Manager)</div>
-                <div className="flex gap-2 flex-wrap">
-                  <button type="button" className="px-3 py-1.5 rounded-xl bg-[#ff5b1f] text-white font-semibold border-0 cursor-pointer" onClick={() => void saveSetup('wifi')}>Use this network as the office Wi-Fi</button>
-                  <button type="button" className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-semibold border border-white/20 cursor-pointer" onClick={() => void saveSetup('gps')}>Set office location here</button>
-                </div>
-                {setupMsg && <div>{setupMsg}</div>}
-                <a href="/reception-display" className="inline-block text-[#ffb28a] underline">Open the reception QR screen</a>
-                {!!control?.devices.filter(d => d.status === 'Pending').length && (
-                  <div className="space-y-1">
-                    <div className="font-semibold text-white">Devices waiting for approval</div>
-                    {control.devices.filter(d => d.status === 'Pending').map(d => (
-                      <div key={d.id} className="flex items-center gap-2"><span className="flex-1">{d.name} · {d.label || 'device'}</span>
-                        <button type="button" className="px-2 py-1 rounded-lg bg-emerald-600 text-white border-0 cursor-pointer" onClick={() => void decide('device', d.id, true)}>Approve</button>
-                        <button type="button" className="px-2 py-1 rounded-lg bg-white/10 text-white border border-white/20 cursor-pointer" onClick={() => void decide('device', d.id, false)}>Block</button></div>
-                    ))}
-                  </div>
-                )}
-                {!!control?.field.length && (
-                  <div className="space-y-1">
-                    <div className="font-semibold text-white">Field / flagged check-ins waiting</div>
-                    {control.field.map(f => (
-                      <div key={f.id} className="flex items-center gap-2"><span className="flex-1">{f.name} · {f.work_date} {String(f.check_in_at || '').slice(11, 16)}<br /><span className="opacity-70">{f.security_flags}{f.gps_lat ? ` · ${f.gps_lat}, ${f.gps_lng}` : ''}</span></span>
-                        <button type="button" className="px-2 py-1 rounded-lg bg-emerald-600 text-white border-0 cursor-pointer" onClick={() => void decide('field', f.id, true)}>Approve</button>
-                        <button type="button" className="px-2 py-1 rounded-lg bg-white/10 text-white border border-white/20 cursor-pointer" onClick={() => void decide('field', f.id, false)}>Reject</button></div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {error && (
-              <div className="px-3.5 py-2.5 rounded-2xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs font-medium">
-                {error}
-              </div>
-            )}
-
+        {step === 'signin' && (
+          <form onSubmit={e => void submit(e)} className="space-y-3.5">
+            <p className="text-xs text-emerald-300 m-0">Code read. Sign in within 90 seconds.</p>
             <div>
-              <label htmlFor="qr-email" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">
-                Email Address
-              </label>
-              <div className="relative flex items-center">
-                <Mail size={16} className="absolute left-3.5 text-[#8a9ab5] pointer-events-none" />
-                <input
-                  id="qr-email"
-                  type="email"
-                  required
-                  autoComplete="username"
-                  autoFocus
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="name@swk.property"
-                  className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-[#0d0d0d] border border-white/15 text-white text-sm outline-none focus:border-[#ff5b1f]"
-                />
-              </div>
+              <label htmlFor="qr-email" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">Email</label>
+              <div className="relative flex items-center"><Mail size={16} className="absolute left-3.5 text-[#8a9ab5]" />
+                <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#ff5b1f]" /></div>
             </div>
-
             <div>
-              <label htmlFor="qr-password" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">
-                Password
-              </label>
-              <div className="relative flex items-center">
-                <Lock size={16} className="absolute left-3.5 text-[#8a9ab5] pointer-events-none" />
-                <input
-                  id="qr-password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#0d0d0d] border border-white/15 text-white text-sm outline-none focus:border-[#ff5b1f]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(s => !s)}
-                  className="absolute right-3 bg-transparent border-0 text-[#8a9ab5] hover:text-white cursor-pointer p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              <label htmlFor="qr-pw" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">Password</label>
+              <div className="relative flex items-center"><Lock size={16} className="absolute left-3.5 text-[#8a9ab5]" />
+                <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#ff5b1f]" />
+                <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#8a9ab5] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
             </div>
-
-            <button
-              type="submit"
-              disabled={busy || !networkApproved}
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-[#1c1c1c] border-0 cursor-pointer flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #ffe4d6 0%, #ff5b1f 100%)' }}
-            >
-              {busy ? (
-                <>
-                  <Loader2 size={17} className="animate-spin" /> Checking In…
-                </>
-              ) : (
-                'Sign In & Check In'
-              )}
-            </button>
+            {needTotp && <input inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="Authenticator code" value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ''))} className="w-full h-11 px-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none" />}
+            <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-xl border-0 bg-[#ff5b1f] text-white font-bold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
+            <button type="button" onClick={() => { setPayload(''); setStep('scan') }} className="w-full bg-transparent border-0 text-xs text-[#c3cde0] underline cursor-pointer">Scan again</button>
           </form>
         )}
 
-        {allowPrintQr && (
-          <div className="mt-4 pt-3 border-t border-white/10 text-center">
-            <button
-              type="button"
-              onClick={() => setSearchParams({ print: '1' }, { replace: true })}
-              className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-[#ff5b1f]/35 text-[#ffd9c4] font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-2"
-            >
-              <QrCode size={15} /> Print Office Attendance QR (Owner &amp; Haseeb Only)
-            </button>
+        {step === 'done' && result && (
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center gap-2 text-emerald-300 font-semibold"><CheckCircle2 size={20} />{result.already_checked_in ? 'You were already checked in today.' : 'You are checked in.'}</div>
+            <div className="rounded-2xl bg-white/[.05] border border-white/10 p-3.5 space-y-1.5 text-[13px]">
+              <Row k="Name" v={result.employee?.name} />
+              <Row k="Time" v={String(result.verification_summary?.timestamp_gst || '').slice(0, 16).replace('T', ' ')} />
+              <Row k="Status" v={result.verification_summary?.is_late ? `Late (+${result.verification_summary.late_minutes} min)` : 'On time'} />
+              <Row k="Network" v={`${result.verification_summary?.office_wifi_ssid} · ${result.verification_summary?.client_ip}`} />
+            </div>
           </div>
         )}
 
-        <div className="mt-4 pt-3 border-t border-white/10 text-center text-[10px] text-[#8a9ab5]">
-          {SWK_OFFICIAL_WEBSITES_TEXT}
-        </div>
+        {canSetup && <SetupPanel onChange={loadNet} />}
       </div>
+    </div>
+  )
+}
+
+const Row = ({ k, v }: { k: string; v: any }) => <div className="flex justify-between gap-3"><span className="text-[#8a9ab5]">{k}</span><span className="font-semibold text-right">{v}</span></div>
+
+function SetupPanel({ onChange }: { onChange: () => void }) {
+  const [msg, setMsg] = useState(''), [control, setControl] = useState<{ devices: any[] } | null>(null)
+  const load = () => { void get<any>('/api/swk-ops/attendance-control').then(setControl).catch(() => {}) }
+  useEffect(load, [])
+  const act = async (body: any) => { setMsg('Working…'); try { const r = await post<any>('/api/swk-ops/attendance-setup', body); setMsg(r.office_ip_locked ? `Office network locked: ${r.public_ips}` : 'Office network cleared. Check-in is off until you lock it again.'); onChange() } catch (e: any) { setMsg(e?.message || 'Could not save.') } }
+  const decide = async (id: number, approve: boolean) => { try { setControl(await post<any>(`/api/swk-ops/attendance-control/device/${id}`, { approve })) } catch (e: any) { setMsg(e?.message || 'Could not save.') } }
+  return (
+    <div className="mt-5 rounded-2xl border border-white/15 bg-white/[.04] p-3 text-xs text-[#c3cde0] space-y-2">
+      <div className="font-semibold text-white">Attendance control (Owner / Manager)</div>
+      <div className="flex gap-2 flex-wrap">
+        <button type="button" className="px-3 py-1.5 rounded-xl bg-[#ff5b1f] text-white font-semibold border-0 cursor-pointer" onClick={() => void act({ lock_current_ip: true })}>Lock this network as the office</button>
+        <button type="button" className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-semibold border border-white/20 cursor-pointer" onClick={() => void act({ clear_ips: true })}>Clear locked networks</button>
+      </div>
+      {msg && <div>{msg}</div>}
+      <a href="/reception-display" className="inline-block text-[#ffb28a] underline">Open the reception code screen</a>
+      {!!control?.devices.length && (
+        <div className="space-y-1">
+          <div className="font-semibold text-white">Devices</div>
+          {control.devices.map(d => (
+            <div key={d.id} className="flex items-center gap-2"><span className="flex-1">{d.name} · {String(d.label || 'phone').slice(0, 24)} · <b>{d.status}</b></span>
+              {d.status !== 'Approved' && <button type="button" className="px-2 py-1 rounded-lg bg-emerald-600 text-white border-0 cursor-pointer" onClick={() => void decide(d.id, true)}>Approve</button>}
+              {d.status !== 'Blocked' && <button type="button" className="px-2 py-1 rounded-lg bg-white/10 text-white border border-white/20 cursor-pointer" onClick={() => void decide(d.id, false)}>Block</button>}</div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

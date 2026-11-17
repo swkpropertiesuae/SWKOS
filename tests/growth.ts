@@ -1,5 +1,6 @@
 /* Lead routing, scoring, pool, mortgage cases, payment plans, matching and leaderboard.  Needs a server on a fresh data directory:  npx tsx tests/growth.ts */
-import { Api, ok, sec, finish } from './_api'
+import crypto from 'node:crypto'
+import { Api, ok, sec, finish, BASE } from './_api'
 
 async function main() {
   const a = new Api()
@@ -151,55 +152,65 @@ async function main() {
   ok('results and signature save', sv.status === 200, sv)
   ok('results read back', JSON.parse((await a.get(`/api/e/inspections/${ins.data.id}`)).data.results)[1].note === 'Cracked tile')
 
-  sec('Attendance: office Wi-Fi, field location and anti-cheating')
+  sec('Attendance: office Wi-Fi only, live camera code, device keys')
   const cfg = (await a.get('/api/public/reception-qr/wifi-config')).data
-  ok('office Wi-Fi is hardcoded to the XAVIER BUSINESS network', cfg.ssid === 'XAVIER BUSINESS' && cfg.gateway_ip === '192.168.0.1' && cfg.strict_ip === true, cfg)
+  ok('office Wi-Fi is hardcoded to the XAVIER BUSINESS network', cfg.ssid === 'XAVIER BUSINESS' && cfg.gateway_ip === '192.168.0.1', cfg)
   const hm = new Api(); await hm.login('haseeb@swk.properties', 'SWK@Manager2026')
-  const tok = (await hm.get('/api/swk-ops/reception-token')).data
-  ok('Manager gets a rotating reception code', /^\d+\.[0-9a-f]{16}$/.test(tok.token ?? ''), tok)
-  ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
   const PW = 'Manager-Pass-2026!'
-  const ci = (body: any) => a.post('/api/public/reception-qr/scan-login-checkin', { email: 'rota1@a.example', password: PW, device_id: 'dev-rota1', device_name: 'Test phone', ...body })
-  const OFFICE = { gps_lat: 25.2532, gps_lng: 55.2972, gps_accuracy_m: 10 }
-  ok('no QR, no location is refused', (await ci({})).status === 400)
-  const noTok = await ci({ ...OFFICE })
-  ok('standing in the office without the screen code is refused', noTok.status === 400 && /QR/i.test(noTok.data.error ?? ''), noTok)
-  ok('a made-up code is refused', (await ci({ ...OFFICE, qr_token: '1.' + '0'.repeat(16) })).status === 400)
-  const newDev = await ci({ ...OFFICE, qr_token: tok.token })
-  ok('a new device must be approved first', newDev.status === 403 && /device/i.test(newDev.data.error ?? ''), newDev)
-  const ctl = (await hm.get('/api/swk-ops/attendance-control')).data
-  const pendingDev = ctl.devices.find((d: any) => d.status === 'Pending')
-  ok('the manager sees the waiting device', !!pendingDev, ctl)
-  ok('other staff cannot approve devices', (await b.post(`/api/swk-ops/attendance-control/device/${pendingDev.id}`, { approve: true })).status === 403)
-  await hm.post(`/api/swk-ops/attendance-control/device/${pendingDev.id}`, { approve: true })
-  const good = await ci({ ...OFFICE, qr_token: tok.token })
-  ok('office check-in with screen code and approved device works', good.status === 200 && good.data.verification_summary?.verified_by === 'Office GPS' && good.data.verification_summary?.pending_review === false, good.data)
-  ok('a poor GPS fix is refused', (await ci({ gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 900 })).status === 400)
-  const field = await ci({ email: 'rota2@a.example', device_id: 'dev-rota2', gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 20 })
-  ok('rota2 device waits too', field.status === 403)
-  const ctl2 = (await hm.get('/api/swk-ops/attendance-control')).data
-  for (const d of ctl2.devices.filter((x: any) => x.status === 'Pending')) await hm.post(`/api/swk-ops/attendance-control/device/${d.id}`, { approve: true })
-  const field2 = await ci({ email: 'rota2@a.example', device_id: 'dev-rota2', gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 20 })
-  ok('field check-in with no booked visit waits for approval', field2.status === 200 && field2.data.verification_summary?.verified_by === 'Field GPS' && field2.data.verification_summary?.pending_review === true, field2.data)
-  const waiting = (await hm.get('/api/swk-ops/attendance-control')).data.field
-  ok('the manager sees the field check-in', waiting.length === 1, waiting)
-  ok('other staff cannot approve it', (await b.post(`/api/swk-ops/attendance-control/field/${waiting[0].id}`, { approve: true })).status === 403)
-  const appr = await hm.post(`/api/swk-ops/attendance-control/field/${waiting[0].id}`, { approve: true })
-  ok('manager approves it', appr.status === 200 && appr.data.field.length === 0, appr)
+  const mkKey = () => { const kp = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }); const j = kp.publicKey.export({ format: 'jwk' }) as any; return { priv: kp.privateKey, pub: { kty: j.kty, crv: j.crv, x: j.x, y: j.y } } }
+  const keyA = mkKey(), keyB = mkKey()
+  const checkin = async (email: string, key: ReturnType<typeof mkKey>, payload: string, extra: any = {}, headers: Record<string, string> = {}) => {
+    const ch = extra.challenge ?? (await (await fetch(BASE + '/api/public/reception-qr/challenge', { headers })).json()).challenge
+    const sig = crypto.sign('sha256', Buffer.from(`${ch}.${payload}`), { key: key.priv, dsaEncoding: 'ieee-p1363' }).toString('base64url')
+    const res = await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ email, password: PW, qr_payload: payload, challenge: ch, device_pub: key.pub, device_sig: sig, device_name: 'Test phone', ...extra.body }) })
+    return { status: res.status, data: await res.json().catch(() => ({})), challenge: ch }
+  }
+  const code = async () => (await hm.get('/api/swk-ops/reception-token')).data.token as string
+  const t1 = await code()
+  ok('the reception code is encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
+  ok('every code is different', (await code()) !== t1)
+  ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
+  const early = await checkin('rota1@a.example', keyA, t1)
+  ok('check-in is off until the office network is locked', early.status === 403 && /not set up/i.test(early.data.error ?? ''), early)
   const lock = await hm.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })
-  ok('owner can lock the current network as the office Wi-Fi', lock.status === 200 && lock.data.office_ip_locked === true, lock)
-  const wifiNoTok = await ci({ email: 'rota1@a.example' })
-  ok('on the office network the screen code is still required', wifiNoTok.status === 400, wifiNoTok)
-  const wifiOk = await ci({ email: 'rota1@a.example', qr_token: (await hm.get('/api/swk-ops/reception-token')).data.token })
-  ok('office network plus screen code works', wifiOk.status === 200 && wifiOk.data.verification_summary?.verified_by === 'Office Wi-Fi', wifiOk.data)
-  // wrong passwords hit the connection, never the person's account
-  for (let i = 0; i < 6; i++) await a.post('/api/public/reception-qr/scan-login-checkin', { email: 'rota2@a.example', password: 'wrong-' + i, device_id: 'x' })
-  const still = new Api(); ok('repeated wrong check-in passwords do not lock the person out', await still.login('rota2@a.example', PW))
-  // a temporary password must be changed before checking in
-  const fresh = (await a.post('/api/e/users', { name: 'Fresh Staff', email: 'fresh@a.example', password: 'Manager-Pass-2026!', role_id: salesRole, branch_id: dxb, active: true, must_change_password: true })).data
-  ok('new account created for the password rule', !!fresh.id, fresh)
-  const mc = await a.post('/api/public/reception-qr/scan-login-checkin', { email: 'fresh@a.example', password: PW, device_id: 'dev-fresh', qr_token: tok.token, ...OFFICE })
-  ok('a temporary password cannot check in until it is changed', mc.status === 403 && /password/i.test(mc.data.error ?? ''), mc)
+  ok('manager locks the office network', lock.status === 200 && lock.data.office_ip_locked === true, lock)
+  const off = await checkin('rota1@a.example', keyA, await code(), {}, { 'cf-connecting-ip': '203.0.113.77' })
+  ok('any other network is refused (mobile data, other Wi-Fi)', off.status === 403 && /office/i.test(off.data.error ?? ''), off)
+  ok('a made-up code is refused', (await checkin('rota1@a.example', keyA, 'SWK1.' + 'A'.repeat(60))).status === 400)
+  ok('a plain link or text is refused', (await checkin('rota1@a.example', keyA, 'https://os.swk.properties')).status === 400)
+  const ch0 = (await (await fetch(BASE + '/api/public/reception-qr/challenge')).json()).challenge
+  const noProof = await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'rota1@a.example', password: PW, qr_payload: await code(), challenge: ch0 }) })
+  ok('a request without a device proof is refused', noProof.status === 400)
+  const newDev = await checkin('rota1@a.example', keyA, await code())
+  ok('a new device must be approved first', newDev.status === 403 && /device/i.test(newDev.data.error ?? ''), newDev)
+  const pend = (await hm.get('/api/swk-ops/attendance-control')).data.devices.find((d: any) => d.status === 'Pending')
+  ok('the manager sees the waiting device', !!pend)
+  ok('other staff cannot approve devices', (await b.post(`/api/swk-ops/attendance-control/device/${pend.id}`, { approve: true })).status === 403)
+  await hm.post(`/api/swk-ops/attendance-control/device/${pend.id}`, { approve: true })
+  const good = await checkin('rota1@a.example', keyA, await code())
+  ok('office network + live code + own device + password works', good.status === 200 && good.data.verification_summary?.verified_by === 'Office Wi-Fi', good.data)
+  ok('the connection IP is recorded', !!good.data.event?.client_ip && !!good.data.event?.device_id, good.data.event)
+  const again = await checkin('rota1@a.example', keyA, await code())
+  ok('checking in twice does not duplicate the record', again.status === 200 && again.data.already_checked_in === true && again.data.event.id === good.data.event.id, again.data)
+  const stolen = await checkin('rota2@a.example', keyA, await code())
+  ok('one device cannot be used by two people', stolen.status === 403 && /another person|one device/i.test(stolen.data.error ?? ''), stolen)
+  const replay = await checkin('rota1@a.example', keyA, await code(), { challenge: good.challenge })
+  ok('a used challenge cannot be replayed', replay.status === 400, replay)
+  const secondDev = await checkin('rota1@a.example', keyB, await code())
+  ok('a second device for the same person waits for approval', secondDev.status === 403, secondDev)
+  const toApprove = (await hm.get('/api/swk-ops/attendance-control')).data.devices.filter((d: any) => d.status === 'Pending')
+  for (const d of toApprove) await hm.post(`/api/swk-ops/attendance-control/device/${d.id}`, { approve: true })
+  const second = await checkin('rota1@a.example', keyB, await code())
+  ok('even when approved, a person checks in from one device per day', second.status === 403 && /different device/i.test(second.data.error ?? ''), second)
+  for (let i = 0; i < 6; i++) await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'rota2@a.example', password: 'wrong-' + i }) })
+  const still = new Api(); ok('wrong check-in passwords never lock the person out', await still.login('rota2@a.example', PW))
+  ok('check-in does not sign the phone in to the OS', (await fetch(BASE + '/api/auth/me')).status === 401)
+  const fresh = (await a.post('/api/e/users', { name: 'Fresh Staff', email: 'fresh@a.example', password: PW, role_id: salesRole, branch_id: dxb, active: true, must_change_password: true })).data
+  const keyC = mkKey()
+  const mc = await checkin('fresh@a.example', keyC, await code())
+  ok('a temporary password cannot check in until it is changed', !!fresh.id && mc.status === 403 && /password/i.test(mc.data.error ?? ''), mc)
+  const cleared = await hm.post('/api/swk-ops/attendance-setup', { clear_ips: true })
+  ok('clearing the locked network switches check-in off', cleared.data.office_ip_locked === false, cleared.data)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

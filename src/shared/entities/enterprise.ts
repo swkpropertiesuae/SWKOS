@@ -251,7 +251,7 @@ export const enterprise: EntityDef[] = [
       T('gps_lng', 'Check-in longitude'),
       N('gps_accuracy_m', 'GPS accuracy (m)'),
       S('field_review', 'Field / flagged review', ['Not needed', 'Pending', 'Approved', 'Rejected'], { default: 'Not needed', list: true, key: true }),
-      T('checkin_method', 'Check-in method', { list: true }), T('security_flags', 'Security flags'), T('device_id', 'Device'),
+      T('checkin_method', 'Check-in method', { list: true }), T('security_flags', 'Security flags'), T('device_id', 'Device'), T('client_ip', 'Connection IP', { list: true }),
       M('mileage_claim_aed', 'Approved travel / mileage claim (AED)'),
       TA('correction_reason', 'Attendance correction reason (audit required)', { span: 3 }),
       R('corrected_by', 'Corrected / verified by', 'users', { readonly: true }),
