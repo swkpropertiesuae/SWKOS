@@ -1,3 +1,4 @@
+import { signInDemo } from './ui-login.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -16,8 +17,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }), page = await context.newPage(), errors = []
   page.on('pageerror', e => errors.push(e.message))
   const demo = await (await context.request.get(base + '/api/demo/status')).json()
-  await page.goto(base + '/login'); await page.locator('input[type="email"]').fill(demo.email); await page.locator('input[type="password"]').fill(demo.password)
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click(); await page.waitForURL('**/home')
+  await signInDemo(page, base, demo)
   await page.goto(base + '/calendar'); await page.getByRole('heading', { name: 'Company calendar', exact: true }).waitFor()
   await page.locator('.calendar-board').waitFor(); assert.equal(await page.locator('.calendar-cell').count(), 42)
   await page.getByRole('button', { name: 'Schedule activity', exact: true }).click()

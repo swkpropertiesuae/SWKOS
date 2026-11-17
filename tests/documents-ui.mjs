@@ -1,3 +1,4 @@
+import { signInDemo } from './ui-login.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -20,18 +21,7 @@ try {
   const page = await context.newPage(), errors = []
   page.on('pageerror', e => errors.push(e.message))
   const demo = await (await context.request.get(base + '/api/demo/status')).json()
-  await page.goto(base + '/login')
-  await page.locator('input[type=email]').fill(demo.email)
-  await page.locator('input[type=password]').fill(demo.password)
-  // Sign-in occasionally stalls on a cold CI runner: retry once and print what the page and server said if it still fails.
-  for (let attempt = 1; ; attempt++) {
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    try { await page.waitForURL('**/home', { timeout: 30000 }); break } catch (e) {
-      console.log(`sign-in attempt ${attempt} stalled at ${page.url()}: ${(await page.locator('body').innerText()).slice(0, 300).replace(/\s+/g, ' ')}\n--- server log tail ---\n${logs.slice(-1200)}`)
-      if (attempt === 2) throw e
-      await page.reload(); await page.locator('input[type=email]').fill(demo.email); await page.locator('input[type=password]').fill(demo.password)
-    }
-  }
+  await signInDemo(page, base, demo)
   const api = async (url, payload) => {
     const r = payload === undefined ? await context.request.get(base + url) : await context.request.put(base + url, { data: payload, headers: { 'x-swk-client': 'web' } })
     return { status: r.status(), data: await r.json() }

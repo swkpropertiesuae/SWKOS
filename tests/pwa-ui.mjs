@@ -1,3 +1,4 @@
+import { signInDemo } from './ui-login.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -17,8 +18,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }), page = await context.newPage(), errors = []
   page.on('pageerror', e => errors.push(e.message))
   const demo = await (await context.request.get(base + '/api/demo/status')).json()
-  await page.goto(base + '/login'); await page.locator('input[type="email"]').fill(demo.email); await page.locator('input[type="password"]').fill(demo.password)
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click(); await page.waitForURL('**/home')
+  await signInDemo(page, base, demo)
 
   // 1. service worker registers and takes control after a reload
   await page.evaluate(() => navigator.serviceWorker.ready)
