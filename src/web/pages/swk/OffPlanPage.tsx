@@ -193,7 +193,7 @@ function Spotlight({ items, now, onOpen }: { items: Project[]; now: Date; onOpen
         <AnimatePresence mode="wait">
           <motion.div key={p.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .5, ease: [0.16, 1, 0.3, 1] }} className="max-w-[620px] text-white flex flex-col gap-3 mt-auto">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="swk-pill" style={{ background: 'rgba(52,97,232,.2)', color: '#dbe4ff' }}>Featured launch</span>
+              <span className="swk-pill" style={{ background: 'rgba(15,95,115,.2)', color: '#dbe4ff' }}>Featured launch</span>
               <span className="swk-pill" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }}>{p.handoverQ} handover</span>
               {logo && <span className="h-7 px-2 rounded-lg bg-white/95 grid place-items-center"><img src={logo} alt={p.developer} className="h-5 object-contain" /></span>}
             </div>

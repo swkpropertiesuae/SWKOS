@@ -10,8 +10,8 @@ import { ArrowUpRight,TrendingDown,TrendingUp } from 'lucide-react'
 import { cls } from '../lib/format'
 
 export const SWK = {
-  navy: '#0f1b33', midnight: '#0f1b33', ocean: '#12224d', sky: '#3c71b8', champ: '#2d58dc', champDeep: '#1f3fb0',
-  champSoft: '#eef2ff', sand: '#eef0f2', oasis: '#1f7a7a', dune: '#d51f16', ink: '#0f1b33', muted: '#566179', line: '#e7e8e6',
+  navy: '#0f1b33', midnight: '#0f1b33', ocean: '#12224d', sky: '#1f7f93', champ: '#0f5f73', champDeep: '#0b4a5a',
+  champSoft: '#e8f3f6', sand: '#eef0f2', oasis: '#1f7a7a', dune: '#d51f16', ink: '#0f1b33', muted: '#566179', line: '#e7e8e6',
 }
 /** Ordered chart palette — navy → champagne → oasis → ocean → dune → sky → gold */
 export const CHART = [SWK.navy, SWK.champ, SWK.oasis, SWK.ocean, SWK.dune, SWK.sky, SWK.champDeep, '#8391ad']

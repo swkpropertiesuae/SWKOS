@@ -131,6 +131,6 @@ export function PageHeader({ title, subtitle, actions, back, icon }: { title: Re
   )
 }
 export function Kpi({ label, value, hint, tone, onClick, className }: { className?: string; label: string; value: ReactNode; hint?: ReactNode; tone?: 'red' | 'amber' | 'green'; onClick?: () => void }) {
-  return <div className={cls('card kpi', className, onClick && 'cursor-pointer hover:shadow-md transition-shadow')} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() } }} onClick={onClick} style={tone ? { borderTop: `3px solid ${tone === 'red' ? '#c32135' : tone === 'amber' ? '#1f3fb0' : '#0f1b33'}` } : undefined}><div className="l">{label}</div><div className="v">{value}</div>{hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}</div>
+  return <div className={cls('card kpi', className, onClick && 'cursor-pointer hover:shadow-md transition-shadow')} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() } }} onClick={onClick} style={tone ? { borderTop: `3px solid ${tone === 'red' ? '#c32135' : tone === 'amber' ? '#0b4a5a' : '#0f1b33'}` } : undefined}><div className="l">{label}</div><div className="v">{value}</div>{hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}</div>
 }
 

@@ -125,7 +125,7 @@ export function Dashboard() {
               title: '1. Sales of Off-Plan Projects',
               sub: 'Developer launches → Bayut/Dubizzle/Campaigns → Leads → Site Visit → EOI/SPA → DLD Oqood → 50/50 Commission Split',
               to: '/pipeline?dept=offplan',
-              accent: '#1f3fb0',
+              accent: '#0b4a5a',
               Icon: Rocket,
             },
             {
@@ -174,7 +174,7 @@ export function Dashboard() {
       <Reveal className="card p-5 border border-[#ecebe4] bg-white">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div>
-            <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[#1f3fb0]">STEP-BY-STEP COMPANY OPERATIONS</span>
+            <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[#0b4a5a]">STEP-BY-STEP COMPANY OPERATIONS</span>
             <h2 className="font-display font-bold text-base text-ink m-0 mt-0.5">Sequential UAE Real Estate Execution Buttons (Click Any Step)</h2>
           </div>
           <Link to="/home" className="btn outline sm">
@@ -199,7 +199,7 @@ export function Dashboard() {
               <Link
                 key={st.step}
                 to={st.to}
-                className="p-3 rounded-xl border border-[#ecebe4] bg-[#fafaff] hover:bg-[#eef2ff] hover:border-[#1f3fb0] transition flex flex-col justify-between group"
+                className="p-3 rounded-xl border border-[#ecebe4] bg-[#fafaff] hover:bg-[#e8f3f6] hover:border-[#0b4a5a] transition flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -301,7 +301,7 @@ export function Dashboard() {
               {agenda.map((a, i) => (
                 <motion.li key={a.id} className="relative" initial={{ opacity: 0, x: -8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}>
                   <Link to={a.to} className="flex items-start gap-3 py-2.5 group">
-                    <span className="relative z-[1] w-9 h-9 rounded-xl grid place-items-center flex-none bg-white border border-[#e7e8e6] text-[#0f1b33] group-hover:border-[#2d58dc] transition-colors"><a.Icon size={16} /></span>
+                    <span className="relative z-[1] w-9 h-9 rounded-xl grid place-items-center flex-none bg-white border border-[#e7e8e6] text-[#0f1b33] group-hover:border-[#0f5f73] transition-colors"><a.Icon size={16} /></span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2"><span className="text-[11px] font-semibold uppercase tracking-wider text-[#6F513B]">{a.kind}</span><span className="text-[11.5px] text-muted">{a.kind === 'Viewing' ? fmtDateTime(a.at) : fmtDate(a.at)}</span></span>
                       <span className="block text-[13.5px] font-semibold text-ink truncate">{a.title}</span>
@@ -458,8 +458,8 @@ export function Dashboard() {
             { l: 'Activity', s: 'Calls & follow-ups', to: '/e/activities', I: Clock },
           ].map(m => (
             <motion.div key={m.to} variants={rise} whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
-              <Link to={m.to} className="group flex flex-col gap-3 h-full p-4 rounded-[18px] bg-white border border-[#e7e8e6] hover:border-[#2d58dc] hover:shadow-[0_18px_36px_-24px_rgba(15,27,51,.35)] transition-all">
-                <span className="w-10 h-10 rounded-xl grid place-items-center text-[#eef2ff] transition-transform group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: 'linear-gradient(145deg,#0f1b33,#0f1b33)' }}><m.I size={18} /></span>
+              <Link to={m.to} className="group flex flex-col gap-3 h-full p-4 rounded-[18px] bg-white border border-[#e7e8e6] hover:border-[#0f5f73] hover:shadow-[0_18px_36px_-24px_rgba(15,27,51,.35)] transition-all">
+                <span className="w-10 h-10 rounded-xl grid place-items-center text-[#e8f3f6] transition-transform group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: 'linear-gradient(145deg,#0f1b33,#0f1b33)' }}><m.I size={18} /></span>
                 <span><span className="block text-[14px] font-semibold text-ink">{m.l}</span><span className="block text-[12px] text-muted">{m.s}</span></span>
               </Link>
             </motion.div>))}

@@ -36,13 +36,13 @@ export default function HandoverPortalPage() {
     <div className="min-h-screen bg-[#eef0f2] text-[#0f1b33] pb-16">
       {/* Top Executive Banner (hidden when printing individual document) */}
       <header
-        className="print:hidden border-b border-[#2d58dc]/35 text-white"
+        className="print:hidden border-b border-[#0f5f73]/35 text-white"
         style={{ background: 'linear-gradient(135deg, #0a1322 0%, #0f1b33 55%, #0f1b33 100%)' }}
       >
         <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#2d58dc]/40">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#0f5f73]/40">
                 <img
                   src="/brand/os/SWK_Emblem_Transparent.svg"
                   alt="SWK OS Emblem"
@@ -80,7 +80,7 @@ export default function HandoverPortalPage() {
                 href="/handover/SWK_Properties_OS_Complete_Workflow_And_Logic_Booklet.pdf"
                 download
                 className="px-4 py-2.5 rounded-xl font-bold text-xs text-white no-underline inline-flex items-center gap-2 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #3b69f0, #2c55d8)' }}
+                style={{ background: 'linear-gradient(135deg, #0f6b7d, #5a3a8a)' }}
               >
                 <BookOpen size={15} /> Download Workflow &amp; Logic Booklet (PDF)
               </a>
@@ -88,14 +88,14 @@ export default function HandoverPortalPage() {
                 href="/handover/SWK_Properties_OS_Interactive_Workflow_Booklet.html"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#2d58dc]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#0f5f73]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
               >
                 <Workflow size={14} /> Open Interactive Booklet
               </a>
               <a
                 href="/handover/SWK_OS_Office_Attendance_QR_Code_And_Method.pdf"
                 download
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#2d58dc]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#0f5f73]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
               >
                 <QrCode size={14} /> Attendance QR &amp; Method PDF
               </a>
@@ -103,7 +103,7 @@ export default function HandoverPortalPage() {
                 href="/handover/SWK_OS_Complete_Software_Handover_And_Staff_Credentials_By_Shameem_Harfath.pdf"
                 download
                 className="px-4 py-2.5 rounded-xl font-bold text-xs text-white no-underline inline-flex items-center gap-2 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #3b69f0, #2c55d8)' }}
+                style={{ background: 'linear-gradient(135deg, #0f6b7d, #5a3a8a)' }}
               >
                 <Printer size={15} /> Download Complete Handover PDF
               </a>
@@ -129,7 +129,7 @@ export default function HandoverPortalPage() {
             ].map(stat => (
               <div
                 key={stat.label}
-                className="rounded-2xl bg-white/[0.06] border border-[#2d58dc]/30 px-3.5 py-3 backdrop-blur-sm"
+                className="rounded-2xl bg-white/[0.06] border border-[#0f5f73]/30 px-3.5 py-3 backdrop-blur-sm"
               >
                 <div className="text-[10px] uppercase tracking-[0.16em] text-[#dbe4ff] font-bold">{stat.label}</div>
                 <div className="font-display text-lg sm:text-xl font-bold text-white mt-0.5">{stat.val}</div>
@@ -175,8 +175,8 @@ export default function HandoverPortalPage() {
                   onClick={() => setTab(t.id)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 border ${
                     active
-                      ? 'bg-[#2d58dc] text-white border-[#dbe4ff] shadow-md'
-                      : 'bg-[#0a1322]/60 text-white/85 border-white/15 hover:border-[#2d58dc]/60'
+                      ? 'bg-[#0f5f73] text-white border-[#dbe4ff] shadow-md'
+                      : 'bg-[#0a1322]/60 text-white/85 border-white/15 hover:border-[#0f5f73]/60'
                   }`}
                 >
                   <t.icon size={15} />
@@ -201,7 +201,7 @@ export default function HandoverPortalPage() {
                 className="flex items-center justify-center rounded-2xl px-5 py-3"
                 style={{
                   background: 'linear-gradient(135deg, #0a1322 0%, #102445 100%)',
-                  border: '1px solid rgba(52,97,232,.55)',
+                  border: '1px solid rgba(15,95,115,.55)',
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact',
                 }}
@@ -213,7 +213,7 @@ export default function HandoverPortalPage() {
                 />
               </div>
               <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#1f3fb0]">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#0b4a5a]">
                   Enterprise Software Engineering Handover
                 </div>
                 <div className="font-display text-xl font-bold text-[#0a1322]">{SWK_COMPANY_NAME}</div>
@@ -242,7 +242,7 @@ export default function HandoverPortalPage() {
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#0b4a5a]">
                     DOCUMENT 01 OF 04 · OWNER EXECUTIVE ENGINEERING DOSSIER
                   </div>
                   <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
@@ -265,7 +265,7 @@ export default function HandoverPortalPage() {
               {/* Section 1.1: Executive Summary */}
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Award size={19} className="text-[#1f3fb0]" /> 1. Executive Summary &amp; Scope of Engineering
+                  <Award size={19} className="text-[#0b4a5a]" /> 1. Executive Summary &amp; Scope of Engineering
                 </h3>
                 <p className="text-sm leading-relaxed text-[#2b3548] m-0">
                   <strong>SWK OS</strong> is a bespoke, full-stack, cloud-native Enterprise Operating System custom-engineered
@@ -280,7 +280,7 @@ export default function HandoverPortalPage() {
               {/* Section 1.2: Pin-to-Pin Codebase Volume & Engineering Telemetry */}
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Code2 size={19} className="text-[#1f3fb0]" /> 2. Verified Codebase Volume &amp; Engineering Breakdown
+                  <Code2 size={19} className="text-[#0b4a5a]" /> 2. Verified Codebase Volume &amp; Engineering Breakdown
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
@@ -325,7 +325,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3 font-bold">3 files</td>
                         <td className="p-3 font-mono font-bold">1,911 LOC</td>
                         <td className="p-3">138 KB</td>
-                        <td className="p-3">Royal Midnight Navy (#0a1322 / #0f1b33) &amp; Champagne Gold (#2d58dc), Print/A4 CSS, RTL Arabic</td>
+                        <td className="p-3">Royal Midnight Navy (#0a1322 / #0f1b33) &amp; Champagne Gold (#0f5f73), Print/A4 CSS, RTL Arabic</td>
                       </tr>
                       <tr>
                         <td className="p-3 font-bold">5. Automated QA &amp; E2E Tests</td>
@@ -343,7 +343,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3">98 KB</td>
                         <td className="p-3">Cloudflare Workers + Cloudflare Containers, Docker multi-stage build, GitHub Actions zero-downtime CD</td>
                       </tr>
-                      <tr className="bg-[#eef2ff] font-extrabold text-[#0a1322]">
+                      <tr className="bg-[#e8f3f6] font-extrabold text-[#0a1322]">
                         <td className="p-3 rounded-bl-xl">TOTAL ENGINEERED SYSTEM</td>
                         <td className="p-3 font-mono">Full Repository</td>
                         <td className="p-3">240 Files</td>
@@ -359,7 +359,7 @@ export default function HandoverPortalPage() {
               {/* Section 1.3: Pin-to-Pin Module Inventory */}
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Layers size={19} className="text-[#1f3fb0]" /> 3. Pin-to-Pin Functional Module Inventory (Every Feature Built)
+                  <Layers size={19} className="text-[#0b4a5a]" /> 3. Pin-to-Pin Functional Module Inventory (Every Feature Built)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   {[
@@ -442,7 +442,7 @@ export default function HandoverPortalPage() {
               {/* Section 1.4: Software Agency Engineering Effort & Commercial Valuation */}
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Sparkles size={19} className="text-[#1f3fb0]" /> 4. Equivalent Software Agency Engineering Effort &amp; Quality Benchmark
+                  <Sparkles size={19} className="text-[#0b4a5a]" /> 4. Equivalent Software Agency Engineering Effort &amp; Quality Benchmark
                 </h3>
                 <p className="text-xs text-[#4b5568] m-0">
                   In a traditional Tier-1 Dubai / international software agency, delivering a 39,599-LOC custom enterprise ERP +
@@ -492,7 +492,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3 font-mono font-bold">190 hrs</td>
                         <td className="p-3">Automated container health checks &amp; zero-downtime rollout on os.swk.properties</td>
                       </tr>
-                      <tr className="bg-[#eef2ff] font-extrabold text-[#0a1322]">
+                      <tr className="bg-[#e8f3f6] font-extrabold text-[#0a1322]">
                         <td className="p-3 rounded-bl-xl">TOTAL DELIVERED BY SHAMEEM HARFATH S M</td>
                         <td className="p-3">Complete Turnkey Enterprise Operating System for SWK Properties LLC</td>
                         <td className="p-3 font-mono">1,740+ Senior Hrs</td>
@@ -510,7 +510,7 @@ export default function HandoverPortalPage() {
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#0b4a5a]">
                     DOCUMENT 02 OF 04 · TECHNICAL ARCHITECTURE, SECURITY &amp; INFRASTRUCTURE MANUAL
                   </div>
                   <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
@@ -533,7 +533,7 @@ export default function HandoverPortalPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="rounded-2xl border border-[#e7e8e6] p-4 bg-[#fafaff]">
                   <div className="font-bold text-sm text-[#0a1322] flex items-center gap-2 mb-2">
-                    <Server size={16} className="text-[#1f3fb0]" /> Runtime &amp; Backend Stack
+                    <Server size={16} className="text-[#0b4a5a]" /> Runtime &amp; Backend Stack
                   </div>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>Runtime:</strong> Node.js 22 LTS (ESM, Native Fetch &amp; WebCrypto)</li>
@@ -545,7 +545,7 @@ export default function HandoverPortalPage() {
 
                 <div className="rounded-2xl border border-[#e7e8e6] p-4 bg-[#fafaff]">
                   <div className="font-bold text-sm text-[#0a1322] flex items-center gap-2 mb-2">
-                    <Globe size={16} className="text-[#1f3fb0]" /> Frontend &amp; Design Stack
+                    <Globe size={16} className="text-[#0b4a5a]" /> Frontend &amp; Design Stack
                   </div>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>UI Library:</strong> React 19.2 + React Router 7 + TypeScript 5.9</li>
@@ -557,7 +557,7 @@ export default function HandoverPortalPage() {
 
                 <div className="rounded-2xl border border-[#e7e8e6] p-4 bg-[#fafaff]">
                   <div className="font-bold text-sm text-[#0a1322] flex items-center gap-2 mb-2">
-                    <Database size={16} className="text-[#1f3fb0]" /> Dual-Engine Persistence &amp; Edge
+                    <Database size={16} className="text-[#0b4a5a]" /> Dual-Engine Persistence &amp; Edge
                   </div>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>Primary Production DB:</strong> Managed PostgreSQL (`pg` pool with SSL CA verification)</li>
@@ -570,7 +570,7 @@ export default function HandoverPortalPage() {
 
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Lock size={19} className="text-[#1f3fb0]" /> Security &amp; Role-Based Access Control (RBAC) Matrix
+                  <Lock size={19} className="text-[#0b4a5a]" /> Security &amp; Role-Based Access Control (RBAC) Matrix
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
@@ -612,7 +612,7 @@ export default function HandoverPortalPage() {
 
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Terminal size={19} className="text-[#1f3fb0]" /> Deployment, Build &amp; Verification Commands
+                  <Terminal size={19} className="text-[#0b4a5a]" /> Deployment, Build &amp; Verification Commands
                 </h3>
                 <pre className="p-4 rounded-2xl bg-[#0a1322] text-[#dbe4ff] font-mono text-xs overflow-x-auto leading-relaxed">
 {`# 1. Local Development (API + Vite Web Hot Reload)
@@ -641,7 +641,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#0b4a5a]">
                     DOCUMENT 03 OF 04 · ALL-STAFF OPERATIONS &amp; QUICK-START USER GUIDE
                   </div>
                   <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
@@ -662,7 +662,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-                <div className="rounded-2xl border-2 border-[#2d58dc]/50 bg-[#fafaff] p-5 space-y-2.5">
+                <div className="rounded-2xl border-2 border-[#0f5f73]/50 bg-[#fafaff] p-5 space-y-2.5">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0f1b33] text-[#dbe4ff] font-bold text-[11px]">
                     <QrCode size={13} /> STEP 1 · DAILY MORNING ATTENDANCE (10:00 AM GST)
                   </div>
@@ -721,7 +721,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
 
               <section className="space-y-3">
                 <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
-                  <Building2 size={19} className="text-[#1f3fb0]" /> The 10-Step UAE Real Estate Operational Sequence for Staff
+                  <Building2 size={19} className="text-[#0b4a5a]" /> The 10-Step UAE Real Estate Operational Sequence for Staff
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
                   {[
@@ -794,7 +794,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#0b4a5a]">
                     DOCUMENT 04 OF 04 · FORMAL SOFTWARE AGENCY HANDOVER CERTIFICATE &amp; ACCEPTANCE SIGN-OFF
                   </div>
                   <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
@@ -814,9 +814,9 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 </button>
               </div>
 
-              <div className="rounded-3xl border-2 border-[#2d58dc] bg-[#fafaff] p-6 sm:p-8 space-y-6">
+              <div className="rounded-3xl border-2 border-[#0f5f73] bg-[#fafaff] p-6 sm:p-8 space-y-6">
                 <div className="text-center space-y-1.5 border-b border-[#e7e8e6] pb-5">
-                  <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#1f3fb0]">
+                  <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#0b4a5a]">
                     OFFICIAL CERTIFICATE OF SOFTWARE ENGINEERING HANDOVER
                   </div>
                   <h3 className="font-display text-2xl font-bold text-[#0a1322] m-0">
@@ -829,7 +829,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6] space-y-1.5">
-                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
+                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#0b4a5a]">
                       ARCHITECTED, BUILT &amp; DELIVERED BY
                     </div>
                     <div className="font-display text-lg font-bold text-[#0a1322]">SHAMEEM HARFATH S M</div>
@@ -838,7 +838,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                   </div>
 
                   <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6] space-y-1.5">
-                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
+                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#0b4a5a]">
                       CLIENT &amp; SYSTEM OWNER
                     </div>
                     <div className="font-display text-lg font-bold text-[#0a1322]">SWK PROPERTIES LLC</div>
@@ -874,7 +874,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 border-t border-[#e7e8e6] text-xs">
                   <div className="space-y-8">
                     <div>
-                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
+                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#0b4a5a]">
                         HANDED OVER BY (LEAD SOFTWARE ENGINEER)
                       </div>
                       <div className="font-display text-base font-bold text-[#0a1322] mt-1">SHAMEEM HARFATH S M</div>
@@ -888,7 +888,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
 
                   <div className="space-y-8">
                     <div>
-                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
+                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#0b4a5a]">
                         ACCEPTED &amp; RECEIVED BY (OWNER — SWK PROPERTIES LLC)
                       </div>
                       <div className="font-display text-base font-bold text-[#0a1322] mt-1">SHABIB SIRAJ</div>
@@ -909,7 +909,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#0b4a5a]">
                     FULL-HD EXPLANATORY SYSTEM WALKTHROUGH VIDEO
                   </div>
                   <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
@@ -929,7 +929,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 </a>
               </div>
 
-              <div className="rounded-3xl overflow-hidden bg-[#0a1322] border-2 border-[#2d58dc]/50 shadow-2xl">
+              <div className="rounded-3xl overflow-hidden bg-[#0a1322] border-2 border-[#0f5f73]/50 shadow-2xl">
                 <video
                   controls
                   autoPlay
@@ -957,7 +957,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                   { ch: '10', title: 'Agency Handover & Sign-Off', sub: '39,599 LOC, 240 files, 317 API routes & formal acceptance' },
                 ].map(c => (
                   <div key={c.ch} className="rounded-2xl border border-[#e7e8e6] bg-[#fafaff] p-3.5">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">Scene {c.ch}</div>
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#0b4a5a]">Scene {c.ch}</div>
                     <div className="font-bold text-sm text-[#0a1322] mt-1">{c.title}</div>
                     <div className="text-[11px] text-[#4b5568] mt-0.5">{c.sub}</div>
                   </div>

@@ -30,15 +30,15 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   return (
     <motion.div className="overlay" style={{ paddingTop: '10vh', background: 'rgba(10,19,34,.45)', backdropFilter: 'blur(6px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }} role="dialog" aria-modal="true" aria-label="Search">
       <motion.div className="modal" style={{ maxWidth: 660, borderRadius: 22, overflow: 'hidden' }} initial={{ opacity: 0, y: 16, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 30 }}>
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-line"><Search size={19} className="text-[#1f3fb0]" /><input autoFocus className="flex-1 bg-transparent border-0 outline-none text-[16px] text-ink" placeholder="Search properties, leads, deals, leases… or jump anywhere" value={q} onChange={e => setQ(e.target.value)}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-line"><Search size={19} className="text-[#0b4a5a]" /><input autoFocus className="flex-1 bg-transparent border-0 outline-none text-[16px] text-ink" placeholder="Search properties, leads, deals, leases… or jump anywhere" value={q} onChange={e => setQ(e.target.value)}
           onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, items.length - 1)) } else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(0, h - 1)) } else if (e.key === 'Enter' && items[hi]) go(items[hi].link) }} /><kbd className="text-xs border border-line rounded-md px-1.5 py-0.5 text-muted">Esc</kbd></div>
         <div className="max-h-[56vh] overflow-auto p-2">
           {items.length === 0 && <div className="p-8 text-center text-muted text-sm">No results for “{q}”.</div>}
           {items.map((it, i) => {
             const head = it.group !== lastGroup; lastGroup = it.group
             return (<div key={i}>{head && <div className="px-3 pt-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[.18em] text-muted">{it.group}</div>}
-              <button className={cls('w-full text-start flex items-center gap-3 px-3 py-2.5 border-0 cursor-pointer text-[14px] rounded-xl transition-colors', i === hi ? 'bg-[#eef2ff] text-ink' : 'bg-transparent text-ink')} onMouseEnter={() => setHi(i)} onClick={() => go(it.link)}>
-                <span className="w-8 h-8 rounded-lg grid place-items-center flex-none bg-[#e8ecf4] text-[#0f1b33]"><it.Icon size={16} /></span><span className="flex-1 truncate font-medium">{it.label}</span>{it.sub && <span className="text-xs text-muted truncate max-w-[45%]">{it.sub}</span>}{i === hi && <CornerDownLeft size={14} className="text-[#1f3fb0]" />}</button></div>)
+              <button className={cls('w-full text-start flex items-center gap-3 px-3 py-2.5 border-0 cursor-pointer text-[14px] rounded-xl transition-colors', i === hi ? 'bg-[#e8f3f6] text-ink' : 'bg-transparent text-ink')} onMouseEnter={() => setHi(i)} onClick={() => go(it.link)}>
+                <span className="w-8 h-8 rounded-lg grid place-items-center flex-none bg-[#e8ecf4] text-[#0f1b33]"><it.Icon size={16} /></span><span className="flex-1 truncate font-medium">{it.label}</span>{it.sub && <span className="text-xs text-muted truncate max-w-[45%]">{it.sub}</span>}{i === hi && <CornerDownLeft size={14} className="text-[#0b4a5a]" />}</button></div>)
           })}
         </div>
       </motion.div>

@@ -166,7 +166,7 @@ export default function MarketPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Left 5 cols: Stock Ticker Card + 15-Year Forecast */}
               <div className="lg:col-span-5 space-y-4">
-                <div className="rounded-2xl p-4 text-white border border-[#2d58dc]/25" style={{ background: 'linear-gradient(135deg, #0f1b33 0%, #0f1b33 100%)' }}>
+                <div className="rounded-2xl p-4 text-white border border-[#0f5f73]/25" style={{ background: 'linear-gradient(135deg, #0f1b33 0%, #0f1b33 100%)' }}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-[11px] uppercase tracking-widest text-[#dbe4ff] font-bold">{companionArea.ticker} · {companionArea.segment} Index</div>
@@ -215,7 +215,7 @@ export default function MarketPage() {
 
               {/* Right 7 cols: Top Closing Keywords, Pitch Script, Nearby & Ongoing Projects */}
               <div className="lg:col-span-7 space-y-4">
-                <div className="rounded-2xl border-2 border-[#1f3fb0]/50 bg-[#1f3fb0]/10 p-4">
+                <div className="rounded-2xl border-2 border-[#0b4a5a]/50 bg-[#0b4a5a]/10 p-4">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                     <div className="text-xs font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
                       <Flame size={15} className="text-[#7E3039]" /> Top Closing Keywords to Say on Field Visit
@@ -264,7 +264,7 @@ export default function MarketPage() {
                   </div>
                   <div className="rounded-2xl border border-[#ecebe4] bg-white p-3.5 text-xs space-y-2">
                     <div className="font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                      <Building2 size={14} className="text-[#1f3fb0]" /> Ongoing Flagship Projects & Catalysts
+                      <Building2 size={14} className="text-[#0b4a5a]" /> Ongoing Flagship Projects & Catalysts
                     </div>
                     <ul className="list-disc pl-4 space-y-1 text-ink font-medium">
                       {(companionArea.ongoingProjects ?? []).map((proj: string) => (
@@ -475,7 +475,7 @@ export default function MarketPage() {
             const ours = props.filter(p => matchCommunity(p)?.id === c.id).length
             return (
               <motion.button key={c.id} type="button" onClick={() => { setOpen(c); if (c.code) setCompanionCode(c.code) }} whileTap={{ scale: 0.98 }}
-                className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2d58dc]/50"
+                className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0f5f73]/50"
                 aria-label={`Open ${c.name} market detail`}>
                 <PhotoCard src={c.image} title={`${c.name} (${c.ticker ?? c.code})`}
                   subtitle={`${aed(c.ppsf)}/sq ft · ${pct(c.yieldPct)} gross · SC AED ${c.serviceCharge}/sq ft`}
@@ -531,7 +531,7 @@ function Ticker({ onPick }: { onPick: (c: Community) => void }) {
             {items.map((c, i) => (
               <button key={`${c.id}-${i}`} type="button" onClick={() => onPick(c)} tabIndex={i >= COMMUNITIES.length ? -1 : 0} aria-hidden={i >= COMMUNITIES.length || undefined}
                 className="flex items-center gap-2.5 px-5 py-3 whitespace-nowrap border-r border-[#ecebe4] hover:bg-[#fafaff] transition-colors">
-                <span className="font-mono text-[11px] font-bold text-[#1f3fb0]">{c.ticker}</span>
+                <span className="font-mono text-[11px] font-bold text-[#0b4a5a]">{c.ticker}</span>
                 <span className="text-[13px] font-semibold text-ink">{c.name}</span>
                 <span className="text-[13px] tabular-nums text-muted">AED {num(c.ppsf)}/sqft</span>
                 <DeltaChip value={yoy(c)} />
@@ -567,7 +567,7 @@ function TrendCard() {
             const on = sel.includes(c.id)
             return (
               <motion.button key={c.id} type="button" layout onClick={() => toggle(c.id)} aria-pressed={on} whileTap={{ scale: 0.95 }}
-                className={cls('inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11.5px] font-semibold border transition-colors', on ? 'text-white' : 'text-ink bg-white border-[#e7e8e6] hover:border-[#2d58dc]')}
+                className={cls('inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11.5px] font-semibold border transition-colors', on ? 'text-white' : 'text-ink bg-white border-[#e7e8e6] hover:border-[#0f5f73]')}
                 style={on ? { background: colorOf(c.id), borderColor: colorOf(c.id) } : undefined}>
                 {on ? <Check size={12} /> : <span className="w-2 h-2 rounded-full" style={{ background: colorOf(c.id) }} />}{c.name}
               </motion.button>

@@ -251,10 +251,10 @@ export default function PipelinePage() {
               key={tab.key}
               type="button"
               onClick={() => switchDept(tab.key)}
-              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#0f1b33] text-white border-[#1f3fb0] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#1f3fb0]'}`}
+              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#0f1b33] text-white border-[#0b4a5a] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#0b4a5a]'}`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#1f3fb0] text-white' : 'bg-[#fafaff] text-muted'}`}>
+                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#0b4a5a] text-white' : 'bg-[#fafaff] text-muted'}`}>
                   {tab.badge}
                 </span>
                 <span className="font-mono font-extrabold text-lg">{tab.count} deals</span>
@@ -285,11 +285,11 @@ export default function PipelinePage() {
             <Link
               key={s.step}
               to={s.to}
-              className="p-2.5 rounded-xl border border-[#ecebe4] bg-[#fafaff] hover:bg-white hover:border-[#1f3fb0] transition flex flex-col justify-between"
+              className="p-2.5 rounded-xl border border-[#ecebe4] bg-[#fafaff] hover:bg-white hover:border-[#0b4a5a] transition flex flex-col justify-between"
             >
               <div className="flex items-center justify-between text-xs font-extrabold text-ink">
                 <span>{s.step}</span>
-                {idx < 7 && <ArrowRight size={12} className="text-[#1f3fb0]" />}
+                {idx < 7 && <ArrowRight size={12} className="text-[#0b4a5a]" />}
               </div>
               <div className="text-[11px] text-muted mt-1">{s.desc}</div>
             </Link>
@@ -329,7 +329,7 @@ export default function PipelinePage() {
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOverCol(null) }}
                 onDrop={e => onDrop(e, s.key)}
                 className="snap-start flex-none flex flex-col rounded-[20px] transition-colors"
-                style={{ width: 288, minHeight: 420, background: overCol === s.key ? '#eef2ff' : '#ecebe4', border: `1px ${overCol === s.key ? 'dashed' : 'solid'} ${overCol === s.key ? SWK.champ : '#e7e8e6'}` }}>
+                style={{ width: 288, minHeight: 420, background: overCol === s.key ? '#e8f3f6' : '#ecebe4', border: `1px ${overCol === s.key ? 'dashed' : 'solid'} ${overCol === s.key ? SWK.champ : '#e7e8e6'}` }}>
                 <header className="px-3.5 pt-3.5 pb-2.5">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />

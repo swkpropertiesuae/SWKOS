@@ -182,7 +182,7 @@ export default function AgentsPage() {
                         {place === 1 && <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 2.6 }}><Crown size={22} color={SWK.champ} /></motion.div>}
                         <Avatar name={a.name} size={place === 1 ? 64 : 52} ring={col} />
                         <div className="mt-2 text-white font-semibold text-[13px] leading-tight">{a.name}</div>
-                        <div className="text-[12px] font-display" style={{ color: '#a9bbff' }}>{aed(a.gci, { compact: true })}</div>
+                        <div className="text-[12px] font-display" style={{ color: '#b9e6ee' }}>{aed(a.gci, { compact: true })}</div>
                       </motion.div>
                       <motion.div className="w-full rounded-t-2xl grid place-items-start justify-center pt-3 font-display font-semibold text-[28px]"
                         style={{ background: `linear-gradient(180deg, ${col}, rgba(255,255,255,.06))`, color: INK }}

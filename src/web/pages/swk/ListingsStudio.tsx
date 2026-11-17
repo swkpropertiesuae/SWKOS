@@ -317,7 +317,7 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
       </div>
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
-          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#2d58dc] underline-offset-4">{p.title}</Link>
+          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#0f5f73] underline-offset-4">{p.title}</Link>
           <div className="text-[12.5px] text-muted mt-0.5">{l.community?.name ?? p.address ?? 'Dubai'} · {p.property_type}{l.units.length ? ` · ${l.units.length} unit${l.units.length > 1 ? 's' : ''}` : ''}</div>
         </div>
         <div className="flex items-center gap-4 text-[12.5px] text-ink">
@@ -452,7 +452,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl bg-[#0a1322] text-white p-4 border border-[#2d58dc]/40 flex flex-col gap-3">
+      <div className="rounded-2xl bg-[#0a1322] text-white p-4 border border-[#0f5f73]/40 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <MessageCircle size={17} className="text-[#4fd39a]" />
@@ -475,7 +475,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
             value={waPhone}
             onChange={e => setWaPhone(e.target.value)}
             placeholder="Recipient WhatsApp (e.g. 0501234567 or +971501234567)"
-            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#2d58dc]"
+            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#0f5f73]"
           />
           <button
             type="button"
@@ -542,7 +542,7 @@ function PortalPerformance({ listings, leads }: { listings: Listing[]; leads: Ro
             <CartesianGrid vertical={false} stroke="#ecebe4" />
             <XAxis dataKey="portal" tick={{ fontSize: 10.5, fill: SWK.muted }} axisLine={false} tickLine={false} interval={0} tickFormatter={(v: string) => v.split(' ')[0]} />
             <YAxis tick={{ fontSize: 10, fill: SWK.muted }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip cursor={{ fill: 'rgba(52,97,232,.08)' }} contentStyle={{ borderRadius: 12, border: `1px solid ${SWK.line}`, fontSize: 12 }} formatter={(v: any) => num(Number(v))} />
+            <Tooltip cursor={{ fill: 'rgba(15,95,115,.08)' }} contentStyle={{ borderRadius: 12, border: `1px solid ${SWK.line}`, fontSize: 12 }} formatter={(v: any) => num(Number(v))} />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
             <RBar dataKey="syndicated" name="Live Listings" fill={CHART[0]} radius={[6, 6, 0, 0]} animationDuration={1100} />
             <RBar dataKey="leads" name="Leads" fill={CHART[1]} radius={[6, 6, 0, 0]} animationDuration={1300} />
