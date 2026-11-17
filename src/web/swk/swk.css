@@ -335,7 +335,7 @@ h1, h2, h3, h4, .font-display { font-family: 'Inter', 'Plus Jakarta Sans', syste
 .swk-card { position: relative; background: #ffffff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 0 rgba(28,28,28,.02), 0 12px 32px -22px rgba(28,28,28,.25); overflow: hidden; min-width: 0; }
 .swk-card-navy { background: linear-gradient(150deg, #1c1c1c 0%, #1c1c1c 100%); border-color: #1d3a66; color: #d9e1ee; }
 .swk-card-navy .swk-card-title { color: #ffffff; } .swk-card-navy .swk-card-sub { color: #9fb0cc; }
-.swk-card-champ { background: linear-gradient(150deg, #fafaff, #ffe4d6); border-color: #ffe4d6; }
+.swk-card-champ { background: linear-gradient(150deg, #ffffff, #fff3ec); border-color: #ffd9c4; }
 .swk-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 4px; }
 .swk-card-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
 .swk-card-sub { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); }
@@ -364,7 +364,7 @@ h1, h2, h3, h4, .font-display { font-family: 'Inter', 'Plus Jakarta Sans', syste
 /* Tinted status pills */
 .swk-pill { display: inline-flex; align-items: center; gap: 5px; height: 23px; padding: 0 9px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 .swk-pill-navy { background: #e6ecf6; color: #1c1c1c; }
-.swk-pill-champ { background: #ffe4d6; color: #7d5f2c; }
+.swk-pill-champ { background: #ffe4d6; color: #c9420f; }
 .swk-pill-oasis { background: #def1ef; color: #17625f; }
 .swk-pill-dune { background: #ffe4d6; color: #a33a22; }
 .swk-pill-grey { background: #eeebe4; color: #5a6275; }
@@ -467,7 +467,7 @@ h1, h2, h3, h4, .font-display { font-family: 'Inter', 'Plus Jakarta Sans', syste
 .swk-login-input input::placeholder { color: rgba(214,222,235,.35); }
 .swk-login-input input:-webkit-autofill { -webkit-text-fill-color: #ffffff; transition: background-color 9999s; }
 .swk-login-btn { position: relative; width: 100%; height: 52px; border: 0; border-radius: 12px; cursor: pointer; overflow: hidden; font-weight: 700; font-size: 15px; color: #1c1c1c;
-  background: linear-gradient(135deg, #ffe4d6 0%, #ff5b1f 55%, #b08d52 100%); box-shadow: 0 16px 34px -16px rgba(255,91,31,.75), inset 0 1px 0 rgba(255,255,255,.5); transition: filter .16s; }
+  background: linear-gradient(135deg, #ffe4d6 0%, #ff5b1f 55%, #ff8a3d 100%); box-shadow: 0 16px 34px -16px rgba(255,91,31,.75), inset 0 1px 0 rgba(255,255,255,.5); transition: filter .16s; }
 .swk-login-btn:hover { filter: brightness(1.05); }
 .swk-login-btn:disabled { opacity: .7; cursor: progress; }
 .swk-check { appearance: none; width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(255,255,255,.25); background: transparent; cursor: pointer; display: grid; place-items: center; flex: none; }
