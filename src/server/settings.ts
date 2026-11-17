@@ -50,11 +50,11 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   // --- AI
   ai_enabled: false, ai_provider: 'groq', ai_base_url: '', ai_api_key: '', ai_model: '', ai_fallback_provider: '', ai_fallback_base_url: '', ai_fallback_api_key: '', ai_fallback_model: '', ai_company_context: '',
   // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security
-  office_wifi_ssid: 'SWK-Properties-Office, SWK-CORP-WIFI-DXB, SWK-Office-5G',
+  office_wifi_ssid: 'XAVIER BUSINESS',
   office_wifi_bssid: '',
   office_wifi_public_ips: '',
-  office_wifi_gateway_ip: '192.168.1.1',
-  office_wifi_strict_ip: false,
+  office_wifi_gateway_ip: '192.168.0.1',
+  office_wifi_strict_ip: true,
   office_gps_lat: '25.2532',
   office_gps_lng: '55.2972',
   office_gps_radius_m: 200,

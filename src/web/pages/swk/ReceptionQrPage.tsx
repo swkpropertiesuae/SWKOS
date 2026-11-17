@@ -61,6 +61,7 @@ export default function ReceptionQrPage() {
     detected_client_ip: string
     ip_matches_office: boolean
     strict_ip: boolean
+    office_ip_locked?: boolean
   } | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string>('')
 
@@ -98,20 +99,26 @@ export default function ReceptionQrPage() {
     }).then(setQrDataUrl)
   }, [isPrintMode])
 
-  const isCellular = connectionType === 'cellular'
-  const isIpBlocked = Boolean(networkInfo?.strict_ip && networkInfo?.ip_matches_office === false)
-  const networkApproved = !isCellular && !isIpBlocked
+  const onOfficeNetwork = Boolean(networkInfo?.office_ip_locked && networkInfo?.ip_matches_office)
+  const networkApproved = true // the server decides: office network, or a location fix (office or field)
+  const [gpsNote, setGpsNote] = useState('')
+  const [setupMsg, setSetupMsg] = useState('')
+  const getFix = () => new Promise<{ lat: number; lng: number; acc: number } | null>(resolve => {
+    if (!navigator.geolocation) return resolve(null)
+    navigator.geolocation.getCurrentPosition(p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }), () => resolve(null), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 })
+  })
+  const canSetup = Boolean(me && ['shabib@swk.properties', 'haseeb@swk.properties'].includes(String(me.email).toLowerCase()))
+  const saveSetup = async (kind: 'wifi' | 'gps') => {
+    setSetupMsg('Working…')
+    try {
+      if (kind === 'wifi') { const r = await post<any>('/api/swk-ops/attendance-setup', { lock_current_ip: true }); setNetworkInfo(r); setSetupMsg(`Office network locked to ${r.detected_client_ip}. Anyone on ${r.ssid} can now check in without location.`) }
+      else { const f = await getFix(); if (!f) return setSetupMsg('Allow location access, then try again.'); await post('/api/swk-ops/attendance-setup', { use_current_gps: true, gps_lat: f.lat, gps_lng: f.lng }); setSetupMsg(`Office location set to ${f.lat.toFixed(5)}, ${f.lng.toFixed(5)} (±${Math.round(f.acc)} m).`) }
+    } catch (e: any) { setSetupMsg(e?.message || 'Could not save.') }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
-    if (!networkApproved) {
-      setError(
-        `Please connect your phone to the Office Wi-Fi (${networkInfo?.ssid || 'SWK-Properties-Office'}) or approved office network to check in.`
-      )
-      return
-    }
 
     if (!email.trim() || !password) {
       setError('Please enter your company email and password.')
@@ -120,7 +127,11 @@ export default function ReceptionQrPage() {
 
     setBusy(true)
     try {
+      setGpsNote('Getting your location…')
+      const fix = await getFix()
+      setGpsNote(fix ? '' : 'Location not shared.')
       const res = await post<any>('/api/public/reception-qr/scan-login-checkin', {
+        gps_lat: fix?.lat, gps_lng: fix?.lng, gps_accuracy_m: fix?.acc,
         email: email.trim(),
         password,
         require_login: true,
@@ -128,7 +139,7 @@ export default function ReceptionQrPage() {
         qr_code_or_token: searchParams.get('stand') || PRINTED_QR_CODE,
         device_id: device?.device_id || undefined,
         device_name: device?.device_name || undefined,
-        network_ssid: networkInfo?.ssid || 'SWK-Properties-Office',
+        network_ssid: networkInfo?.ssid || 'XAVIER BUSINESS',
         connection_type: connectionType,
         camera_verified: true,
       })
@@ -173,7 +184,7 @@ export default function ReceptionQrPage() {
           <div className="space-y-1.5">
             <h1 className="font-display font-bold text-xl text-[#1c1c1c]">Scan to Sign In &amp; Check In</h1>
             <p className="text-xs text-[#5a6578] leading-relaxed">
-              1. Connect your phone to <b>{networkInfo?.ssid || 'SWK-Properties-Office'}</b> Wi-Fi.
+              1. Connect your phone to <b>{networkInfo?.ssid || 'XAVIER BUSINESS'}</b> Wi-Fi.
               <br />
               2. Scan this QR code with your phone camera.
               <br />
@@ -295,24 +306,35 @@ export default function ReceptionQrPage() {
                   : 'bg-rose-950/60 border-rose-500/50 text-rose-200'
               }`}
             >
-              {networkApproved ? (
+              {onOfficeNetwork ? (
                 <Wifi size={16} className="text-emerald-400 shrink-0" />
               ) : (
                 <WifiOff size={16} className="text-rose-400 shrink-0" />
               )}
               <div className="leading-snug">
-                {networkApproved ? (
+                {onOfficeNetwork ? (
                   <>
                     Connected to <b>{networkInfo?.ssid || 'Office Wi-Fi / Approved Network'}</b>
                   </>
                 ) : (
                   <>
-                    Not on Office Wi-Fi. Connect to <b>{networkInfo?.ssid || 'SWK-Properties-Office'}</b> to check in.
+                    Not on <b>{networkInfo?.ssid || 'XAVIER BUSINESS'}</b>. Allow location access to check in from the office or the field.
                   </>
                 )}
               </div>
             </div>
 
+            {gpsNote && <div className="text-xs text-[#c3cde0]">{gpsNote}</div>}
+            {canSetup && (
+              <div className="rounded-2xl border border-white/15 bg-white/[.04] p-3 text-xs text-[#c3cde0] space-y-2">
+                <div className="font-semibold text-white">Office setup (Owner / Manager)</div>
+                <div className="flex gap-2 flex-wrap">
+                  <button type="button" className="px-3 py-1.5 rounded-xl bg-[#ff5b1f] text-white font-semibold border-0 cursor-pointer" onClick={() => void saveSetup('wifi')}>Use this network as the office Wi-Fi</button>
+                  <button type="button" className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-semibold border border-white/20 cursor-pointer" onClick={() => void saveSetup('gps')}>Set office location here</button>
+                </div>
+                {setupMsg && <div>{setupMsg}</div>}
+              </div>
+            )}
             {error && (
               <div className="px-3.5 py-2.5 rounded-2xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs font-medium">
                 {error}

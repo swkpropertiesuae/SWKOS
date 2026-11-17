@@ -1367,18 +1367,26 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return String(req.ip || '127.0.0.1')
   }
 
+  const distanceM = (a: [number, number], b: [number, number]) => {
+    const rad = (d: number) => d * Math.PI / 180, R = 6371000
+    const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1])
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2
+    return Math.round(2 * R * Math.asin(Math.sqrt(h)))
+  }
+  const officeGps = () => ({ lat: Number(getSetting('office_gps_lat')), lng: Number(getSetting('office_gps_lng')), radius: Number(getSetting('office_gps_radius_m')) || 200 })
+
   const getWifiCfg = (clientIp?: string) => {
-    const ssidRaw = String(getSetting('office_wifi_ssid') || 'SWK-Properties-Office, SWK-CORP-WIFI-DXB, SWK-Office-5G').trim()
+    const ssidRaw = String(getSetting('office_wifi_ssid') || 'XAVIER BUSINESS').trim()
     const allowedSsids = ssidRaw.split(',').map(s => s.trim()).filter(Boolean)
     const publicIpsRaw = String(getSetting('office_wifi_public_ips') || '').trim()
     const allowedPublicIps = publicIpsRaw.split(',').map(s => s.trim()).filter(Boolean)
-    const gatewayIp = String(getSetting('office_wifi_gateway_ip') || '192.168.1.1').trim()
+    const gatewayIp = String(getSetting('office_wifi_gateway_ip') || '192.168.0.1').trim()
     const strictIp = Boolean(getSetting('office_wifi_strict_ip'))
     const cleanClientIp = String(clientIp || '').replace(/^::ffff:/, '').trim()
     const isLocalIp = !cleanClientIp || cleanClientIp === '127.0.0.1' || cleanClientIp.startsWith('127.') || cleanClientIp === '::1' || cleanClientIp.startsWith('192.168.') || cleanClientIp.startsWith('10.') || cleanClientIp.startsWith('172.')
     const ipMatchesConfigured = allowedPublicIps.length === 0 || isLocalIp || allowedPublicIps.some(ip => cleanClientIp === ip || cleanClientIp.startsWith(ip))
     return {
-      ssid: allowedSsids[0] || 'SWK-Properties-Office',
+      ssid: allowedSsids[0] || 'XAVIER BUSINESS',
       allowed_ssids: allowedSsids,
       public_ips: publicIpsRaw,
       allowed_public_ips: allowedPublicIps,
@@ -1386,6 +1394,8 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
       strict_ip: strictIp,
       detected_client_ip: cleanClientIp || '127.0.0.1',
       ip_matches_office: ipMatchesConfigured,
+      office_ip_locked: allowedPublicIps.length > 0,
+      office_gps_set: Number.isFinite(officeGps().lat) && Number.isFinite(officeGps().lng),
     }
   }
 
@@ -1409,7 +1419,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
 
   app.get('/api/public/reception-qr/wifi-config', async (req) => getWifiCfg(resolveClientIp(req)))
 
-  app.post('/api/public/reception-qr/wifi-config', async (req) => {
+  const saveWifiConfig = async (req: any) => {
     if (!canPrintReceptionQr(req.user)) {
       throw new HttpError(403, 'Only Owner (Shabib Siraj) or Mohammad Haseeb can modify Office Attendance QR configuration.')
     }
@@ -1421,11 +1431,20 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
       b.office_wifi_public_ips = existing.join(', ')
     }
     const cleanPatch: Record<string, any> = {}
-    for (const k of ['office_wifi_ssid', 'office_wifi_bssid', 'office_wifi_public_ips', 'office_wifi_gateway_ip', 'office_wifi_strict_ip']) {
+    if (b.use_current_gps && Number.isFinite(Number(b.gps_lat)) && Number.isFinite(Number(b.gps_lng))) {
+      cleanPatch.office_gps_lat = String(Number(b.gps_lat)); cleanPatch.office_gps_lng = String(Number(b.gps_lng))
+    }
+    for (const k of ['office_gps_lat', 'office_gps_lng', 'office_gps_radius_m', 'office_wifi_ssid', 'office_wifi_bssid', 'office_wifi_public_ips', 'office_wifi_gateway_ip', 'office_wifi_strict_ip']) {
       if (b[k] !== undefined) cleanPatch[k] = b[k]
     }
     setSettings(cleanPatch)
-    return getWifiCfg(clientIp)
+    return { ...getWifiCfg(clientIp), office_gps: officeGps() }
+  }
+  app.post('/api/public/reception-qr/wifi-config', saveWifiConfig)
+  app.post('/api/swk-ops/attendance-setup', saveWifiConfig)
+  app.get('/api/swk-ops/attendance-setup', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can view attendance setup.')
+    return { ...getWifiCfg(resolveClientIp(req)), office_gps: officeGps() }
   })
 
   const handlePublicQrCheckIn = async (req: any, reply: any) => {
@@ -1447,9 +1466,17 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
       reply.setCookie(COOKIE, sess.token, { httpOnly: true, sameSite: 'lax', secure: !!secure, path: '/', expires: sess.expires })
     }
 
+    // Attendance is accepted from the office network (all devices on the office Wi-Fi share its public IP) or from a GPS fix:
+    // inside the office radius it counts as office, anywhere else it is recorded as field duty with its coordinates.
     const wifiConfig = getWifiCfg(clientIp)
-    if (wifiConfig.strict_ip && !wifiConfig.ip_matches_office) {
-      throw new HttpError(400, `Office Wi-Fi IP Mismatch: Your connection IP (${wifiConfig.detected_client_ip}) does not match the registered SWK Office Wi-Fi network.`)
+    const lat = Number(b.gps_lat), lng = Number(b.gps_lng), acc = Number(b.gps_accuracy_m)
+    const hasGps = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && b.gps_lat !== '' && b.gps_lat != null
+    const og = officeGps()
+    const gpsDistance = hasGps && Number.isFinite(og.lat) && Number.isFinite(og.lng) ? distanceM([lat, lng], [og.lat, og.lng]) : null
+    const onOfficeNetwork = wifiConfig.office_ip_locked && wifiConfig.ip_matches_office
+    const verifiedBy: 'Office Wi-Fi' | 'Office GPS' | 'Field GPS' | null = onOfficeNetwork ? 'Office Wi-Fi' : (gpsDistance != null && gpsDistance <= og.radius) ? 'Office GPS' : hasGps ? 'Field GPS' : null
+    if (!verifiedBy) {
+      throw new HttpError(400, `Connect to the office Wi-Fi (${wifiConfig.ssid}) or allow location access, then try again. Your connection IP is ${wifiConfig.detected_client_ip}.`)
     }
 
     return tx(() => {
@@ -1487,7 +1514,10 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
             duty_status: shiftInfo.isLate ? 'Late Arrival' : 'On Duty',
             late_minutes: shiftInfo.lateMinutes,
             manager_verified: true,
-            notes: `Verified via Office Reception QR · Wi-Fi: ${b.network_ssid || wifiConfig.ssid}`,
+            gps_lat: hasGps ? String(lat) : null,
+            gps_lng: hasGps ? String(lng) : null,
+            gps_accuracy_m: Number.isFinite(acc) ? Math.round(acc) : null,
+            notes: `Verified via ${verifiedBy}${verifiedBy === 'Office Wi-Fi' ? ` (${wifiConfig.ssid})` : gpsDistance != null ? ` · ${gpsDistance} m from the office` : ''}`,
           }, SYSTEM_CTX)
 
       const hrAtt = q.get<any>(`SELECT * FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL`, emp.id, todayStr())
@@ -1496,7 +1526,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
           employee_id: emp.id,
           att_date: todayStr(),
           check_in: now.slice(0, 16),
-          checkin_mode: 'Office QR Scan',
+          checkin_mode: verifiedBy === 'Field GPS' ? 'Field Site Visit Live GPS' : 'Office QR Scan',
           status: shiftInfo.isLate ? 'Late' : 'Present',
           note: `Reception QR Check-in (${eventRecord.event_no})`,
         }, SYSTEM_CTX)
@@ -1510,8 +1540,10 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
         user: authUser,
         verification_summary: {
           qr_token_valid: true,
-          office_network_verified: true,
-          office_wifi_ssid: b.network_ssid || wifiConfig.ssid,
+          office_network_verified: verifiedBy === 'Office Wi-Fi',
+          verified_by: verifiedBy,
+          distance_from_office_m: gpsDistance,
+          office_wifi_ssid: wifiConfig.ssid,
           client_ip: wifiConfig.detected_client_ip,
           timestamp_gst: now,
           shift_name: eventRecord.shift_name,

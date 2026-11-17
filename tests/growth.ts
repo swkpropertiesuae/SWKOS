@@ -150,6 +150,23 @@ async function main() {
   const sv = await a.put(`/api/e/inspections/${ins.data.id}`, { results: res, signature: 'data:image/png;base64,AAAA', signed_name: 'Tenant', status: 'Requires Action', findings: 'Kitchen: Cracked tile', version: ins.data.version })
   ok('results and signature save', sv.status === 200, sv)
   ok('results read back', JSON.parse((await a.get(`/api/e/inspections/${ins.data.id}`)).data.results)[1].note === 'Cracked tile')
+
+  sec('Attendance: office Wi-Fi and field location')
+  const cfg = (await a.get('/api/public/reception-qr/wifi-config')).data
+  ok('office Wi-Fi is hardcoded to the XAVIER BUSINESS network', cfg.ssid === 'XAVIER BUSINESS' && cfg.gateway_ip === '192.168.0.1' && cfg.strict_ip === true, cfg)
+  const ci = (body: any) => a.post('/api/public/reception-qr/scan-login-checkin', { email: 'rota1@a.example', password: 'Manager-Pass-2026!', ...body })
+  const none = await ci({})
+  ok('no office network and no location is refused', none.status === 400 && /Wi-Fi|location/i.test(none.data.error ?? ''), none)
+  const field = await ci({ gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 20 })
+  ok('a location far from the office is recorded as field duty', field.status === 200 && field.data.verification_summary?.verified_by === 'Field GPS' && field.data.verification_summary?.distance_from_office_m > 1000, field.data)
+  const office = await ci({ email: 'rota2@a.example', gps_lat: 25.2532, gps_lng: 55.2972, gps_accuracy_m: 10 })
+  ok('a location inside the office radius counts as office', office.status === 200 && office.data.verification_summary?.verified_by === 'Office GPS', office.data)
+  ok('an impossible coordinate is not treated as a fix', (await ci({ email: 'rota2@a.example', gps_lat: 999, gps_lng: 55 })).status === 400)
+  const hm = new Api(); await hm.login('haseeb@swk.properties', 'SWK@Manager2026')
+  const lock = await hm.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })
+  ok('owner can lock the current network as the office Wi-Fi', lock.status === 200 && lock.data.office_ip_locked === true, lock)
+  const wifi = await ci({ email: 'rota1@a.example' })
+  ok('once the office network is locked, check-in works without location', wifi.status === 200 && wifi.data.verification_summary?.verified_by === 'Office Wi-Fi', wifi.data)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })
