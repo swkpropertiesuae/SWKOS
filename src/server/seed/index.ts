@@ -7,7 +7,7 @@ import { setSettings } from '../settings'
 import { seedCompanyDocuments } from './company-documents'
 import { seedCompliance } from './compliance'
 import { syncStudioLibrary } from '../studio/library'
-import { hashPassword } from '../auth'
+import { hashPassword, verifyPassword } from '../auth'
 import { SWK_STAFF_ACCOUNTS, RESTRICTED_STAFF_PERMISSIONS, type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
 
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
@@ -254,6 +254,16 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
  * 3. The 6 official @swk.property staff accounts (Haseeb, Talha, Fareed, Shahid, Umar, Saifullah)
  *    exist with their hardcoded credentials, roles, and employee profiles.
  */
+/** The admin password set as an environment secret always wins: a secret changed in Cloudflare takes effect on the next container start. Other accounts keep the password they have (change them in Administration, Users). */
+export function applyConfiguredPasswords() {
+  const pw = process.env.ADMIN_SWK_PASSWORD || process.env.ADMIN_PASSWORD
+  if (!pw) return
+  const row = q.get(`SELECT id, password_hash FROM users WHERE lower(email) = 'admin@swk.properties' AND deleted_at IS NULL`)
+  if (!row || verifyPassword(pw, row.password_hash)) return
+  q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
+  console.log('Password for admin@swk.properties set from its environment secret.')
+}
+
 export function ensureHardcodedSwkStaffAccounts() {
   const mk = (key: string, payload: Record<string, any>) => createRecord(getDef(key), payload, SYSTEM_CTX)
   const dxb = idOf('branches', 'code', 'DXB') ?? 1
@@ -367,6 +377,8 @@ export function ensureHardcodedSwkStaffAccounts() {
         must_change_password: false,
       })
       userId = created.id
+      const envKey = acc.roleName === 'Owner' ? 'OWNER_PASSWORD' : acc.roleName === 'Admin' ? 'ADMIN_SWK_PASSWORD' : acc.roleName === 'Manager' ? 'MANAGER_PASSWORD' : 'BDM_PASSWORD'
+      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
       q.run(
         `UPDATE users SET password_hash = ?, must_change_password = 0, active = 1, role_id = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`,
         pwHash,
