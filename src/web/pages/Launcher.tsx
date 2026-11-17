@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion, useReducedMotion } from 'motion/react'
-import { ArrowUpRight, Clock3, Search, X } from 'lucide-react'
+import { useMemo,useState } from 'react'
+import { Link,useNavigate } from 'react-router-dom'
+import { motion,useReducedMotion } from 'motion/react'
+import { ArrowUpRight,Clock3,Search,X } from 'lucide-react'
 import { useMeta } from '../lib/meta'
-import { launcherApps, recentItems } from '../swk/nav'
+import { launcherApps,recentItems } from '../swk/nav'
 
 const ease = [0.16, 1, 0.3, 1] as const
 

@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, E, PH, S, R, D, DT, U } from '../dsl'
+import { T,TA,I,N,M,P,B,E,PH,S,R,D,DT } from '../dsl'
 
 export const people: EntityDef[] = [
   // ---------------- HR

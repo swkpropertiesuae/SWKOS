@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, R, S, B, D, DT, E, PH, J } from '../dsl'
+import { T,TA,I,N,M,P,R,S,B,D,DT,E,PH,J } from '../dsl'
 
 export const SECONDARY_SALE_EXCEPTIONS = [
   'None',

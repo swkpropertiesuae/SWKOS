@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { can } from '../engine'
-import { bad, forbidden } from '../util'
+import { bad,forbidden } from '../util'
 import { inDemo } from '../db'
-import { aiConfigured, chat } from '../ai/llm'
+import { aiConfigured,chat } from '../ai/llm'
 import { MODULE_DEFS } from '../../shared/entities'
 
 export default async function routes(app: FastifyInstance) {

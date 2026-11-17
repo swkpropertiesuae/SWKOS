@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, E, PH, S, R, D, DT, U } from '../dsl'
+import { T,TA,I,N,M,P,B,E,PH,S,R,D,DT,U } from '../dsl'
 
 export const LEAD_SOURCES = ['Website', 'Property Finder', 'Bayut', 'Dubizzle', 'Referral', 'Cold call', 'Exhibition / event', 'Email campaign', 'WhatsApp', 'LinkedIn', 'Agent network', 'Existing customer', 'Portal enquiry', 'Inbound call', 'Other']
 export const MODES = ['Apartment Sale', 'Villa Sale', 'Off-Plan Sale', 'Apartment Lease', 'Villa Lease', 'Commercial Sale', 'Commercial Lease', 'Property Management', 'Land Sale', 'Bulk Deal']

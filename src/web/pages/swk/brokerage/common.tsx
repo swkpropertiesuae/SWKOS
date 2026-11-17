@@ -2,10 +2,10 @@
  * Shared helpers for the brokerage modules (Pipeline, Agents, RERA Centre, Owner 360).
  * Owned by these four pages only — keeps data loading, date maths and the drawer consistent.
  */
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect,useRef,type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'motion/react'
-import { FlaskConical, X } from 'lucide-react'
+import { AnimatePresence,motion } from 'motion/react'
+import { FlaskConical,X } from 'lucide-react'
 import { get } from '../../../lib/api'
 import { CHART } from '../../../swk/ui'
 
@@ -74,7 +74,7 @@ export function Drawer({ open, onClose, title, subtitle, children, width = 460 }
             style={{ width: `min(${width}px, 100vw)`, background: '#fafaff', borderLeft: '1px solid #e7e8e6', boxShadow: '-30px 0 60px -30px rgba(15,27,51,.45)' }}
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 320, damping: 34 }}>
             <header className="flex items-start justify-between gap-3 px-5 pt-5 pb-4" style={{ borderBottom: '1px solid #ecebe4' }}>
-              <div className="min-w-0"><div className="font-display font-semibold text-[19px] leading-tight" style={{ color: '#0f1b33' }}>{title}</div>{subtitle && <div className="text-[12.5px] mt-1" style={{ color: '#6b7488' }}>{subtitle}</div>}</div>
+              <div className="min-w-0"><div className="font-display font-semibold text-[19px] leading-tight" style={{ color: '#0f1b33' }}>{title}</div>{subtitle && <div className="text-[12.5px] mt-1" style={{ color: '#566179' }}>{subtitle}</div>}</div>
               <button className="swk-btn swk-btn-ghost" style={{ width: 38, height: 38, padding: 0 }} onClick={onClose} aria-label="Close panel"><X size={16} /></button>
             </header>
             <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
@@ -94,4 +94,4 @@ export function SearchBox({ value, onChange, placeholder = 'Search…', label = 
   )
 }
 
-export const INK = '#0f1b33', MUTED = '#6b7488'
+export const INK = '#0f1b33', MUTED = '#566179'

@@ -1,5 +1,5 @@
 /** Installable web app (PWA): service worker registration, update prompt and install prompt. */
-import { useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react';
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 type State = { canInstall: boolean; installed: boolean; updateReady: boolean }

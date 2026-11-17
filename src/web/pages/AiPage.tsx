@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams, Link } from 'react-router-dom'
-import { Bot, Send, Play, Plus, Check, X as XIcon, Sparkles, Settings2, Loader2, ShieldCheck, PhoneCall, PhoneForwarded, CircleCheck, Circle } from 'lucide-react'
-import { get, post, put } from '../lib/api'
+import { useEffect,useRef,useState } from 'react'
+import { useQuery,useQueryClient } from '@tanstack/react-query'
+import { useSearchParams,Link } from 'react-router-dom'
+import { Bot,Send,Play,Plus,Check,X as XIcon,Sparkles,Settings2,Loader2,ShieldCheck,PhoneCall,PhoneForwarded,CircleCheck,Circle } from 'lucide-react'
+import { get,post,put } from '../lib/api'
 import { useToast } from '../lib/toast'
-import { PageHeader, Loading, ErrorBox, Tabs, Badge, Empty, Modal } from '../ui/kit'
-import { useMeta } from '../lib/meta'
-import { cls, fmtIsoStamp } from '../lib/format'
+import { PageHeader,Loading,ErrorBox,Tabs,Badge,Empty,Modal } from '../ui/kit'
+import { cls,fmtIsoStamp } from '../lib/format'
 
 interface Agent { id: number; name: string; title: string; avatar: string; active: boolean; schedule: string; run_hour: number; autonomy: string; deliver_to: string; last_run_at: string | null; last_status: string | null; role_key: string | null; instructions: string; tools: string }
 interface Status { configured: boolean; pending: number; agents: Agent[]; templates: { key: string; name: string; title: string; avatar: string; blurb: string }[]; tools: { name: string; risk: string; description: string }[] }

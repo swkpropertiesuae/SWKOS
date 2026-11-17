@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query'
 import {
-  Award, Building2, Check, Copy, DollarSign, FileBarChart, Home, Percent, Plus, UserRoundCog, Wrench,
+Award,Building2,Check,Copy,DollarSign,FileBarChart,Percent,Plus,UserRoundCog,Wrench
 } from 'lucide-react'
-import { get, put } from '../../lib/api'
+import { get,put } from '../../lib/api'
 import {
-  Card, EmptyState, ModuleHeader, Pill, ProgressRing, Reveal, SWK, StatTile, aed, num, pct,
+Card,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,SWK,StatTile,aed,num,pct,
 } from '../../swk/ui'
-import { COMMUNITIES, reraIncrease, visaEligibility, yieldCalc } from '../../swk/uae'
+import { COMMUNITIES,reraIncrease,visaEligibility,yieldCalc } from '../../swk/uae'
 import { useToast } from '../../lib/toast'
 
 type PortfolioUnit = {

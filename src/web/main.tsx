@@ -1,19 +1,19 @@
 try { document.documentElement.dataset.theme = 'light'; localStorage.removeItem('swk-theme') } catch { /* ignore */ }
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import './index.css'
-import './reference.css'
-import './swk/swk.css'
-import './estate.css'
-import App from './App'
-import { MetaProvider } from './lib/meta'
-import { ToastProvider } from './lib/toast'
-import { DialogProvider } from './ui/kit'
-import { applyLangToDocument, startDomTranslator } from './lib/i18n'
-import { startPwa } from './lib/pwa'
-import { startOfflineSync } from './lib/offlineQueue'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
+import './index.css';
+import './reference.css';
+import './swk/swk.css';
+import './estate.css';
+import App from './App';
+import { MetaProvider } from './lib/meta';
+import { ToastProvider } from './lib/toast';
+import { DialogProvider } from './ui/kit';
+import { applyLangToDocument,startDomTranslator } from './lib/i18n';
+import { startPwa } from './lib/pwa';
+import { startOfflineSync } from './lib/offlineQueue';
 
 applyLangToDocument()
 startPwa()

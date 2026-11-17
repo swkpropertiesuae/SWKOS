@@ -1,6 +1,6 @@
-import { q } from './db'
-import { fromCents, r2, todayStr, addDays, yearStart, monthStart, daysBetween, bad } from './util'
-import { getSetting } from './settings'
+import { q } from './db';
+import { fromCents,r2,todayStr,addDays,yearStart,monthStart,daysBetween,bad } from './util';
+import { getSetting } from './settings';
 
 export type ColType = 'text' | 'money' | 'number' | 'date' | 'percent' | 'datetime'
 export interface Col { key: string; label: string; type?: ColType; align?: 'left' | 'right' }

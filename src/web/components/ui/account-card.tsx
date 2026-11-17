@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect, type CSSProperties } from 'react'
+import { useRef,useState,useEffect,type CSSProperties } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
-import { ChevronLeft, ChevronRight, Landmark, WalletCards } from 'lucide-react'
+import { ChevronLeft,ChevronRight,Landmark,WalletCards } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { MetaEntity } from '../../lib/meta'
 import { CellValue } from '../Fields'

@@ -1,21 +1,21 @@
 import EmailPage from './pages/EmailPage'
-import {CompetencyPage} from './pages/EnterprisePages'
-import { Navigate, Route, Routes, useLocation, Link } from 'react-router-dom'
-import { Suspense, lazy, type ReactNode } from 'react'
+import { CompetencyPage } from './pages/EnterprisePages'
+import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
+import { Suspense,lazy,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic, isRestrictedStaffUser, isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Launcher } from './pages/Launcher'
-import { Workspaces, WorkspaceUtilities } from './pages/Workspaces'
-import { EntityListPage, EntityRecordPage } from './pages/EntityPages'
+import { Workspaces,WorkspaceUtilities } from './pages/Workspaces'
+import { EntityListPage,EntityRecordPage } from './pages/EntityPages'
 import { CalendarPage } from './pages/CalendarPage'
-import { ReportsPage, KpiPage } from './pages/ReportPages'
+import { ReportsPage,KpiPage } from './pages/ReportPages'
 import { ToolsPage } from './pages/ToolsPage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { RolesPage, SettingsPage, AuditPage, BackupPage } from './pages/AdminPages'
+import { RolesPage,SettingsPage,AuditPage,BackupPage } from './pages/AdminPages'
 import { CompliancePage } from './pages/CompliancePage'
 import { WorkQueuePage,HandoverPage } from './pages/WorkPages'
 import { PublicTrack } from './pages/PublicTrack'
@@ -26,13 +26,13 @@ import { WhatsAppPage } from './pages/WhatsAppPage'
 import { ChatPage } from './pages/ChatPage'
 import { PortalPage } from './pages/PortalPage'
 import { ReceptionDisplayPage } from './pages/ReceptionDisplayPage'
-import { InspectList, InspectPage } from './pages/InspectPage'
+import { InspectList,InspectPage } from './pages/InspectPage'
 import { SmartSearchPage } from './pages/SmartSearchPage'
-import { BankImportPage, YearEndPage, WpsPage } from './pages/FinanceExtras'
+import { BankImportPage,YearEndPage,WpsPage } from './pages/FinanceExtras'
 import { PrintPage } from './print/PrintPage'
-import { StudioHome, StudioEditor } from './pages/StudioPage'
+import { StudioHome,StudioEditor } from './pages/StudioPage'
 import { NewInvoicePage } from './pages/NewInvoicePage'
-import { Loading, ErrorBox } from './ui/kit'
+import { Loading,ErrorBox } from './ui/kit'
 
 // SWK real-estate modules (code-split)
 const MarketPage = lazy(() => import('./pages/swk/MarketPage'))
@@ -103,7 +103,7 @@ export default function App() {
             <Route
               path="*"
               element={
-                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#3461e8]/40 bg-[#0d1f3c] text-white shadow-xl">
+                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#2d58dc]/40 bg-[#0d1f3c] text-white shadow-xl">
                   <div className="text-xs font-extrabold uppercase tracking-widest text-[#dbe4ff] mb-2">
                     Staff Access Policy · SWK Properties OS
                   </div>
@@ -112,7 +112,7 @@ export default function App() {
                     Signed in as <b>{me.name}</b> (<code className="text-[#dbe4ff]">{me.email}</code>). Per company security policy, full OS operational modules are restricted exclusively to <b>Owner Shabib Siraj (shabib@swk.properties)</b>, <b>Full-Access Admin (admin@swk.properties)</b>, and <b>Mohammad Haseeb (Haseeb@swk.property)</b>. Your account is authorised for <b>Attendance &amp; QR Check-In</b>, <b>Company Manual</b>, <b>Market Pulse</b>, and <b>General Workspace</b>.
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#3461e8] text-[#0a1322] font-bold text-xs no-underline">
+                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#2d58dc] text-white font-bold text-xs no-underline">
                       Scan &amp; Check In Attendance
                     </Link>
                     <Link to="/competency" className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs no-underline border border-white/15">

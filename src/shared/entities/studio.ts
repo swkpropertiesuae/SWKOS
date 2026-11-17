@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, B, S, R, DT, D } from '../dsl'
+import { T,TA,B,S,R,DT,D } from '../dsl'
 
 export const STUDIO_CATEGORIES = [
   'Corporate', 'Sales & Customers', 'Finance & Procurement', 'Compliance & Permits', 'HR & Administration', 'Control & Guidance',

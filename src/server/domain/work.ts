@@ -1,7 +1,6 @@
 import { q } from '../db'
 import { nowIso } from '../util'
-import { bad } from '../util'
-import { getDef, getRecord, createRecord, patchRecord, assertCan, SYSTEM_CTX, type Ctx, type Rec } from '../engine'
+import { getDef,createRecord,patchRecord,SYSTEM_CTX,type Ctx,type Rec } from '../engine'
 
 const entityActivity: Record<string, string> = {
   jobs: 'Deal update', leads: 'New lead', opportunities: 'Opportunity', activities: 'Activity',

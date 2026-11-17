@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect,useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { ArrowRight, Check, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
+import { AnimatePresence,motion,useReducedMotion } from 'motion/react'
+import { ArrowRight,Check,Eye,EyeOff,KeyRound,Loader2,Lock,Mail,ShieldCheck } from 'lucide-react'
 import '@fontsource/instrument-serif/400.css'
 import '@fontsource/instrument-serif/400-italic.css'
-import { get, post } from '../lib/api'
+import { get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 
 /**
@@ -20,7 +20,7 @@ function FloatingPaths({ position }: { position: number }) {
   }))
   return (
     <div className="pointer-events-none absolute inset-0">
-      <svg className="h-full w-full" style={{ color: '#3461e8' }} fill="none" viewBox="0 0 696 316">
+      <svg className="h-full w-full" style={{ color: '#2d58dc' }} fill="none" viewBox="0 0 696 316">
         {paths.map(p => (
           <motion.path key={p.id} d={p.d} stroke="currentColor" strokeOpacity={0.08 + p.id * 0.025} strokeWidth={p.width}
             initial={{ pathLength: 0.3 }} animate={reduce ? undefined : { pathLength: 1, pathOffset: [0, 1, 0] }}

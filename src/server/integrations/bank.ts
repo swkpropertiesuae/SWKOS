@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { q } from '../db'
-import { bad, parseCsv, toCents, fromCents, todayStr, addDays, nowIso } from '../util'
-import { createRecord, getDef, SYSTEM_CTX } from '../engine'
+import { bad,parseCsv,toCents,fromCents,todayStr,addDays,nowIso } from '../util'
+import { createRecord,getDef,SYSTEM_CTX } from '../engine'
 import { logIntegration } from './log'
 
 export interface StmtLine { date: string; description: string; reference: string; debit: number; credit: number }

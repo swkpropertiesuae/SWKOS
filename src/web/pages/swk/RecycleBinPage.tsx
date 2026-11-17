@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Trash2, ShieldCheck, CheckCircle2, XCircle, AlertTriangle, Plus, ExternalLink, History, Gavel } from 'lucide-react'
-import { get, post } from '../../lib/api'
+import { Trash2,ShieldCheck,CheckCircle2,XCircle,AlertTriangle,Plus,ExternalLink,History,Gavel } from 'lucide-react'
+import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
-import { Badge, Loading, Modal, PageHeader } from '../../ui/kit'
+import { Badge,Loading,Modal,PageHeader } from '../../ui/kit'
 import { useToast } from '../../lib/toast'
 
 export default function RecycleBinPage() {

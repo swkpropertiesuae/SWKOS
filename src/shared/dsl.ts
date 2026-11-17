@@ -1,4 +1,4 @@
-import type { FieldDef, Option } from './types'
+import type { FieldDef,Option } from './types'
 
 type O = Partial<Omit<FieldDef, 'name' | 'label' | 'type'>>
 

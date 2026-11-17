@@ -1,20 +1,21 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useMemo,useState } from 'react'
+import { Link,useNavigate } from 'react-router-dom'
+import { PulseCard,ActivityTimeline } from '../components/PulseCards'
 import { useQuery } from '@tanstack/react-query'
-import { motion, useReducedMotion } from 'motion/react'
-import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { motion,useReducedMotion } from 'motion/react'
+import { Area,AreaChart,CartesianGrid,Cell,Pie,PieChart,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import {
-  AlertTriangle, ArrowRight, ArrowUpRight, BadgeCheck, Bot, Building2, Calculator, CalendarCheck, CalendarDays, Clock, FileSignature, Gavel,
-  HandCoins, Home, KanbanSquare, KeyRound, LineChart, Megaphone, MessageCircle, Percent, Plus, Rocket, Scale, ShieldCheck, Smartphone, Sparkles, Trash2, Trophy, UserPlus, Users, Wallet, Wrench,
+AlertTriangle,ArrowRight,ArrowUpRight,BadgeCheck,Bot,Building2,Calculator,CalendarCheck,CalendarDays,Clock,FileSignature,Gavel,
+HandCoins,Home,KanbanSquare,KeyRound,LineChart,Megaphone,MessageCircle,Percent,PhoneCall,Plus,Rocket,Scale,ShieldCheck,Sparkles,Trash2,Trophy,UserPlus,Users,Wallet,Wrench
 } from 'lucide-react'
-import { get, post } from '../lib/api'
+import { get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
-import { fmtDate, fmtDateTime } from '../lib/format'
+import { fmtDate,fmtDateTime } from '../lib/format'
 import { ErrorBox } from '../ui/kit'
-import { AnimatedNumber, Bar, CHART, Card, EmptyState, Pill, ProgressRing, Reveal, RevealItem, SWK, Sparkline, StatTile, aed, num, rise } from '../swk/ui'
+import { AnimatedNumber,Bar,CHART,Card,EmptyState,Pill,ProgressRing,Reveal,RevealItem,SWK,Sparkline,StatTile,aed,num,rise } from '../swk/ui'
 import { COMMUNITIES } from '../swk/uae'
-import { canAccessSwkAdminLogic, isAllowedPathForRestrictedStaff, isRestrictedStaffUser } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,isAllowedPathForRestrictedStaff,isRestrictedStaffUser } from '@shared/swk-staff-access'
 
 const PHOTOS = ['marina-sky-penthouse-1', 'palm-garden-homes-1', 'hills-estate-golf-mansion-1', 'business-bay-executive-tower-2', 'creek-harbour-waterside-townhouse-1', 'jvc-boulevard-residences-2', 'arabian-ranches-courtyard-villa-2', 'villa-sanctuary-6', 'islands-2-1', 'river-cove-residences-1']
 const photoFor = (id: number) => `/media/properties/${PHOTOS[Math.abs(id) % PHOTOS.length]}.webp`
@@ -34,6 +35,7 @@ export function Dashboard() {
   const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<any>('/api/dashboard'), refetchInterval: 120000 })
   const props = useQuery({ queryKey: ['dash-props'], queryFn: () => get<any>('/api/e/properties', { pageSize: 12, sort: 'listed_date', dir: 'desc' }), enabled: can('properties', 'view') && !restricted })
   const units = useQuery({ queryKey: ['dash-units'], queryFn: () => get<any>('/api/e/units', { pageSize: 500 }), enabled: can('properties', 'view') && !restricted })
+  const pulse = useQuery({ queryKey: ['pulse'], queryFn: () => get<any>('/api/dashboard/pulse'), refetchInterval: 20000, retry: false })
   const brief = useQuery({ queryKey: ['ai-brief'], queryFn: () => get<{ output: string; started_at: string; name: string }>('/api/ai/brief'), retry: false, enabled: can('ai', 'view') && adminOk })
   const binQ = useQuery({ queryKey: ['dash-bin'], queryFn: () => get<any>('/api/swk-ops/recycle-bin'), enabled: adminOk })
   const withQ = useQuery({ queryKey: ['dash-withdrawals'], queryFn: () => get<any>('/api/swk-ops/withdrawals'), enabled: adminOk })
@@ -103,6 +105,16 @@ export function Dashboard() {
           </div>
         </div>
       </motion.section>
+
+      {/* ------------------------------------------------------------ live pulse */}
+      {pulse.data && (pulse.data.leads || pulse.data.viewings || pulse.data.calls) && (
+        <section className="swk-pulse-row" aria-label="Live activity">
+          {pulse.data.leads && <PulseCard title="New leads" icon={UserPlus} data={pulse.data.leads} to="/e/leads" hint="last 7 days" />}
+          {pulse.data.viewings && <PulseCard title="Viewings" icon={CalendarCheck} data={pulse.data.viewings} to="/e/viewings" hint="scheduled" />}
+          {pulse.data.calls && <PulseCard title="Calls logged" icon={PhoneCall} data={pulse.data.calls} to="/e/activities" hint="team calls" />}
+          <div className="swk-tl-card"><h3><span className="swk-live-dot" />Live activity</h3><ActivityTimeline events={pulse.data.feed} /></div>
+        </section>
+      )}
 
       {/* ------------------------------------------------------------ 3 Core Operational Departments + Leadership & Briefings */}
       {!restricted && (
@@ -289,7 +301,7 @@ export function Dashboard() {
               {agenda.map((a, i) => (
                 <motion.li key={a.id} className="relative" initial={{ opacity: 0, x: -8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}>
                   <Link to={a.to} className="flex items-start gap-3 py-2.5 group">
-                    <span className="relative z-[1] w-9 h-9 rounded-xl grid place-items-center flex-none bg-white border border-[#e7e8e6] text-[#0f1b33] group-hover:border-[#3461e8] transition-colors"><a.Icon size={16} /></span>
+                    <span className="relative z-[1] w-9 h-9 rounded-xl grid place-items-center flex-none bg-white border border-[#e7e8e6] text-[#0f1b33] group-hover:border-[#2d58dc] transition-colors"><a.Icon size={16} /></span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2"><span className="text-[11px] font-semibold uppercase tracking-wider text-[#6F513B]">{a.kind}</span><span className="text-[11.5px] text-muted">{a.kind === 'Viewing' ? fmtDateTime(a.at) : fmtDate(a.at)}</span></span>
                       <span className="block text-[13.5px] font-semibold text-ink truncate">{a.title}</span>
@@ -446,7 +458,7 @@ export function Dashboard() {
             { l: 'Activity', s: 'Calls & follow-ups', to: '/e/activities', I: Clock },
           ].map(m => (
             <motion.div key={m.to} variants={rise} whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
-              <Link to={m.to} className="group flex flex-col gap-3 h-full p-4 rounded-[18px] bg-white border border-[#e7e8e6] hover:border-[#3461e8] hover:shadow-[0_18px_36px_-24px_rgba(15,27,51,.35)] transition-all">
+              <Link to={m.to} className="group flex flex-col gap-3 h-full p-4 rounded-[18px] bg-white border border-[#e7e8e6] hover:border-[#2d58dc] hover:shadow-[0_18px_36px_-24px_rgba(15,27,51,.35)] transition-all">
                 <span className="w-10 h-10 rounded-xl grid place-items-center text-[#eef2ff] transition-transform group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: 'linear-gradient(145deg,#0f1b33,#0f1b33)' }}><m.I size={18} /></span>
                 <span><span className="block text-[14px] font-semibold text-ink">{m.l}</span><span className="block text-[12px] text-muted">{m.s}</span></span>
               </Link>

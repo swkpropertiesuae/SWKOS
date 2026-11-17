@@ -1,6 +1,6 @@
-import { getDef, insertRow, SYSTEM_CTX } from '../engine'
-import { nowLocal } from '../util'
-import { inDemo } from '../db'
+import { getDef,insertRow,SYSTEM_CTX } from '../engine';
+import { nowLocal } from '../util';
+import { inDemo } from '../db';
 
 export function logIntegration(provider: string, action: string, ok: boolean, summary: string, detail?: unknown, link?: { entity: string; id: number }) {
   try {

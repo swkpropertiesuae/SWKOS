@@ -1,11 +1,11 @@
 /** KYC checklists and AML / goAML helpers. Thresholds and check lists are editable defaults: confirm against current FIU / RERA / MoE guidance. */
 import type { FastifyInstance } from 'fastify'
 import { q } from '../db'
-import { createRecord, getDef, getRecord } from '../engine'
+import { createRecord,getDef,getRecord } from '../engine'
 import { getSetting } from '../settings'
-import { fromCents, todayStr } from '../util'
-import { KYC_STANDARD_CHECKS, nextKycReview } from '../../shared/uae-rules'
-import { idOf, need } from './helpers'
+import { fromCents,todayStr } from '../util'
+import { KYC_STANDARD_CHECKS,nextKycReview } from '../../shared/uae-rules'
+import { idOf,need } from './helpers'
 
 export default async function (app: FastifyInstance) {
   const kycSummary = (partyId: number) => {

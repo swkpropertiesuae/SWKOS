@@ -1,6 +1,6 @@
-import { getSetting } from '../settings'
-import { http } from '../integrations/log'
-import { inDemo } from '../db'
+import { getSetting } from '../settings';
+import { http } from '../integrations/log';
+import { inDemo } from '../db';
 
 export interface Preset { key: string; label: string; base: string; model: string; keyRequired: boolean; free: string; notes: string }
 export const PRESETS: Preset[] = [

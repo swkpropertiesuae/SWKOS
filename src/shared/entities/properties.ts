@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT, U, E, PH, J } from '../dsl'
+import { T,TA,I,N,M,P,B,S,R,D,U,E,PH,J } from '../dsl'
 
 const UAE_STATES = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Ras Al Khaimah', 'Fujairah']
 const PROPERTY_TYPES = ['Apartment', 'Villa', 'Townhouse', 'Studio', 'Penthouse', 'Duplex', 'Loft', 'Bungalow', 'Compound', 'Bulk']

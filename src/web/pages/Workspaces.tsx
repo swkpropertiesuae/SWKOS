@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Link, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowUpRight, LayoutDashboard, Search, User, CircleHelp, Calculator, BookOpen, Languages, ExternalLink, Power } from 'lucide-react'
+import { Link,useOutletContext,useParams } from 'react-router-dom'
+import { ArrowLeft,ArrowUpRight,LayoutDashboard,Search,User,CircleHelp,BookOpen,Languages,ExternalLink,Power } from 'lucide-react'
 import type { NavGroup } from '@shared/types'
 import { useMeta } from '../lib/meta'
 import { iconByName } from '../lib/icons'
-import { tr, lang, setLang } from '../lib/i18n'
-import { Empty, PageHeader } from '../ui/kit'
+import { tr,lang,setLang } from '../lib/i18n'
+import { Empty,PageHeader } from '../ui/kit'
 
 // Group icon keys are stable across languages and permission-filtered item lists.
 export const workspaceId = (g: NavGroup) => g.icon.toLowerCase()

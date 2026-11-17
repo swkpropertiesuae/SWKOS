@@ -1,10 +1,10 @@
 import nodemailer from 'nodemailer'
-import { q, currentDb } from './db'
-import { mailAccounts, ready, senderAccount, smtpTransport, verifyAccount } from './mail-accounts'
-import { getSetting, loadSettings } from './settings'
-import { nowIso, safeJson } from './util'
+import { q,currentDb } from './db'
+import { mailAccounts,ready,senderAccount,smtpTransport,verifyAccount } from './mail-accounts'
+import { getSetting,loadSettings } from './settings'
+import { nowIso,safeJson } from './util'
 import { inDemo } from './db'
-import { http, logIntegration } from './integrations/log'
+import { http,logIntegration } from './integrations/log'
 
 export interface MailAttachment { filename: string; contentBase64: string; contentType?: string }
 export interface MailInput { from?: string; to: string; cc?: string; subject: string; body: string; link_entity?: string; link_id?: number; userId?: number | null; attachments?: MailAttachment[] }

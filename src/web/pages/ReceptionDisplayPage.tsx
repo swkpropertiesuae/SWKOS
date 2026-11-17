@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect,useState } from 'react'
 import QRCode from 'qrcode'
 import { QrCode } from 'lucide-react'
 import { get } from '../lib/api'
-import { PageHeader, ErrorBox } from '../ui/kit'
+import { PageHeader,ErrorBox } from '../ui/kit'
 
 /** Full-screen code for the reception monitor. A new code appears every 30 seconds, so a screenshot is useless after about 90 seconds. */
 export function ReceptionDisplayPage() {

@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from 'react'
+import { createContext,useCallback,useContext,useEffect,useId,useRef,useState,type ReactNode,type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { X, ChevronDown, Loader2, Inbox, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X,ChevronDown,Loader2,Inbox,ChevronLeft,ChevronRight } from 'lucide-react'
 import { cls } from '../lib/format'
 import { statusTone } from '../lib/status'
 
@@ -124,7 +124,7 @@ export function PageHeader({ title, subtitle, actions, back, icon }: { title: Re
   return (
     <div className="page-header flex items-start gap-3 flex-wrap mb-4">
       {back}
-      {icon && <div className="w-10 h-10 rounded-xl bg-mint text-fold grid place-items-center flex-none">{icon}</div>}
+      {icon && <div className="swk-hdr-icon grid place-items-center flex-none">{icon}</div>}
       <div className="min-w-0 flex-1"><h1 className="text-[22px] font-extrabold m-0 break-words">{title}</h1>{subtitle && <div className="text-sm text-muted mt-0.5">{subtitle}</div>}</div>
       <div className="flex items-center gap-2 flex-wrap">{actions}</div>
     </div>

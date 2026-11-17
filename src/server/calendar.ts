@@ -1,8 +1,8 @@
 import { HttpError } from './util'
 import { ENTITIES } from '../shared/entities'
-import type { CalendarCategory, CalendarEvent } from '../shared/calendar'
+import type { CalendarCategory,CalendarEvent } from '../shared/calendar'
 import { CALENDAR_CATEGORIES } from '../shared/calendar'
-import { can, getRecord, listRecords, type Ctx } from './engine'
+import { can,getRecord,listRecords,type Ctx } from './engine'
 
 const categoryFor: Record<string, CalendarCategory> = { jobs: 'sales', documents: 'sales', crm: 'activities', projects: 'work', finance: 'finance', sales: 'sales', hr: 'people', compliance: 'compliance', properties: 'properties', leases: 'leases' }
 const specialTypes: Record<string, string> = { 'jobs.target_close': 'Target Close', 'jobs.deal_date': 'Deal Date', 'invoices.due_date': 'Invoice due', 'bills.due_date': 'Bill due', 'quotations.valid_until': 'Quote expiry', 'contracts.end_date': 'Contract end', 'tasks.due_date': 'Task', 'leave_requests.from_date': 'Leave', 'viewings.scheduled_at': 'Viewing', 'handovers.scheduled_at': 'Handover', 'leases.start_date': 'Lease Start', 'leases.end_date': 'Lease End', 'leases.notice_deadline': 'Rent notice deadline', 'properties.permit_expiry': 'Trakheesi permit expiry', 'dld_filings.due_date': 'DLD filing due', 'dld_filings.expiry_date': 'DLD filing expiry', 'aml_reports.filing_due': 'goAML report due', 'maintenance.scheduled_at': 'Maintenance', 'inspections.scheduled_at': 'Inspection' }

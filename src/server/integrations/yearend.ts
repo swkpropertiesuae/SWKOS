@@ -1,8 +1,8 @@
 import { q } from '../db'
-import { bad, r2, todayStr, nowLocal } from '../util'
-import { getSetting, setSettings } from '../settings'
-import { accountByRole, postJournal } from '../domain/accounting'
-import { getDef, insertRow, SYSTEM_CTX, audit, type Ctx } from '../engine'
+import { bad,r2,todayStr,nowLocal } from '../util'
+import { getSetting,setSettings } from '../settings'
+import { accountByRole,postJournal } from '../domain/accounting'
+import { getDef,insertRow,SYSTEM_CTX,audit,type Ctx } from '../engine'
 
 /** Close income & expense accounts into retained earnings at year end. */
 export function yearEndPreview(year: number, entityId?: number | null) {

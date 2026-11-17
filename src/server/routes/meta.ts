@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
-import { ENTITY_LIST, NAV, MODULE_DEFS } from '../../shared/entities'
-import { can, customFieldsFor } from '../engine'
+import { ENTITY_LIST,NAV,MODULE_DEFS } from '../../shared/entities'
+import { can,customFieldsFor } from '../engine'
 import { publicSettings } from '../settings'
 import { ACTIONS } from '../../shared/types'
 import { q } from '../db'

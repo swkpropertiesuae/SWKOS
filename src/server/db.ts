@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import zlib from 'node:zlib'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { config, dirs, ensureDirs } from './config'
+import { config,dirs,ensureDirs } from './config'
 import { PgConn } from './pgbridge'
 
 ensureDirs()

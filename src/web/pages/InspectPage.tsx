@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect,useRef,useState } from 'react'
+import { useParams,Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ClipboardCheck, Camera, Check } from 'lucide-react'
-import { get, put, post } from '../lib/api'
+import { ClipboardCheck,Camera,Check } from 'lucide-react'
+import { get,put,post } from '../lib/api'
 import { enqueue } from '../lib/offlineQueue'
 import { useToast } from '../lib/toast'
-import { PageHeader, Loading, ErrorBox, Empty } from '../ui/kit'
+import { PageHeader,Loading,ErrorBox,Empty } from '../ui/kit'
 import { cls } from '../lib/format'
 
 type Item = { name: string; state: 'ok' | 'issue' | 'na' | ''; note: string; photos: string[] }

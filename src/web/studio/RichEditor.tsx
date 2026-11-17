@@ -1,7 +1,7 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Eraser, Heading1, Heading2, Italic, Link2, List, ListOrdered, Minus, Redo2, SeparatorHorizontal, Table2, Underline, Undo2, IndentIncrease, IndentDecrease, PenLine, Plus, Trash2, BookmarkPlus } from 'lucide-react'
-import { looksLikeHtml, markPlaceholders, markdownToHtml } from '@shared/studio-html'
-import { pasteHtml, safeHtml } from './safe-html'
+import { forwardRef,useCallback,useEffect,useImperativeHandle,useRef,useState } from 'react'
+import { AlignCenter,AlignJustify,AlignLeft,AlignRight,Bold,Eraser,Italic,Link2,List,ListOrdered,Minus,Redo2,SeparatorHorizontal,Table2,Underline,Undo2,IndentIncrease,IndentDecrease,PenLine,Plus,Trash2,BookmarkPlus } from 'lucide-react'
+import { looksLikeHtml,markPlaceholders,markdownToHtml } from '@shared/studio-html'
+import { pasteHtml,safeHtml } from './safe-html'
 
 export interface RichEditorHandle {
   /** HTML of the current text selection (empty when nothing is selected). */

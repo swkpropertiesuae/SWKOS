@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, M, B, S, R, D, DT } from '../dsl'
+import { T,TA,I,M,B,S,R,D,DT } from '../dsl'
 
 export const ITEM_TYPES = [
   'Trade licence', 'Commercial register', 'Chamber of Commerce membership', 'Real estate broker registration (RERA)', 'Office registration (ORN)', 'Property management licence',

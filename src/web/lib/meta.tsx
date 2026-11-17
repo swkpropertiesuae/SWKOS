@@ -1,7 +1,7 @@
-import { tr, lang } from './i18n'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { EntityDef, FieldDef, NavGroup, Action } from '@shared/types'
-import { isRestrictedStaffUser, RESTRICTED_STAFF_PERMISSIONS } from '@shared/swk-staff-access'
+import { tr,lang } from './i18n'
+import { createContext,useCallback,useContext,useEffect,useMemo,useState,type ReactNode } from 'react'
+import type { EntityDef,FieldDef,NavGroup,Action } from '@shared/types'
+import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS } from '@shared/swk-staff-access'
 import { get } from './api'
 
 export interface MetaEntity extends EntityDef { customFieldDefs: FieldDef[] }

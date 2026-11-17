@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'motion/react'
-import { Bell, Search, Plus, Check, ChevronDown, ChevronRight, LogOut, UserRound, LifeBuoy, LayoutGrid, Languages, Download, RefreshCw, ArrowLeft, PanelLeftClose, PanelLeftOpen, Smartphone, QrCode, Sparkles, Camera, BookOpen, Menu } from 'lucide-react'
+import { useEffect,useMemo,useState,type ReactNode } from 'react'
+import { Link,NavLink,Outlet,useLocation,useNavigate } from 'react-router-dom'
+import { useQuery,useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence,motion } from 'motion/react'
+import { Bell,Search,Plus,Check,ChevronDown,ChevronRight,LogOut,UserRound,LifeBuoy,LayoutGrid,Languages,Download,RefreshCw,ArrowLeft,PanelLeftClose,PanelLeftOpen,QrCode,Sparkles,Camera,BookOpen,Menu } from 'lucide-react'
 import { useMeta } from '../lib/meta'
-import { get, post } from '../lib/api'
-import { cls, fmtIsoStamp } from '../lib/format'
-import { Modal, useClickOutside } from '../ui/kit'
-import { applyUpdate, isIosBrowser, promptInstall, usePwa } from '../lib/pwa'
+import { get,post } from '../lib/api'
+import { cls,fmtIsoStamp } from '../lib/format'
+import { Modal,useClickOutside } from '../ui/kit'
+import { applyUpdate,isIosBrowser,promptInstall,usePwa } from '../lib/pwa'
 import { useToast } from '../lib/toast'
 import { CommandPalette } from './CommandPalette'
-import { APP_META, QUICK_CREATE, findNav, rememberVisit } from '../swk/nav'
-import { canAccessSwkAdminLogic, canPrintReceptionQr, isRestrictedStaffUser, isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { LiveNotifications } from './LiveNotifications'
+import { APP_META,QUICK_CREATE,findNav,rememberVisit } from '../swk/nav'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 
 /** Live Dubai time (Gulf Standard Time). */
 function DubaiClock() {
@@ -203,6 +204,7 @@ export function Shell() {
           </button>
         </nav>
       </div>
+      <LiveNotifications />
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>
         <div className="grid gap-4 text-sm">

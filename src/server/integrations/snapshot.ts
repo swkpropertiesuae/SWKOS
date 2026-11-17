@@ -1,5 +1,5 @@
 import { q } from '../db'
-import { addDays, todayStr, r2 } from '../util'
+import { addDays,todayStr,r2 } from '../util'
 
 const n = (sql: string, ...a: any[]) => Number(q.val<number>(sql, ...a) ?? 0)
 const aed = (c: number) => r2(c / 100)

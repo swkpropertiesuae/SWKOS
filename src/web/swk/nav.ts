@@ -1,13 +1,12 @@
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard, LineChart, KanbanSquare, CalendarDays, Sparkles, Building2, Home, Rocket, Map, Landmark as DevIcon, Megaphone,
-  UserPlus, Users, Target, PhoneCall, MessageCircle, Mail, FilePen, CalendarCheck, HandCoins, FileSignature, FileCheck, ShieldCheck,
-  KeyRound, CalendarClock, Wallet, ReceiptText, Wrench, ClipboardCheck, DoorOpen, UserRoundCog, FileBarChart, Percent, Receipt, FileInput,
-  Banknote, Scale, BadgeCheck, ScrollText, FileStack, Trophy, IdCard, Clock, Plane, Calculator, FileCode2, BarChart3, Settings,
-  ShieldHalf, History, Plug, DatabaseBackup, Building, Gavel, Layers, ShieldAlert, CheckCheck, MapPinned, Briefcase, Star, PackageCheck,
-  Smartphone, QrCode, Trash2, BookOpen,
-} from 'lucide-react'
-import { canAccessSwkAdminLogic, isRestrictedStaffUser, isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rocket,Map,Landmark as DevIcon,Megaphone,
+UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
+KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
+Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen
+} from 'lucide-react';
+import { canAccessSwkAdminLogic,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }

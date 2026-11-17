@@ -1,10 +1,19 @@
 import { q } from './db'
 import { nowIso } from './util'
+import { EventEmitter } from 'node:events'
+
+/** Pushes each new notification to the signed-in person's open pages the moment it is saved. */
+export const liveBus = new EventEmitter()
+liveBus.setMaxListeners(0)
 
 export function notify(userId: number | null | undefined, title: string, body = '', link = '', kind = 'info', dedupe?: string) {
   if (!userId) return
   try {
-    q.run(`INSERT INTO notifications(user_id, kind, title, body, link, created_at, dedupe_key) VALUES (?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`, userId, kind, title, body, link, nowIso(), dedupe ?? null)
+    const r = q.run(`INSERT INTO notifications(user_id, kind, title, body, link, created_at, dedupe_key) VALUES (?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`, userId, kind, title, body, link, nowIso(), dedupe ?? null)
+    if ((r as any)?.changes !== 0) {
+      const row = q.get(`SELECT id, kind, title, body, link, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 1`, userId)
+      if (row) liveBus.emit('u:' + userId, row)
+    }
   } catch { /* never fail business logic for a notification */ }
 }
 export function notifyRole(permModule: string, title: string, body = '', link = '', kind = 'approval', dedupe?: string) {

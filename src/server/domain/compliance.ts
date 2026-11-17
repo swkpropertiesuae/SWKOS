@@ -1,8 +1,8 @@
 import { q } from '../db'
 import { getSetting } from '../settings'
-import { addDays, bad, daysBetween, nowIso, todayStr } from '../util'
-import { notify, notifyLeadership, notifyRole } from '../notify'
-import type { Hooks, HookArgs } from '../hooks'
+import { addDays,bad,daysBetween,nowIso,todayStr } from '../util'
+import { notify,notifyLeadership,notifyRole } from '../notify'
+import type { Hooks,HookArgs } from '../hooks'
 
 export interface Check { key: string; label: string; status: 'ok' | 'warn' | 'fail' | 'info'; detail: string; link?: string }
 export interface Finding { rule: string; severity: 'Warning' | 'Blocker'; message: string }

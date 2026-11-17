@@ -1,5 +1,5 @@
-import { Worker, MessageChannel, receiveMessageOnPort, type MessagePort } from 'node:worker_threads'
-import { createRequire } from 'node:module'
+import { Worker,MessageChannel,receiveMessageOnPort,type MessagePort } from 'node:worker_threads';
+import { createRequire } from 'node:module';
 
 /**
  * Synchronous PostgreSQL access for the synchronous data layer.

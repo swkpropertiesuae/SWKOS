@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo,useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { AlertTriangle, BadgeCheck, BellRing, CalendarClock, Crown, FileCheck2, GraduationCap, Medal, PauseCircle, Plus, Send, Trophy, Users, Wallet } from 'lucide-react'
-import { aed, AnimatedNumber, Bar, Card, EmptyState, ModuleHeader, Pill, ProgressRing, Reveal, Segmented, StatTile, SWK, num, pct } from '../../swk/ui'
-import { Avatar, daysUntil, fmtD, INK, MUTED, toDate, useRows, type Row } from './brokerage/common'
+import { AlertTriangle,BadgeCheck,BellRing,CalendarClock,Crown,FileCheck2,GraduationCap,Medal,PauseCircle,Plus,Send,Trophy,Users,Wallet } from 'lucide-react'
+import { aed,AnimatedNumber,Bar,Card,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,Segmented,StatTile,SWK,num,pct } from '../../swk/ui'
+import { Avatar,daysUntil,fmtD,INK,MUTED,toDate,useRows,type Row } from './brokerage/common'
 import { api } from '../../lib/api'
 
 type Agent = {
@@ -182,7 +182,7 @@ export default function AgentsPage() {
                         {place === 1 && <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 2.6 }}><Crown size={22} color={SWK.champ} /></motion.div>}
                         <Avatar name={a.name} size={place === 1 ? 64 : 52} ring={col} />
                         <div className="mt-2 text-white font-semibold text-[13px] leading-tight">{a.name}</div>
-                        <div className="text-[12px] font-display" style={{ color: SWK.champ }}>{aed(a.gci, { compact: true })}</div>
+                        <div className="text-[12px] font-display" style={{ color: '#a9bbff' }}>{aed(a.gci, { compact: true })}</div>
                       </motion.div>
                       <motion.div className="w-full rounded-t-2xl grid place-items-start justify-center pt-3 font-display font-semibold text-[28px]"
                         style={{ background: `linear-gradient(180deg, ${col}, rgba(255,255,255,.06))`, color: INK }}

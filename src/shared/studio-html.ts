@@ -1,5 +1,5 @@
 // Helpers shared by the Document Studio server and web app. Pure string functions – no DOM needed.
-import { normalizeSwkCompanyName, normalizeSwkWebsitesText } from './corporate-footer'
+import { normalizeSwkCompanyName,normalizeSwkWebsitesText } from './corporate-footer';
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 

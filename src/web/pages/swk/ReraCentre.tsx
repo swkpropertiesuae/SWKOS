@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo,useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery,useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowUpRight, BadgeCheck, CheckCircle2, FileCheck, FileSignature, Gavel, IdCard, Lock, Plus, Scale, ShieldCheck,
+ArrowUpRight,BadgeCheck,CheckCircle2,FileCheck,FileSignature,Gavel,IdCard,Lock,Plus,Scale,ShieldCheck,
 } from 'lucide-react'
-import { get, put } from '../../lib/api'
+import { get,put } from '../../lib/api'
 import { fmtDate } from '../../lib/format'
 import {
-  Bar, Card, EmptyState, ModuleHeader, Pill, ProgressRing, Reveal, SWK, Segmented, StatTile, aed,
+Bar,Card,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,SWK,Segmented,StatTile,aed,
 } from '../../swk/ui'
-import { RERA_FORMS, UAE } from '../../swk/uae'
+import { RERA_FORMS,UAE } from '../../swk/uae'
 
 type TabKey = 'overview' | 'permits' | 'aml' | 'forms'
 

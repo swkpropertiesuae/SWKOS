@@ -1,10 +1,8 @@
-import crypto from 'node:crypto'
 import { q } from '../db'
-import { bad, r2, nowLocal, todayStr } from '../util'
-import { createRecord, getDef, getRecord, insertRow, patchRecord, nextSeq, type Ctx, type Rec } from '../engine'
-import { fxRate, BASE } from './accounting'
+import { bad,r2,nowLocal,todayStr } from '../util'
+import { createRecord,getDef,getRecord,insertRow,patchRecord,type Ctx,type Rec } from '../engine'
+import { fxRate,BASE } from './accounting'
 import { notify } from '../notify'
-import { getSetting } from '../settings'
 
 const vatPct = (id: number | null | undefined) => (id ? q.val<number>(`SELECT rate FROM vat_codes WHERE id = ?`, id) ?? 0 : 0)
 

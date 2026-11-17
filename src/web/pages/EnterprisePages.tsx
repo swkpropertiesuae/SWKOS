@@ -1,7 +1,7 @@
-import {Link} from 'react-router-dom'
-import {useQuery} from '@tanstack/react-query'
-import {get} from '../lib/api'
-import {PageHeader,Loading,ErrorBox} from '../ui/kit'
+import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { get } from '../lib/api'
+import { PageHeader,Loading,ErrorBox } from '../ui/kit'
 export function CompetencyPage(){
  const q=useQuery({queryKey:['competency-matrix'],queryFn:()=>get<any>('/api/competency/matrix')})
  if(q.error)return <ErrorBox error={q.error}/>;if(!q.data)return <Loading/>

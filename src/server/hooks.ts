@@ -1,24 +1,24 @@
-import { docTemplateHooks, studioDocumentHooks } from './domain/studio'
+import { docTemplateHooks,studioDocumentHooks } from './domain/studio'
 import {
-  knowledgeHooks, qualificationHooks, skillRuleHooks,
-  dailyReportHooks, inventorySubmissionHooks, developerRequestHooks,
-  transactionHooks, communicationHooks, commissionEntitlementHooks,
+knowledgeHooks,qualificationHooks,skillRuleHooks,
+dailyReportHooks,inventorySubmissionHooks,developerRequestHooks,
+transactionHooks,communicationHooks,commissionEntitlementHooks,
 } from './domain/enterprise'
-import { slaHooks, workHooks } from './domain/work'
+import { slaHooks,workHooks } from './domain/work'
 import { automationRuleHooks } from './automation'
 import type { EntityDef } from '../shared/types'
-import { can, type Ctx, type Rec } from './engine'
+import { can,type Ctx,type Rec } from './engine'
 import { q } from './db'
-import { bad, forbidden } from './util'
+import { bad,forbidden } from './util'
 import { jobHooks } from './domain/jobs'
-import { sequenceHooks, enrolmentHooks, draftHooks, esignHooks } from './domain/followups'
-import { growthLeadHooks, mortgageHooks, paymentPlanHooks, holdbackHooks } from './domain/growth'
-import { unitHoldHooks, commercialTermsHooks, assignmentHooks } from './domain/commercial'
-import { quoteHooks, partyHooks, leadHooks, opportunityHooks, contractHooks } from './domain/sales'
-import { invoiceHooks, billHooks, receiptHooks, paymentHooks, journalHooks, expenseHooks, bankTxnHooks } from './domain/finance'
-import { leaseHooks, salesContractHooks, agentCommissionHooks, dealWithdrawalHooks, dldFilingHooks, kycCheckHooks, amlReportHooks } from './domain/uae'
-import { withCompliance, COMPLIANCE_KEYS } from './domain/compliance'
-import { userHooks, roleHooks, branchHooks, taskHooks, ticketHooks, leaveHooks, attendanceHooks, payslipHooks, poHooks, currencyHooks, activityHooks, apiKeyHooks, attachmentHooks, employeeHooks } from './domain/misc'
+import { sequenceHooks,enrolmentHooks,draftHooks,esignHooks } from './domain/followups'
+import { growthLeadHooks,mortgageHooks,paymentPlanHooks,holdbackHooks } from './domain/growth'
+import { unitHoldHooks,commercialTermsHooks,assignmentHooks } from './domain/commercial'
+import { quoteHooks,partyHooks,leadHooks,opportunityHooks,contractHooks } from './domain/sales'
+import { invoiceHooks,billHooks,receiptHooks,paymentHooks,journalHooks,expenseHooks,bankTxnHooks } from './domain/finance'
+import { leaseHooks,salesContractHooks,agentCommissionHooks,dealWithdrawalHooks,dldFilingHooks,kycCheckHooks,amlReportHooks } from './domain/uae'
+import { withCompliance,COMPLIANCE_KEYS } from './domain/compliance'
+import { userHooks,roleHooks,branchHooks,taskHooks,ticketHooks,leaveHooks,attendanceHooks,payslipHooks,poHooks,currencyHooks,activityHooks,apiKeyHooks,attachmentHooks,employeeHooks } from './domain/misc'
 
 export interface HookArgs { def: EntityDef; rec: Rec; old: Rec | null; children: Record<string, Rec[]>; isNew: boolean; ctx: Ctx }
 export interface DeleteArgs { def: EntityDef; rec: Rec; ctx: Ctx }

@@ -2,23 +2,23 @@
  * Market Pulse — DLD Daily Transactions, 24-Area Stock-Market Intelligence,
  * Site-Visit Area Companion (15-Year Outlook + Closing Keywords), Real Estate News & Live Mortgage Calculator.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'motion/react'
+import { useQuery,useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence,motion } from 'motion/react'
 import {
-  Area, AreaChart, Bar as RBar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine, ResponsiveContainer,
-  Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
+Area,AreaChart,Bar as RBar,BarChart,CartesianGrid,Cell,LabelList,ReferenceLine,ResponsiveContainer,
+Scatter,ScatterChart,Tooltip,XAxis,YAxis,ZAxis,
 } from 'recharts'
 import {
-  Activity, ArrowUpRight, Building2, Calculator, Check, Compass, Copy, Flame, Gauge, GraduationCap, Hospital,
-  Landmark, LineChart as LineIc, MapPin, Newspaper, Percent, RefreshCw, Sparkles, Train, TrendingUp, X,
+Activity,ArrowUpRight,Building2,Calculator,Check,Copy,Flame,Gauge,GraduationCap,Hospital,
+Landmark,LineChart as LineIc,MapPin,Newspaper,Percent,RefreshCw,Sparkles,Train,TrendingUp,X
 } from 'lucide-react'
-import { get, post } from '../../lib/api'
+import { get,post } from '../../lib/api'
 import { cls } from '../../lib/format'
 import { useToast } from '../../lib/toast'
-import { AnimatedNumber, Card, CHART, DeltaChip, EmptyState, ModuleHeader, PhotoCard, Pill, ProgressRing, Reveal, RevealItem, Segmented, StatTile, SWK, aed, num, pct } from '../../swk/ui'
-import { COMMUNITIES, QUARTERS, communityByName, mortgagePlan, type Community, type Residency } from '../../swk/uae'
+import { AnimatedNumber,Card,CHART,DeltaChip,EmptyState,ModuleHeader,PhotoCard,Pill,ProgressRing,Reveal,RevealItem,Segmented,StatTile,SWK,aed,num,pct } from '../../swk/ui'
+import { COMMUNITIES,QUARTERS,communityByName,mortgagePlan,type Community,type Residency } from '../../swk/uae'
 
 type Prop = { id: number; title?: string; address?: string; community_id?: string; community?: string; price?: number; list_price?: number; area_sqft?: number; price_per_sqft?: number; status?: string; property_type?: string; bedrooms?: number; building_name?: string; _labels?: Record<string, string>; _title?: string }
 type Metric = 'ppsf' | 'yield' | 'tx'
@@ -166,7 +166,7 @@ export default function MarketPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Left 5 cols: Stock Ticker Card + 15-Year Forecast */}
               <div className="lg:col-span-5 space-y-4">
-                <div className="rounded-2xl p-4 text-white border border-[#3461e8]/25" style={{ background: 'linear-gradient(135deg, #0f1b33 0%, #0f1b33 100%)' }}>
+                <div className="rounded-2xl p-4 text-white border border-[#2d58dc]/25" style={{ background: 'linear-gradient(135deg, #0f1b33 0%, #0f1b33 100%)' }}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-[11px] uppercase tracking-widest text-[#dbe4ff] font-bold">{companionArea.ticker} · {companionArea.segment} Index</div>
@@ -475,7 +475,7 @@ export default function MarketPage() {
             const ours = props.filter(p => matchCommunity(p)?.id === c.id).length
             return (
               <motion.button key={c.id} type="button" onClick={() => { setOpen(c); if (c.code) setCompanionCode(c.code) }} whileTap={{ scale: 0.98 }}
-                className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#3461e8]/50"
+                className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2d58dc]/50"
                 aria-label={`Open ${c.name} market detail`}>
                 <PhotoCard src={c.image} title={`${c.name} (${c.ticker ?? c.code})`}
                   subtitle={`${aed(c.ppsf)}/sq ft · ${pct(c.yieldPct)} gross · SC AED ${c.serviceCharge}/sq ft`}
@@ -567,7 +567,7 @@ function TrendCard() {
             const on = sel.includes(c.id)
             return (
               <motion.button key={c.id} type="button" layout onClick={() => toggle(c.id)} aria-pressed={on} whileTap={{ scale: 0.95 }}
-                className={cls('inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11.5px] font-semibold border transition-colors', on ? 'text-white' : 'text-ink bg-white border-[#e7e8e6] hover:border-[#3461e8]')}
+                className={cls('inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11.5px] font-semibold border transition-colors', on ? 'text-white' : 'text-ink bg-white border-[#e7e8e6] hover:border-[#2d58dc]')}
                 style={on ? { background: colorOf(c.id), borderColor: colorOf(c.id) } : undefined}>
                 {on ? <Check size={12} /> : <span className="w-2 h-2 rounded-full" style={{ background: colorOf(c.id) }} />}{c.name}
               </motion.button>
