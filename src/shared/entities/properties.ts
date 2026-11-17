@@ -97,7 +97,7 @@ export const properties: EntityDef[] = [
       S('furnishing', 'Furnishing', FURNISHING, { list: true }),
       I('floor_no', 'Floor', { list: true }),
       T('view', 'View', { list: true }),
-      U('floor_plan_url', 'Floor plan link'),
+      U('floor_plan_url', 'Floor plan link'), U('virtual_tour_url', 'Virtual tour link (360° / video)'),
       T('parking_slots', 'Parking', { list: true }),
       B('has_balcony', 'Balcony', { list: true }),
       B('has_maid_room', "Maid's Room"),

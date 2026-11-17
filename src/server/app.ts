@@ -29,6 +29,7 @@ const PUBLIC = [/^\/api\/demo\/status$/, /^\/api\/health$/, /^\/api\/auth\/login
 const PORTAL_OK = [
   /^\/api\/auth\//, /^\/api\/meta$/, /^\/api\/dashboard$/, /^\/api\/notifications(\/read)?$/, /^\/api\/calendar(\/context)?$/, /^\/api\/tags$/, /^\/api\/search\/(jobs|global)$/,
   /^\/api\/e\/[a-z_]+(\/\d+|\/lookup)?$/, /^\/api\/print\/[a-z_]+\/\d+\/parties$/, /^\/api\/pdf\/(status|[a-z_]+\/\d+)$/, /^\/api\/files\/\d+\/download$/, /^\/api\/finance\/statement\/\d+$/, /^\/api\/jobs\/\d+\/tracking-token$/,
+  /^\/api\/portal\/maintenance(\/\d+\/(vendor-update|landlord-decision|feedback))?$/,
 ]
 const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-password', '/api/auth/logout', '/api/auth/sessions', '/api/auth/login-history'])
 

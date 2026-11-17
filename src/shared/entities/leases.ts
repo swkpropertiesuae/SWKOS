@@ -173,6 +173,7 @@ export const leases: EntityDef[] = [
       TA('resolution', 'Resolution', { span: 3 }),
       TA('tenant_feedback', 'Tenant Feedback'),
       B('requires_approval', 'Requires Approval', { default: false }),
+      S('landlord_approval', 'Landlord approval', ['Not needed', 'Awaiting', 'Approved', 'Declined'], { default: 'Not needed', list: true }),
       R('approved_by_id', 'Approved By', 'users'),
       DT('approved_at', 'Approved At'),
       J('media', 'Photos / Docs', { heavy: true, hidden: true }),

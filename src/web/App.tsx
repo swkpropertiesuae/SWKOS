@@ -24,6 +24,7 @@ import { IntegrationsPage } from './pages/IntegrationsPage'
 import { AiPage } from './pages/AiPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
 import { ChatPage } from './pages/ChatPage'
+import { PortalPage } from './pages/PortalPage'
 import { SmartSearchPage } from './pages/SmartSearchPage'
 import { BankImportPage, YearEndPage, WpsPage } from './pages/FinanceExtras'
 import { PrintPage } from './print/PrintPage'
@@ -163,6 +164,7 @@ export default function App() {
           <Route path="/work/handovers" element={<Guard module="projects"><HandoverPage /></Guard>} />
           <Route path="/email" element={<EmailPage />} />
           <Route path="/smart-search" element={<Guard module="properties"><SmartSearchPage /></Guard>} />
+          <Route path="/portal" element={<PortalPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reports" element={<Guard module="reports"><ReportsPage /></Guard>} />

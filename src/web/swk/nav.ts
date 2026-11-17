@@ -36,6 +36,7 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Listing Studio', to: '/listings', icon: Megaphone, module: 'properties', desc: 'Step 5 · Publish to portals' },
     { label: 'Off-Plan', to: '/offplan', icon: Rocket, module: 'properties', desc: 'New developer launches' },
     { label: 'Inspection Templates', to: '/e/inspection_templates', icon: Building2, module: 'leases', desc: 'Move-in / move-out checklists' },
+    { label: 'Service Portal', to: '/portal', icon: Building2, module: 'leases', desc: 'Tenant · landlord · vendor view' },
     { label: 'Smart Search', to: '/smart-search', icon: Rocket, module: 'properties', desc: 'Ask in plain words + buyer shortlist' },
     { label: 'Payment Plans', to: '/e/payment_plan_templates', icon: Rocket, module: 'properties', desc: 'Off-plan instalment plans' },
     { label: 'Communities', to: '/e/communities', icon: Map, module: 'masters', desc: 'Dubai areas & districts' },

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bell, Search, Plus, Check, ChevronDown, ChevronRight, LogOut, UserRound, LifeBuoy, LayoutGrid, Languages, Download, RefreshCw, ArrowLeft, PanelLeftClose, PanelLeftOpen, Smartphone, QrCode, Sparkles, Camera, BookOpen } from 'lucide-react'
+import { Bell, Search, Plus, Check, ChevronDown, ChevronRight, LogOut, UserRound, LifeBuoy, LayoutGrid, Languages, Download, RefreshCw, ArrowLeft, PanelLeftClose, PanelLeftOpen, Smartphone, QrCode, Sparkles, Camera, BookOpen, Sun, Moon } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get, post } from '../lib/api'
 import { cls, fmtIsoStamp } from '../lib/format'
@@ -22,6 +22,11 @@ function DubaiClock() {
   return <span className="swk-chip swk-hide-md" title="Gulf Standard Time (GST, UTC+4)"><span className="dot" />Dubai <b>{time}</b><span className="text-muted">· {day}</span></span>
 }
 
+function ThemeToggle() {
+  const [dark, setDark] = useState(() => { try { return localStorage.getItem('swk-theme') === 'dark' } catch { return false } })
+  useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; try { localStorage.setItem('swk-theme', dark ? 'dark' : 'light') } catch { /* private mode */ } }, [dark])
+  return <button className="swk-tbtn" onClick={() => setDark(d => !d)} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
+}
 function NotificationBell() {
   const nav = useNavigate(), qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -199,6 +204,7 @@ export function Shell() {
           <div className="flex-1" />
           <DubaiClock />
           <button className="swk-tbtn" onClick={() => setPalette(true)} aria-label="Search (Ctrl K)"><Search size={17} /></button>
+          <ThemeToggle />
           <NotificationBell />
           <QuickCreate />
           <div className="relative" ref={userRef}>

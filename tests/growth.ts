@@ -115,6 +115,32 @@ async function main() {
   await a.put('/api/admin/settings', { meta_enabled: true, meta_verify_token: 'tok123' })
   ok('Meta verify handshake works', (await (await fetch('http://127.0.0.1:8080/api/public/meta-leads?hub.mode=subscribe&hub.verify_token=tok123&hub.challenge=abc')).text()) === 'abc')
   ok('Meta verify rejects a wrong token', (await fetch('http://127.0.0.1:8080/api/public/meta-leads?hub.mode=subscribe&hub.verify_token=no&hub.challenge=abc')).status === 403)
+
+  sec('Forms B and I, HubSpot import')
+  const tpls = (await a.get('/api/e/doc_templates?pageSize=200')).data.rows
+  ok('Form B and Form I demo templates exist', ['LC-FORM-B', 'LC-FORM-I'].every(c => tpls.some((t: any) => t.code === c)))
+  const hs = await a.post('/api/e/leads/import', { csv: 'First Name,Last Name,Email,Phone Number\nAmal,Rashid,amal.r@example.com,+971501119999\n' })
+  ok('HubSpot-style columns import as a lead', hs.data.created === 1, hs.data)
+
+  sec('Service portal')
+  const prop = await a.post('/api/e/properties', { title: 'Portal Tower', property_type: 'Apartment', department_division: 'Leasing' })
+  const unit = prop.status < 300 ? await a.post('/api/e/units', { unit_no: 'P-101', property_id: prop.data.id }) : prop
+  const vendor = (await a.post('/api/e/parties', { name: 'Fix-It Vendor', is_vendor: true, status: 'Active' })).data.id
+  const landlord = (await a.post('/api/e/parties', { name: 'Portal Landlord', is_landlord: true, status: 'Active' })).data.id
+  const wo = await a.post('/api/e/maintenance', { unit_id: unit.data.id, category: 'Plumbing', description: 'Leaking tap', vendor_id: vendor, landlord_id: landlord })
+  ok('work order created', wo.status < 300, [prop.status, unit.status, wo])
+  const portalRole = roles.find((r: any) => r.name === 'Customer Portal').id
+  const mkPortal = async (email: string, party_id: number) => { await a.post('/api/e/users', { name: email, email, password: 'Manager-Pass-2026!', role_id: portalRole, party_id, active: true }); const p = new Api(); await p.login(email, 'Manager-Pass-2026!'); return p }
+  const v = await mkPortal('vendor@a.example', vendor), l = await mkPortal('landlord@a.example', landlord), other = await mkPortal('other@a.example', (await a.post('/api/e/parties', { name: 'Other Co', is_vendor: true, status: 'Active' })).data.id)
+  ok('vendor sees the work order', (await v.get('/api/e/maintenance')).data.rows?.some((r: any) => r.id === wo.data.id))
+  ok('unrelated party sees nothing', ((await other.get('/api/e/maintenance')).data.rows ?? []).length === 0)
+  { const x = await other.post(`/api/portal/maintenance/${wo.data.id}/vendor-update`, { status: 'Completed' }); ok('unrelated party cannot update it', x.status === 400, x) }
+  ok('vendor sends a quote', (await v.post(`/api/portal/maintenance/${wo.data.id}/vendor-update`, { quote: 450 })).status === 200)
+  ok('vendor cannot complete before landlord approval', (await v.post(`/api/portal/maintenance/${wo.data.id}/vendor-update`, { status: 'Completed' })).status === 400)
+  ok('vendor cannot approve own quote', (await v.post(`/api/portal/maintenance/${wo.data.id}/landlord-decision`, { approve: true })).status === 400)
+  ok('landlord approves', (await l.post(`/api/portal/maintenance/${wo.data.id}/landlord-decision`, { approve: true })).status === 200)
+  ok('vendor completes', (await v.post(`/api/portal/maintenance/${wo.data.id}/vendor-update`, { status: 'Completed' })).status === 200)
+  ok('staff-only chat is closed to portal users', (await v.get('/api/chat/threads')).status === 403)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

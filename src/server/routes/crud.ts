@@ -109,7 +109,13 @@ export default async function (app: FastifyInstance) {
     const rows = parseCsv(String(b.csv ?? ''))
     if (rows.length < 2) throw bad('The file has no data rows')
     if (rows.length > 5001) throw bad('Import is limited to 5,000 rows at a time')
-    const head = rows[0].map(h => h.trim().toLowerCase())
+    // HubSpot, Excel and portal exports use their own column names; translate the common ones, and join first + last name.
+    const ALIAS: Record<string, string> = { 'phone number': 'phone', 'mobile phone number': 'phone', 'mobile number': 'phone', 'company name': 'company', 'email address': 'email' }
+    const fi = rows[0].findIndex(h => /^first name$/i.test(h.trim())), li = rows[0].findIndex(h => /^last name$/i.test(h.trim()))
+    if (def.key === 'leads' && fi >= 0 && !rows[0].some(h => /^(company|company \/ client name)$/i.test(h.trim()))) {
+      rows[0].push('company'); for (let r = 1; r < rows.length; r++) rows[r].push([rows[r][fi], li >= 0 ? rows[r][li] : ''].filter(Boolean).join(' ').trim())
+    }
+    const head = rows[0].map(h => { const k = h.trim().toLowerCase(); return ALIAS[k] ?? k })
     const fields = def.fields.filter(f => !f.secret && !f.virtual && !f.readonly && !f.computed && f.type !== 'json')
     const map = head.map(h => fields.find(f => f.label.toLowerCase() === h || f.name.toLowerCase() === h))
     if (!map.some(Boolean)) throw bad('No columns matched. Download the template to see the expected column names.')

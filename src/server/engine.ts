@@ -47,7 +47,7 @@ export function assertCan(ctx: Ctx, module: string, action: Action) {
 
 // Portal users (customers) are restricted to their own company's records.
 const SCOPE: Record<string, string> = {
-  jobs: 'client_id', invoices: 'party_id', quotations: 'customer_id', receipts: 'party_id', parties: 'id', tickets: 'customer_id', contracts: 'party_id', owner_statements: 'owner_id', mandates: 'owner_id', leases: 'tenant_id', transactions: 'buyer_id',
+  jobs: 'client_id', invoices: 'party_id', quotations: 'customer_id', receipts: 'party_id', parties: 'id', tickets: 'customer_id', contracts: 'party_id', owner_statements: 'owner_id', mandates: 'owner_id', leases: 'tenant_id', transactions: 'buyer_id', maintenance: 'tenant_id|landlord_id|vendor_id',
 }
 
 // ------------------------------------------------------------------ custom fields
@@ -274,7 +274,7 @@ function buildWhere(def: EntityDef, p: ListParams, ctx: Ctx): { where: string; a
   if (bs) { cl.push('(branch_id = ? OR branch_id IS NULL)'); args.push(bs) }
   const scope = ctx.user?.party_id && !ctx.system ? SCOPE[def.key] : undefined
   if (ctx.user?.party_id && !ctx.system) {
-    if (!scope) { cl.push('1=0') } else { cl.push(`${qi(scope)} = ?`); args.push(ctx.user.party_id) }
+    if (!scope) { cl.push('1=0') } else { const cols = scope.split('|'); cl.push('(' + cols.map(c => `${qi(c)} = ?`).join(' OR ') + ')'); args.push(...cols.map(() => ctx.user!.party_id)) }
   }
   if(!ctx.system&&def.key==='work_items'){
     const sources=Object.values(ENTITIES).filter(e=>can(ctx.user,e.module,'view')).map(e=>e.key)
@@ -402,7 +402,7 @@ export function getRecord(def: EntityDef, id: number, ctx: Ctx, opts: { children
   const bs = branchScope(def, ctx)
   if (bs && row.branch_id && row.branch_id !== bs) throw notFound()
   const scope = ctx.user?.party_id && !ctx.system ? SCOPE[def.key] : undefined
-  if (ctx.user?.party_id && !ctx.system && (!scope || row[scope] !== ctx.user.party_id)) throw notFound()
+  if (ctx.user?.party_id && !ctx.system && (!scope || !scope.split('|').some(c => row[c] === ctx.user!.party_id))) throw notFound()
   if(!ctx.system&&def.key==='work_items'&&!can(ctx.user,getDef(row.source_entity).module,'view'))throw notFound()
   if(!ctx.system&&def.key==='shift_handovers'&&!can(ctx.user,'admin','view')&&row.from_user_id!==ctx.user?.id&&row.to_user_id!==ctx.user?.id)throw notFound()
   if (!ctx.system && ctx.user && !ctx.user.party_id && ctx.user.permissions !== '*' && !can(ctx.user, 'admin', 'view') && !can(ctx.user, 'sales_director', 'view') && /broker|advisor|consultant/i.test(ctx.user.role_name || '')) {

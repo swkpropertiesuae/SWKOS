@@ -78,3 +78,13 @@ tbody tr { transition: background .12s; } tbody tr:hover { background: var(--hov
 .swk-app-tile:hover { border-color: var(--ember); transform: translateY(-2px); box-shadow: 0 12px 28px -14px rgba(255,91,31,.4); }
 .swk-sidebar-link-ic { background: var(--soft); color: var(--ink); border-color: var(--line); }
 .swk-sidebar-link.active .swk-sidebar-link-ic { background: var(--ember); color: #fff; border-color: var(--ember); }
+
+/* dark mode: surfaces that the older styles hard-code as white */
+:root[data-theme='dark'] .swk-app-tile, :root[data-theme='dark'] .swk-card, :root[data-theme='dark'] .card { background: var(--card); border-color: var(--line); }
+:root[data-theme='dark'] input, :root[data-theme='dark'] select, :root[data-theme='dark'] textarea { background: var(--card); color: var(--ink); border-color: var(--line-strong); }
+:root[data-theme='dark'] input::placeholder { color: var(--muted); }
+:root[data-theme='dark'] .swk-app-sidebar { background: #050505; }
+:root[data-theme='dark'] .swk-app-tile .swk-app-name, :root[data-theme='dark'] .swk-app-tile b { color: var(--ink); }
+:root[data-theme='dark'] .btn.outline, :root[data-theme='dark'] .swk-btn { background: var(--card); color: var(--ink); border-color: var(--line-strong); }
+:root[data-theme='dark'] .swk-menu a, :root[data-theme='dark'] .swk-menu button.item { color: var(--ink); }
+:root[data-theme='dark'] .swk-launch-search { background: var(--card); border-color: var(--line-strong); } :root[data-theme='dark'] .swk-launch-search input { background: transparent; border: 0; }
