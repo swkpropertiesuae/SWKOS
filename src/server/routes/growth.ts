@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import crypto from 'node:crypto'
 import { q } from '../db'
-import { bad, nowIso, fromCents } from '../util'
+import { bad,nowIso,fromCents } from '../util'
 import { getSetting } from '../settings'
 import { z } from 'zod'
-import { createRecord, getDef, patchRecord, SYSTEM_CTX } from '../engine'
-import { idOf, need } from './helpers'
-import { sendDraft, hashToken } from '../domain/followups'
+import { createRecord,getDef,patchRecord,SYSTEM_CTX } from '../engine'
+import { idOf,need } from './helpers'
+import { sendDraft,hashToken } from '../domain/followups'
 
 const esc = (v: any) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 const money = (cents: number) => 'AED ' + Math.round(fromCents(cents)).toLocaleString('en-US')

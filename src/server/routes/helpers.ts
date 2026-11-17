@@ -1,8 +1,8 @@
 import type { FastifyRequest } from 'fastify'
 import { can } from '../engine'
-import { bad, forbidden } from '../util'
+import { bad,forbidden } from '../util'
 import type { Action } from '../../shared/types'
-import type { Filter, ListParams } from '../engine'
+import type { Filter,ListParams } from '../engine'
 
 /**
  * Module permission check for custom endpoints. Customer-portal users hold a few module permissions (for example finance → view) so that the generic,

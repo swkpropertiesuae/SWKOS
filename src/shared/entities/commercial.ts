@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, N, M, B, S, R, D, DT } from '../dsl'
+import { T,TA,N,M,B,S,R,D,DT } from '../dsl'
 
 export const commercial: EntityDef[] = [
   // Off-plan reservation holds: at most one Active hold per unit, later requests queue behind it.

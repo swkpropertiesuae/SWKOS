@@ -1,11 +1,11 @@
 import { AIWriting } from '../components/AIWriting'
 import { useToast } from '../lib/toast'
-import { useEffect, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Mail, Send, Settings, RefreshCw } from 'lucide-react'
-import { get, post, put, del } from '../lib/api'
+import { useEffect,useState } from 'react'
+import { useQuery,useQueryClient } from '@tanstack/react-query'
+import { Mail,Send,Settings,RefreshCw } from 'lucide-react'
+import { get,post,put,del } from '../lib/api'
 import { useMeta } from '../lib/meta'
-import { Badge, ErrorBox, Loading, useDialogs } from '../ui/kit'
+import { Badge,ErrorBox,Loading,useDialogs } from '../ui/kit'
 import { fmtDateTime } from '../lib/format'
 
 type Sender = { email: string; ready: boolean }

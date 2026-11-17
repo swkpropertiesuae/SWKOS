@@ -1,7 +1,7 @@
-import { q, columnsOf } from '../db'
+import { q,columnsOf } from '../db'
 import { ENTITY_LIST } from '../../shared/entities'
-import { getSetting, setSettings } from '../settings'
-import { http, logIntegration } from './log'
+import { getSetting,setSettings } from '../settings'
+import { http,logIntegration } from './log'
 
 export const supabaseConfigured = () => !!getSetting('supabase_url') && !!getSetting('supabase_service_key')
 const base = () => String(getSetting('supabase_url')).replace(/\/+$/, '')

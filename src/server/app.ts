@@ -1,6 +1,6 @@
 import path from 'node:path'
 import fs from 'node:fs'
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify'
+import Fastify,{ type FastifyInstance,type FastifyRequest } from 'fastify'
 import cookie from '@fastify/cookie'
 import helmet from '@fastify/helmet'
 import multipart from '@fastify/multipart'
@@ -8,11 +8,11 @@ import rateLimit from '@fastify/rate-limit'
 import fstatic from '@fastify/static'
 import { config } from './config'
 import { HttpError } from './util'
-import { userFromToken, userFromApiKey } from './auth'
-import { enterDb, q } from './db'
+import { userFromToken,userFromApiKey } from './auth'
+import { enterDb,q } from './db'
 import { can } from './engine'
 import { getDemoDb } from './demo/workspace'
-import type { Ctx, SessionUser } from './engine'
+import type { Ctx,SessionUser } from './engine'
 import { ZodError } from 'zod'
 
 declare module 'fastify' {
@@ -27,7 +27,7 @@ const PUBLIC = [/^\/api\/demo\/status$/, /^\/api\/health$/, /^\/api\/auth\/login
  * Any other endpoint is company-wide (bank balances, rate cards, other customers' open items) and stays closed to portal accounts, whatever module permissions the portal role carries.
  */
 const PORTAL_OK = [
-  /^\/api\/auth\//, /^\/api\/meta$/, /^\/api\/dashboard$/, /^\/api\/notifications(\/read)?$/, /^\/api\/calendar(\/context)?$/, /^\/api\/tags$/, /^\/api\/search\/(jobs|global)$/,
+  /^\/api\/auth\//, /^\/api\/meta$/, /^\/api\/dashboard$/, /^\/api\/notifications(\/read|\/stream)?$/, /^\/api\/calendar(\/context)?$/, /^\/api\/tags$/, /^\/api\/search\/(jobs|global)$/,
   /^\/api\/e\/[a-z_]+(\/\d+|\/lookup)?$/, /^\/api\/print\/[a-z_]+\/\d+\/parties$/, /^\/api\/pdf\/(status|[a-z_]+\/\d+)$/, /^\/api\/files\/\d+\/download$/, /^\/api\/finance\/statement\/\d+$/, /^\/api\/jobs\/\d+\/tracking-token$/,
   /^\/api\/portal\/maintenance(\/\d+\/(vendor-update|landlord-decision|feedback))?$/,
 ]

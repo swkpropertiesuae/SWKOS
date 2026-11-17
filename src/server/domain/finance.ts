@@ -1,12 +1,12 @@
 import crypto from 'node:crypto'
-import { q, qi } from '../db'
+import { q,qi } from '../db'
 import type { Hooks } from '../hooks'
-import { bad, r2, toCents, todayStr, addDays, fromCents, nowLocal } from '../util'
-import { getDef, getRecord, patchRecord, formatNumber, nextSeq, can, SYSTEM_CTX, type Ctx, type Rec } from '../engine'
-import { accountByRole, accountByCode, assertNotLocked, BASE, fxRate, postJournal, reverseJournal, type JLine } from './accounting'
+import { bad,r2,toCents,todayStr,addDays,fromCents,nowLocal } from '../util'
+import { getDef,getRecord,patchRecord,formatNumber,nextSeq,can,SYSTEM_CTX,type Ctx,type Rec } from '../engine'
+import { accountByRole,accountByCode,assertNotLocked,BASE,fxRate,postJournal,reverseJournal,type JLine } from './accounting'
 import { getSetting } from '../settings'
-import { notify, notifyRole } from '../notify'
-import { checkInvoicePosting, checkBillPosting } from './compliance'
+import { notify,notifyRole } from '../notify'
+import { checkInvoicePosting,checkBillPosting } from './compliance'
 import { ENTITIES } from '../../shared/entities'
 
 const vatPct = (id: number | null | undefined) => (id ? q.val<number>(`SELECT rate FROM vat_codes WHERE id = ?`, id) ?? 0 : 0)

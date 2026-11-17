@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
-import { db, q, qi, tx, isPg, columnsOf, tableExists } from './db'
+import { db,q,qi,tx,isPg,columnsOf,tableExists } from './db'
 import { ENTITY_LIST } from '../shared/entities'
-import type { EntityDef, FieldDef } from '../shared/types'
+import type { EntityDef,FieldDef } from '../shared/types'
 import { nowIso } from './util'
 
 const MIGRATIONS: { id: string; sql: string }[] = [

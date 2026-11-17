@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { chromium, type Browser } from 'playwright-core'
+import { chromium,type Browser } from 'playwright-core'
 import { corporatePdfFooter } from '../../shared/corporate-footer'
 import { publicSettings } from '../settings'
 import { config } from '../config'

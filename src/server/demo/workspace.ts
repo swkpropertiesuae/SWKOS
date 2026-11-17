@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type Database from 'better-sqlite3'
-import { dirs, config } from '../config'
-import { openDatabase, runInDb, isPg, PgDatabase, renameSchema } from '../db'
+import { dirs,config } from '../config'
+import { openDatabase,runInDb,isPg,PgDatabase,renameSchema } from '../db'
 
 let demoDb: Database.Database | null = null
 export const getDemoDb = () => demoDb

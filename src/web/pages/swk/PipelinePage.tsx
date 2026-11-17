@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { useCallback,useEffect,useMemo,useState,type DragEvent,type KeyboardEvent } from 'react'
+import { Link,useSearchParams } from 'react-router-dom'
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence,LayoutGroup,motion } from 'motion/react'
 import {
-  ArrowRight, ArrowUpRight, Building2, CalendarClock, CheckCircle2, Circle, Clock, Eye, FileSignature,
-  GripVertical, HandCoins, KanbanSquare, Megaphone, Percent, RefreshCw, Scale, ShieldCheck, Target, Timer, Trophy, Users, Wallet,
+ArrowRight,ArrowUpRight,Building2,CalendarClock,CheckCircle2,Circle,Clock,Eye,FileSignature,
+GripVertical,HandCoins,KanbanSquare,Megaphone,Percent,RefreshCw,Scale,ShieldCheck,Target,Timer,Trophy,Users,Wallet,
 } from 'lucide-react'
-import { get, post, put } from '../../lib/api'
+import { get,post,put } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
-import { aed, Card, ModuleHeader, Pill, ProgressRing, Reveal, Segmented, StatTile, SWK, pct } from '../../swk/ui'
-import { RERA_FORMS, UAE } from '../../swk/uae'
-import { Avatar, cleanLabel, daysSince, daysUntil, Drawer, fmtD, MUTED, INK, SearchBox, useRows, type Row } from './brokerage/common'
+import { aed,Card,ModuleHeader,Pill,ProgressRing,Reveal,Segmented,StatTile,SWK,pct } from '../../swk/ui'
+import { RERA_FORMS,UAE } from '../../swk/uae'
+import { Avatar,cleanLabel,daysSince,daysUntil,Drawer,fmtD,MUTED,INK,SearchBox,useRows,type Row } from './brokerage/common'
 
 // ------------------------------------------------------------------ stages (UAE sales journey)
 const STAGES = [
@@ -254,7 +254,7 @@ export default function PipelinePage() {
               className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#0f1b33] text-white border-[#1f3fb0] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#1f3fb0]'}`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#1f3fb0] text-[#0f1b33]' : 'bg-[#fafaff] text-muted'}`}>
+                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#1f3fb0] text-white' : 'bg-[#fafaff] text-muted'}`}>
                   {tab.badge}
                 </span>
                 <span className="font-mono font-extrabold text-lg">{tab.count} deals</span>

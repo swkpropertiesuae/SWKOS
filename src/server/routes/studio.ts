@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { q, tx, inDemo } from '../db'
-import { audit, createRecord, getDef, getRecord, can } from '../engine'
-import { bad, forbidden, fromCents, todayStr } from '../util'
-import { getSetting, publicSettings } from '../settings'
-import { idOf, need } from './helpers'
-import { aiConfigured, chat } from '../ai/llm'
-import { cleanStudioHtml, htmlToText } from '../studio/sanitize'
-import { looksLikeHtml, markPlaceholders, markdownToHtml, mergeCompanyTokens, presentDocumentHtml } from '../../shared/studio-html'
+import { q,tx,inDemo } from '../db'
+import { audit,createRecord,getDef,getRecord,can } from '../engine'
+import { bad,forbidden,fromCents,todayStr } from '../util'
+import { publicSettings } from '../settings'
+import { idOf,need } from './helpers'
+import { aiConfigured,chat } from '../ai/llm'
+import { cleanStudioHtml,htmlToText } from '../studio/sanitize'
+import { looksLikeHtml,markPlaceholders,markdownToHtml,mergeCompanyTokens,presentDocumentHtml } from '../../shared/studio-html'
 
 const company = () => publicSettings()
 const staffOnly = (req: any) => { if (req.user?.party_id) throw forbidden('Customer accounts cannot use the Document Studio') }

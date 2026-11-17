@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT, U, E, PH, J } from '../dsl'
+import { T,TA,I,N,M,P,B,S,R,D,DT,J } from '../dsl'
 
 const LEASE_STATUS = ['Draft', 'Pending Ejari', 'Ejari Registered', 'Active', 'Notice Served', 'Expiring', 'Expired', 'Terminated', 'Renewed', 'Disputed']
 const LEASE_TYPES = ['Residential', 'Commercial', 'Retail', 'Office', 'Industrial', 'Warehouse', 'Showroom', 'Land', 'Staff Accommodation']

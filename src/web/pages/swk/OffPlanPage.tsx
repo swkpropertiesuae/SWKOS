@@ -3,15 +3,15 @@
  * Driven 100% by live off-plan properties (/api/e/properties where is_off_plan=true or status='Off-Plan'),
  * units (/api/e/units) and registered developers (/api/e/developers).
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
-import { ArrowUpRight, Building, CalendarClock, ChevronLeft, ChevronRight, Copy, HandCoins, Landmark, Lock, MessageCircle, Plus, Rocket, ShieldCheck, Trophy } from 'lucide-react'
+import { AnimatePresence,motion } from 'motion/react'
+import { ArrowUpRight,Building,CalendarClock,ChevronLeft,ChevronRight,Copy,HandCoins,Landmark,Lock,MessageCircle,Plus,Rocket,ShieldCheck,Trophy } from 'lucide-react'
 import { get } from '../../lib/api'
-import { Bar, Card, EmptyState, Field, ModuleHeader, Pill, ProgressRing, Reveal, StatTile, SWK, aed, num } from '../../swk/ui'
-import { COMMUNITIES, DEVELOPERS, UAE, communityByName, paymentPlan } from '../../swk/uae'
-import { copyText, Drawer, SelectField, useToasts } from './kit3/parts'
+import { Bar,Card,EmptyState,Field,ModuleHeader,Pill,ProgressRing,Reveal,StatTile,SWK,aed,num } from '../../swk/ui'
+import { COMMUNITIES,DEVELOPERS,UAE,communityByName,paymentPlan } from '../../swk/uae'
+import { copyText,Drawer,SelectField,useToasts } from './kit3/parts'
 
 type Plan = { booking: number; construction: number; handover: number; post: number }
 type Project = {

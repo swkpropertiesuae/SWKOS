@@ -1,4 +1,4 @@
-import { post } from './api'
+import { post } from './api';
 
 /** Field work (inspections, viewings, visits, snags, activities) saved while offline waits here and is replayed once the device is online.
  *  shortcut: stored as plain JSON in localStorage, not encrypted and not resumable for files; move to IndexedDB + WebCrypto if devices are shared. */

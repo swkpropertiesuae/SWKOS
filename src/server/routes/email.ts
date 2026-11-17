@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { can, audit, getDef } from '../engine'
-import { q, inDemo, tx } from '../db'
-import { bad, forbidden } from '../util'
+import { can,audit,getDef } from '../engine'
+import { q,inDemo,tx } from '../db'
+import { bad,forbidden } from '../util'
 import { setSettings } from '../settings'
-import { COMPANY_SENDERS, mailAccounts, ready, senderAccount, verifyAccount } from '../mail-accounts'
+import { COMPANY_SENDERS,mailAccounts,ready,senderAccount,verifyAccount } from '../mail-accounts'
 import { queueEmail } from '../mailer'
-import { need, idOf } from './helpers'
+import { need,idOf } from './helpers'
 
 const accountSchema = z.object({ email: z.string().email().refine(x => COMPANY_SENDERS.includes(x)), provider: z.enum(['smtp', 'resend']), host: z.string().max(255).default(''), port: z.number().int().refine(x => [465, 587].includes(x)), secure: z.boolean(), user: z.string().max(255).default(''), password: z.string().max(4096).default(''), apiKey: z.string().max(4096).default(''), enabled: z.boolean() })
 const recipients = z.string().max(2000).refine(s => { const addresses = s.split(/[;,]/).map(x => x.trim()).filter(Boolean); return addresses.length > 0 && addresses.length <= 20 && addresses.every(x => z.string().email().safeParse(x).success) }, 'Enter valid email addresses, separated by commas')

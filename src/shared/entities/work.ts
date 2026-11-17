@@ -1,5 +1,5 @@
-import type {EntityDef} from '../types'
-import {T,TA,I,R,S,B,DT,J} from '../dsl'
+import type { EntityDef } from '../types'
+import { T,TA,I,R,S,B,J } from '../dsl'
 export const WORK_SOURCES=['jobs','quotations','invoices','bills','tickets','leads','tasks']
 export const work:EntityDef[]=[
  {key:'sla_policies',label:'SLA policy',plural:'SLA policies',module:'admin',icon:'Timer',title:['name'],fields:[

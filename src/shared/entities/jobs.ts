@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT, J } from '../dsl'
+import { T,TA,M,P,B,S,R,D } from '../dsl'
 
 const DEAL_STATUS = ['Lead', 'Active Mandate', 'Offer Submitted', 'Offer Accepted', 'Contract Signed', 'DLD Submitted', 'DLD Approved', 'Title Deed Issued', 'Completed', 'Cancelled', 'On Hold']
 const DEAL_TYPES = ['Sale', 'Lease', 'Off-Plan Sale', 'Commercial Lease', 'Staff Housing', 'Bulk Deal']

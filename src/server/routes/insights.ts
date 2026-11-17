@@ -1,14 +1,15 @@
 import crypto from 'node:crypto'
 import { loadUser } from '../auth'
+import { liveBus } from '../notify'
 import { calendarEvents } from '../calendar'
 import { config } from '../config'
 import type { FastifyInstance } from 'fastify'
 import { q } from '../db'
 import { ENTITIES } from '../../shared/entities'
-import { can, getDef, listRecords, labelsFor } from '../engine'
-import { addDays, bad, daysBetween, fromCents, monthStart, r2, todayStr, toCsv, nowIso } from '../util'
-import { idOf, need } from './helpers'
-import { reportCatalog, runReport, REPORTS } from '../reports'
+import { can,getDef,listRecords,labelsFor } from '../engine'
+import { addDays,bad,daysBetween,fromCents,monthStart,r2,todayStr,toCsv,nowIso } from '../util'
+import { idOf,need } from './helpers'
+import { reportCatalog,runReport,REPORTS } from '../reports'
 import { getSetting } from '../settings'
 import { z } from 'zod'
 
@@ -18,6 +19,21 @@ const m = fromCents
 
 export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------------ dashboard
+  // Seven-day activity counts and the latest changes the person is allowed to see, for the live dashboard panels.
+  app.get('/api/dashboard/pulse', async (req) => {
+    need(req, 'dashboard', 'view')
+    const days = Array.from({ length: 7 }, (_, i) => addDays(todayStr(), i - 6))
+    const series = (sql: string) => { const m = new Map(q.all<{ d: string; n: number }>(sql, days[0], addDays(days[6], 1)).map(r => [String(r.d), Number(r.n)])); return days.map(d => ({ day: d, n: m.get(d) ?? 0 })) }
+    const mods = (k: string) => { try { return can(req.user, ENTITIES[k]?.module ?? 'admin', 'view') } catch { return false } }
+    const feed = q.all(`SELECT at, user_name, entity, record_id, record_label, action FROM audit_log WHERE entity NOT IN ('users','roles','audit_events','api_keys','sessions') ORDER BY id DESC LIMIT 60`)
+      .filter(r => mods(r.entity)).slice(0, 12).map(r => ({ at: r.at, who: r.user_name || 'System', action: r.action, entity: ENTITIES[r.entity]?.label ?? r.entity, label: r.record_label || '', link: `/e/${r.entity}/${r.record_id}` }))
+    return {
+      leads: mods('leads') ? series(`SELECT substr(created_at, 1, 10) AS d, COUNT(*) AS n FROM leads WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ? GROUP BY 1`) : null,
+      viewings: mods('viewings') ? series(`SELECT substr(scheduled_at, 1, 10) AS d, COUNT(*) AS n FROM viewings WHERE deleted_at IS NULL AND scheduled_at >= ? AND scheduled_at < ? GROUP BY 1`) : null,
+      calls: mods('activities') ? series(`SELECT substr(start_at, 1, 10) AS d, COUNT(*) AS n FROM activities WHERE deleted_at IS NULL AND type = 'Call' AND start_at >= ? AND start_at < ? GROUP BY 1`) : null,
+      feed,
+    }
+  })
   app.get('/api/dashboard', async (req) => {
     const user = req.user!
     const today = todayStr(), mStart = monthStart(), n = (sql: string, ...a: any[]) => q.val<number>(sql, ...a) ?? 0
@@ -227,6 +243,18 @@ export default async function (app: FastifyInstance) {
   })
 
   // ------------------------------------------------------------------ notifications
+  // Server-sent events: one open connection per page, a message for every new notification, a ping every 20 s so proxies keep it open.
+  app.get('/api/notifications/stream', async (req, reply) => {
+    const uid = req.user!.id
+    reply.hijack()
+    const res = reply.raw
+    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+    res.write('retry: 4000\n\n')
+    const send = (n: any) => { try { res.write(`event: notification\ndata: ${JSON.stringify(n)}\n\n`) } catch { /* closed */ } }
+    liveBus.on('u:' + uid, send)
+    const ping = setInterval(() => { try { res.write(': ping\n\n') } catch { /* closed */ } }, 20_000)
+    req.raw.on('close', () => { clearInterval(ping); liveBus.off('u:' + uid, send) })
+  })
   app.get('/api/notifications', async (req) => {
     const rows = q.all(`SELECT id, kind, title, body, link, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 60`, req.user!.id)
     return { unread: q.val<number>(`SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL`, req.user!.id) ?? 0, rows }

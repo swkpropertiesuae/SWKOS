@@ -1,10 +1,10 @@
-import {useState} from 'react'
-import {Link} from 'react-router-dom'
-import {useQuery} from '@tanstack/react-query'
-import {get,post,put} from '../lib/api'
-import {useMeta} from '../lib/meta'
-import {useToast} from '../lib/toast'
-import {PageHeader,Loading,ErrorBox,useDialogs} from '../ui/kit'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { get,post,put } from '../lib/api'
+import { useMeta } from '../lib/meta'
+import { useToast } from '../lib/toast'
+import { PageHeader,Loading,ErrorBox,useDialogs } from '../ui/kit'
 const active=(s:string)=>['Open','In progress','Waiting'].includes(s)
 const date=(v:string)=>v?new Date(v).toLocaleString():'No deadline'
 export function WorkQueuePage(){

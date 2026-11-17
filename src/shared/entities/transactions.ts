@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT, U, E, PH, J } from '../dsl'
+import { T,TA,N,M,P,B,S,R,D,J } from '../dsl'
 
 const SALES_CONTRACT_STATUS = ['Draft', 'Signed', 'In Escrow', 'DLD Submitted', 'DLD Approved', 'Title Deed Issued', 'Completed', 'Cancelled', 'Disputed']
 const ESCROW_STATUS = ['Opened', 'Funds Received', 'Funds Verified', 'DLD Submitted', 'Title Transfer Pending', 'Title Transferred', 'Funds Released', 'Closed', 'Disputed', 'Cancelled']

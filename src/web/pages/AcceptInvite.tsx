@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { post } from '../lib/api'
+import { useState } from 'react';
+import { post } from '../lib/api';
 
 /** Public page for invitation and password-reset links. With ?token it sets a password; without one it asks for the email to send a reset link to. */
 export function AcceptInvite() {

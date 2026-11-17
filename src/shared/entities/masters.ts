@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, E, PH, S, R, D, U } from '../dsl'
+import { T,I,N,M,P,B,S,R,D } from '../dsl'
 
 export const ACCOUNT_TYPES = ['Asset', 'Liability', 'Equity', 'Income', 'Expense']
 

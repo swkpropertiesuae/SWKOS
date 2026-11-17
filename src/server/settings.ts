@@ -1,11 +1,11 @@
-import { q, currentDb, inDemo } from './db'
-import { nowIso, safeJson } from './util'
-import { config, dirs } from './config'
+import { q,currentDb,inDemo } from './db'
+import { nowIso,safeJson } from './util'
+import { config,dirs } from './config'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { CONNECTOR_FIELDS, CONNECTOR_SECRET_KEYS } from './integrations/connectors'
+import { CONNECTOR_FIELDS,CONNECTOR_SECRET_KEYS } from './integrations/connectors'
 export const SETTING_DEFAULTS: Record<string, any> = {
   ...Object.fromEntries(CONNECTOR_FIELDS.map(f => [f.key, f.type === 'bool' ? false : ''])), lead_sla_minutes: 15, lead_pool_after_minutes: 60,
   company_name: 'SWK Properties LLC',

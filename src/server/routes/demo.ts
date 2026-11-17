@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { inDemo } from '../db'
 import { bad } from '../util'
 import { config } from '../config'
-import { resetDemoWorkspace, getDemoDb } from '../demo/workspace'
+import { resetDemoWorkspace,getDemoDb } from '../demo/workspace'
 
 export default async function (app: FastifyInstance) {
   app.get('/api/demo/status', async () => ({

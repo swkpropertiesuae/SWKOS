@@ -1,12 +1,12 @@
-import {useNavigate} from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { FolderOpen, Upload } from 'lucide-react'
+import { FolderOpen,Upload } from 'lucide-react'
 import { upload } from '../lib/api'
 import { EntityList } from '../components/EntityList'
 import { useToast } from '../lib/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMeta } from '../lib/meta'
-import { PageHeader, Modal } from '../ui/kit'
+import { PageHeader,Modal } from '../ui/kit'
 import { optValue } from '@shared/types'
 
 export function DocumentsPage() {

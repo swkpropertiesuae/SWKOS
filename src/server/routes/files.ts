@@ -4,13 +4,13 @@ import fs from 'node:fs'
 import crypto from 'node:crypto'
 import { pipeline } from 'node:stream/promises'
 import { q } from '../db'
-import { dirs, config } from '../config'
+import { dirs,config } from '../config'
 import { ENTITIES } from '../../shared/entities'
-import { assertCan, getDef, getRecord, insertRow, labelsFor, can } from '../engine'
-import { bad, forbidden, notFound, nowIso, todayStr } from '../util'
+import { assertCan,getDef,getRecord,insertRow,labelsFor,can } from '../engine'
+import { bad,forbidden,notFound,nowIso,todayStr } from '../util'
 import { audit } from '../engine'
 import { idOf } from './helpers'
-import { openStored, persistUpload, removeStored } from '../integrations/storage'
+import { openStored,persistUpload,removeStored } from '../integrations/storage'
 
 const BLOCKED = new Set(['exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'js', 'mjs', 'vbs', 'sh', 'ps1', 'jar', 'dll', 'html', 'htm', 'svg', 'php', 'apk', 'app', 'iso', 'lnk'])
 const INLINE: Record<string, string> = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', txt: 'text/plain; charset=utf-8' }

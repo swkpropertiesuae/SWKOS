@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { Search, CornerDownLeft, type LucideIcon } from 'lucide-react'
+import { Search,CornerDownLeft,type LucideIcon } from 'lucide-react'
 import { get } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { iconByName } from '../lib/icons'
 import { cls } from '../lib/format'
-import { SWK_NAV, QUICK_CREATE } from '../swk/nav'
+import { SWK_NAV,QUICK_CREATE } from '../swk/nav'
 
 type Item = { group: string; label: string; link: string; Icon: LucideIcon; sub: string }
 

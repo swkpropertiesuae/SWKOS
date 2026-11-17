@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT } from '../dsl'
+import { T,TA,I,N,M,P,B,S,R,D,DT } from '../dsl'
 import { ACCOUNT_TYPES } from './masters'
 
 const CUR = ['AED', 'USD', 'EUR', 'GBP', 'SAR', 'INR', 'CNY', 'ZAR', 'USDT']

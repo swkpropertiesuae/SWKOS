@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { createContext,useCallback,useContext,useState,type ReactNode } from 'react';
+import { CheckCircle2,XCircle } from 'lucide-react';
 interface T { id: number; text: string; kind: 'ok' | 'error' }
 const Ctx = createContext<{ ok: (t: string) => void; error: (t: string) => void }>({ ok: () => {}, error: () => {} })
 export const useToast = () => useContext(Ctx)

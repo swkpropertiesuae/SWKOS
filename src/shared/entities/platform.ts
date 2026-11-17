@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, B, E, PH, S, R, DT, D, J, U, N } from '../dsl'
+import { T,TA,I,B,E,PH,S,R,DT,D,J,U,N } from '../dsl'
 
 export const MODULE_DEFS = [
   ['dashboard', 'Dashboard'], ['crm', 'CRM'], ['sales', 'Sales & Listings'], ['properties', 'Properties & Units'],

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { get, post, put } from '../lib/api'
-import { Modal, Loading } from '../ui/kit'
+import { useEffect,useState } from 'react'
+import { get,post } from '../lib/api'
+import { Modal,Loading } from '../ui/kit'
 import { RefSelect } from './RefSelect'
 import { useToast } from '../lib/toast'
-import { fmtMoney, todayIso } from '../lib/format'
+import { fmtMoney,todayIso } from '../lib/format'
 
 /** One-step settlement of a single invoice (receipt) or bill (payment): creates the voucher, allocates and posts it. */
 export function QuickPayDialog({ kind, doc, onClose, onDone }: { kind: 'receipt' | 'payment'; doc: any; onClose: () => void; onDone: () => void }) {

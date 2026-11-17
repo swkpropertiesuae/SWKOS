@@ -1,6 +1,6 @@
 import { AccountCard } from './ui/account-card'
 import { useMemo } from 'react'
-import { useMeta, type MetaEntity } from '../lib/meta'
+import { useMeta,type MetaEntity } from '../lib/meta'
 import { CellValue } from './Fields'
 import { sectionsOf } from './EntityForm'
 import { cls } from '../lib/format'

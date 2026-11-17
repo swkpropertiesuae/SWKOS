@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3'
+import { S3Client,PutObjectCommand,GetObjectCommand,DeleteObjectCommand,HeadBucketCommand } from '@aws-sdk/client-s3'
 import { getSetting } from '../settings'
 import { dirs } from '../config'
 

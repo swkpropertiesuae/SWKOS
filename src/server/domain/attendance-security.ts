@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { q } from '../db'
-import { HttpError, nowIso } from '../util'
-import { getSetting, setSettings } from '../settings'
+import { HttpError,nowIso } from '../util'
+import { getSetting,setSettings } from '../settings'
 import { verifyPassword } from '../auth'
 
 // ---------------------------------------------------------------- encrypted, rotating reception QR payload

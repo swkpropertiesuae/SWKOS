@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Search, FileText } from 'lucide-react'
+import { Search,FileText } from 'lucide-react'
 import { get } from '../lib/api'
 import { useToast } from '../lib/toast'
-import { PageHeader, ErrorBox } from '../ui/kit'
+import { PageHeader,ErrorBox } from '../ui/kit'
 
 type Hit = { id: number; unit_no: string; title: string; bedrooms: number | null; area_sqft: number | null; price_aed: number; sub_community?: string }
 

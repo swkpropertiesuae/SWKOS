@@ -1,6 +1,6 @@
 import { q } from '../db'
-import { getSetting, setSettings } from '../settings'
-import { createRecord, patchRecord, getDef, SYSTEM_CTX } from '../engine'
+import { getSetting,setSettings } from '../settings'
+import { createRecord,patchRecord,getDef,SYSTEM_CTX } from '../engine'
 
 /** Company profile facts. Licence, registration and tax numbers are entered by the administrator, never seeded. */
 export function seedCompanyDocuments() {

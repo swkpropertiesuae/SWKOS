@@ -1,5 +1,5 @@
-import { PRESETS } from '../ai/llm'
-import { CONNECTOR_SECTIONS } from './connectors'
+import { PRESETS } from '../ai/llm';
+import { CONNECTOR_SECTIONS } from './connectors';
 
 export interface CField { key: string; label: string; type: 'text' | 'password' | 'select' | 'bool' | 'number' | 'textarea'; options?: { value: string; label: string }[]; help?: string; placeholder?: string }
 export interface Section { key: string; title: string; icon: string; summary: string; setup?: string; fields: CField[]; test?: boolean; webhooks?: { key: string; label: string; path: string; secret?: boolean }[] }

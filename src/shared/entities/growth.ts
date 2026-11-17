@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT } from '../dsl'
+import { T,TA,I,N,M,P,B,S,R,D,DT } from '../dsl'
 import { LEAD_SOURCES } from './crm'
 
 export const UAE_BANKS = ['Emirates NBD', 'Mashreq', 'First Abu Dhabi Bank', 'Abu Dhabi Commercial Bank', 'Dubai Islamic Bank', 'RAKBANK', 'HSBC', 'Standard Chartered', 'Commercial Bank of Dubai', 'Ajman Bank', 'Other']

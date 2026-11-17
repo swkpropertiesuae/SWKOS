@@ -1,9 +1,9 @@
 /** Server rules for UAE real estate: lease rent caps and notice dates, DLD filings, KYC and goAML records.
  *  Figures and rules are indicative defaults. Confirm against current RERA / DLD / FIU guidance. */
 import type { Hooks } from '../hooks'
-import { bad, todayStr, addDays } from '../util'
+import { bad,todayStr,addDays } from '../util'
 import { getSetting } from '../settings'
-import { noticeDeadline, reraIncrease } from '../../shared/uae-rules'
+import { noticeDeadline,reraIncrease } from '../../shared/uae-rules'
 
 const day = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : '')
 

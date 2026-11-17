@@ -3,28 +3,28 @@
  * Inspired by Property Finder "Expert" quality score, Bayut TruCheck™ and PropSpace syndication.
  * Data: /api/e/properties, /api/e/units, /api/e/mandates (Form A). Portal state & stats are indicative (Sample).
  */
-import { useMemo, useState } from 'react'
-import { permitStatus, permitUsable, type PermitStatus } from '@shared/uae-rules'
+import { useMemo,useState } from 'react'
+import { permitStatus,permitUsable,type PermitStatus } from '@shared/uae-rules'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
-import { Bar as RBar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { AnimatePresence,motion } from 'motion/react'
+import { Bar as RBar,BarChart,CartesianGrid,Legend,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import {
-  AlertTriangle, ArrowUpRight, BadgeCheck, Bath, BedDouble, Camera, CheckCircle2, Clock, Copy, FileSignature, Globe2, LayoutGrid,
-  ListChecks, Maximize2, MessageCircle, QrCode, Rows3, Send, ShieldAlert, ShieldCheck, Sparkles, Wand2, XCircle,
+AlertTriangle,ArrowUpRight,BadgeCheck,Bath,BedDouble,Camera,CheckCircle2,Clock,Copy,FileSignature,Globe2,LayoutGrid,
+ListChecks,Maximize2,MessageCircle,QrCode,Rows3,Send,ShieldAlert,ShieldCheck,Sparkles,Wand2,XCircle,
 } from 'lucide-react'
-import { get, post } from '../../lib/api'
+import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
-import { Card, CHART, EmptyState, ModuleHeader, Pill, ProgressRing, Reveal, RevealItem, Segmented, StatTile, SWK, aed, num } from '../../swk/ui'
-import { communityByName, type Community } from '../../swk/uae'
-import { copyText, daysBetween, Drawer, hash, parseDate, SearchField, SelectField, useToasts } from './kit3/parts'
+import { Card,CHART,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,RevealItem,Segmented,StatTile,SWK,aed,num } from '../../swk/ui'
+import { communityByName,type Community } from '../../swk/uae'
+import { copyText,daysBetween,Drawer,hash,parseDate,SearchField,SelectField,useToasts } from './kit3/parts'
 
 type Row = Record<string, any>
 type List = { rows: Row[]; total: number }
 
 const PHOTOS = ['marina-sky-penthouse-1', 'palm-garden-homes-1', 'hills-estate-golf-mansion-1', 'business-bay-executive-tower-2', 'creek-harbour-waterside-townhouse-1', 'jvc-boulevard-residences-2', 'arabian-ranches-courtyard-villa-2', 'villa-sanctuary-6', 'islands-2-1', 'river-cove-residences-1', 'raw-district-2-3', 'golf-fields-1']
 const PORTALS = [
-  { key: 'pf', name: 'Property Finder', color: '#e8261c' },
+  { key: 'pf', name: 'Property Finder', color: '#d51f16' },
   { key: 'bayut', name: 'Bayut', color: SWK.oasis },
   { key: 'dubizzle', name: 'dubizzle', color: SWK.dune },
   { key: 'web', name: 'SWK website', color: SWK.navy },
@@ -317,7 +317,7 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
       </div>
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
-          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#3461e8] underline-offset-4">{p.title}</Link>
+          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#2d58dc] underline-offset-4">{p.title}</Link>
           <div className="text-[12.5px] text-muted mt-0.5">{l.community?.name ?? p.address ?? 'Dubai'} · {p.property_type}{l.units.length ? ` · ${l.units.length} unit${l.units.length > 1 ? 's' : ''}` : ''}</div>
         </div>
         <div className="flex items-center gap-4 text-[12.5px] text-ink">
@@ -452,7 +452,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl bg-[#0a1322] text-white p-4 border border-[#3461e8]/40 flex flex-col gap-3">
+      <div className="rounded-2xl bg-[#0a1322] text-white p-4 border border-[#2d58dc]/40 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <MessageCircle size={17} className="text-[#4fd39a]" />
@@ -475,7 +475,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
             value={waPhone}
             onChange={e => setWaPhone(e.target.value)}
             placeholder="Recipient WhatsApp (e.g. 0501234567 or +971501234567)"
-            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#3461e8]"
+            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#2d58dc]"
           />
           <button
             type="button"

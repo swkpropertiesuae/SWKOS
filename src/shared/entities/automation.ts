@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, M, B, S, R, D, DT, J } from '../dsl'
+import { T,TA,I,M,B,S,R,D,DT,J } from '../dsl'
 
 export const AGENT_AUTONOMY = ['Ask first (every action needs approval)', 'Auto for internal actions (approve external messages)', 'Autopilot (act, then report)']
 export const AGENT_SCHEDULE = ['Manual only', 'Hourly', 'Daily', 'Weekly (Monday)']

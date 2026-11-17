@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer'
 import { getSetting } from './settings'
 import { inDemo } from './db'
-import { bad, safeJson } from './util'
+import { bad,safeJson } from './util'
 import { http } from './integrations/log'
 
 export const COMPANY_SENDERS = ['sales', 'accounts', 'info', 'contact', 'support'].map(x => `${x}@swkpropertiesuae.com`)

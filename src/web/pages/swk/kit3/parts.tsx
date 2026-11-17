@@ -2,14 +2,14 @@
  * Small shared parts for the Listing Studio, Off-Plan Launches and PDC Vault modules.
  * Drawer (side sheet), toast stack, select/search fields and the "Sample" data pill.
  */
-import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { CheckCircle2, Info, Search, X } from 'lucide-react'
-import { SWK } from '../../../swk/ui'
+import { AnimatePresence,motion } from 'motion/react';
+import { useCallback,useEffect,useRef,useState,type ReactNode } from 'react';
+import { CheckCircle2,Info,Search,X } from 'lucide-react';
+import { SWK } from '../../../swk/ui';
 
 /** Clearly labels indicative / sample data so it is never faked silently. */
 export function SamplePill({ title = 'Indicative sample data — not stored in SWK OS', label = 'Sample' }: { title?: string; label?: string }) {
-  return <span title={title} className="inline-flex items-center gap-1 h-[20px] px-2 rounded-full text-[10.5px] font-semibold uppercase tracking-wider" style={{ background: '#dbe4ff', color: '#1f3fb0', border: '1px dashed #3461e8' }}>{label}</span>
+  return <span title={title} className="inline-flex items-center gap-1 h-[20px] px-2 rounded-full text-[10.5px] font-semibold uppercase tracking-wider" style={{ background: '#dbe4ff', color: '#1f3fb0', border: '1px dashed #2d58dc' }}>{label}</span>
 }
 
 /** Right-hand side sheet with focus handling + Esc to close. */

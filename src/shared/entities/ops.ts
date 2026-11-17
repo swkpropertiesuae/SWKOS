@@ -1,5 +1,5 @@
 import type { EntityDef } from '../types'
-import { T, TA, I, N, M, P, B, S, R, D, DT, J } from '../dsl'
+import { T,TA,M,S,R,D,DT,J } from '../dsl'
 
 export const ops: EntityDef[] = [
   // Property handovers (move-in/move-out)

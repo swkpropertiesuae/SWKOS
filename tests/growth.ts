@@ -211,6 +211,23 @@ async function main() {
   ok('a temporary password cannot check in until it is changed', !!fresh.id && mc.status === 403 && /password/i.test(mc.data.error ?? ''), mc)
   const cleared = await hm.post('/api/swk-ops/attendance-setup', { clear_ips: true })
   ok('clearing the locked network switches check-in off', cleared.data.office_ip_locked === false, cleared.data)
+
+  const pulse = await a.get('/api/dashboard/pulse')
+  ok('the dashboard pulse returns seven days and a feed', pulse.status === 200 && pulse.data.leads?.length === 7 && Array.isArray(pulse.data.feed), pulse.data)
+  ok('portal accounts cannot read the pulse', (await new Api().get('/api/dashboard/pulse')).status === 401)
+
+  sec('Live notifications')
+  const ac = new AbortController()
+  const stream = await fetch(BASE + '/api/notifications/stream', { headers: { cookie: b.cookie, 'x-swk-client': 'web' }, signal: ac.signal })
+  ok('the notification stream opens', stream.status === 200 && /event-stream/.test(stream.headers.get('content-type') ?? ''), stream.status)
+  const reader = stream.body!.getReader(); let got = ''
+  const readLoop = (async () => { try { for (;;) { const { value, done } = await reader.read(); if (done) break; got += new TextDecoder().decode(value) } } catch { /* aborted */ } })()
+  const th2 = await a.post('/api/chat/threads', { user_ids: [u1] })
+  await a.post(`/api/chat/threads/${th2.data.id}/messages`, { body: 'Live ping test' })
+  for (let i = 0; i < 30 && !/Live ping test/.test(got); i++) await new Promise(r => setTimeout(r, 100))
+  ok('a new notification arrives on the open stream within seconds', /event: notification/.test(got) && /Live ping test/.test(got), got.slice(0, 300))
+  ac.abort(); await readLoop
+  ok('the stream needs a sign-in', (await fetch(BASE + '/api/notifications/stream')).status === 401)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

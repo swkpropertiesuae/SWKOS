@@ -1,10 +1,9 @@
 const V = ["view"], VE = ["view", "export"], CRUD = ["view", "create", "edit", "delete", "export"], CE = ["view", "create", "edit", "export"]
 import { q } from '../db'
-import { createRecord, getDef, type Ctx } from '../engine'
+import { createRecord,getDef,type Ctx } from '../engine'
 import { loadUser } from '../auth'
 import { config } from '../config'
-import { addDays, todayStr } from '../util'
-import { postInvoice, postReceipt } from '../domain/finance'
+import { addDays,todayStr } from '../util'
 
 const idBy = (table: string, col: string, v: string) => q.val<number>(`SELECT id FROM ${table} WHERE ${col} = ? AND deleted_at IS NULL`, v)!
 // Starter data must never stop the server from booting: a record that fails validation is logged and skipped.
