@@ -78,15 +78,15 @@ export function Dashboard() {
   return (
     <div className="grid gap-5 max-w-[1680px] mx-auto">
       {/* ------------------------------------------------------------ hero */}
-      <motion.section className="relative overflow-hidden rounded-[26px] text-white" style={{ background: 'linear-gradient(120deg, #0b1a33 0%, #14305c 55%, #1f4b8e 120%)' }}
+      <motion.section className="relative overflow-hidden rounded-[26px] text-white" style={{ background: 'linear-gradient(120deg, #111 0%, #1c1c1c 60%, #3a1d10 125%)' }}
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
         <div className="absolute inset-0 opacity-[.28] bg-cover bg-center mix-blend-luminosity" style={{ backgroundImage: 'url(/media/hero/dubai-skyline-hero.webp)', backgroundPosition: 'center 40%' }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(8,20,42,.95) 0%, rgba(11,26,51,.78) 45%, rgba(11,26,51,.25) 100%)' }} />
-        {!reduce && <motion.div className="absolute -top-24 right-[12%] w-[420px] h-[420px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(201,169,110,.28), transparent 65%)' }} animate={{ x: [0, -30, 0], y: [0, 20, 0] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} />}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(10,10,10,.95) 0%, rgba(20,20,20,.78) 45%, rgba(20,20,20,.25) 100%)' }} />
+        {!reduce && <motion.div className="absolute -top-24 right-[12%] w-[420px] h-[420px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,91,31,.30), transparent 65%)' }} animate={{ x: [0, -30, 0], y: [0, 20, 0] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} />}
         <img src="/brand/skyline-front.svg" alt="" aria-hidden className="absolute bottom-0 left-0 w-full h-[70px] opacity-[.18] pointer-events-none" />
         <div className="relative grid gap-6 lg:grid-cols-[1.4fr_1fr] items-end p-6 sm:p-8">
           <div>
-            <div className="text-[11px] font-semibold tracking-[.26em] uppercase text-[#c9a96e]">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}</div>
+            <div className="text-[11px] font-semibold tracking-[.26em] uppercase text-[#ff8a3d]">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}</div>
             <h1 className="m-0 mt-2 font-display font-medium text-white text-[30px] sm:text-[40px] leading-[1.05]">{greeting()}, <span className="swk-shimmer-text font-semibold">{firstName}</span></h1>
             <p className="mt-3 mb-0 text-[15px] text-[#c7d2e4] max-w-[620px]">{summary || 'Here is what is happening across your listings, deals and leases today.'}</p>
             <div className="flex flex-wrap gap-2 mt-5">

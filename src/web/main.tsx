@@ -1,3 +1,4 @@
+try { document.documentElement.dataset.theme = 'light'; localStorage.removeItem('swk-theme') } catch { /* ignore */ }
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
