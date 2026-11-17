@@ -11,6 +11,7 @@ import { can, type Ctx, type Rec } from './engine'
 import { q } from './db'
 import { bad, forbidden } from './util'
 import { jobHooks } from './domain/jobs'
+import { sequenceHooks, enrolmentHooks, draftHooks, esignHooks } from './domain/followups'
 import { growthLeadHooks, mortgageHooks, paymentPlanHooks, holdbackHooks } from './domain/growth'
 import { unitHoldHooks, commercialTermsHooks, assignmentHooks } from './domain/commercial'
 import { quoteHooks, partyHooks, leadHooks, opportunityHooks, contractHooks } from './domain/sales'
@@ -46,6 +47,7 @@ const registry: Record<string, () => Hooks> = {
   automation_rules: () => automationRuleHooks, sla_policies: () => slaHooks, work_items: () => workHooks,
   jobs: () => jobHooks,
   unit_holds: () => unitHoldHooks, commercial_terms: () => commercialTermsHooks, offplan_assignments: () => assignmentHooks,
+  followup_sequences: () => sequenceHooks, sequence_enrolments: () => enrolmentHooks, message_drafts: () => draftHooks, esign_requests: () => esignHooks,
   mortgage_cases: () => mortgageHooks, payment_plan_templates: () => paymentPlanHooks,
   quotations: () => quoteHooks, parties: () => partyHooks, leads: () => mergeHooks(leadHooks, growthLeadHooks), opportunities: () => opportunityHooks, contracts: () => contractHooks,
   invoices: () => invoiceHooks, bills: () => billHooks, receipts: () => receiptHooks, payments: () => paymentHooks, journal_entries: () => journalHooks,

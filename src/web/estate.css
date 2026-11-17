@@ -1,0 +1,80 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+/* Estate OS skin: ink neutrals, ember accent, Geist type, glass top bar. Loaded last so it re-maps the existing palette variables. */
+:root {
+  --font-sans: 'Geist Variable', 'Geist', system-ui, 'Noto Sans Arabic', sans-serif;
+  --font-display: 'Geist Variable', 'Geist', system-ui, 'Noto Sans Arabic', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, monospace;
+  --ember: #ff5b1f; --blaze: #e8261c; --live: #46e08a; --ocean: #007ea7;
+  --bg: #eef0f2; --card: #ffffff; --ink: #1c1c1c; --body: #3b3b37; --muted: #8a8a83;
+  --line: #e1e3e0; --line-strong: #c6c9c4; --soft: #ecebe4; --hover: #f5f5f2; --focus: #ff5b1f;
+  --emerald: #1c1c1c; --fold: #000000; --navy: #1c1c1c; --midnight: #0d0d0d; --graphite: #1c1c1c;
+  --signal: #e8261c; --dune: #ff5b1f; --oasis: #148a4b;
+  --champ: #ff5b1f; --champ-deep: #c9420f; --champ-soft: #fff0e8;
+  --color-emerald: #1c1c1c; --color-fold: #000; --color-signal: #e8261c; --color-graphite: #1c1c1c; --color-pearl: #eef0f2;
+  --color-ocean: #007ea7; --color-teal: #007ea7; --color-copper: #ff8a3d; --color-champagne: #ffd9c4; --color-champ: #ff5b1f; --color-navy: #1c1c1c;
+  --color-midnight: #0d0d0d; --color-dune: #ff5b1f; --color-oasis: #148a4b; --color-mint: #e5f6ec; --color-sky: #e1f2f9; --color-sand: #ecebe4; --color-gold: #fdf3dc;
+  --ease: cubic-bezier(.2,.7,.2,1);
+}
+:root[data-theme='dark'] {
+  --bg: #000; --card: #0d0d0d; --ink: #f5f5f5; --body: #c9c9c9; --muted: #8a8a8a;
+  --line: #222; --line-strong: #333; --soft: #1a1a1a; --hover: #1a1a1a;
+  --emerald: #f5f5f5; --navy: #f5f5f5; --graphite: #f5f5f5;
+  --champ-soft: rgba(255,91,31,.12);
+}
+body { font-family: var(--font-sans); background: var(--bg); letter-spacing: -.005em; }
+::selection { background: var(--ember); color: #fff; }
+
+/* buttons: dark ink primary, ember for highlight actions */
+.btn, .btn.green, .btn.dark, .btn.blue, .btn.violet, .btn.grey, .btn.teal { background: var(--ink); color: var(--card); border-radius: 10px; font-weight: 550; }
+.btn.red { background: var(--blaze); color: #fff; }
+.btn.orange { background: var(--ember); color: #fff; }
+.btn.outline { background: var(--card); color: var(--ink); border-color: var(--line-strong); }
+.btn.ghost { background: transparent; color: var(--body); }
+:root[data-theme='dark'] .btn.outline { background: var(--card); }
+
+/* top bar: light glass instead of the dark midnight band */
+.swk-top { background: color-mix(in srgb, var(--card) 82%, transparent); backdrop-filter: blur(18px) saturate(1.4); border-bottom: 1px solid var(--line); box-shadow: none; color: var(--ink); }
+.swk-brand, .swk-os-tag { background: transparent; border-color: var(--line); }
+.swk-brand-monogram, .swk-brand-wordmark { filter: none; }
+.swk-apps-btn, .swk-tbtn { background: var(--card); border: 1px solid var(--line); color: var(--ink); }
+.swk-apps-btn:hover, .swk-tbtn:hover { border-color: var(--ember); background: var(--champ-soft); color: var(--ink); }
+.swk-apps-btn.on { background: var(--ember); border-color: var(--ember); color: #fff; }
+.swk-top-title, .swk-top h1, .swk-top b { color: var(--ink); }
+.swk-create { background: var(--ember); color: #fff; border-radius: 10px; }
+.swk-menu { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 64px -16px rgba(20,20,18,.22); }
+.swk-menu a:hover, .swk-menu button.item:hover { background: var(--champ-soft); }
+.swk-menu .ic { background: var(--soft); color: var(--ink); }
+
+/* sidebar */
+.swk-app-sidebar { background: color-mix(in srgb, var(--card) 70%, var(--bg)); border-right: 1px solid var(--line); }
+.swk-sidebar-monogram { background: var(--ink); border: 1px solid var(--ink); color: var(--card); }
+.swk-sidebar-monogram:hover { background: var(--ember); border-color: var(--ember); }
+.swk-sidebar-app-ic, .swk-sidebar-app-ic[class*='tone-'] { background: var(--ink); color: var(--card); --t1: #1c1c1c; --t2: #000; --tc: #fff; }
+.swk-sidebar-link { border-radius: 10px; transition: background .15s var(--ease), color .15s var(--ease), transform .15s var(--ease); }
+.swk-sidebar-link:hover { background: var(--hover); }
+.swk-sidebar-link.active { background: var(--champ-soft); color: var(--champ-deep); box-shadow: inset 2px 0 0 var(--ember); }
+
+/* cards, tables, chips */
+.swk-card, .card { border-radius: 16px; border: 1px solid var(--line); background: var(--card); box-shadow: 0 1px 2px rgba(20,20,18,.04), 0 4px 16px -6px rgba(20,20,18,.08); }
+.swk-eyebrow { color: var(--champ-deep); letter-spacing: .14em; }
+.swk-module-icon { background: var(--ink); color: var(--card); border-radius: 12px; }
+.input, .select, textarea.input { border-radius: 10px; border-color: var(--line-strong); background: var(--card); color: var(--ink); }
+.input:focus, .select:focus { border-color: var(--ember); box-shadow: 0 0 0 3px rgba(255,91,31,.22); outline: none; }
+table th { color: var(--muted); font-weight: 550; letter-spacing: .04em; }
+tbody tr { transition: background .12s; } tbody tr:hover { background: var(--hover); }
+:focus-visible { outline: 3px solid rgba(255,91,31,.45); outline-offset: 2px; }
+
+/* motion: gentle entrance on page content */
+@keyframes eo-rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+.swk-main > * { animation: eo-rise .32s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .swk-main > *, * { animation: none !important; transition: none !important; } }
+
+.swk-os-tag small, .swk-chip { color: var(--body); background: var(--card); border: 1px solid var(--line); }
+.swk-chip b { color: var(--ink); }
+.swk-os-tag b { background: var(--ink); color: var(--card); }
+.swk-app-tile, .swk-app-tile[class*='tone-'] { --t1: #1c1c1c; --t2: #000; --tc: #ff5b1f; border-radius: 16px; }
+.swk-app-tile:hover { border-color: var(--ember); transform: translateY(-2px); box-shadow: 0 12px 28px -14px rgba(255,91,31,.4); }
+.swk-sidebar-link-ic { background: var(--soft); color: var(--ink); border-color: var(--line); }
+.swk-sidebar-link.active .swk-sidebar-link-ic { background: var(--ember); color: #fff; border-color: var(--ember); }

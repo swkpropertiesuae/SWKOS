@@ -23,6 +23,8 @@ import { AcceptInvite } from './pages/AcceptInvite'
 import { IntegrationsPage } from './pages/IntegrationsPage'
 import { AiPage } from './pages/AiPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
+import { ChatPage } from './pages/ChatPage'
+import { SmartSearchPage } from './pages/SmartSearchPage'
 import { BankImportPage, YearEndPage, WpsPage } from './pages/FinanceExtras'
 import { PrintPage } from './print/PrintPage'
 import { StudioHome, StudioEditor } from './pages/StudioPage'
@@ -160,6 +162,8 @@ export default function App() {
           <Route path="/work/queues" element={<Guard module="projects"><WorkQueuePage /></Guard>} />
           <Route path="/work/handovers" element={<Guard module="projects"><HandoverPage /></Guard>} />
           <Route path="/email" element={<EmailPage />} />
+          <Route path="/smart-search" element={<Guard module="properties"><SmartSearchPage /></Guard>} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reports" element={<Guard module="reports"><ReportsPage /></Guard>} />
           <Route path="/finance/statements" element={<Guard module="finance"><Statements /></Guard>} />

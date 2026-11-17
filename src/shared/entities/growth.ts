@@ -88,3 +88,81 @@ export const growth: EntityDef[] = [
     defaultSort: { field: 'period', dir: 'desc' },
   },
 ]
+
+export const growth2: EntityDef[] = [
+  // Messages written by sequences or staff that wait for a second person to approve before anything is sent.
+  {
+    key: 'message_drafts', label: 'Message Draft', plural: 'Message Drafts', module: 'crm', icon: 'MessageCircle',
+    title: ['draft_no', 'to_name'], titleSep: ' – ',
+    numbering: { field: 'draft_no', pattern: 'MSG-{YY}{seq:5}' },
+    panel: true, statusField: 'status',
+    fields: [
+      T('draft_no', 'Draft No.', { readonly: true, list: true, search: true, section: 'Message' }),
+      S('channel', 'Channel', ['WhatsApp', 'Email'], { required: true, default: 'WhatsApp', list: true }),
+      R('lead_id', 'Lead', 'leads', { list: true }),
+      T('to_name', 'To', { required: true, list: true, search: true }),
+      T('to_phone', 'Phone'), T('to_email', 'Email'), T('subject', 'Subject'),
+      TA('body', 'Message', { required: true, span: 3 }),
+      S('status', 'Status', ['Pending approval', 'Approved', 'Sent', 'Rejected', 'Failed'], { default: 'Pending approval', list: true, key: true }),
+      T('source', 'Created by', { readonly: true, list: true }), I('created_by_id', 'Created by id', { readonly: true, hidden: true }),
+      R('approved_by_id', 'Approved by', 'users', { readonly: true }),
+      DT('sent_at', 'Sent', { readonly: true }), TA('error', 'Send error', { readonly: true }),
+    ],
+    defaultSort: { field: 'id', dir: 'desc' },
+  },
+  // Follow-up drip: one step per line as  days after start | channel | message.  Example:  1|WhatsApp|Hi {name}, any questions?
+  {
+    key: 'followup_sequences', label: 'Follow-up Sequence', plural: 'Follow-up Sequences', module: 'crm', icon: 'CalendarClock',
+    title: ['name'], panel: true,
+    fields: [
+      T('name', 'Sequence', { required: true, list: true, search: true, section: 'Sequence' }),
+      B('active', 'Active', { default: true, list: true }),
+      TA('steps', 'Steps (one per line: days|channel|message)', { required: true, span: 3, help: 'Example: 1|WhatsApp|Hi {name}, thanks for your enquiry. Would you like to view the unit?' }),
+      N('enrolled', 'Enrolled leads', { readonly: true, list: true }), N('replied', 'Replied', { readonly: true, list: true }),
+    ],
+    defaultSort: { field: 'id', dir: 'desc' },
+  },
+  {
+    key: 'sequence_enrolments', label: 'Sequence Enrolment', plural: 'Sequence Enrolments', module: 'crm', icon: 'CalendarClock',
+    title: ['lead_name'], panel: true, statusField: 'status',
+    fields: [
+      R('sequence_id', 'Sequence', 'followup_sequences', { required: true, list: true, section: 'Enrolment' }),
+      R('lead_id', 'Lead', 'leads', { required: true, list: true }),
+      T('lead_name', 'Lead', { readonly: true, list: true }),
+      S('status', 'Status', ['Running', 'Replied', 'Finished', 'Stopped'], { default: 'Running', list: true, key: true }),
+      N('next_step', 'Next step (0 = first)', { readonly: true, default: 0 }),
+      DT('next_due', 'Next due', { readonly: true, list: true }),
+      T('started_local', 'Started', { readonly: true, hidden: true }),
+    ],
+    defaultSort: { field: 'id', dir: 'desc' },
+  },
+  // Simple electronic signature: signer opens a private link, types their name, and the time, IP and document hash are recorded.
+  {
+    key: 'esign_requests', label: 'Signature Request', plural: 'Signature Requests', module: 'documents', icon: 'FileSignature',
+    title: ['request_no', 'title'], titleSep: ' – ',
+    numbering: { field: 'request_no', pattern: 'SIG-{YY}{seq:5}' },
+    panel: true, statusField: 'status',
+    fields: [
+      T('request_no', 'Request No.', { readonly: true, list: true, search: true, section: 'Request' }),
+      T('title', 'Document', { required: true, list: true, search: true }),
+      TA('document_text', 'Text to be signed', { required: true, span: 3 }),
+      R('party_id', 'Signer (client)', 'parties', { list: true }),
+      T('signer_name', 'Signer name', { required: true, list: true }), T('signer_email', 'Signer email'),
+      S('status', 'Status', ['Draft', 'Sent', 'Signed', 'Declined', 'Expired'], { default: 'Draft', list: true, key: true }),
+      T('sign_link', 'Signing link', { readonly: true }), T('sign_token_hash', 'Token', { readonly: true, hidden: true }),
+      T('document_hash', 'Document fingerprint (SHA-256)', { readonly: true }),
+      DT('signed_at', 'Signed at', { readonly: true, list: true }), T('signed_name', 'Typed signature', { readonly: true }), T('signed_ip', 'Signer IP', { readonly: true }),
+    ],
+    defaultSort: { field: 'id', dir: 'desc' },
+  },
+  {
+    key: 'inspection_templates', label: 'Inspection Template', plural: 'Inspection Templates', module: 'leases', icon: 'ClipboardCheck',
+    title: ['name'], panel: true,
+    fields: [
+      T('name', 'Template', { required: true, list: true, search: true, section: 'Template' }),
+      S('kind', 'Type', ['Move-in', 'Move-out', 'Periodic', 'Snagging'], { default: 'Move-in', list: true }),
+      TA('items', 'Checklist (one area or item per line)', { required: true, span: 3 }),
+    ],
+    defaultSort: { field: 'id', dir: 'desc' },
+  },
+]

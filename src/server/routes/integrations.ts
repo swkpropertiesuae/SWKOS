@@ -11,6 +11,7 @@ import { forbidden, bad, notFound, nowIso, safeJson, todayStr } from '../util'
 import { idOf, need } from './helpers'
 import { COOKIE } from '../app'
 import { CATALOG } from '../integrations/catalog'
+import { CONNECTOR_SECTIONS } from '../integrations/connectors'
 import { verifySmtp, mailProvider, queueEmail } from '../mailer'
 import { r2Test, r2Put, r2Configured, useR2 } from '../integrations/storage'
 import { schemaSql, syncToSupabase, testSupabase, resetSupabaseCursors } from '../integrations/supabase'
@@ -41,6 +42,27 @@ export async function backupToR2(): Promise<string> {
   return name
 }
 
+type LeadIn = { external_id?: string; name?: string; email?: string; phone?: string; message?: string; source?: string; interest?: string; consent?: boolean }
+/** Creates or updates a lead from any intake channel. The sender's id (or the whole body) is the event key, so retries are harmless. */
+export function ingestLead(b: LeadIn): { duplicate: true; lead_id: number } | { duplicate: false; lead_id: number; created: boolean } {
+    const key = crypto.createHash('sha256').update(b.external_id ? `id:${b.source ?? ''}:${b.external_id}` : JSON.stringify(b)).digest('hex')
+    const seen = q.get(`SELECT lead_id FROM lead_source_events WHERE event_key = ?`, key)
+    if (seen) return { duplicate: true, lead_id: seen.lead_id }
+    const phone = b.phone ? normalizePhone(b.phone) : ''
+    const existing = (phone ? leadByPhone(phone) : null) ?? (b.email ? q.get(`SELECT id, lead_no, company FROM leads WHERE deleted_at IS NULL AND status NOT IN ('Converted','Unqualified') AND lower(email) = ? ORDER BY id DESC LIMIT 1`, b.email.toLowerCase()) : null)
+    const source = LEAD_SOURCES.includes(b.source as string) ? (b.source as string) : 'Website'
+    let leadId: number, created = false
+    if (existing) {
+      leadId = existing.id
+      q.run(`INSERT INTO comments(entity, record_id, user_id, body, created_at) VALUES ('leads', ?, (SELECT MIN(id) FROM users), ?, ?)`, leadId, `New enquiry via ${source}: ${(b.message ?? '').slice(0, 500)}`, nowIso())
+    } else {
+      leadId = createRecord(getDef('leads'), { company: b.name || b.email || `+${phone}`, contact_name: b.name ?? null, email: b.email ?? null, phone: phone ? '+' + phone : null, source, status: 'New', interest: MODES.includes(b.interest as string) ? b.interest : null, marketing_consent: b.consent === true ? 'Opted in' : 'Unknown', notes: b.message ?? null }, SYSTEM_CTX).id
+      created = true
+    }
+    q.run(`INSERT INTO lead_source_events (event_key, source, lead_id, new_lead, payload_json, received_at) VALUES (?,?,?,?,?,?)`, key, source, leadId, created ? 1 : 0, JSON.stringify(b), nowIso())
+  return { duplicate: false, lead_id: leadId, created }
+}
+
 export default async function (app: FastifyInstance) {
   // =================================================================== integrations catalogue
   app.get('/api/integrations', async (req) => {
@@ -53,9 +75,41 @@ export default async function (app: FastifyInstance) {
       presets: PRESETS,
     }
   })
+  app.get('/api/public/meta-leads', async (req, reply) => {
+    const qs = req.query as any, tok = String(getSetting('meta_verify_token') || '')
+    if (qs['hub.mode'] === 'subscribe' && tok && same(tok, String(qs['hub.verify_token'] ?? ''))) return reply.type('text/plain').send(String(qs['hub.challenge'] ?? ''))
+    return reply.status(403).send({ error: 'Forbidden' })
+  })
+  app.post('/api/public/meta-leads', async (req, reply) => {
+    if (!getSetting('meta_enabled')) return reply.status(404).send({ error: 'Not found' })
+    const secret = String(getSetting('meta_app_secret') || '')
+    if (secret) {
+      const sig = String(req.headers['x-hub-signature-256'] ?? ''), raw = (req as any).rawBody ?? JSON.stringify(req.body ?? {})
+      if (!same('sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex'), sig)) return reply.status(401).send({ error: 'Bad signature' })
+    }
+    const token = String(getSetting('meta_page_token') || '')
+    let created = 0
+    for (const e of (req.body as any)?.entry ?? []) for (const c of e.changes ?? []) {
+      const id = c?.value?.leadgen_id; if (c?.field !== 'leadgen' || !id || !token) continue
+      try {
+        const r = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(String(id))}?access_token=${encodeURIComponent(token)}`)
+        if (!r.ok) { logIntegration('meta', 'lead', false, `Graph ${r.status} for lead ${id}`); continue }
+        const f = Object.fromEntries(((await r.json() as any).field_data ?? []).map((x: any) => [x.name, x.values?.[0]]))
+        const out = ingestLead({ external_id: String(id), name: f.full_name || [f.first_name, f.last_name].filter(Boolean).join(' ') || undefined, email: f.email, phone: f.phone_number || f.phone, source: 'Other', message: `Meta Lead Ad ${c.value.form_id ?? ''}`.trim() })
+        if (!out.duplicate && out.created) created++
+      } catch (err: any) { logIntegration('meta', 'lead', false, String(err?.message ?? err).slice(0, 200)) }
+    }
+    return { ok: true, created }
+  })
   app.post('/api/integrations/:key/test', async (req) => {
     need(req, 'admin', 'edit')
     const k = (req.params as any).key
+    const conn = CONNECTOR_SECTIONS.find(x => x.key === k)
+    if (conn) {
+      const missing = conn.fields.filter(f => f.type !== 'bool' && !String(getSetting(f.key) ?? '').trim() && !/^(dubizzle|outlook|gcal|meta_verify)/.test(f.key) || false).map(f => f.label)
+      const enabled = conn.fields.some(f => f.type === 'bool' && getSetting(f.key))
+      return { ok: enabled && !missing.length, message: !enabled ? 'Not enabled yet' : missing.length ? `Still needed: ${missing.join(', ')}` : 'Credentials saved. Live exchange starts when the partner confirms access.' }
+    }
     const r = k === 'mail' ? await verifySmtp() : k === 'storage' ? await r2Test() : k === 'supabase' ? await testSupabase() : k === 'whatsapp' ? await testWhatsApp() : k === 'ai' ? await testLlm() : null
     if (!r) throw bad('No test available for this integration')
     logIntegration(k, 'test', !!(r as any).ok, `Connection test: ${(r as any).ok ? 'OK' : (r as any).error}`)
@@ -107,22 +161,9 @@ export default async function (app: FastifyInstance) {
       phone: z.string().max(40).optional(), message: z.string().max(2000).optional(), source: z.string().max(60).optional(),
       interest: z.string().max(60).optional(), consent: z.boolean().optional(),
     }).refine(v => v.email || v.phone, 'Send an email or a phone number').parse(req.body ?? {})
-    const key = crypto.createHash('sha256').update(b.external_id ? `id:${b.source ?? ''}:${b.external_id}` : JSON.stringify(b)).digest('hex')
-    const seen = q.get(`SELECT lead_id FROM lead_source_events WHERE event_key = ?`, key)
-    if (seen) return { ok: true, lead_id: seen.lead_id, duplicate_delivery: true }
-    const phone = b.phone ? normalizePhone(b.phone) : ''
-    const existing = (phone ? leadByPhone(phone) : null) ?? (b.email ? q.get(`SELECT id, lead_no, company FROM leads WHERE deleted_at IS NULL AND status NOT IN ('Converted','Unqualified') AND lower(email) = ? ORDER BY id DESC LIMIT 1`, b.email.toLowerCase()) : null)
-    const source = LEAD_SOURCES.includes(b.source as string) ? (b.source as string) : 'Website'
-    let leadId: number, created = false
-    if (existing) {
-      leadId = existing.id
-      q.run(`INSERT INTO comments(entity, record_id, user_id, body, created_at) VALUES ('leads', ?, (SELECT MIN(id) FROM users), ?, ?)`, leadId, `New enquiry via ${source}: ${(b.message ?? '').slice(0, 500)}`, nowIso())
-    } else {
-      leadId = createRecord(getDef('leads'), { company: b.name || b.email || `+${phone}`, contact_name: b.name ?? null, email: b.email ?? null, phone: phone ? '+' + phone : null, source, status: 'New', interest: MODES.includes(b.interest as string) ? b.interest : null, marketing_consent: b.consent === true ? 'Opted in' : 'Unknown', notes: b.message ?? null }, SYSTEM_CTX).id
-      created = true
-    }
-    q.run(`INSERT INTO lead_source_events (event_key, source, lead_id, new_lead, payload_json, received_at) VALUES (?,?,?,?,?,?)`, key, source, leadId, created ? 1 : 0, JSON.stringify(b), nowIso())
-    return reply.status(created ? 201 : 200).send({ ok: true, lead_id: leadId, new_lead: created })
+    const r = ingestLead(b)
+    if (r.duplicate) return { ok: true, lead_id: r.lead_id, duplicate_delivery: true }
+    return reply.status(r.created ? 201 : 200).send({ ok: true, lead_id: r.lead_id, new_lead: r.created })
   })
 
   // =================================================================== finance

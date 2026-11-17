@@ -1,3 +1,5 @@
+import crypto from 'node:crypto'
+import { loadUser } from '../auth'
 import { calendarEvents } from '../calendar'
 import { config } from '../config'
 import type { FastifyInstance } from 'fastify'
@@ -196,6 +198,32 @@ export default async function (app: FastifyInstance) {
     const from = range.from ?? monthStart(), to = range.to ?? addDays(from, 41)
     if (to < from || daysBetween(from, to) > 93) throw bad('Choose a calendar range of up to 94 days.')
     return calendarEvents(from, to, req.ctx)
+  })
+
+  // Personal calendar feed (ICS) for Google, Outlook and phone calendars. The link is a secret; making a new one cancels the old.
+  const sha = (t: string) => crypto.createHash('sha256').update(t).digest('hex')
+  app.post('/api/calendar/feed-link', async (req) => {
+    need(req, 'dashboard', 'view')
+    const token = crypto.randomBytes(24).toString('hex')
+    q.run(`DELETE FROM user_invites WHERE user_id = ? AND kind = 'calendar'`, req.user!.id)
+    q.run(`INSERT INTO user_invites (user_id, token_hash, kind, expires_at, created_at) VALUES (?,?,?,?,?)`, req.user!.id, sha(token), 'calendar', '2099-12-31T00:00:00.000Z', nowIso())
+    return { url: `${String(config.baseUrl || `${req.protocol}://${req.headers.host}`).replace(/\/+$/, '')}/api/public/calendar/${token}.ics` }
+  })
+  app.get('/api/public/calendar/:file', async (req, reply) => {
+    const token = String((req.params as any).file).replace(/\.ics$/, '')
+    const row = /^[0-9a-f]{48}$/.test(token) ? q.get(`SELECT user_id FROM user_invites WHERE token_hash = ? AND kind = 'calendar'`, sha(token)) : null
+    const user = row ? loadUser(row.user_id) : null
+    if (!user) return reply.status(404).send({ error: 'Not found' })
+    const today = todayStr(), esc = (v: string) => String(v ?? '').replace(/([\\;,])/g, '\\$1').replace(/\r?\n/g, '\\n')
+    const stamp = (v: string) => v.replace(/[-:]/g, '').replace(/\.\d+Z?$/, '').slice(0, 15)
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SWK Properties OS//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:SWK OS']
+    for (const e of calendarEvents(addDays(today, -30), addDays(today, 90), { user, system: false } as any)) {
+      lines.push('BEGIN:VEVENT', `UID:${e.uid}@swk-os`, `DTSTAMP:${stamp(new Date().toISOString())}Z`, e.allDay ? `DTSTART;VALUE=DATE:${e.start.slice(0, 10).replace(/-/g, '')}` : `DTSTART:${stamp(e.start)}`)
+      if (e.end && !e.allDay) lines.push(`DTEND:${stamp(e.end)}`)
+      lines.push(`SUMMARY:${esc(e.title)}`, ...(e.location ? [`LOCATION:${esc(e.location)}`] : []), 'END:VEVENT')
+    }
+    lines.push('END:VCALENDAR')
+    return reply.header('content-type', 'text/calendar; charset=utf-8').send(lines.join('\r\n'))
   })
 
   // ------------------------------------------------------------------ notifications
