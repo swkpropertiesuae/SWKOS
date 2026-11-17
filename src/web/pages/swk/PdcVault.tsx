@@ -176,7 +176,7 @@ export default function PdcVault() {
                     <tr key={c.id}>
                       <td className="font-semibold">
                         <span className="inline-flex items-center gap-1.5">
-                          <CreditCard size={14} className="text-[#c9420f]" />
+                          <CreditCard size={14} className="text-[#1f3fb0]" />
                           {c.chequeNo}
                         </span>
                       </td>

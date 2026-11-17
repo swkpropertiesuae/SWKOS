@@ -8,8 +8,8 @@ export function ProductBrand({ compact = false }: { compact?: boolean }) {
         gap: compact ? 8 : 10,
         padding: compact ? '4px 10px 4px 6px' : '6px 14px 6px 8px',
         borderRadius: 10,
-        background: 'linear-gradient(135deg, #0d0d0d 0%, #1c1c1c 100%)',
-        border: '1px solid rgba(255,91,31,.42)',
+        background: 'linear-gradient(135deg, #0a1322 0%, #0f1b33 100%)',
+        border: '1px solid rgba(52,97,232,.42)',
         color: '#eef0f2',
         textDecoration: 'none',
       }}

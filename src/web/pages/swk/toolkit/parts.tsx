@@ -74,7 +74,7 @@ export function ToolLayout({ title, subtitle, inputs, children, summary }: { tit
 
 /** Big hero figure for the primary result. */
 export function Hero({ label, value, format = v => aed(v), sub, tone = 'navy' }: { label: string; value: number; format?: (v: number) => string; sub?: ReactNode; tone?: 'navy' | 'champ' | 'oasis' | 'dune' }) {
-  const bg = tone === 'navy' ? `linear-gradient(140deg, ${SWK.navy}, ${SWK.midnight})` : tone === 'champ' ? 'linear-gradient(140deg, #fafaff, #ffe4d6)' : tone === 'oasis' ? 'linear-gradient(140deg, #1f7a7a, #145252)' : 'linear-gradient(140deg, #e8261c, #8f3220)'
+  const bg = tone === 'navy' ? `linear-gradient(140deg, ${SWK.navy}, ${SWK.midnight})` : tone === 'champ' ? 'linear-gradient(140deg, #fafaff, #dbe4ff)' : tone === 'oasis' ? 'linear-gradient(140deg, #1f7a7a, #145252)' : 'linear-gradient(140deg, #e8261c, #8f3220)'
   const dark = tone !== 'champ'
   return (
     <motion.div layout className="relative overflow-hidden rounded-2xl p-5" style={{ background: bg, color: dark ? '#fff' : SWK.ink }}>

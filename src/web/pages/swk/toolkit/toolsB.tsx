@@ -17,7 +17,7 @@ export function VisaTool() {
   const [mortgaged, setMortgaged] = useState(false)
   const [offPlan, setOffPlan] = useState(false)
   const v = visaEligibility({ value, jointOwners: Math.max(1, owners), mortgaged, offPlan })
-  const tone = v.golden ? { bg: `linear-gradient(140deg, ${SWK.champ}, ${SWK.champDeep})`, ic: <Award size={30} />, fg: SWK.midnight } : v.investor ? { bg: `linear-gradient(140deg, ${SWK.navy}, ${SWK.midnight})`, ic: <BadgeCheck size={30} />, fg: '#fff' } : { bg: 'linear-gradient(140deg, #efe9dd, #e2d9c7)', ic: <Hourglass size={30} />, fg: SWK.ink }
+  const tone = v.golden ? { bg: `linear-gradient(140deg, ${SWK.champ}, ${SWK.champDeep})`, ic: <Award size={30} />, fg: SWK.midnight } : v.investor ? { bg: `linear-gradient(140deg, ${SWK.navy}, ${SWK.midnight})`, ic: <BadgeCheck size={30} />, fg: '#fff' } : { bg: 'linear-gradient(140deg, #e8ecf4, #e2d9c7)', ic: <Hourglass size={30} />, fg: SWK.ink }
   const notes = [...v.notes, 'Title deed (or Oqood + developer letter) and DLD valuation are required; application via ICP / GDRFA Dubai.', 'Family (spouse, children) and domestic staff can be sponsored on the Golden Visa.']
   const summary = () => [
     `*UAE residency visa check (property route)*`, `Property value: ${aed(value)}${owners > 1 ? ` · ${owners} owners → share ${aed(v.share)}` : ''}${mortgaged ? ' · mortgaged' : ''}${offPlan ? ' · off-plan' : ''}`,
@@ -121,7 +121,7 @@ export function CommissionTool() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="rounded-2xl border border-[#ffe4d6] p-4" style={{ background: 'linear-gradient(150deg, #fafaff, #ffe4d6)' }}>
+      <div className="rounded-2xl border border-[#dbe4ff] p-4" style={{ background: 'linear-gradient(150deg, #fafaff, #dbe4ff)' }}>
         <div className="flex items-center gap-2 mb-2"><Receipt size={16} color={SWK.champDeep} /><b className="text-[14px] text-ink">Tax invoice (VAT 5%)</b><Pill tone="champ" className="ml-auto">FTA</Pill></div>
         <KV k="Commission (excl. VAT)" v={aed(w.gross, { decimals: 2 })} />
         <KV k="VAT @ 5%" v={aed(w.vat, { decimals: 2 })} />
@@ -234,7 +234,7 @@ export function PaymentPlanTool() {
           <DateField label="Booking date" value={start} onChange={setStart} />
           <DateField label="Expected handover" value={hand} onChange={setHand} />
         </div>
-        <motion.div layout className="rounded-xl px-3 py-2.5 text-[13px] font-semibold flex items-center justify-between" style={{ background: plan.valid ? '#def1ef' : '#ffe4d6', color: plan.valid ? SWK.oasis : '#a33a22' }} role="status">
+        <motion.div layout className="rounded-xl px-3 py-2.5 text-[13px] font-semibold flex items-center justify-between" style={{ background: plan.valid ? '#def1ef' : '#dbe4ff', color: plan.valid ? SWK.oasis : '#a33a22' }} role="status">
           <span>{plan.valid ? 'Plan totals 100% ✓' : `Plan totals ${num(plan.planPct, 1)}% — must equal 100%`}</span>
           <span className="tabular-nums">{num(plan.planPct, 1)}%</span>
         </motion.div>

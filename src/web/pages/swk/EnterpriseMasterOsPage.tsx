@@ -94,7 +94,7 @@ export default function EnterpriseMasterOsPage() {
           role="alert"
           className="px-4 py-3 rounded-2xl text-[13px] font-semibold flex items-center justify-between gap-3"
           style={{
-            background: banner.tone === 'ok' ? '#def1ef' : '#ffe4d6',
+            background: banner.tone === 'ok' ? '#def1ef' : '#dbe4ff',
             color: banner.tone === 'ok' ? SWK.oasis : SWK.dune,
             border: `1px solid ${banner.tone === 'ok' ? '#9fd5cf' : '#f3b8a6'}`,
           }}
@@ -197,7 +197,7 @@ export default function EnterpriseMasterOsPage() {
                   className="p-3 rounded-2xl border border-[#e7e8e6] bg-white hover:border-[#c8a96b] transition flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fff0e8] text-[#6e521c]">Module {m.code}</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#eef2ff] text-[#6e521c]">Module {m.code}</span>
                     <Pill tone="oasis">{m.status}</Pill>
                   </div>
                   <div className="font-semibold text-[13px] text-ink leading-snug">{m.name}</div>

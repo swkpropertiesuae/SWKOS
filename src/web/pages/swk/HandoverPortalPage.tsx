@@ -37,16 +37,16 @@ export default function HandoverPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eef0f2] text-[#1c1c1c] pb-16">
+    <div className="min-h-screen bg-[#eef0f2] text-[#0f1b33] pb-16">
       {/* Top Executive Banner (hidden when printing individual document) */}
       <header
-        className="print:hidden border-b border-[#ff5b1f]/35 text-white"
-        style={{ background: 'linear-gradient(135deg, #0d0d0d 0%, #1c1c1c 55%, #1c1c1c 100%)' }}
+        className="print:hidden border-b border-[#3461e8]/35 text-white"
+        style={{ background: 'linear-gradient(135deg, #0a1322 0%, #0f1b33 55%, #0f1b33 100%)' }}
       >
         <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#ff5b1f]/40">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#3461e8]/40">
                 <img
                   src="/brand/os/SWK_Emblem_Transparent.svg"
                   alt="SWK OS Emblem"
@@ -59,7 +59,7 @@ export default function HandoverPortalPage() {
                 />
               </div>
               <div>
-                <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#ffe4d6]">
+                <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#dbe4ff]">
                   <Sparkles size={13} /> Official Software Agency Handover &amp; Training Suite
                 </div>
                 <h1 className="font-display text-2xl sm:text-3xl font-bold text-white m-0 mt-0.5">
@@ -67,7 +67,7 @@ export default function HandoverPortalPage() {
                 </h1>
                 <div className="text-xs sm:text-sm text-[#c7d2e4] mt-1">
                   Architected, Engineered &amp; Delivered Pin-to-Pin by{' '}
-                  <strong className="text-[#ffd9c4]">SHAMEEM HARFATH S M</strong> for{' '}
+                  <strong className="text-[#dbe4ff]">SHAMEEM HARFATH S M</strong> for{' '}
                   <strong className="text-white">{SWK_COMPANY_NAME}</strong>
                 </div>
               </div>
@@ -83,8 +83,8 @@ export default function HandoverPortalPage() {
               <a
                 href="/handover/SWK_Properties_OS_Complete_Workflow_And_Logic_Booklet.pdf"
                 download
-                className="px-4 py-2.5 rounded-xl font-bold text-xs text-[#0d0d0d] no-underline inline-flex items-center gap-2 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #ffe4d6 0%, #ff5b1f 100%)' }}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs text-[#0a1322] no-underline inline-flex items-center gap-2 shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #dbe4ff 0%, #3461e8 100%)' }}
               >
                 <BookOpen size={15} /> Download Workflow &amp; Logic Booklet (PDF)
               </a>
@@ -92,22 +92,22 @@ export default function HandoverPortalPage() {
                 href="/handover/SWK_Properties_OS_Interactive_Workflow_Booklet.html"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#ff5b1f]/50 text-[#ffd9c4] text-xs font-bold no-underline inline-flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#3461e8]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
               >
                 <Workflow size={14} /> Open Interactive Booklet
               </a>
               <a
                 href="/handover/SWK_OS_Office_Attendance_QR_Code_And_Method.pdf"
                 download
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#ff5b1f]/50 text-[#ffd9c4] text-xs font-bold no-underline inline-flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#3461e8]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
               >
                 <QrCode size={14} /> Attendance QR &amp; Method PDF
               </a>
               <a
                 href="/handover/SWK_OS_Complete_Software_Handover_And_Staff_Credentials_By_Shameem_Harfath.pdf"
                 download
-                className="px-4 py-2.5 rounded-xl font-bold text-xs text-[#0d0d0d] no-underline inline-flex items-center gap-2 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #ffe4d6 0%, #ff5b1f 100%)' }}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs text-[#0a1322] no-underline inline-flex items-center gap-2 shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #dbe4ff 0%, #3461e8 100%)' }}
               >
                 <Printer size={15} /> Download Complete Handover PDF
               </a>
@@ -133,9 +133,9 @@ export default function HandoverPortalPage() {
             ].map(stat => (
               <div
                 key={stat.label}
-                className="rounded-2xl bg-white/[0.06] border border-[#ff5b1f]/30 px-3.5 py-3 backdrop-blur-sm"
+                className="rounded-2xl bg-white/[0.06] border border-[#3461e8]/30 px-3.5 py-3 backdrop-blur-sm"
               >
-                <div className="text-[10px] uppercase tracking-[0.16em] text-[#ffe4d6] font-bold">{stat.label}</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-[#dbe4ff] font-bold">{stat.label}</div>
                 <div className="font-display text-lg sm:text-xl font-bold text-white mt-0.5">{stat.val}</div>
                 <div className="text-[11px] text-[#b8c3d7]">{stat.sub}</div>
               </div>
@@ -179,8 +179,8 @@ export default function HandoverPortalPage() {
                   onClick={() => setTab(t.id)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 border ${
                     active
-                      ? 'bg-[#ff5b1f] text-[#0d0d0d] border-[#ffe4d6] shadow-md'
-                      : 'bg-[#0d0d0d]/60 text-white/85 border-white/15 hover:border-[#ff5b1f]/60'
+                      ? 'bg-[#3461e8] text-[#0a1322] border-[#dbe4ff] shadow-md'
+                      : 'bg-[#0a1322]/60 text-white/85 border-white/15 hover:border-[#3461e8]/60'
                   }`}
                 >
                   <t.icon size={15} />
@@ -198,14 +198,14 @@ export default function HandoverPortalPage() {
         <div className="bg-white rounded-3xl shadow-xl border border-[#e7e8e6] p-6 sm:p-10">
           <div
             className="flex flex-wrap items-start justify-between gap-6 pb-5 mb-6"
-            style={{ borderBottom: '3px solid #0d0d0d' }}
+            style={{ borderBottom: '3px solid #0a1322' }}
           >
             <div className="flex items-center gap-4">
               <div
                 className="flex items-center justify-center rounded-2xl px-5 py-3"
                 style={{
-                  background: 'linear-gradient(135deg, #0d0d0d 0%, #102445 100%)',
-                  border: '1px solid rgba(255,91,31,.55)',
+                  background: 'linear-gradient(135deg, #0a1322 0%, #102445 100%)',
+                  border: '1px solid rgba(52,97,232,.55)',
                   WebkitPrintColorAdjust: 'exact',
                   printColorAdjust: 'exact',
                 }}
@@ -217,26 +217,26 @@ export default function HandoverPortalPage() {
                 />
               </div>
               <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#c9420f]">
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#1f3fb0]">
                   Enterprise Software Engineering Handover
                 </div>
-                <div className="font-display text-xl font-bold text-[#0d0d0d]">{SWK_COMPANY_NAME}</div>
-                <div className="text-xs font-bold text-[#1c1c1c] mt-0.5">{SWK_OFFICIAL_WEBSITES_TEXT}</div>
+                <div className="font-display text-xl font-bold text-[#0a1322]">{SWK_COMPANY_NAME}</div>
+                <div className="text-xs font-bold text-[#0f1b33] mt-0.5">{SWK_OFFICIAL_WEBSITES_TEXT}</div>
               </div>
             </div>
 
             <div className="text-right text-xs leading-relaxed text-[#4b5568]">
               <div>
-                <strong className="text-[#0d0d0d]">Lead Architect &amp; Engineer:</strong> SHAMEEM HARFATH S M
+                <strong className="text-[#0a1322]">Lead Architect &amp; Engineer:</strong> SHAMEEM HARFATH S M
               </div>
               <div>
-                <strong className="text-[#0d0d0d]">Client Entity:</strong> SWK Properties LLC (Dubai, UAE)
+                <strong className="text-[#0a1322]">Client Entity:</strong> SWK Properties LLC (Dubai, UAE)
               </div>
               <div>
-                <strong className="text-[#0d0d0d]">Production URL:</strong> https://os.swk.properties
+                <strong className="text-[#0a1322]">Production URL:</strong> https://os.swk.properties
               </div>
               <div>
-                <strong className="text-[#0d0d0d]">Repository:</strong> github.com/swkpropertiesuae/swkpropertiesOS
+                <strong className="text-[#0a1322]">Repository:</strong> github.com/swkpropertiesuae/swkpropertiesOS
               </div>
             </div>
           </div>
@@ -246,10 +246,10 @@ export default function HandoverPortalPage() {
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#c9420f]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
                     DOCUMENT 01 OF 04 · OWNER EXECUTIVE ENGINEERING DOSSIER
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-[#0d0d0d] m-0 mt-1">
+                  <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
                     Pin-to-Pin Software Engineering Inventory, Codebase Audit &amp; Quality Valuation
                   </h2>
                   <p className="text-xs text-[#5a6578] m-0 mt-1">
@@ -260,7 +260,7 @@ export default function HandoverPortalPage() {
                 <button
                   type="button"
                   onClick={() => printCurrentDocument('owner-dossier')}
-                  className="print:hidden px-4 py-2 rounded-xl bg-[#1c1c1c] text-[#ffd9c4] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
+                  className="print:hidden px-4 py-2 rounded-xl bg-[#0f1b33] text-[#dbe4ff] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
                 >
                   <Printer size={14} /> Print Owner Dossier
                 </button>
@@ -268,8 +268,8 @@ export default function HandoverPortalPage() {
 
               {/* Section 1.1: Executive Summary */}
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Award size={19} className="text-[#c9420f]" /> 1. Executive Summary &amp; Scope of Engineering
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Award size={19} className="text-[#1f3fb0]" /> 1. Executive Summary &amp; Scope of Engineering
                 </h3>
                 <p className="text-sm leading-relaxed text-[#2b3548] m-0">
                   <strong>SWK OS</strong> is a bespoke, full-stack, cloud-native Enterprise Operating System custom-engineered
@@ -283,13 +283,13 @@ export default function HandoverPortalPage() {
 
               {/* Section 1.2: Pin-to-Pin Codebase Volume & Engineering Telemetry */}
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Code2 size={19} className="text-[#c9420f]" /> 2. Verified Codebase Volume &amp; Engineering Breakdown
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Code2 size={19} className="text-[#1f3fb0]" /> 2. Verified Codebase Volume &amp; Engineering Breakdown
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-[#1c1c1c] text-[#ffd9c4]">
+                      <tr className="bg-[#0f1b33] text-[#dbe4ff]">
                         <th className="p-3 rounded-tl-xl">Engineering Layer</th>
                         <th className="p-3">Directory / Scope</th>
                         <th className="p-3">Files</th>
@@ -329,7 +329,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3 font-bold">3 files</td>
                         <td className="p-3 font-mono font-bold">1,911 LOC</td>
                         <td className="p-3">138 KB</td>
-                        <td className="p-3">Royal Midnight Navy (#0d0d0d / #1c1c1c) &amp; Champagne Gold (#ff5b1f), Print/A4 CSS, RTL Arabic</td>
+                        <td className="p-3">Royal Midnight Navy (#0a1322 / #0f1b33) &amp; Champagne Gold (#3461e8), Print/A4 CSS, RTL Arabic</td>
                       </tr>
                       <tr>
                         <td className="p-3 font-bold">5. Automated QA &amp; E2E Tests</td>
@@ -347,7 +347,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3">98 KB</td>
                         <td className="p-3">Cloudflare Workers + Cloudflare Containers, Docker multi-stage build, GitHub Actions zero-downtime CD</td>
                       </tr>
-                      <tr className="bg-[#fff0e8] font-extrabold text-[#0d0d0d]">
+                      <tr className="bg-[#eef2ff] font-extrabold text-[#0a1322]">
                         <td className="p-3 rounded-bl-xl">TOTAL ENGINEERED SYSTEM</td>
                         <td className="p-3 font-mono">Full Repository</td>
                         <td className="p-3">240 Files</td>
@@ -362,8 +362,8 @@ export default function HandoverPortalPage() {
 
               {/* Section 1.3: Pin-to-Pin Module Inventory */}
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Layers size={19} className="text-[#c9420f]" /> 3. Pin-to-Pin Functional Module Inventory (Every Feature Built)
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Layers size={19} className="text-[#1f3fb0]" /> 3. Pin-to-Pin Functional Module Inventory (Every Feature Built)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   {[
@@ -371,7 +371,7 @@ export default function HandoverPortalPage() {
                       title: '01. Executive Sign-In, Security & Hot Developer Projects Showcase',
                       points: [
                         'Full-screen interactive Dubai Developer Hot Projects showcase on the right side of /login (Emaar, Sobha, DAMAC, Nakheel, Meraas, Binghatti) with live pricing, payment plans, yields, and SWK OS Portal Map Pin.',
-                        'High-clarity Royal Midnight Navy (#0d0d0d / #1c1c1c) & Champagne Gold header lockup throughout.',
+                        'High-clarity Royal Midnight Navy (#0a1322 / #0f1b33) & Champagne Gold header lockup throughout.',
                         'HMAC-SHA256 session cookies, TOTP 2FA support, rate limiting, CSRF protection, and login audit trail.',
                       ],
                     },
@@ -432,7 +432,7 @@ export default function HandoverPortalPage() {
                     },
                   ].map(mod => (
                     <div key={mod.title} className="rounded-2xl border border-[#e7e8e6] bg-[#fafaff] p-4 space-y-2">
-                      <div className="font-display font-bold text-sm text-[#0d0d0d]">{mod.title}</div>
+                      <div className="font-display font-bold text-sm text-[#0a1322]">{mod.title}</div>
                       <ul className="m-0 pl-4 space-y-1 text-[#3b4659]">
                         {mod.points.map((pt, i) => (
                           <li key={i}>{pt}</li>
@@ -445,8 +445,8 @@ export default function HandoverPortalPage() {
 
               {/* Section 1.4: Software Agency Engineering Effort & Commercial Valuation */}
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Sparkles size={19} className="text-[#c9420f]" /> 4. Equivalent Software Agency Engineering Effort &amp; Quality Benchmark
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Sparkles size={19} className="text-[#1f3fb0]" /> 4. Equivalent Software Agency Engineering Effort &amp; Quality Benchmark
                 </h3>
                 <p className="text-xs text-[#4b5568] m-0">
                   In a traditional Tier-1 Dubai / international software agency, delivering a 39,599-LOC custom enterprise ERP +
@@ -458,7 +458,7 @@ export default function HandoverPortalPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-[#1c1c1c] text-[#ffd9c4]">
+                      <tr className="bg-[#0f1b33] text-[#dbe4ff]">
                         <th className="p-3 rounded-tl-xl">Engineering Discipline</th>
                         <th className="p-3">Key Deliverables Completed</th>
                         <th className="p-3">Senior Engineering Hours</th>
@@ -496,7 +496,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3 font-mono font-bold">190 hrs</td>
                         <td className="p-3">Automated container health checks &amp; zero-downtime rollout on os.swk.properties</td>
                       </tr>
-                      <tr className="bg-[#fff0e8] font-extrabold text-[#0d0d0d]">
+                      <tr className="bg-[#eef2ff] font-extrabold text-[#0a1322]">
                         <td className="p-3 rounded-bl-xl">TOTAL DELIVERED BY SHAMEEM HARFATH S M</td>
                         <td className="p-3">Complete Turnkey Enterprise Operating System for SWK Properties LLC</td>
                         <td className="p-3 font-mono">1,740+ Senior Hrs</td>
@@ -514,10 +514,10 @@ export default function HandoverPortalPage() {
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#c9420f]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
                     DOCUMENT 02 OF 04 · TECHNICAL ARCHITECTURE, SECURITY &amp; INFRASTRUCTURE MANUAL
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-[#0d0d0d] m-0 mt-1">
+                  <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
                     System Topology, Database Architecture, Security Model &amp; Cloud Operations
                   </h2>
                   <p className="text-xs text-[#5a6578] m-0 mt-1">
@@ -528,7 +528,7 @@ export default function HandoverPortalPage() {
                 <button
                   type="button"
                   onClick={() => printCurrentDocument('tech-manual')}
-                  className="print:hidden px-4 py-2 rounded-xl bg-[#1c1c1c] text-[#ffd9c4] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
+                  className="print:hidden px-4 py-2 rounded-xl bg-[#0f1b33] text-[#dbe4ff] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
                 >
                   <Printer size={14} /> Print Technical Manual
                 </button>
@@ -536,8 +536,8 @@ export default function HandoverPortalPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="rounded-2xl border border-[#e7e8e6] p-4 bg-[#fafaff]">
-                  <div className="font-bold text-sm text-[#0d0d0d] flex items-center gap-2 mb-2">
-                    <Server size={16} className="text-[#c9420f]" /> Runtime &amp; Backend Stack
+                  <div className="font-bold text-sm text-[#0a1322] flex items-center gap-2 mb-2">
+                    <Server size={16} className="text-[#1f3fb0]" /> Runtime &amp; Backend Stack
                   </div>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>Runtime:</strong> Node.js 22 LTS (ESM, Native Fetch &amp; WebCrypto)</li>
@@ -548,8 +548,8 @@ export default function HandoverPortalPage() {
                 </div>
 
                 <div className="rounded-2xl border border-[#e7e8e6] p-4 bg-[#fafaff]">
-                  <div className="font-bold text-sm text-[#0d0d0d] flex items-center gap-2 mb-2">
-                    <Globe size={16} className="text-[#c9420f]" /> Frontend &amp; Design Stack
+                  <div className="font-bold text-sm text-[#0a1322] flex items-center gap-2 mb-2">
+                    <Globe size={16} className="text-[#1f3fb0]" /> Frontend &amp; Design Stack
                   </div>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>UI Library:</strong> React 19.2 + React Router 7 + TypeScript 5.9</li>
@@ -560,8 +560,8 @@ export default function HandoverPortalPage() {
                 </div>
 
                 <div className="rounded-2xl border border-[#e7e8e6] p-4 bg-[#fafaff]">
-                  <div className="font-bold text-sm text-[#0d0d0d] flex items-center gap-2 mb-2">
-                    <Database size={16} className="text-[#c9420f]" /> Dual-Engine Persistence &amp; Edge
+                  <div className="font-bold text-sm text-[#0a1322] flex items-center gap-2 mb-2">
+                    <Database size={16} className="text-[#1f3fb0]" /> Dual-Engine Persistence &amp; Edge
                   </div>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#3b4659]">
                     <li><strong>Primary Production DB:</strong> Managed PostgreSQL (`pg` pool with SSL CA verification)</li>
@@ -573,13 +573,13 @@ export default function HandoverPortalPage() {
               </div>
 
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Lock size={19} className="text-[#c9420f]" /> Security &amp; Role-Based Access Control (RBAC) Matrix
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Lock size={19} className="text-[#1f3fb0]" /> Security &amp; Role-Based Access Control (RBAC) Matrix
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-[#1c1c1c] text-[#ffd9c4]">
+                      <tr className="bg-[#0f1b33] text-[#dbe4ff]">
                         <th className="p-3 rounded-tl-xl">Role / Identity</th>
                         <th className="p-3">Designated Personnel</th>
                         <th className="p-3">Office Attendance QR Print</th>
@@ -615,10 +615,10 @@ export default function HandoverPortalPage() {
               </section>
 
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Terminal size={19} className="text-[#c9420f]" /> Deployment, Build &amp; Verification Commands
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Terminal size={19} className="text-[#1f3fb0]" /> Deployment, Build &amp; Verification Commands
                 </h3>
-                <pre className="p-4 rounded-2xl bg-[#0d0d0d] text-[#ffd9c4] font-mono text-xs overflow-x-auto leading-relaxed">
+                <pre className="p-4 rounded-2xl bg-[#0a1322] text-[#dbe4ff] font-mono text-xs overflow-x-auto leading-relaxed">
 {`# 1. Local Development (API + Vite Web Hot Reload)
 npm install
 npm run dev
@@ -645,10 +645,10 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#c9420f]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
                     DOCUMENT 03 OF 04 · ALL-STAFF OPERATIONS &amp; QUICK-START USER GUIDE
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-[#0d0d0d] m-0 mt-1">
+                  <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
                     How to Use SWK OS Daily — Step-by-Step Staff Handbook
                   </h2>
                   <p className="text-xs text-[#5a6578] m-0 mt-1">
@@ -659,18 +659,18 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 <button
                   type="button"
                   onClick={() => printCurrentDocument('staff-guide')}
-                  className="print:hidden px-4 py-2 rounded-xl bg-[#1c1c1c] text-[#ffd9c4] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
+                  className="print:hidden px-4 py-2 rounded-xl bg-[#0f1b33] text-[#dbe4ff] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
                 >
                   <Printer size={14} /> Print Staff Guide
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-                <div className="rounded-2xl border-2 border-[#ff5b1f]/50 bg-[#fafaff] p-5 space-y-2.5">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1c1c1c] text-[#ffd9c4] font-bold text-[11px]">
+                <div className="rounded-2xl border-2 border-[#3461e8]/50 bg-[#fafaff] p-5 space-y-2.5">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0f1b33] text-[#dbe4ff] font-bold text-[11px]">
                     <QrCode size={13} /> STEP 1 · DAILY MORNING ATTENDANCE (10:00 AM GST)
                   </div>
-                  <h3 className="font-display text-base font-bold text-[#0d0d0d] m-0">
+                  <h3 className="font-display text-base font-bold text-[#0a1322] m-0">
                     How Staff Scan &amp; Check In Every Morning
                   </h3>
                   <ol className="m-0 pl-4 space-y-1.5 text-[#2b3548] leading-relaxed">
@@ -695,10 +695,10 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 </div>
 
                 <div className="rounded-2xl border border-[#e7e8e6] bg-[#fafaff] p-5 space-y-2.5">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1c1c1c] text-[#ffd9c4] font-bold text-[11px]">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0f1b33] text-[#dbe4ff] font-bold text-[11px]">
                     <Workflow size={13} /> STEP 2 · NAVIGATING WORKSPACES &amp; QUICK SEARCH
                   </div>
-                  <h3 className="font-display text-base font-bold text-[#0d0d0d] m-0">
+                  <h3 className="font-display text-base font-bold text-[#0a1322] m-0">
                     Using the App Launcher, Sidebar &amp; Global Search
                   </h3>
                   <ul className="m-0 pl-4 space-y-1.5 text-[#2b3548] leading-relaxed">
@@ -724,8 +724,8 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
               </div>
 
               <section className="space-y-3">
-                <h3 className="font-display text-lg font-bold text-[#0d0d0d] flex items-center gap-2 m-0">
-                  <Building2 size={19} className="text-[#c9420f]" /> The 10-Step UAE Real Estate Operational Sequence for Staff
+                <h3 className="font-display text-lg font-bold text-[#0a1322] flex items-center gap-2 m-0">
+                  <Building2 size={19} className="text-[#1f3fb0]" /> The 10-Step UAE Real Estate Operational Sequence for Staff
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
                   {[
@@ -781,10 +781,10 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                     },
                   ].map(s => (
                     <div key={s.step} className="rounded-2xl border border-[#e7e8e6] bg-[#fafaff] p-3.5">
-                      <span className="inline-block px-2 py-0.5 rounded bg-[#1c1c1c] text-[#ffd9c4] font-extrabold text-[10px] uppercase tracking-wider">
+                      <span className="inline-block px-2 py-0.5 rounded bg-[#0f1b33] text-[#dbe4ff] font-extrabold text-[10px] uppercase tracking-wider">
                         {s.step}
                       </span>
-                      <div className="font-bold text-sm text-[#0d0d0d] mt-2">{s.title}</div>
+                      <div className="font-bold text-sm text-[#0a1322] mt-2">{s.title}</div>
                       <p className="text-[11.5px] text-[#4b5568] m-0 mt-1 leading-relaxed">{s.desc}</p>
                     </div>
                   ))}
@@ -798,10 +798,10 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#c9420f]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
                     DOCUMENT 04 OF 04 · FORMAL SOFTWARE AGENCY HANDOVER CERTIFICATE &amp; ACCEPTANCE SIGN-OFF
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-[#0d0d0d] m-0 mt-1">
+                  <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
                     Certificate of Completion, Custody Transfer &amp; Final Acceptance
                   </h2>
                   <p className="text-xs text-[#5a6578] m-0 mt-1">
@@ -812,18 +812,18 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 <button
                   type="button"
                   onClick={() => printCurrentDocument('certificate')}
-                  className="print:hidden px-4 py-2 rounded-xl bg-[#1c1c1c] text-[#ffd9c4] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
+                  className="print:hidden px-4 py-2 rounded-xl bg-[#0f1b33] text-[#dbe4ff] text-xs font-bold border-0 cursor-pointer inline-flex items-center gap-2"
                 >
                   <Printer size={14} /> Print Handover Certificate
                 </button>
               </div>
 
-              <div className="rounded-3xl border-2 border-[#ff5b1f] bg-[#fafaff] p-6 sm:p-8 space-y-6">
+              <div className="rounded-3xl border-2 border-[#3461e8] bg-[#fafaff] p-6 sm:p-8 space-y-6">
                 <div className="text-center space-y-1.5 border-b border-[#e7e8e6] pb-5">
-                  <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#c9420f]">
+                  <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#1f3fb0]">
                     OFFICIAL CERTIFICATE OF SOFTWARE ENGINEERING HANDOVER
                   </div>
-                  <h3 className="font-display text-2xl font-bold text-[#0d0d0d] m-0">
+                  <h3 className="font-display text-2xl font-bold text-[#0a1322] m-0">
                     SWK OS — UAE Real Estate Enterprise Operating System (v1.0 Production)
                   </h3>
                   <div className="text-xs text-[#4b5568]">
@@ -833,33 +833,33 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6] space-y-1.5">
-                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#c9420f]">
+                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
                       ARCHITECTED, BUILT &amp; DELIVERED BY
                     </div>
-                    <div className="font-display text-lg font-bold text-[#0d0d0d]">SHAMEEM HARFATH S M</div>
+                    <div className="font-display text-lg font-bold text-[#0a1322]">SHAMEEM HARFATH S M</div>
                     <div className="text-[#4b5568]">Principal Full-Stack Software Architect &amp; Systems Engineer</div>
                     <div className="text-[#4b5568]">Scope: Full-Stack Architecture, UI/UX, Database, DevOps &amp; QA</div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6] space-y-1.5">
-                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#c9420f]">
+                    <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
                       CLIENT &amp; SYSTEM OWNER
                     </div>
-                    <div className="font-display text-lg font-bold text-[#0d0d0d]">SWK PROPERTIES LLC</div>
+                    <div className="font-display text-lg font-bold text-[#0a1322]">SWK PROPERTIES LLC</div>
                     <div className="text-[#4b5568]">Represented by: Shabib Siraj (Owner &amp; Managing Director)</div>
                     <div className="text-[#4b5568]">Operations Custody: Mohammad Haseeb (Operations Manager)</div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="font-bold text-xs uppercase tracking-wider text-[#0d0d0d]">
+                  <div className="font-bold text-xs uppercase tracking-wider text-[#0a1322]">
                     Verified Production Deliverables Handed Over Pin-to-Pin:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     {[
                       'Full Source Code Repository (github.com/swkpropertiesuae/swkpropertiesOS — 240 files, 39,599 LOC)',
                       'Live Production Deployment on Cloudflare Edge & Containers (https://os.swk.properties)',
-                      'SWK OS Brand Architecture Package (Royal Midnight Navy #0d0d0d & Champagne Gold Logos, Icons & Favicons)',
+                      'SWK OS Brand Architecture Package (Royal Midnight Navy #0a1322 & Champagne Gold Logos, Icons & Favicons)',
                       'Sign-In Interactive Dubai Developer Hot Projects Showcase & High-Clarity Brand Header',
                       'Official SWK Properties LLC Document Studio & Print Engine (www.swk.properties · www.swkpropertiesuae.com · www.swk.rent)',
                       'Hard Role-Based Access Control (Reception QR Print restricted strictly to Owner & Haseeb; Admin logic isolated)',
@@ -878,13 +878,13 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 border-t border-[#e7e8e6] text-xs">
                   <div className="space-y-8">
                     <div>
-                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#c9420f]">
+                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
                         HANDED OVER BY (LEAD SOFTWARE ENGINEER)
                       </div>
-                      <div className="font-display text-base font-bold text-[#0d0d0d] mt-1">SHAMEEM HARFATH S M</div>
+                      <div className="font-display text-base font-bold text-[#0a1322] mt-1">SHAMEEM HARFATH S M</div>
                       <div className="text-[#5a6578]">Principal Full-Stack Architect &amp; Engineer, SWK OS</div>
                     </div>
-                    <div className="border-t border-[#0d0d0d] pt-2 flex justify-between text-[#4b5568]">
+                    <div className="border-t border-[#0a1322] pt-2 flex justify-between text-[#4b5568]">
                       <span>Signature: ___________________________</span>
                       <span>Date: ____ / ____ / 2026</span>
                     </div>
@@ -892,13 +892,13 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
 
                   <div className="space-y-8">
                     <div>
-                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#c9420f]">
+                      <div className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">
                         ACCEPTED &amp; RECEIVED BY (OWNER — SWK PROPERTIES LLC)
                       </div>
-                      <div className="font-display text-base font-bold text-[#0d0d0d] mt-1">SHABIB SIRAJ</div>
+                      <div className="font-display text-base font-bold text-[#0a1322] mt-1">SHABIB SIRAJ</div>
                       <div className="text-[#5a6578]">Owner &amp; Managing Director, SWK Properties LLC</div>
                     </div>
-                    <div className="border-t border-[#0d0d0d] pt-2 flex justify-between text-[#4b5568]">
+                    <div className="border-t border-[#0a1322] pt-2 flex justify-between text-[#4b5568]">
                       <span>Signature &amp; Stamp: _____________________</span>
                       <span>Date: ____ / ____ / 2026</span>
                     </div>
@@ -913,10 +913,10 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#fafaff] border border-[#e7e8e6] rounded-2xl p-5">
                 <div>
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#c9420f]">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#1f3fb0]">
                     FULL-HD EXPLANATORY SYSTEM WALKTHROUGH VIDEO
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-[#0d0d0d] m-0 mt-1">
+                  <h2 className="font-display text-2xl font-bold text-[#0a1322] m-0 mt-1">
                     SWK OS Complete Visual Walkthrough — Built by SHAMEEM HARFATH S M
                   </h2>
                   <p className="text-xs text-[#5a6578] m-0 mt-1">
@@ -927,20 +927,20 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 <a
                   href="/handover/SWK_OS_Explanatory_Video_By_Shameem_Harfath.webm"
                   download="SWK_OS_Explanatory_Video_By_Shameem_Harfath.webm"
-                  className="print:hidden px-4 py-2.5 rounded-xl bg-[#1c1c1c] text-[#ffd9c4] text-xs font-bold no-underline inline-flex items-center gap-2"
+                  className="print:hidden px-4 py-2.5 rounded-xl bg-[#0f1b33] text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-2"
                 >
                   <PlayCircle size={15} /> Download Video File (.webm)
                 </a>
               </div>
 
-              <div className="rounded-3xl overflow-hidden bg-[#0d0d0d] border-2 border-[#ff5b1f]/50 shadow-2xl">
+              <div className="rounded-3xl overflow-hidden bg-[#0a1322] border-2 border-[#3461e8]/50 shadow-2xl">
                 <video
                   controls
                   autoPlay
                   loop
                   playsInline
                   poster="/brand/site/og-default.jpg"
-                  className="w-full aspect-video block bg-[#0d0d0d]"
+                  className="w-full aspect-video block bg-[#0a1322]"
                   src="/handover/SWK_OS_Explanatory_Video_By_Shameem_Harfath.webm"
                 >
                   Your browser does not support HTML5 video.
@@ -961,8 +961,8 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                   { ch: '10', title: 'Agency Handover & Sign-Off', sub: '39,599 LOC, 240 files, 317 API routes & formal acceptance' },
                 ].map(c => (
                   <div key={c.ch} className="rounded-2xl border border-[#e7e8e6] bg-[#fafaff] p-3.5">
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#c9420f]">Scene {c.ch}</div>
-                    <div className="font-bold text-sm text-[#0d0d0d] mt-1">{c.title}</div>
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#1f3fb0]">Scene {c.ch}</div>
+                    <div className="font-bold text-sm text-[#0a1322] mt-1">{c.title}</div>
                     <div className="text-[11px] text-[#4b5568] mt-0.5">{c.sub}</div>
                   </div>
                 ))}
@@ -971,13 +971,13 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
           )}
 
           {/* Corporate Footer on every printed/viewed handover page */}
-          <footer className="mt-10 pt-4 border-t-2 border-[#0d0d0d] flex flex-wrap items-center justify-between gap-4 text-[11px] text-[#4b5568]">
+          <footer className="mt-10 pt-4 border-t-2 border-[#0a1322] flex flex-wrap items-center justify-between gap-4 text-[11px] text-[#4b5568]">
             <div>
-              <strong className="text-[#0d0d0d]">{SWK_COMPANY_NAME}</strong> · Dubai, United Arab Emirates ·{' '}
-              <strong className="text-[#0d0d0d]">{SWK_OFFICIAL_WEBSITES_TEXT}</strong>
+              <strong className="text-[#0a1322]">{SWK_COMPANY_NAME}</strong> · Dubai, United Arab Emirates ·{' '}
+              <strong className="text-[#0a1322]">{SWK_OFFICIAL_WEBSITES_TEXT}</strong>
             </div>
             <div>
-              SWK OS v1.0 · Architected &amp; Engineered by <strong className="text-[#0d0d0d]">SHAMEEM HARFATH S M</strong>
+              SWK OS v1.0 · Architected &amp; Engineered by <strong className="text-[#0a1322]">SHAMEEM HARFATH S M</strong>
             </div>
           </footer>
         </div>
