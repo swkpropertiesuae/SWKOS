@@ -57,7 +57,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   office_wifi_strict_ip: true,
   office_gps_lat: '25.2532',
   office_gps_lng: '55.2972',
-  office_gps_radius_m: 200,
+  office_gps_radius_m: 200, qr_token_secret: '', device_binding_enforce: true, gps_max_accuracy_m: 150,
   // --- tracking
   tracking_provider: 'none', tracking_api_key: '', tracking_webhook_secret: '',
   // --- e-invoicing (UAE PINT AE / Peppol)
@@ -76,7 +76,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set([...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {

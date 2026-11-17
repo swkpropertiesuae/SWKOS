@@ -151,22 +151,55 @@ async function main() {
   ok('results and signature save', sv.status === 200, sv)
   ok('results read back', JSON.parse((await a.get(`/api/e/inspections/${ins.data.id}`)).data.results)[1].note === 'Cracked tile')
 
-  sec('Attendance: office Wi-Fi and field location')
+  sec('Attendance: office Wi-Fi, field location and anti-cheating')
   const cfg = (await a.get('/api/public/reception-qr/wifi-config')).data
   ok('office Wi-Fi is hardcoded to the XAVIER BUSINESS network', cfg.ssid === 'XAVIER BUSINESS' && cfg.gateway_ip === '192.168.0.1' && cfg.strict_ip === true, cfg)
-  const ci = (body: any) => a.post('/api/public/reception-qr/scan-login-checkin', { email: 'rota1@a.example', password: 'Manager-Pass-2026!', ...body })
-  const none = await ci({})
-  ok('no office network and no location is refused', none.status === 400 && /Wi-Fi|location/i.test(none.data.error ?? ''), none)
-  const field = await ci({ gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 20 })
-  ok('a location far from the office is recorded as field duty', field.status === 200 && field.data.verification_summary?.verified_by === 'Field GPS' && field.data.verification_summary?.distance_from_office_m > 1000, field.data)
-  const office = await ci({ email: 'rota2@a.example', gps_lat: 25.2532, gps_lng: 55.2972, gps_accuracy_m: 10 })
-  ok('a location inside the office radius counts as office', office.status === 200 && office.data.verification_summary?.verified_by === 'Office GPS', office.data)
-  ok('an impossible coordinate is not treated as a fix', (await ci({ email: 'rota2@a.example', gps_lat: 999, gps_lng: 55 })).status === 400)
   const hm = new Api(); await hm.login('haseeb@swk.properties', 'SWK@Manager2026')
+  const tok = (await hm.get('/api/swk-ops/reception-token')).data
+  ok('Manager gets a rotating reception code', /^\d+\.[0-9a-f]{16}$/.test(tok.token ?? ''), tok)
+  ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
+  const PW = 'Manager-Pass-2026!'
+  const ci = (body: any) => a.post('/api/public/reception-qr/scan-login-checkin', { email: 'rota1@a.example', password: PW, device_id: 'dev-rota1', device_name: 'Test phone', ...body })
+  const OFFICE = { gps_lat: 25.2532, gps_lng: 55.2972, gps_accuracy_m: 10 }
+  ok('no QR, no location is refused', (await ci({})).status === 400)
+  const noTok = await ci({ ...OFFICE })
+  ok('standing in the office without the screen code is refused', noTok.status === 400 && /QR/i.test(noTok.data.error ?? ''), noTok)
+  ok('a made-up code is refused', (await ci({ ...OFFICE, qr_token: '1.' + '0'.repeat(16) })).status === 400)
+  const newDev = await ci({ ...OFFICE, qr_token: tok.token })
+  ok('a new device must be approved first', newDev.status === 403 && /device/i.test(newDev.data.error ?? ''), newDev)
+  const ctl = (await hm.get('/api/swk-ops/attendance-control')).data
+  const pendingDev = ctl.devices.find((d: any) => d.status === 'Pending')
+  ok('the manager sees the waiting device', !!pendingDev, ctl)
+  ok('other staff cannot approve devices', (await b.post(`/api/swk-ops/attendance-control/device/${pendingDev.id}`, { approve: true })).status === 403)
+  await hm.post(`/api/swk-ops/attendance-control/device/${pendingDev.id}`, { approve: true })
+  const good = await ci({ ...OFFICE, qr_token: tok.token })
+  ok('office check-in with screen code and approved device works', good.status === 200 && good.data.verification_summary?.verified_by === 'Office GPS' && good.data.verification_summary?.pending_review === false, good.data)
+  ok('a poor GPS fix is refused', (await ci({ gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 900 })).status === 400)
+  const field = await ci({ email: 'rota2@a.example', device_id: 'dev-rota2', gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 20 })
+  ok('rota2 device waits too', field.status === 403)
+  const ctl2 = (await hm.get('/api/swk-ops/attendance-control')).data
+  for (const d of ctl2.devices.filter((x: any) => x.status === 'Pending')) await hm.post(`/api/swk-ops/attendance-control/device/${d.id}`, { approve: true })
+  const field2 = await ci({ email: 'rota2@a.example', device_id: 'dev-rota2', gps_lat: 25.0795, gps_lng: 55.139, gps_accuracy_m: 20 })
+  ok('field check-in with no booked visit waits for approval', field2.status === 200 && field2.data.verification_summary?.verified_by === 'Field GPS' && field2.data.verification_summary?.pending_review === true, field2.data)
+  const waiting = (await hm.get('/api/swk-ops/attendance-control')).data.field
+  ok('the manager sees the field check-in', waiting.length === 1, waiting)
+  ok('other staff cannot approve it', (await b.post(`/api/swk-ops/attendance-control/field/${waiting[0].id}`, { approve: true })).status === 403)
+  const appr = await hm.post(`/api/swk-ops/attendance-control/field/${waiting[0].id}`, { approve: true })
+  ok('manager approves it', appr.status === 200 && appr.data.field.length === 0, appr)
   const lock = await hm.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })
   ok('owner can lock the current network as the office Wi-Fi', lock.status === 200 && lock.data.office_ip_locked === true, lock)
-  const wifi = await ci({ email: 'rota1@a.example' })
-  ok('once the office network is locked, check-in works without location', wifi.status === 200 && wifi.data.verification_summary?.verified_by === 'Office Wi-Fi', wifi.data)
+  const wifiNoTok = await ci({ email: 'rota1@a.example' })
+  ok('on the office network the screen code is still required', wifiNoTok.status === 400, wifiNoTok)
+  const wifiOk = await ci({ email: 'rota1@a.example', qr_token: (await hm.get('/api/swk-ops/reception-token')).data.token })
+  ok('office network plus screen code works', wifiOk.status === 200 && wifiOk.data.verification_summary?.verified_by === 'Office Wi-Fi', wifiOk.data)
+  // wrong passwords hit the connection, never the person's account
+  for (let i = 0; i < 6; i++) await a.post('/api/public/reception-qr/scan-login-checkin', { email: 'rota2@a.example', password: 'wrong-' + i, device_id: 'x' })
+  const still = new Api(); ok('repeated wrong check-in passwords do not lock the person out', await still.login('rota2@a.example', PW))
+  // a temporary password must be changed before checking in
+  const fresh = (await a.post('/api/e/users', { name: 'Fresh Staff', email: 'fresh@a.example', password: 'Manager-Pass-2026!', role_id: salesRole, branch_id: dxb, active: true, must_change_password: true })).data
+  ok('new account created for the password rule', !!fresh.id, fresh)
+  const mc = await a.post('/api/public/reception-qr/scan-login-checkin', { email: 'fresh@a.example', password: PW, device_id: 'dev-fresh', qr_token: tok.token, ...OFFICE })
+  ok('a temporary password cannot check in until it is changed', mc.status === 403 && /password/i.test(mc.data.error ?? ''), mc)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

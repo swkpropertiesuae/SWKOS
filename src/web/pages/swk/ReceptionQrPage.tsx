@@ -108,6 +108,10 @@ export default function ReceptionQrPage() {
     navigator.geolocation.getCurrentPosition(p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }), () => resolve(null), { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 })
   })
   const canSetup = Boolean(me && ['shabib@swk.properties', 'haseeb@swk.properties'].includes(String(me.email).toLowerCase()))
+  const [control, setControl] = useState<{ devices: any[]; field: any[] } | null>(null)
+  const loadControl = () => { void get<any>('/api/swk-ops/attendance-control').then(setControl).catch(() => {}) }
+  useEffect(() => { if (canSetup) loadControl() }, [canSetup]) // eslint-disable-line react-hooks/exhaustive-deps
+  const decide = async (kind: 'device' | 'field', id: number, approve: boolean) => { try { setControl(await post<any>(`/api/swk-ops/attendance-control/${kind}/${id}`, { approve })) } catch (e: any) { setSetupMsg(e?.message || 'Could not save.') } }
   const saveSetup = async (kind: 'wifi' | 'gps') => {
     setSetupMsg('Working…')
     try {
@@ -131,6 +135,7 @@ export default function ReceptionQrPage() {
       const fix = await getFix()
       setGpsNote(fix ? '' : 'Location not shared.')
       const res = await post<any>('/api/public/reception-qr/scan-login-checkin', {
+        qr_token: searchParams.get('t') || undefined,
         gps_lat: fix?.lat, gps_lng: fix?.lng, gps_accuracy_m: fix?.acc,
         email: email.trim(),
         password,
@@ -230,7 +235,7 @@ export default function ReceptionQrPage() {
             <img src="/brand/site/swk-logo-horizontal.svg" alt="SWK Properties LLC" className="h-10 w-auto object-contain" />
           </div>
           <h1 className="font-display font-bold text-xl text-white m-0">
-            {checkInResult ? 'Attendance Confirmed' : 'Office Attendance Sign-In'}
+            {checkInResult ? (checkInResult.verification_summary?.pending_review ? 'Recorded · waiting for approval' : 'Attendance Confirmed') : 'Office Attendance Sign-In'}
           </h1>
           <div className="text-[11px] text-[#ffd9c4] font-semibold mt-1">
             SWK Properties LLC
@@ -318,7 +323,7 @@ export default function ReceptionQrPage() {
                   </>
                 ) : (
                   <>
-                    Not on <b>{networkInfo?.ssid || 'XAVIER BUSINESS'}</b>. Allow location access to check in from the office or the field.
+                    In the office? Scan the QR on the reception screen. Out on duty? Allow location access.
                   </>
                 )}
               </div>
@@ -333,6 +338,27 @@ export default function ReceptionQrPage() {
                   <button type="button" className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-semibold border border-white/20 cursor-pointer" onClick={() => void saveSetup('gps')}>Set office location here</button>
                 </div>
                 {setupMsg && <div>{setupMsg}</div>}
+                <a href="/reception-display" className="inline-block text-[#ffb28a] underline">Open the reception QR screen</a>
+                {!!control?.devices.filter(d => d.status === 'Pending').length && (
+                  <div className="space-y-1">
+                    <div className="font-semibold text-white">Devices waiting for approval</div>
+                    {control.devices.filter(d => d.status === 'Pending').map(d => (
+                      <div key={d.id} className="flex items-center gap-2"><span className="flex-1">{d.name} · {d.label || 'device'}</span>
+                        <button type="button" className="px-2 py-1 rounded-lg bg-emerald-600 text-white border-0 cursor-pointer" onClick={() => void decide('device', d.id, true)}>Approve</button>
+                        <button type="button" className="px-2 py-1 rounded-lg bg-white/10 text-white border border-white/20 cursor-pointer" onClick={() => void decide('device', d.id, false)}>Block</button></div>
+                    ))}
+                  </div>
+                )}
+                {!!control?.field.length && (
+                  <div className="space-y-1">
+                    <div className="font-semibold text-white">Field / flagged check-ins waiting</div>
+                    {control.field.map(f => (
+                      <div key={f.id} className="flex items-center gap-2"><span className="flex-1">{f.name} · {f.work_date} {String(f.check_in_at || '').slice(11, 16)}<br /><span className="opacity-70">{f.security_flags}{f.gps_lat ? ` · ${f.gps_lat}, ${f.gps_lng}` : ''}</span></span>
+                        <button type="button" className="px-2 py-1 rounded-lg bg-emerald-600 text-white border-0 cursor-pointer" onClick={() => void decide('field', f.id, true)}>Approve</button>
+                        <button type="button" className="px-2 py-1 rounded-lg bg-white/10 text-white border border-white/20 cursor-pointer" onClick={() => void decide('field', f.id, false)}>Reject</button></div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {error && (

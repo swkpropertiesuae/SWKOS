@@ -7,6 +7,7 @@ import { sendWhatsApp, ownerNumbers } from '../integrations/whatsapp'
 import { getSetting, setSettings } from '../settings'
 import { attemptLogin, createSession, destroyUserSessions, hashPassword } from '../auth'
 import { COOKIE } from '../app'
+import { currentQrToken, qrTokenValid, checkPasswordForCheckin, deviceGate, gpsFlags, distanceM as distanceMeters } from '../domain/attendance-security'
 import { config } from '../config'
 import { canAccessSwkAdminLogic, canPrintReceptionQr, isOwnerSwkUser } from '../../shared/swk-staff-access'
 import { checkEmployeeAndDocumentExpiries, computeMonthlyTargetSummaries, notifyEmployeeTargets } from '../domain/compliance'
@@ -1367,12 +1368,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return String(req.ip || '127.0.0.1')
   }
 
-  const distanceM = (a: [number, number], b: [number, number]) => {
-    const rad = (d: number) => d * Math.PI / 180, R = 6371000
-    const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1])
-    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2
-    return Math.round(2 * R * Math.asin(Math.sqrt(h)))
-  }
+  const distanceM = (a: [number, number], b: [number, number]) => distanceMeters(a, b)
   const officeGps = () => ({ lat: Number(getSetting('office_gps_lat')), lng: Number(getSetting('office_gps_lng')), radius: Number(getSetting('office_gps_radius_m')) || 200 })
 
   const getWifiCfg = (clientIp?: string) => {
@@ -1442,6 +1438,41 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   }
   app.post('/api/public/reception-qr/wifi-config', saveWifiConfig)
   app.post('/api/swk-ops/attendance-setup', saveWifiConfig)
+  // ---- rotating QR for the reception screen: only the Owner or Manager, and only from the office network once it is locked
+  app.get('/api/swk-ops/reception-token', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can open the reception screen.')
+    const cfg = getWifiCfg(resolveClientIp(req))
+    if (cfg.office_ip_locked && !cfg.ip_matches_office) throw new HttpError(403, `Open the reception screen on the office network (${cfg.ssid}).`)
+    return currentQrToken()
+  })
+  const attendanceControl = () => ({
+    devices: q.all(`SELECT d.id, d.user_id, u.name, d.label, d.device_id, d.status, d.first_seen, d.last_seen FROM staff_devices d JOIN users u ON u.id = d.user_id ORDER BY (d.status = 'Pending') DESC, d.last_seen DESC LIMIT 100`),
+    field: q.all(`SELECT e.id, e.event_no, e.work_date, e.check_in_at, e.checkin_method, e.security_flags, e.gps_lat, e.gps_lng, e.gps_accuracy_m, emp.name FROM attendance_events e LEFT JOIN employees emp ON emp.id = e.employee_id WHERE e.field_review = 'Pending' AND e.deleted_at IS NULL ORDER BY e.id DESC LIMIT 100`),
+  })
+  app.get('/api/swk-ops/attendance-control', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can review attendance.')
+    return attendanceControl()
+  })
+  app.post('/api/swk-ops/attendance-control/device/:id', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can approve devices.')
+    const b = (req.body ?? {}) as any
+    const status = b.approve ? 'Approved' : 'Blocked'
+    q.run(`UPDATE staff_devices SET status = ?, decided_by = ? WHERE id = ?`, status, req.user!.id, Number((req.params as any).id))
+    return attendanceControl()
+  })
+  app.post('/api/swk-ops/attendance-control/field/:id', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can approve field check-ins.')
+    const id = Number((req.params as any).id), approve = !!(req.body as any)?.approve
+    const ev = q.get<any>(`SELECT * FROM attendance_events WHERE id = ? AND field_review = 'Pending' AND deleted_at IS NULL`, id)
+    if (!ev) throw new HttpError(404, 'Nothing waiting for approval')
+    tx(() => {
+      patchRecord(getDef('attendance_events'), id, { field_review: approve ? 'Approved' : 'Rejected', manager_verified: approve, corrected_by: req.user!.id }, SYSTEM_CTX)
+      if (approve && !q.get(`SELECT 1 AS x FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL`, ev.employee_id, ev.work_date)) {
+        createRecord(getDef('attendance'), { employee_id: ev.employee_id, att_date: ev.work_date, check_in: ev.check_in_at, checkin_mode: ev.checkin_method === 'Field GPS' ? 'Field Site Visit Live GPS' : 'Office QR Scan', status: ev.checkin_method === 'Field GPS' ? 'Field Site Visit' : 'Present', note: `Approved by ${req.user!.name} (${ev.event_no})` }, SYSTEM_CTX)
+      }
+    })
+    return attendanceControl()
+  })
   app.get('/api/swk-ops/attendance-setup', async (req) => {
     if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can view attendance setup.')
     return { ...getWifiCfg(resolveClientIp(req)), office_gps: officeGps() }
@@ -1455,28 +1486,57 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     if (!loginEmail || !loginPassword) {
       throw new HttpError(400, 'Enter your company login email and password to verify your identity and register attendance.')
     }
+    // Wrong passwords count against this connection, never against the person, so nobody can lock a colleague out from here.
+    checkPasswordForCheckin(loginEmail, loginPassword, clientIp)
     const loginRes = attemptLogin(loginEmail, loginPassword, b.totp, clientIp, String(req.headers?.['user-agent'] || ''))
     if ('needsTotp' in loginRes && loginRes.needsTotp) {
       return { needsTotp: true }
     }
     const authUser = (loginRes as any).user
+
+    // ---- how was this person verified?
+    const wifiConfig = getWifiCfg(clientIp)
+    const lat = Number(b.gps_lat), lng = Number(b.gps_lng), acc = Number(b.gps_accuracy_m)
+    const hasGps = b.gps_lat != null && b.gps_lat !== '' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+    const maxAcc = Number(getSetting('gps_max_accuracy_m')) || 150
+    if (hasGps && Number.isFinite(acc) && acc > maxAcc) {
+      throw new HttpError(400, `Your location is too imprecise (±${Math.round(acc)} m). Move outdoors or near a window, wait a few seconds and try again.`)
+    }
+    const og = officeGps()
+    const gpsDistance = hasGps && Number.isFinite(og.lat) && Number.isFinite(og.lng) ? distanceM([lat, lng], [og.lat, og.lng]) : null
+    const onOfficeNetwork = wifiConfig.office_ip_locked && wifiConfig.ip_matches_office
+    const atOfficeGps = gpsDistance != null && gpsDistance <= og.radius
+    const tokenOk = qrTokenValid(b.qr_token)
+    const inOffice = onOfficeNetwork || atOfficeGps
+    if (inOffice && !tokenOk) {
+      throw new HttpError(400, 'Scan the QR code shown on the reception screen with your phone camera, then sign in. Screenshots and old codes expire after about 90 seconds.')
+    }
+    const verifiedBy: 'Office Wi-Fi' | 'Office GPS' | 'Field GPS' | null = inOffice ? (onOfficeNetwork ? 'Office Wi-Fi' : 'Office GPS') : hasGps ? 'Field GPS' : null
+    if (!verifiedBy) {
+      throw new HttpError(400, `Be in the office with the reception QR (Wi-Fi ${wifiConfig.ssid}) or allow location access for field duty, then try again.`)
+    }
+
+    // ---- this device, and anything that looks wrong with the location
+    const empRow = q.get<any>(`SELECT id FROM employees WHERE (user_id = ? OR lower(email) = lower(?)) AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`, authUser.id, authUser.email)
+    const selfApprove = canPrintReceptionQr(authUser)
+    const device = deviceGate(authUser.id, String(b.device_id || ''), String(b.device_name || ''), selfApprove)
+    if (device === 'Pending') {
+      for (const em of ['shabib@swk.properties', 'haseeb@swk.properties']) { const u = q.get<any>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, em); if (u) notify(u.id, `New device waiting: ${authUser.name}`, 'Approve it in the reception check-in page under Attendance control', '/reception-qr', 'approval', `dev-${authUser.id}-${String(b.device_id).slice(0, 12)}`) }
+      throw new HttpError(403, 'This device is new. The Owner or Manager must approve it before you can check in. They have been notified.')
+    }
+    const flags = hasGps ? gpsFlags(authUser.id, lat, lng) : []
+    // field duty is trusted only when it matches a viewing or field session booked for today; everything else waits for approval
+    const linked = verifiedBy === 'Field GPS' && empRow
+      ? q.get<any>(`SELECT id FROM viewings WHERE agent_id IN (SELECT id FROM agents WHERE employee_id = ? AND deleted_at IS NULL) AND substr(scheduled_at, 1, 10) = ? AND status NOT IN ('Cancelled') AND deleted_at IS NULL LIMIT 1`, empRow.id, todayStr())
+        ?? q.get<any>(`SELECT id FROM field_sessions WHERE employee_id = ? AND duty_date = ? AND deleted_at IS NULL LIMIT 1`, empRow.id, todayStr())
+      : null
+    const needsReview = (verifiedBy === 'Field GPS' && !linked) || flags.length > 0
+    const reviewNote = [verifiedBy === 'Field GPS' && !linked ? 'Field check-in with no booked viewing or field session today' : '', ...flags].filter(Boolean).join('; ')
+
     const sess = createSession(authUser.id, clientIp, String(req.headers?.['user-agent'] || ''))
     if (reply?.setCookie) {
       const secure = config.cookieSecure ?? (config.isProd && (req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https'))
       reply.setCookie(COOKIE, sess.token, { httpOnly: true, sameSite: 'lax', secure: !!secure, path: '/', expires: sess.expires })
-    }
-
-    // Attendance is accepted from the office network (all devices on the office Wi-Fi share its public IP) or from a GPS fix:
-    // inside the office radius it counts as office, anywhere else it is recorded as field duty with its coordinates.
-    const wifiConfig = getWifiCfg(clientIp)
-    const lat = Number(b.gps_lat), lng = Number(b.gps_lng), acc = Number(b.gps_accuracy_m)
-    const hasGps = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && b.gps_lat !== '' && b.gps_lat != null
-    const og = officeGps()
-    const gpsDistance = hasGps && Number.isFinite(og.lat) && Number.isFinite(og.lng) ? distanceM([lat, lng], [og.lat, og.lng]) : null
-    const onOfficeNetwork = wifiConfig.office_ip_locked && wifiConfig.ip_matches_office
-    const verifiedBy: 'Office Wi-Fi' | 'Office GPS' | 'Field GPS' | null = onOfficeNetwork ? 'Office Wi-Fi' : (gpsDistance != null && gpsDistance <= og.radius) ? 'Office GPS' : hasGps ? 'Field GPS' : null
-    if (!verifiedBy) {
-      throw new HttpError(400, `Connect to the office Wi-Fi (${wifiConfig.ssid}) or allow location access, then try again. Your connection IP is ${wifiConfig.detected_client_ip}.`)
     }
 
     return tx(() => {
@@ -1493,14 +1553,13 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
       }
       const now = nowIso()
       const shiftInfo = computeDubaiShiftInfo(new Date())
-      const standCode = String(b.stand_code || b.qr_code_or_token || 'SWK-RECEPTION-STAND-DXB-1')
+      const standCode = tokenOk ? String(b.qr_token) : String(b.stand_code || 'FIELD')
       const existingToday = q.get<any>(`SELECT * FROM attendance_events WHERE employee_id = ? AND work_date = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`, emp.id, todayStr())
       const eventRecord = existingToday && !existingToday.check_out_at
         ? patchRecord(getDef('attendance_events'), existingToday.id, {
             terminal_type: 'Dynamic QR',
             qr_token_ref: standCode,
             check_in_at: existingToday.check_in_at || now.slice(0, 16),
-            manager_verified: true,
           }, SYSTEM_CTX)
         : createRecord(getDef('attendance_events'), {
             employee_id: emp.id,
@@ -1513,7 +1572,11 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
             check_in_at: now.slice(0, 16),
             duty_status: shiftInfo.isLate ? 'Late Arrival' : 'On Duty',
             late_minutes: shiftInfo.lateMinutes,
-            manager_verified: true,
+            manager_verified: !needsReview,
+            field_review: needsReview ? 'Pending' : 'Not needed',
+            security_flags: reviewNote || null,
+            checkin_method: verifiedBy,
+            device_id: String(b.device_id || '').slice(0, 80) || null,
             gps_lat: hasGps ? String(lat) : null,
             gps_lng: hasGps ? String(lng) : null,
             gps_accuracy_m: Number.isFinite(acc) ? Math.round(acc) : null,
@@ -1521,7 +1584,10 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
           }, SYSTEM_CTX)
 
       const hrAtt = q.get<any>(`SELECT * FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL`, emp.id, todayStr())
-      if (!hrAtt) {
+      if (needsReview && !existingToday) {
+        for (const em of ['shabib@swk.properties', 'haseeb@swk.properties']) { const u = q.get<any>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, em); if (u) notify(u.id, `Check-in needs approval: ${authUser.name}`, reviewNote, '/reception-qr', 'approval') }
+      }
+      if (!hrAtt && !needsReview) {
         createRecord(getDef('attendance'), {
           employee_id: emp.id,
           att_date: todayStr(),
@@ -1539,7 +1605,9 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
         sessionToken: sess.token,
         user: authUser,
         verification_summary: {
-          qr_token_valid: true,
+          qr_token_valid: tokenOk,
+          pending_review: needsReview,
+          review_reason: reviewNote || null,
           office_network_verified: verifiedBy === 'Office Wi-Fi',
           verified_by: verifiedBy,
           distance_from_office_m: gpsDistance,
@@ -1557,9 +1625,9 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     })
   }
 
-  app.post('/api/public/reception-qr/check-in', handlePublicQrCheckIn)
-  app.post('/api/public/reception-qr/scan-login-checkin', handlePublicQrCheckIn)
-  app.post('/api/public/qr-checkin', handlePublicQrCheckIn)
+  app.post('/api/public/reception-qr/check-in', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, handlePublicQrCheckIn)
+  app.post('/api/public/reception-qr/scan-login-checkin', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, handlePublicQrCheckIn)
+  app.post('/api/public/qr-checkin', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, handlePublicQrCheckIn)
 
   // ------------------------------------------------------------------ 8. Owner (shabib@swk.properties) Direct Control Over Admin (admin@swk.properties)
   app.get('/api/swk-ops/owner-admin-control', async (req) => {
