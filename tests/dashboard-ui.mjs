@@ -24,8 +24,12 @@ try {
   await page.goto(base + '/login')
   await page.locator('input[type="email"]').fill(demo.email)
   await page.locator('input[type="password"]').fill(demo.password)
+  const authLog = []; page.on('response', r => { if (r.url().includes('/api/auth')) authLog.push(`${r.status()} ${r.url()}`) }); page.on('requestfailed', r => authLog.push(`FAILED ${r.url()} ${r.failure()?.errorText}`))
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await page.waitForURL('**/home')
+  try { await page.waitForURL('**/home') } catch (e) {
+    console.log(`sign-in stalled at ${page.url()}\nauth calls: ${authLog.join(' | ')}\npage: ${(await page.locator('body').innerText()).slice(0, 400).replace(/\s+/g, ' ')}\n--- server log tail ---\n${logs.slice(-1500)}`)
+    throw e
+  }
   await page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ }).waitFor()
   assert.equal(await page.locator('.swk-side').count(), 0, 'no sidebar')
   const tiles = page.locator('.swk-app-tile')
