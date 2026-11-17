@@ -17,6 +17,11 @@ on:
       - 'deploy/cloudflare/**'
       - '.github/workflows/deploy-cloudflare.yml'
   workflow_dispatch:
+    inputs:
+      restart:
+        description: 'Start a fresh container (reads the current Worker secrets, e.g. after changing a password)'
+        type: boolean
+        default: false
 
 # One deploy at a time; never cancel one that is already running.
 concurrency:
@@ -63,7 +68,8 @@ jobs:
           node -e "const fs=require('fs');fs.writeFileSync('../../public/release.json', JSON.stringify({sha: process.env.GITHUB_SHA, brand: 'swk-os-brand-pack'}) + '\n');"
           node -e "const fs=require('fs');const f='wrangler.jsonc';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('\"swkproperties-os-v4\"','\"os-' + process.env.GITHUB_SHA.slice(0,12) + '\"'));"
           # immediate: replace running containers in one step; the default gradual rollout can keep serving the previous image
-          npx wrangler deploy --containers-rollout immediate --var RELEASE_SHA:${GITHUB_SHA} --var RELEASE_ID:os-${GITHUB_SHA:0:12}
+          RESTART_SUFFIX=''; [ "${{ inputs.restart }}" = 'true' ] && RESTART_SUFFIX="-r${GITHUB_RUN_NUMBER}"
+          npx wrangler deploy --containers-rollout immediate --var RELEASE_SHA:${GITHUB_SHA} --var RELEASE_ID:os-${GITHUB_SHA:0:12}${RESTART_SUFFIX}
       - name: Wait for the app and Standalone Reception QR to answer
         # The container cold-starts after a new image; allow up to 15 minutes.
         run: |
