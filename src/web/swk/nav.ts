@@ -35,6 +35,7 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Units', to: '/e/units', icon: Home, module: 'properties', desc: 'Step 4 · Apartments & offices' },
     { label: 'Listing Studio', to: '/listings', icon: Megaphone, module: 'properties', desc: 'Step 5 · Publish to portals' },
     { label: 'Off-Plan', to: '/offplan', icon: Rocket, module: 'properties', desc: 'New developer launches' },
+    { label: 'Inspection App', to: '/inspect', icon: Building2, module: 'leases', desc: 'Checklist, photos, signature' },
     { label: 'Inspection Templates', to: '/e/inspection_templates', icon: Building2, module: 'leases', desc: 'Move-in / move-out checklists' },
     { label: 'Service Portal', to: '/portal', icon: Building2, module: 'leases', desc: 'Tenant · landlord · vendor view' },
     { label: 'Smart Search', to: '/smart-search', icon: Rocket, module: 'properties', desc: 'Ask in plain words + buyer shortlist' },

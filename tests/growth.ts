@@ -141,6 +141,15 @@ async function main() {
   ok('landlord approves', (await l.post(`/api/portal/maintenance/${wo.data.id}/landlord-decision`, { approve: true })).status === 200)
   ok('vendor completes', (await v.post(`/api/portal/maintenance/${wo.data.id}/vendor-update`, { status: 'Completed' })).status === 200)
   ok('staff-only chat is closed to portal users', (await v.get('/api/chat/threads')).status === 403)
+
+  sec('Inspection app')
+  const it = await a.post('/api/e/inspection_templates', { name: 'Move-in', kind: 'Move-in', items: 'Living room\nKitchen' })
+  const ins = await a.post('/api/e/inspections', { unit_id: unit.data.id, template_id: it.data.id, inspection_type: 'Move-In', scheduled_at: '2026-11-17T10:00', status: 'In Progress' })
+  ok('inspection starts from a template', ins.status < 300, ins)
+  const res = JSON.stringify([{ name: 'Living room', state: 'ok', note: '', photos: [] }, { name: 'Kitchen', state: 'issue', note: 'Cracked tile', photos: [] }])
+  const sv = await a.put(`/api/e/inspections/${ins.data.id}`, { results: res, signature: 'data:image/png;base64,AAAA', signed_name: 'Tenant', status: 'Requires Action', findings: 'Kitchen: Cracked tile', version: ins.data.version })
+  ok('results and signature save', sv.status === 200, sv)
+  ok('results read back', JSON.parse((await a.get(`/api/e/inspections/${ins.data.id}`)).data.results)[1].note === 'Cracked tile')
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })
