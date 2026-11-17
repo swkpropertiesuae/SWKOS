@@ -6,6 +6,7 @@ import { bad, todayStr } from '../util'
 import { body, idOf, need } from './helpers'
 import { convertLead, convertQuoteToJob, reviseQuote, sendQuote } from '../domain/sales'
 import { approvalAction } from '../domain/finance'
+import { claimLead, sweepLeadSla, leaderboard, matchUnitsForLead, matchLeadsForUnit, buildSchedule } from '../domain/growth'
 
 export default async function (app: FastifyInstance) {
   const qid = (req: any) => idOf(req.params.id)
@@ -24,6 +25,19 @@ export default async function (app: FastifyInstance) {
     need(req, 'sales', 'edit')
     const b = z.object({ reason: z.string().max(300).optional() }).parse(req.body ?? {})
     return patchRecord(getDef('quotations'), qid(req), { status: 'Rejected', rejection_reason: b.reason ?? null }, req.ctx)
+  })
+  app.post('/api/leads/:id/claim', async (req) => { need(req, 'crm', 'edit'); if (!req.user) throw bad('Sign in'); return tx(() => claimLead(idOf((req.params as any).id), req.user!.id)) })
+  app.post('/api/leads/sla-sweep', async (req) => { need(req, 'crm', 'edit'); return tx(() => sweepLeadSla()) })
+  app.get('/api/growth/leaderboard', async (req) => { need(req, 'crm', 'view'); return leaderboard(String((req.query as any).month || todayStr().slice(0, 7))) })
+  app.get('/api/growth/match/lead/:id', async (req) => { need(req, 'crm', 'view'); return { matches: matchUnitsForLead(idOf((req.params as any).id)) } })
+  app.get('/api/growth/match/unit/:id', async (req) => { need(req, 'properties', 'view'); return { matches: matchLeadsForUnit(idOf((req.params as any).id)) } })
+  app.get('/api/growth/payment-schedule', async (req) => {
+    need(req, 'properties', 'view')
+    const b = z.object({ plan: z.coerce.number().int(), price: z.coerce.number().positive(), start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), handover: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse(req.query)
+    const plan = q.get(`SELECT * FROM payment_plan_templates WHERE id = ? AND deleted_at IS NULL`, b.plan)
+    if (!plan) throw bad('Payment plan not found')
+    if (b.handover < b.start) throw bad('Handover cannot be before the start date')
+    return { plan: plan.name, ...buildSchedule(plan, b.price, b.start, b.handover) }
   })
   app.post('/api/leads/:id/convert', async (req) => { need(req, 'crm', 'create'); return tx(() => convertLead(idOf((req.params as any).id), req.ctx)) })
   app.post('/api/opportunities/:id/quote', async (req) => {

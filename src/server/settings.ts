@@ -5,7 +5,9 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { CONNECTOR_FIELDS, CONNECTOR_SECRET_KEYS } from './integrations/connectors'
 export const SETTING_DEFAULTS: Record<string, any> = {
+  ...Object.fromEntries(CONNECTOR_FIELDS.map(f => [f.key, f.type === 'bool' ? false : ''])), lead_sla_minutes: 15, lead_pool_after_minutes: 60,
   company_name: 'SWK Properties LLC',
   branch_scoped_roles: '', masked_fields: '', unit_hold_hours: 48,
   company_address: 'Bur Dubai, Dubai, UAE',
@@ -74,7 +76,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret'])
+export const SECRET_SETTINGS = new Set([...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {

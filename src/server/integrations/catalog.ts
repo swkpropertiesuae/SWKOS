@@ -1,10 +1,12 @@
 import { PRESETS } from '../ai/llm'
+import { CONNECTOR_SECTIONS } from './connectors'
 
 export interface CField { key: string; label: string; type: 'text' | 'password' | 'select' | 'bool' | 'number' | 'textarea'; options?: { value: string; label: string }[]; help?: string; placeholder?: string }
 export interface Section { key: string; title: string; icon: string; summary: string; setup?: string; fields: CField[]; test?: boolean; webhooks?: { key: string; label: string; path: string; secret?: boolean }[] }
 const opt = (...v: string[]) => v.map(x => { const [value, label] = x.split('|'); return { value, label: label ?? value } })
 
 export const CATALOG: Section[] = [
+  ...CONNECTOR_SECTIONS,
   { key: 'mail', title: 'E-mail (Resend / SMTP)', icon: 'Mail', test: true, summary: 'All customer e-mails, quotations, invoices and agent messages.',
     setup: 'For Sales, Accounts, Info, Contact and Support, open Email → Sender settings and connect each address. This section sets the default automation sender. SMTP needs the mailbox host, port, username and password; Resend needs a sending API key and a verified From domain. Save and test, then send to your own address to confirm delivery.',
     fields: [

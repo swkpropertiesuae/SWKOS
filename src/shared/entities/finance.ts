@@ -206,6 +206,8 @@ export const finance: EntityDef[] = [
       D('transaction_date', 'Transaction Date', { list: true }),
       D('due_date', 'Due Date', { list: true }),
       S('status', 'Status', ['Pending', 'Approved', 'Paid', 'Disputed', 'Cancelled'], { default: 'Pending', list: true, key: true }),
+      P('holdback_pct', 'Holdback % of agent share', { default: 0, min: 0, max: 100 }), M('holdback_amount', 'Held back', { readonly: true, list: true }),
+      D('holdback_release_date', 'Holdback release date'), B('holdback_released', 'Holdback released'),
       D('paid_date', 'Paid Date'), R('payment_id', 'Payment Record', 'payments'),
       R('approved_by_id', 'Approved By', 'users'), D('approved_date', 'Approved Date'), TA('notes', 'Notes'),
     ],

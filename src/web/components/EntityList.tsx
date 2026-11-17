@@ -210,9 +210,9 @@ function ImportModal({ def, onClose, onDone }: { def: MetaEntity; onClose: () =>
     try { const r = await post<any>(`/api/e/${def.key}/import`, { csv: text, dryRun }); setRes(r); if (!dryRun && r.created) { toast.ok(`${r.created} ${def.plural.toLowerCase()} imported`); onDone() } } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
   }
   return (
-    <Modal open onClose={onClose} title={`Import ${def.plural} from CSV`} width={640} footer={<><a className="btn outline" href={`/api/e/${def.key}/template.csv`}><Download /> Template</a><div className="flex-1" /><button className="btn outline" onClick={onClose}>Close</button><button className="btn outline" disabled={!text || busy} onClick={() => void run(true)}>Validate only</button><button className="btn green" disabled={!text || busy} onClick={() => void run(false)}>Import</button></>}>
+    <Modal open onClose={onClose} title={`Import ${def.plural} from CSV or Excel`} width={640} footer={<><a className="btn outline" href={`/api/e/${def.key}/template.csv`}><Download /> Template</a><div className="flex-1" /><button className="btn outline" onClick={onClose}>Close</button><button className="btn outline" disabled={!text || busy} onClick={() => void run(true)}>Validate only</button><button className="btn green" disabled={!text || busy} onClick={() => void run(false)}>Import</button></>}>
       <p className="text-sm text-muted mt-0">Use the template for column names. Reference columns (customer, property, agent…) accept the code or exact name. Up to 5,000 rows.</p>
-      <input type="file" accept=".csv,text/csv" className="input" onChange={async e => { const f = e.target.files?.[0]; if (f) { setName(f.name); setText(await f.text()); setRes(null) } }} />
+      <input type="file" accept=".csv,text/csv,.xlsx" className="input" onChange={async e => { const f = e.target.files?.[0]; if (f) { setName(f.name); setText(/\.xlsx$/i.test(f.name) ? await xlsxToCsv(f) : await f.text()); setRes(null) } }} />
       {name && <div className="text-xs text-muted mt-1">{name} · {text.split('\n').length - 1} rows</div>}
       {res && <div className="mt-3 text-sm"><div className={res.failed ? 'text-[#8f1325] font-bold' : 'text-fold font-bold'}>{res.dryRun ? 'Validation: ' : 'Imported: '}{res.created} OK, {res.failed} failed</div>
         {res.errors.length > 0 && <ul className="mt-2 max-h-48 overflow-auto text-[13px] pl-4">{res.errors.map((e: any) => <li key={e.row}>Row {e.row}: {e.error}</li>)}</ul>}</div>}
@@ -220,3 +220,10 @@ function ImportModal({ def, onClose, onDone }: { def: MetaEntity; onClose: () =>
   )
 }
 
+
+/** Reads the first sheet of an .xlsx file and returns it as CSV text for the normal import path. */
+async function xlsxToCsv(file: File): Promise<string> {
+  const { readSheet } = await import('read-excel-file/browser')
+  const cell = (v: unknown) => { const t = v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? ''); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t }
+  return (await readSheet(file)).map(r => r.map(cell).join(',')).join('\n')
+}

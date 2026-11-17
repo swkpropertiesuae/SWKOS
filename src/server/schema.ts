@@ -230,6 +230,29 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       created_at TEXT NOT NULL
     );
   ` },
+  { id: '009_team_chat', sql: `
+    CREATE TABLE chat_threads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      kind TEXT NOT NULL,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE chat_members (
+      thread_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      last_read_id INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (thread_id, user_id)
+    );
+    CREATE TABLE chat_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      thread_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX chat_messages_thread ON chat_messages(thread_id, id);
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

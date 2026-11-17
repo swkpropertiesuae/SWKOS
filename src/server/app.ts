@@ -29,6 +29,7 @@ const PUBLIC = [/^\/api\/demo\/status$/, /^\/api\/health$/, /^\/api\/auth\/login
 const PORTAL_OK = [
   /^\/api\/auth\//, /^\/api\/meta$/, /^\/api\/dashboard$/, /^\/api\/notifications(\/read)?$/, /^\/api\/calendar(\/context)?$/, /^\/api\/tags$/, /^\/api\/search\/(jobs|global)$/,
   /^\/api\/e\/[a-z_]+(\/\d+|\/lookup)?$/, /^\/api\/print\/[a-z_]+\/\d+\/parties$/, /^\/api\/pdf\/(status|[a-z_]+\/\d+)$/, /^\/api\/files\/\d+\/download$/, /^\/api\/finance\/statement\/\d+$/, /^\/api\/jobs\/\d+\/tracking-token$/,
+  /^\/api\/portal\/maintenance(\/\d+\/(vendor-update|landlord-decision|feedback))?$/,
 ]
 const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-password', '/api/auth/logout', '/api/auth/sessions', '/api/auth/login-history'])
 
@@ -38,6 +39,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
   const app = Fastify({ logger, trustProxy: config.trustProxy, bodyLimit: 12 * 1024 * 1024 })
 
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_req, raw, done) => done(null, Object.fromEntries(new URLSearchParams(String(raw)))))
   // tolerate empty JSON bodies (action endpoints such as POST .../post)
   app.removeContentTypeParser('application/json')
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, raw, done) => {
@@ -138,7 +140,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'),
-    import('./routes/swk-ops'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
