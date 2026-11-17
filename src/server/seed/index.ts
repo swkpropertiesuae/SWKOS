@@ -254,16 +254,14 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
  * 3. The 6 official @swk.property staff accounts (Haseeb, Talha, Fareed, Shahid, Umar, Saifullah)
  *    exist with their hardcoded credentials, roles, and employee profiles.
  */
-/** Owner, Admin and Manager passwords set as environment secrets always win: a secret changed in Cloudflare takes effect on the next container start. Unset secrets leave the stored password alone. */
+/** The admin password set as an environment secret always wins: a secret changed in Cloudflare takes effect on the next container start. Other accounts keep the password they have (change them in Administration, Users). */
 export function applyConfiguredPasswords() {
-  const e = process.env
-  for (const [email, pw] of [['shabib@swk.properties', e.OWNER_PASSWORD], ['admin@swk.properties', e.ADMIN_SWK_PASSWORD || e.ADMIN_PASSWORD], ['haseeb@swk.properties', e.MANAGER_PASSWORD]] as const) {
-    if (!pw) continue
-    const row = q.get(`SELECT id, password_hash FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, email)
-    if (!row || verifyPassword(pw, row.password_hash)) continue
-    q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
-    console.log(`Password for ${email} set from its environment secret.`)
-  }
+  const pw = process.env.ADMIN_SWK_PASSWORD || process.env.ADMIN_PASSWORD
+  if (!pw) return
+  const row = q.get(`SELECT id, password_hash FROM users WHERE lower(email) = 'admin@swk.properties' AND deleted_at IS NULL`)
+  if (!row || verifyPassword(pw, row.password_hash)) return
+  q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
+  console.log('Password for admin@swk.properties set from its environment secret.')
 }
 
 export function ensureHardcodedSwkStaffAccounts() {
