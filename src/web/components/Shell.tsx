@@ -86,6 +86,7 @@ function AppSidebar({ pathname, collapsed, onToggle }: { pathname: string; colla
   return (
     <aside className={cls('swk-app-sidebar no-print', collapsed && 'is-collapsed')}>
       <nav className="swk-sidebar-nav" aria-label={`${here.section.label} pages`}>
+        <Link to="/home" className="swk-sidebar-logo" aria-label="SWK Properties OS, all apps"><img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" /></Link>
         <div className="swk-sidebar-head">
           <Link to="/home" className="swk-sidebar-back" title="All apps"><ArrowLeft size={14} /><span className="swk-sidebar-link-tx">All apps</span></Link>
           <button type="button" onClick={onToggle} className="swk-sidebar-collapse-btn swk-hide-md" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}</button>
@@ -141,7 +142,6 @@ export function Shell() {
       <div className="swk-main-col">
         <header className="swk-top no-print">
           {!isHome && !!here && <button type="button" className="swk-menu-btn" onClick={() => setDrawer(d => !d)} aria-label="Open menu" aria-expanded={drawer}><Menu size={18} /></button>}
-          <Link to="/home" className="swk-top-logo" aria-label="SWK Properties OS home"><img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" /></Link>
           <div className="swk-top-title">
             <div className="crumb"><Link to="/home">SWK OS</Link>{here && <><ChevronRight size={11} /><span>{here.section.label}</span></>}<ChevronRight size={11} /><b>{pageTitle}</b></div>
           </div>
@@ -172,9 +172,9 @@ export function Shell() {
               </motion.div>)}</AnimatePresence>
           </div>
         </header>
-        {pwa.updateReady && <div className="no-print" role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 16, zIndex: 80, maxWidth: 440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: '#1c1c1c', color: '#eef0f2', border: '1px solid rgba(255,91,31,.35)', boxShadow: '0 8px 30px rgba(0,0,0,.35)' }}><RefreshCw size={16} /><span style={{ flex: 1, fontSize: 13.5 }}>A new version of SWK OS is ready.</span><button className="btn sm" onClick={applyUpdate}>Reload</button></div>}
+        {pwa.updateReady && <div className="no-print" role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 16, zIndex: 80, maxWidth: 440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: '#0f1b33', color: '#eef0f2', border: '1px solid rgba(52,97,232,.35)', boxShadow: '0 8px 30px rgba(0,0,0,.35)' }}><RefreshCw size={16} /><span style={{ flex: 1, fontSize: 13.5 }}>A new version of SWK OS is ready.</span><button className="btn sm" onClick={applyUpdate}>Reload</button></div>}
         {me?.demo && <div className="demo-notice no-print"><span><strong>Demo workspace</strong> · sample data · external messages switched off</span><details><summary>Details</summary><p>Safe practice environment. Resets every night. External email and WhatsApp messages are disabled.</p><button className="btn outline sm" onClick={async () => { if (confirm('Restore the demo to its original state and sign out?')) { await post('/api/demo/reset'); window.location.href = '/login' } }}>Reset demo</button></details></div>}
-        {me?.defaultPassword && !me?.demo && <div className="no-print bg-[#f3e6c4] text-[#7a2e0c] px-5 py-2 text-sm font-semibold flex items-center gap-3 flex-wrap">You are signed in with the default password. <Link to="/profile" className="underline">Change it now</Link></div>}
+        {me?.defaultPassword && !me?.demo && <div className="no-print bg-[#dbe4ff] text-[#1b2f7a] px-5 py-2 text-sm font-semibold flex items-center gap-3 flex-wrap">You are signed in with the default password. <Link to="/profile" className="underline">Change it now</Link></div>}
         <div className={cls('swk-body', drawer && 'sb-open', !isHome && !!here && 'has-sidebar', !isHome && !!here && collapsed && 'is-collapsed')}>
           {drawer && <div className="swk-sb-scrim" onClick={() => setDrawer(false)} />}
           {!isHome && <AppSidebar pathname={loc.pathname} collapsed={collapsed} onToggle={toggleSidebar} />}

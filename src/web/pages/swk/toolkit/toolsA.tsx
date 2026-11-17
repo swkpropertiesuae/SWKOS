@@ -100,7 +100,7 @@ export function MortgageTool() {
       <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-center">
         <Hero label="Monthly instalment (EMI)" value={p.emi} sub={<>Loan {aed(p.loan)} · {p.years} years @ {rate}%</>} />
         <motion.div key={p.ltv} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-          className="rounded-2xl px-5 py-4 text-center border" style={{ background: SWK.champSoft, borderColor: '#ffe4d6' }}>
+          className="rounded-2xl px-5 py-4 text-center border" style={{ background: SWK.champSoft, borderColor: '#dbe4ff' }}>
           <div className="text-[10.5px] uppercase tracking-wider font-semibold text-muted">Max LTV</div>
           <div className="font-display text-[34px] font-semibold text-ink leading-none mt-1">{pct(p.ltv * 100, 0)}</div>
           <div className="text-[11.5px] text-muted mt-1">min down {pct(100 - p.ltv * 100, 0)}</div>
@@ -195,7 +195,7 @@ export function RentIncreaseTool() {
           </tbody>
         </table>
       </div>
-      <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: '#ffe4d6', color: '#7c2c1a' }}>
+      <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: '#dbe4ff', color: '#7c2c1a' }}>
         <BellRing size={18} className="flex-none mt-0.5" />
         <div className="text-[13px]"><b>90-day written notice required before renewal</b> (Law 26/2007 as amended). Any increase must be notified at least 90 days before expiry; Ejari renewal follows the signed agreement. Disputes go to the Rental Dispute Settlement Centre (RDSC).</div>
       </div>

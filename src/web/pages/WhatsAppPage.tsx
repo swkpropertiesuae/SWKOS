@@ -25,7 +25,7 @@ export function WhatsAppPage() {
   return (
     <div className="fade-in">
       <PageHeader icon={<MessageCircle size={20} />} title="WhatsApp" subtitle="Customer and lead conversations. New numbers become leads automatically; owners can text “report”, “overdue” or ask Jarvis anything." actions={<Link className="btn outline" to="/admin/integrations"><Settings2 /> Connection & automations</Link>} />
-      {!th.data.configured && <div className="mb-4 p-4 rounded-xl border border-[#ffe4d6] bg-[#ffe4d6] text-[14px]">WhatsApp is not connected. Set it up in <Link className="underline" to="/admin/integrations">Integrations → WhatsApp</Link>. Callback URL: <code>{th.data.webhook}</code></div>}
+      {!th.data.configured && <div className="mb-4 p-4 rounded-xl border border-[#dbe4ff] bg-[#dbe4ff] text-[14px]">WhatsApp is not connected. Set it up in <Link className="underline" to="/admin/integrations">Integrations → WhatsApp</Link>. Callback URL: <code>{th.data.webhook}</code></div>}
       <div className="card grid md:grid-cols-[320px_1fr] min-h-[540px] overflow-hidden">
         <div className="border-b md:border-b-0 md:border-r border-line overflow-auto max-h-[70vh]">
           <div className="p-2 flex gap-2 border-b border-line"><input className="input !min-h-[34px]" placeholder="New chat: number e.g. 0501234567" value={newNo} onChange={e => setNewNo(e.target.value)} /><button className="btn outline sm" disabled={busy || newNo.replace(/\D/g, '').length < 7} onClick={() => { choose(newNo.replace(/\D/g, '')); setNewNo('') }}><Plus /></button></div>

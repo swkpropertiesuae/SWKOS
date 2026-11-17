@@ -9,7 +9,7 @@ import { SWK } from '../../../swk/ui'
 
 /** Clearly labels indicative / sample data so it is never faked silently. */
 export function SamplePill({ title = 'Indicative sample data — not stored in SWK OS', label = 'Sample' }: { title?: string; label?: string }) {
-  return <span title={title} className="inline-flex items-center gap-1 h-[20px] px-2 rounded-full text-[10.5px] font-semibold uppercase tracking-wider" style={{ background: '#ffe4d6', color: '#c9420f', border: '1px dashed #ff5b1f' }}>{label}</span>
+  return <span title={title} className="inline-flex items-center gap-1 h-[20px] px-2 rounded-full text-[10.5px] font-semibold uppercase tracking-wider" style={{ background: '#dbe4ff', color: '#1f3fb0', border: '1px dashed #3461e8' }}>{label}</span>
 }
 
 /** Right-hand side sheet with focus handling + Esc to close. */
@@ -26,10 +26,10 @@ export function Drawer({ open, onClose, title, eyebrow, children, width = 560, f
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[80]">
-          <motion.div className="absolute inset-0" style={{ background: 'rgba(28,28,28,.42)', backdropFilter: 'blur(3px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+          <motion.div className="absolute inset-0" style={{ background: 'rgba(15,27,51,.42)', backdropFilter: 'blur(3px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
           <motion.aside ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Details'}
             className="absolute right-0 top-0 h-full flex flex-col outline-none"
-            style={{ width: `min(${width}px, 100vw)`, background: SWK.sand, boxShadow: '-30px 0 60px -30px rgba(28,28,28,.5)' }}
+            style={{ width: `min(${width}px, 100vw)`, background: SWK.sand, boxShadow: '-30px 0 60px -30px rgba(15,27,51,.5)' }}
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 320, damping: 34 }}>
             <header className="flex items-start justify-between gap-3 px-6 pt-5 pb-4" style={{ borderBottom: `1px solid ${SWK.line}`, background: '#fff' }}>
               <div className="min-w-0">
@@ -62,7 +62,7 @@ export function useToasts() {
         {items.map(t => (
           <motion.div key={t.id} layout initial={{ opacity: 0, y: 16, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 40 }}
             className="pointer-events-auto flex items-start gap-2.5 max-w-[380px] rounded-2xl px-4 py-3 text-[13px] text-white"
-            style={{ background: SWK.midnight, boxShadow: '0 18px 40px -18px rgba(28,28,28,.8)', borderLeft: `3px solid ${t.tone === 'warn' ? SWK.dune : t.tone === 'info' ? SWK.champ : SWK.oasis}` }}>
+            style={{ background: SWK.midnight, boxShadow: '0 18px 40px -18px rgba(15,27,51,.8)', borderLeft: `3px solid ${t.tone === 'warn' ? SWK.dune : t.tone === 'info' ? SWK.champ : SWK.oasis}` }}>
             {t.tone === 'info' || t.tone === 'warn' ? <Info size={16} className="flex-none mt-0.5" style={{ color: SWK.champ }} /> : <CheckCircle2 size={16} className="flex-none mt-0.5" style={{ color: '#6fd0c4' }} />}
             <div>{t.text}</div>
           </motion.div>
