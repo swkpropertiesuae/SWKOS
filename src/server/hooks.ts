@@ -11,6 +11,7 @@ import { can, type Ctx, type Rec } from './engine'
 import { q } from './db'
 import { bad, forbidden } from './util'
 import { jobHooks } from './domain/jobs'
+import { growthLeadHooks, mortgageHooks, paymentPlanHooks, holdbackHooks } from './domain/growth'
 import { unitHoldHooks, commercialTermsHooks, assignmentHooks } from './domain/commercial'
 import { quoteHooks, partyHooks, leadHooks, opportunityHooks, contractHooks } from './domain/sales'
 import { invoiceHooks, billHooks, receiptHooks, paymentHooks, journalHooks, expenseHooks, bankTxnHooks } from './domain/finance'
@@ -28,6 +29,15 @@ export interface Hooks {
   beforeDelete?: (a: DeleteArgs) => void
 }
 
+/** Runs two hook sets in order so an entity can carry both the original rules and a newer layer. */
+function mergeHooks(a: Hooks, b: Hooks): Hooks {
+  return {
+    ...a,
+    beforeSave: a.beforeSave || b.beforeSave ? (x => { a.beforeSave?.(x); b.beforeSave?.(x) }) : undefined,
+    afterSave: a.afterSave || b.afterSave ? (x => { a.afterSave?.(x); b.afterSave?.(x) }) : undefined,
+  }
+}
+
 const registry: Record<string, () => Hooks> = {
   doc_templates: () => docTemplateHooks, studio_documents: () => studioDocumentHooks,
   knowledge_articles: () => knowledgeHooks, staff_qualifications: () => qualificationHooks, activity_skill_rules: () => skillRuleHooks,
@@ -36,12 +46,13 @@ const registry: Record<string, () => Hooks> = {
   automation_rules: () => automationRuleHooks, sla_policies: () => slaHooks, work_items: () => workHooks,
   jobs: () => jobHooks,
   unit_holds: () => unitHoldHooks, commercial_terms: () => commercialTermsHooks, offplan_assignments: () => assignmentHooks,
-  quotations: () => quoteHooks, parties: () => partyHooks, leads: () => leadHooks, opportunities: () => opportunityHooks, contracts: () => contractHooks,
+  mortgage_cases: () => mortgageHooks, payment_plan_templates: () => paymentPlanHooks,
+  quotations: () => quoteHooks, parties: () => partyHooks, leads: () => mergeHooks(leadHooks, growthLeadHooks), opportunities: () => opportunityHooks, contracts: () => contractHooks,
   invoices: () => invoiceHooks, bills: () => billHooks, receipts: () => receiptHooks, payments: () => paymentHooks, journal_entries: () => journalHooks,
   expenses: () => expenseHooks, bank_transactions: () => bankTxnHooks,
   users: () => userHooks, roles: () => roleHooks, branches: () => branchHooks, tasks: () => taskHooks, tickets: () => ticketHooks, leave_requests: () => leaveHooks,
   attendance: () => attendanceHooks, payslips: () => payslipHooks, purchase_orders: () => poHooks, currencies: () => currencyHooks, activities: () => activityHooks,
-  leases: () => leaseHooks, sales_contracts: () => salesContractHooks, agent_commissions: () => agentCommissionHooks, deal_withdrawals: () => dealWithdrawalHooks,
+  leases: () => leaseHooks, sales_contracts: () => salesContractHooks, agent_commissions: () => mergeHooks(agentCommissionHooks, holdbackHooks), deal_withdrawals: () => dealWithdrawalHooks,
   dld_filings: () => dldFilingHooks, kyc_checks: () => kycCheckHooks, aml_reports: () => amlReportHooks,
   api_keys: () => apiKeyHooks, attachments: () => attachmentHooks, employees: () => employeeHooks,
 }

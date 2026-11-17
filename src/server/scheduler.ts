@@ -31,6 +31,7 @@ async function periodic() {
   const now = nowLocal(), hhmm = now.slice(11, 16), day = now.slice(0, 10)
   const safe = async (name: string, fn: () => Promise<unknown>) => { try { await fn() } catch (e) { console.error('periodic', name, e) } }
   if (getSetting('supabase_sync') && once('sb', now.slice(0, 15))) await safe('supabase', async () => (await import('./integrations/supabase')).syncToSupabase())
+  await safe('lead-sla', async () => (await import('./domain/growth')).sweepLeadSla())
   await safe('unit-holds', async () => (await import('./domain/commercial')).expireHolds())
   if (once('ai', now.slice(0, 13))) await safe('agents', async () => (await import('./ai/agents')).runDueAgents())
   if (hhmm >= '03:00' && hhmm < '05:00' && once('demo-rebuild', day)) await safe('demo', async () => (await import('./demo/workspace')).rebuildDemoWorkspace())
