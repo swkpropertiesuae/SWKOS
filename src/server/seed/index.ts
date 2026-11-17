@@ -264,6 +264,33 @@ export function applyConfiguredPasswords() {
   console.log('Password for admin@swk.properties set from its environment secret.')
 }
 
+/** One-time reset of the Manager and staff passwords. Set PASSWORD_RESET_ID (any new text) with MANAGER_PASSWORD and/or BDM_PASSWORD; each id runs once, so later restarts keep personal passwords. */
+export function applyPasswordReset() {
+  const id = process.env.PASSWORD_RESET_ID?.trim()
+  if (!id) return
+  const key = `pwreset:${id}`
+  if (q.get(`SELECT 1 AS x FROM settings WHERE key = ?`, key)) return
+  // PASSWORD_RESET_SUFFIX gives each person their own temporary password: first name + suffix (haseeb + 123). The repo never holds a password.
+  const suffix = process.env.PASSWORD_RESET_SUFFIX
+  const set = (emails: string[], pw: string | undefined) => {
+    if (!pw && !suffix) return 0
+    let n = 0
+    for (const email of emails) {
+      const own = suffix ? email.split('@')[0] + suffix : pw!
+      const row = q.get(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, email.toLowerCase())
+      if (!row) continue
+      q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(own), nowIso(), row.id)
+      q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
+      n++
+    }
+    return n
+  }
+  const mgr = set(['haseeb@swk.properties'], process.env.MANAGER_PASSWORD)
+  const staff = set(['talha', 'fareed', 'shahid', 'umar', 'saifullah', 'samarth'].map(n => `${n}@swk.properties`), process.env.BDM_PASSWORD)
+  q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?)`, key, JSON.stringify(true), nowIso())
+  console.log(`Password reset ${id}: manager ${mgr}, staff ${staff} account(s). Each person must choose a new password at next sign-in.`)
+}
+
 export function ensureHardcodedSwkStaffAccounts() {
   const mk = (key: string, payload: Record<string, any>) => createRecord(getDef(key), payload, SYSTEM_CTX)
   const dxb = idOf('branches', 'code', 'DXB') ?? 1
