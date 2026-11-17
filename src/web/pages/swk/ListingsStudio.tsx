@@ -317,11 +317,7 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
       </div>
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
-<<<<<<< HEAD
           <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#2d58dc] underline-offset-4">{p.title}</Link>
-=======
-          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#3461e8] underline-offset-4">{p.title}</Link>
->>>>>>> origin/main
           <div className="text-[12.5px] text-muted mt-0.5">{l.community?.name ?? p.address ?? 'Dubai'} · {p.property_type}{l.units.length ? ` · ${l.units.length} unit${l.units.length > 1 ? 's' : ''}` : ''}</div>
         </div>
         <div className="flex items-center gap-4 text-[12.5px] text-ink">
@@ -456,11 +452,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
 
   return (
     <div className="flex flex-col gap-4">
-<<<<<<< HEAD
       <div className="rounded-2xl bg-[#0a1322] text-white p-4 border border-[#2d58dc]/40 flex flex-col gap-3">
-=======
-      <div className="rounded-2xl bg-[#0a1322] text-white p-4 border border-[#3461e8]/40 flex flex-col gap-3">
->>>>>>> origin/main
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <MessageCircle size={17} className="text-[#4fd39a]" />
@@ -483,11 +475,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
             value={waPhone}
             onChange={e => setWaPhone(e.target.value)}
             placeholder="Recipient WhatsApp (e.g. 0501234567 or +971501234567)"
-<<<<<<< HEAD
             className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#2d58dc]"
-=======
-            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#3461e8]"
->>>>>>> origin/main
           />
           <button
             type="button"

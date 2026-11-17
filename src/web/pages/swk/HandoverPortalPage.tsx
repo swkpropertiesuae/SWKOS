@@ -36,21 +36,13 @@ export default function HandoverPortalPage() {
     <div className="min-h-screen bg-[#eef0f2] text-[#0f1b33] pb-16">
       {/* Top Executive Banner (hidden when printing individual document) */}
       <header
-<<<<<<< HEAD
         className="print:hidden border-b border-[#2d58dc]/35 text-white"
-=======
-        className="print:hidden border-b border-[#3461e8]/35 text-white"
->>>>>>> origin/main
         style={{ background: 'linear-gradient(135deg, #0a1322 0%, #0f1b33 55%, #0f1b33 100%)' }}
       >
         <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-<<<<<<< HEAD
               <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#2d58dc]/40">
-=======
-              <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[#050c1b]/85 border border-[#3461e8]/40">
->>>>>>> origin/main
                 <img
                   src="/brand/os/SWK_Emblem_Transparent.svg"
                   alt="SWK OS Emblem"
@@ -87,13 +79,8 @@ export default function HandoverPortalPage() {
               <a
                 href="/handover/SWK_Properties_OS_Complete_Workflow_And_Logic_Booklet.pdf"
                 download
-<<<<<<< HEAD
                 className="px-4 py-2.5 rounded-xl font-bold text-xs text-white no-underline inline-flex items-center gap-2 shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #3b69f0, #2c55d8)' }}
-=======
-                className="px-4 py-2.5 rounded-xl font-bold text-xs text-[#0a1322] no-underline inline-flex items-center gap-2 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #dbe4ff 0%, #3461e8 100%)' }}
->>>>>>> origin/main
               >
                 <BookOpen size={15} /> Download Workflow &amp; Logic Booklet (PDF)
               </a>
@@ -101,35 +88,22 @@ export default function HandoverPortalPage() {
                 href="/handover/SWK_Properties_OS_Interactive_Workflow_Booklet.html"
                 target="_blank"
                 rel="noreferrer"
-<<<<<<< HEAD
                 className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#2d58dc]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
-=======
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#3461e8]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
->>>>>>> origin/main
               >
                 <Workflow size={14} /> Open Interactive Booklet
               </a>
               <a
                 href="/handover/SWK_OS_Office_Attendance_QR_Code_And_Method.pdf"
                 download
-<<<<<<< HEAD
                 className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#2d58dc]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
-=======
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-[#3461e8]/50 text-[#dbe4ff] text-xs font-bold no-underline inline-flex items-center gap-1.5"
->>>>>>> origin/main
               >
                 <QrCode size={14} /> Attendance QR &amp; Method PDF
               </a>
               <a
                 href="/handover/SWK_OS_Complete_Software_Handover_And_Staff_Credentials_By_Shameem_Harfath.pdf"
                 download
-<<<<<<< HEAD
                 className="px-4 py-2.5 rounded-xl font-bold text-xs text-white no-underline inline-flex items-center gap-2 shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #3b69f0, #2c55d8)' }}
-=======
-                className="px-4 py-2.5 rounded-xl font-bold text-xs text-[#0a1322] no-underline inline-flex items-center gap-2 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #dbe4ff 0%, #3461e8 100%)' }}
->>>>>>> origin/main
               >
                 <Printer size={15} /> Download Complete Handover PDF
               </a>
@@ -155,11 +129,7 @@ export default function HandoverPortalPage() {
             ].map(stat => (
               <div
                 key={stat.label}
-<<<<<<< HEAD
                 className="rounded-2xl bg-white/[0.06] border border-[#2d58dc]/30 px-3.5 py-3 backdrop-blur-sm"
-=======
-                className="rounded-2xl bg-white/[0.06] border border-[#3461e8]/30 px-3.5 py-3 backdrop-blur-sm"
->>>>>>> origin/main
               >
                 <div className="text-[10px] uppercase tracking-[0.16em] text-[#dbe4ff] font-bold">{stat.label}</div>
                 <div className="font-display text-lg sm:text-xl font-bold text-white mt-0.5">{stat.val}</div>
@@ -205,13 +175,8 @@ export default function HandoverPortalPage() {
                   onClick={() => setTab(t.id)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 border ${
                     active
-<<<<<<< HEAD
                       ? 'bg-[#2d58dc] text-white border-[#dbe4ff] shadow-md'
                       : 'bg-[#0a1322]/60 text-white/85 border-white/15 hover:border-[#2d58dc]/60'
-=======
-                      ? 'bg-[#3461e8] text-[#0a1322] border-[#dbe4ff] shadow-md'
-                      : 'bg-[#0a1322]/60 text-white/85 border-white/15 hover:border-[#3461e8]/60'
->>>>>>> origin/main
                   }`}
                 >
                   <t.icon size={15} />
@@ -360,11 +325,7 @@ export default function HandoverPortalPage() {
                         <td className="p-3 font-bold">3 files</td>
                         <td className="p-3 font-mono font-bold">1,911 LOC</td>
                         <td className="p-3">138 KB</td>
-<<<<<<< HEAD
                         <td className="p-3">Royal Midnight Navy (#0a1322 / #0f1b33) &amp; Champagne Gold (#2d58dc), Print/A4 CSS, RTL Arabic</td>
-=======
-                        <td className="p-3">Royal Midnight Navy (#0a1322 / #0f1b33) &amp; Champagne Gold (#3461e8), Print/A4 CSS, RTL Arabic</td>
->>>>>>> origin/main
                       </tr>
                       <tr>
                         <td className="p-3 font-bold">5. Automated QA &amp; E2E Tests</td>
@@ -701,11 +662,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-<<<<<<< HEAD
                 <div className="rounded-2xl border-2 border-[#2d58dc]/50 bg-[#fafaff] p-5 space-y-2.5">
-=======
-                <div className="rounded-2xl border-2 border-[#3461e8]/50 bg-[#fafaff] p-5 space-y-2.5">
->>>>>>> origin/main
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0f1b33] text-[#dbe4ff] font-bold text-[11px]">
                     <QrCode size={13} /> STEP 1 · DAILY MORNING ATTENDANCE (10:00 AM GST)
                   </div>
@@ -857,11 +814,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 </button>
               </div>
 
-<<<<<<< HEAD
               <div className="rounded-3xl border-2 border-[#2d58dc] bg-[#fafaff] p-6 sm:p-8 space-y-6">
-=======
-              <div className="rounded-3xl border-2 border-[#3461e8] bg-[#fafaff] p-6 sm:p-8 space-y-6">
->>>>>>> origin/main
                 <div className="text-center space-y-1.5 border-b border-[#e7e8e6] pb-5">
                   <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#1f3fb0]">
                     OFFICIAL CERTIFICATE OF SOFTWARE ENGINEERING HANDOVER
@@ -976,11 +929,7 @@ git push origin main          # Triggers .github/workflows/deploy-cloudflare.yml
                 </a>
               </div>
 
-<<<<<<< HEAD
               <div className="rounded-3xl overflow-hidden bg-[#0a1322] border-2 border-[#2d58dc]/50 shadow-2xl">
-=======
-              <div className="rounded-3xl overflow-hidden bg-[#0a1322] border-2 border-[#3461e8]/50 shadow-2xl">
->>>>>>> origin/main
                 <video
                   controls
                   autoPlay

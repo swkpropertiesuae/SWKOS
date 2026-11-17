@@ -38,22 +38,14 @@
 @theme {
   --font-sans: 'General Sans', 'Instrument Sans', system-ui, Arial, 'Noto Sans Arabic', sans-serif;
   --font-display: 'Clash Display', 'Plus Jakarta Sans', system-ui, 'Noto Sans Arabic', sans-serif;
-<<<<<<< HEAD
   --color-emerald: #0f1b33; --color-fold: #0f1b33; --color-signal: #d51f16; --color-graphite: #0f1b33; --color-pearl: #eef0f2;
   --color-ocean: #1d4f86; --color-teal: #1f7a7a; --color-aviation: #56627a; --color-copper: #1f3fb0; --color-violet: #4b3f78; --color-champagne: #dbe4ff;
   --color-mint: #ecebe4; --color-sky: #e3ebf6; --color-sand: #e8ecf4; --color-lilac: #e8e3f7; --color-blush: #f9e2dc; --color-gold: #dbe4ff;
   --color-navy: #0f1b33; --color-midnight: #0f1b33; --color-champ: #2d58dc; --color-dune: #d51f16; --color-oasis: #1f7a7a;
-=======
-  --color-emerald: #0f1b33; --color-fold: #0f1b33; --color-signal: #e8261c; --color-graphite: #0f1b33; --color-pearl: #eef0f2;
-  --color-ocean: #1d4f86; --color-teal: #1f7a7a; --color-aviation: #56627a; --color-copper: #1f3fb0; --color-violet: #4b3f78; --color-champagne: #dbe4ff;
-  --color-mint: #ecebe4; --color-sky: #e3ebf6; --color-sand: #e8ecf4; --color-lilac: #e8e3f7; --color-blush: #f9e2dc; --color-gold: #dbe4ff;
-  --color-navy: #0f1b33; --color-midnight: #0f1b33; --color-champ: #3461e8; --color-dune: #e8261c; --color-oasis: #1f7a7a;
->>>>>>> origin/main
 }
 @theme inline { --color-card: var(--card); --color-hover: var(--hover); --color-ink: var(--ink); --color-line: var(--line); --color-muted: var(--muted); --color-body: var(--body); --color-soft: var(--soft); --color-bg: var(--bg); }
 
 :root {
-<<<<<<< HEAD
   --bg: #eef0f2; --card: #ffffff; --ink: #0f1b33; --body: #3a4660; --muted: #566179; --line: #e7e8e6; --line-strong: #c6c9c4; --focus: #1f3fb0;
   --emerald: #0f1b33; --fold: #0f1b33; --signal: #d51f16; --graphite: #0f1b33; --soft: #ecebe4; --hover: #ecebe4;
   --champ: #2d58dc; --champ-deep: #1f3fb0; --champ-soft: #eef2ff; --oasis: #1f7a7a; --dune: #d51f16; --navy: #0f1b33; --midnight: #0f1b33;
@@ -61,15 +53,6 @@
 }
 :root[data-theme='dark'] {
   --bg: #0a1322; --card: #0f1f3d; --ink: #ecebe4; --body: #b5bdcc; --muted: #9aa3b8; --line: #22355a; --line-strong: #33466b; --soft: #16294a; --hover: #16294a; --focus: #2d58dc;
-=======
-  --bg: #eef0f2; --card: #ffffff; --ink: #0f1b33; --body: #3a4660; --muted: #6b7488; --line: #e7e8e6; --line-strong: #c6c9c4; --focus: #1f3fb0;
-  --emerald: #0f1b33; --fold: #0f1b33; --signal: #e8261c; --graphite: #0f1b33; --soft: #ecebe4; --hover: #ecebe4;
-  --champ: #3461e8; --champ-deep: #1f3fb0; --champ-soft: #eef2ff; --oasis: #1f7a7a; --dune: #e8261c; --navy: #0f1b33; --midnight: #0f1b33;
-  --ease: cubic-bezier(.16,1,.3,1);
-}
-:root[data-theme='dark'] {
-  --bg: #0a1322; --card: #0f1f3d; --ink: #ecebe4; --body: #b5bdcc; --muted: #9aa3b8; --line: #22355a; --line-strong: #33466b; --soft: #16294a; --hover: #16294a; --focus: #3461e8;
->>>>>>> origin/main
 }
 @layer base {
 html, body, #root { height: 100%; }
@@ -88,11 +71,7 @@ button { font-family: inherit; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn svg { width: 16px; height: 16px; flex: none; }
-<<<<<<< HEAD
 .btn.green { background: var(--emerald); } .btn.red { background: var(--signal); } .btn.grey { background: #566179; } .btn.violet { background: #4a4157; } .btn.blue { background: #46526b; } .btn.orange { background: #1f3fb0; } .btn.dark { background: var(--graphite); } .btn.teal { background: #1f3fb0; }
-=======
-.btn.green { background: var(--emerald); } .btn.red { background: var(--signal); } .btn.grey { background: #6b7488; } .btn.violet { background: #4a4157; } .btn.blue { background: #46526b; } .btn.orange { background: #1f3fb0; } .btn.dark { background: var(--graphite); } .btn.teal { background: #1f3fb0; }
->>>>>>> origin/main
 .btn.outline { background: var(--card); color: var(--ink); border-color: var(--line-strong); } .btn.outline:hover:not(:disabled) { background: var(--hover); filter: none; }
 .btn.ghost { background: transparent; color: var(--body); } .btn.ghost:hover:not(:disabled) { background: var(--hover); filter: none; }
 .btn.sm { min-height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 7px; } .btn.sm svg { width: 14px; height: 14px; }
@@ -288,11 +267,7 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
 @media print { .account-carousel, .pdf-progress, .document-loading { display: none !important; } .print-sheet { max-width: none; width: 210mm; padding: 14mm; } }
 
 /* Reference-led workspace: light frame, capsule navigation, focused work surfaces. */
-<<<<<<< HEAD
 :root { --bg: #eef0f2; --soft: #ecebe4; --hover: #ecebe4; --line: #e5e2d8; --line-strong: #b5bdcc; --muted: #566179; --workspace-ground: #f1efe9; --surface-raised: 0 12px 36px -24px #0f171445; }
-=======
-:root { --bg: #eef0f2; --soft: #ecebe4; --hover: #ecebe4; --line: #e5e2d8; --line-strong: #b5bdcc; --muted: #6b7488; --workspace-ground: #f1efe9; --surface-raised: 0 12px 36px -24px #0f171445; }
->>>>>>> origin/main
 :root[data-theme='dark'] { --workspace-ground: #0a0e0c; --bg: #0a1322; --soft: #16294a; --hover: #1f2b26; --line: #22355a; --line-strong: #47544b; --muted: #a6aaa0; }
 body { background: var(--workspace-ground); }
 .workspace-frame { margin: 0; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--card); border-radius: 0; box-shadow: none; }
@@ -408,15 +383,9 @@ table.grid tbody tr:hover td { background: var(--hover); }
 .workspace-card-foot { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
 .workspace-card-foot > span:last-child { display: inline-flex; align-items: center; gap: 4px; color: var(--emerald); font-weight: 700; }
 .workspace-flow { margin-top: 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 20px 24px; background: #0f1b33; color: #e4eee8; border-radius: 16px; font-size: 14px; font-weight: 600; }
-<<<<<<< HEAD
 .workspace-flow svg { color: #2d58dc; flex: none; }
 .workspace-flow a { display: inline-flex; align-items: center; gap: 10px; min-height: 32px; padding-inline-end: 8px; }
 .workspace-flow a:hover { color: #2d58dc; }
-=======
-.workspace-flow svg { color: #3461e8; flex: none; }
-.workspace-flow a { display: inline-flex; align-items: center; gap: 10px; min-height: 32px; padding-inline-end: 8px; }
-.workspace-flow a:hover { color: #3461e8; }
->>>>>>> origin/main
 .workspace-feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .feature-card { display: flex; align-items: center; gap: 16px; min-width: 0; min-height: 104px; padding: 22px; border: 0; border-radius: 16px; background: var(--card); color: var(--ink); text-align: start; cursor: pointer; box-shadow: 0 10px 28px -22px #0f171450; transition: background 180ms var(--ease); font-family: inherit; font-size: 15px; }
 .feature-card:hover { background: var(--hover); }
@@ -429,11 +398,7 @@ table.grid tbody tr:hover td { background: var(--hover); }
 :root[data-theme='dark'] .workspace-card-symbol,
 :root[data-theme='dark'] .workspace-card-foot > span:last-child,
 :root[data-theme='dark'] .feature-card > svg,
-<<<<<<< HEAD
 :root[data-theme='dark'] .feature-icon { color: #2d58dc; }
-=======
-:root[data-theme='dark'] .feature-icon { color: #3461e8; }
->>>>>>> origin/main
 
 /* Shared containment and wrapping for real records, long labels and zoom. */
 .app-main .grid > *, .app-main .flex > *, .modal-body .grid > *, .modal-body .flex > * { min-width: 0; }
@@ -623,11 +588,7 @@ table.grid td.num, table.grid th.num { white-space: nowrap; }
 :root[data-theme='dark'] .btn.outline { color: var(--ink); }
 :root[data-theme='dark'] .btn.outline:hover { background: var(--hover); }
 :root[data-theme='dark'] .badge.green { background: rgba(242,58,29,.18); color: #dbe4ff; border-color: rgba(242,58,29,.38); }
-<<<<<<< HEAD
 :root[data-theme='dark'] .workspace-flow svg { color: #2d58dc; }
-=======
-:root[data-theme='dark'] .workspace-flow svg { color: #3461e8; }
->>>>>>> origin/main
 
 /* SWK OS brand blend: fixed shell watermark + inverted brand on dark surfaces */
 .app-watermark { position: fixed; inset-inline-end: 18px; bottom: 38px; width: clamp(130px, 13vw, 210px); opacity: .055; pointer-events: none; user-select: none; z-index: 45; mix-blend-mode: multiply; }

@@ -254,11 +254,7 @@ export default function PipelinePage() {
               className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#0f1b33] text-white border-[#1f3fb0] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#1f3fb0]'}`}
             >
               <div className="flex items-center justify-between">
-<<<<<<< HEAD
                 <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#1f3fb0] text-white' : 'bg-[#fafaff] text-muted'}`}>
-=======
-                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#1f3fb0] text-[#0f1b33]' : 'bg-[#fafaff] text-muted'}`}>
->>>>>>> origin/main
                   {tab.badge}
                 </span>
                 <span className="font-mono font-extrabold text-lg">{tab.count} deals</span>
