@@ -11,7 +11,7 @@ const server = spawn(process.execPath, ['dist/server/index.mjs'], { env: { ...pr
 let logs = '', browser; server.stdout.on('data', b => logs += b); server.stderr.on('data', b => logs += b)
 try {
   let ready = false
-  for (let i = 0; i < 90; i++) { try { if ((await fetch(base + '/api/health')).ok) { ready = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 90; i++) { try { if ((await fetch(base + '/api/health')).ok && (await (await fetch(base + '/api/demo/status')).json()).enabled) { ready = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
   assert.ok(ready, logs)
   browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || execFileSync('bash', ['-c', 'command -v google-chrome || command -v chromium'], { encoding: 'utf8' }).trim(), headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }), page = await context.newPage(), errors = []

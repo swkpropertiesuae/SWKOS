@@ -13,7 +13,7 @@ server.stdout.on('data', b => { logs += b }); server.stderr.on('data', b => { lo
 const check = (label, condition) => { assert.ok(condition, label); checks++; console.log(`  ✓ ${label}`) }
 try {
   let online = false
-  for (let i = 0; i < 120; i++) { try { if ((await fetch(base + '/api/health')).ok) { online = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 120; i++) { try { if ((await fetch(base + '/api/health')).ok && (await (await fetch(base + '/api/demo/status')).json()).enabled) { online = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
   assert.ok(online, logs)
   browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' })

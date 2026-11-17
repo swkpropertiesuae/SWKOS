@@ -13,7 +13,7 @@ fs.mkdirSync(out, { recursive: true })
 let browser
 try {
   let online = false
-  for (let i = 0; i < 120; i++) { try { if ((await fetch(base + '/api/health')).ok) { online = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 120; i++) { try { if ((await fetch(base + '/api/health')).ok && (await (await fetch(base + '/api/demo/status')).json()).enabled) { online = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
   assert.ok(online, logs)
   const executablePath = process.env.CHROME_PATH || execFileSync('bash', ['-c', 'command -v google-chrome || command -v chromium'], { encoding: 'utf8' }).trim()
   browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] })
