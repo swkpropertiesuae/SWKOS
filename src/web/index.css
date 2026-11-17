@@ -39,7 +39,7 @@
   --font-sans: 'General Sans', 'Instrument Sans', system-ui, Arial, 'Noto Sans Arabic', sans-serif;
   --font-display: 'Clash Display', 'Plus Jakarta Sans', system-ui, 'Noto Sans Arabic', sans-serif;
   --color-emerald: #1c1c1c; --color-fold: #1c1c1c; --color-signal: #e8261c; --color-graphite: #1c1c1c; --color-pearl: #eef0f2;
-  --color-ocean: #1d4f86; --color-teal: #1f7a7a; --color-aviation: #56627a; --color-copper: #a8773f; --color-violet: #4b3f78; --color-champagne: #ffd9c4;
+  --color-ocean: #1d4f86; --color-teal: #1f7a7a; --color-aviation: #56627a; --color-copper: #c9420f; --color-violet: #4b3f78; --color-champagne: #ffd9c4;
   --color-mint: #ecebe4; --color-sky: #e3ebf6; --color-sand: #f2ebdd; --color-lilac: #e8e3f7; --color-blush: #f9e2dc; --color-gold: #f3e6c4;
   --color-navy: #1c1c1c; --color-midnight: #1c1c1c; --color-champ: #ff5b1f; --color-dune: #e8261c; --color-oasis: #1f7a7a;
 }
@@ -71,7 +71,7 @@ button { font-family: inherit; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn svg { width: 16px; height: 16px; flex: none; }
-.btn.green { background: var(--emerald); } .btn.red { background: var(--signal); } .btn.grey { background: #6b7488; } .btn.violet { background: #4a4157; } .btn.blue { background: #46526b; } .btn.orange { background: #c9420f; } .btn.dark { background: var(--graphite); } .btn.teal { background: #8a6d4a; }
+.btn.green { background: var(--emerald); } .btn.red { background: var(--signal); } .btn.grey { background: #6b7488; } .btn.violet { background: #4a4157; } .btn.blue { background: #46526b; } .btn.orange { background: #c9420f; } .btn.dark { background: var(--graphite); } .btn.teal { background: #c9420f; }
 .btn.outline { background: var(--card); color: var(--ink); border-color: var(--line-strong); } .btn.outline:hover:not(:disabled) { background: var(--hover); filter: none; }
 .btn.ghost { background: transparent; color: var(--body); } .btn.ghost:hover:not(:disabled) { background: var(--hover); filter: none; }
 .btn.sm { min-height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 7px; } .btn.sm svg { width: 14px; height: 14px; }
