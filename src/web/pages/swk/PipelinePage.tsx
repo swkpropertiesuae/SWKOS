@@ -14,13 +14,13 @@ import { Avatar,cleanLabel,daysSince,daysUntil,Drawer,fmtD,MUTED,INK,SearchBox,u
 
 // ------------------------------------------------------------------ stages (UAE sales journey)
 const STAGES = [
-  { key: 'Inquiry', label: '1. Lead & Qualify', prob: 0.05, hint: 'Platform lead · Form B / KYC', color: '#8e9ab3' },
+  { key: 'Inquiry', label: '1. Lead & Qualify', prob: 0.05, hint: 'Platform lead · Form B / KYC', color: '#aca195' },
   { key: 'Viewing', label: '2. Site Visit', prob: 0.15, hint: 'Live GPS viewing · Area brief', color: SWK.sky },
   { key: 'Offer', label: '3. Offer & Finance', prob: 0.3, hint: 'Cash / Mortgaged / Pre-Approved', color: SWK.ocean },
   { key: 'Negotiation', label: '4. Negotiation / A2A', prob: 0.45, hint: 'Seller / Landlord / Form I A2A', color: SWK.navy },
   { key: 'Contract', label: '5. Form F / SPA / Ejari', prob: 0.7, hint: 'Signed MOU / SPA · Legal deposit', color: SWK.champDeep },
   { key: 'DLD Process', label: '6. NOC & DLD / Oqood', prob: 0.85, hint: 'NOC · Bank Valuation · Trustee', color: SWK.champ },
-  { key: 'Handover', label: '7. Legal Payment & Keys', prob: 0.95, hint: 'Escrow / Bank / USDT · Handover', color: '#2d8f8f' },
+  { key: 'Handover', label: '7. Legal Payment & Keys', prob: 0.95, hint: 'Escrow / Bank / USDT · Handover', color: '#2d8f6b' },
   { key: 'Closed', label: '8. Closed & 50/50 Split', prob: 1, hint: 'Title Deed / Ejari · 50-50 Payout', color: SWK.oasis },
 ] as const
 type StageKey = typeof STAGES[number]['key']
@@ -251,10 +251,10 @@ export default function PipelinePage() {
               key={tab.key}
               type="button"
               onClick={() => switchDept(tab.key)}
-              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#0f1b33] text-white border-[#0b4a5a] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#0b4a5a]'}`}
+              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#123025] text-white border-[#0a4a3b] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#0a4a3b]'}`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#0b4a5a] text-white' : 'bg-[#fafaff] text-muted'}`}>
+                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#0a4a3b] text-white' : 'bg-[#fdfdfc] text-muted'}`}>
                   {tab.badge}
                 </span>
                 <span className="font-mono font-extrabold text-lg">{tab.count} deals</span>
@@ -285,11 +285,11 @@ export default function PipelinePage() {
             <Link
               key={s.step}
               to={s.to}
-              className="p-2.5 rounded-xl border border-[#ecebe4] bg-[#fafaff] hover:bg-white hover:border-[#0b4a5a] transition flex flex-col justify-between"
+              className="p-2.5 rounded-xl border border-[#ecebe4] bg-[#fdfdfc] hover:bg-white hover:border-[#0a4a3b] transition flex flex-col justify-between"
             >
               <div className="flex items-center justify-between text-xs font-extrabold text-ink">
                 <span>{s.step}</span>
-                {idx < 7 && <ArrowRight size={12} className="text-[#0b4a5a]" />}
+                {idx < 7 && <ArrowRight size={12} className="text-[#0a4a3b]" />}
               </div>
               <div className="text-[11px] text-muted mt-1">{s.desc}</div>
             </Link>
@@ -329,7 +329,7 @@ export default function PipelinePage() {
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOverCol(null) }}
                 onDrop={e => onDrop(e, s.key)}
                 className="snap-start flex-none flex flex-col rounded-[20px] transition-colors"
-                style={{ width: 288, minHeight: 420, background: overCol === s.key ? '#e8f3f6' : '#ecebe4', border: `1px ${overCol === s.key ? 'dashed' : 'solid'} ${overCol === s.key ? SWK.champ : '#e7e8e6'}` }}>
+                style={{ width: 288, minHeight: 420, background: overCol === s.key ? '#e9f4ef' : '#ecebe4', border: `1px ${overCol === s.key ? 'dashed' : 'solid'} ${overCol === s.key ? SWK.champ : '#e7e8e6'}` }}>
                 <header className="px-3.5 pt-3.5 pb-2.5">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
@@ -370,7 +370,7 @@ export default function PipelinePage() {
           >
             <div className="space-y-2.5">
               {(portalQ.data?.portals ?? []).map((p: any) => (
-                <div key={p.key} className="p-3 rounded-xl border border-[#ecebe4] bg-[#fafaff] flex items-center justify-between">
+                <div key={p.key} className="p-3 rounded-xl border border-[#ecebe4] bg-[#fdfdfc] flex items-center justify-between">
                   <div>
                     <div className="font-bold text-sm text-ink">{p.name}</div>
                     <div className="text-xs text-muted">{p.account}</div>
@@ -423,7 +423,7 @@ export default function PipelinePage() {
                         </td>
                         <td className="num font-mono text-xs">{aed(item.commissionPreview?.grossCommissionAed)}</td>
                         <td className="num font-mono text-xs text-[#7E3039]">-{aed(item.commissionPreview?.thirdPartyAgentPayoutAed)} ({item.commissionPreview?.a2aPartnerSharePct}%)</td>
-                        <td className="num font-mono font-bold text-xs text-[#0f1b33]">{aed(item.commissionPreview?.swkCompany50PctAed)}</td>
+                        <td className="num font-mono font-bold text-xs text-[#123025]">{aed(item.commissionPreview?.swkCompany50PctAed)}</td>
                         <td className="num font-mono font-bold text-xs text-[#174B3B]">{aed(item.commissionPreview?.salesAdvisor50PctAed)}</td>
                       </tr>
                     ))}
@@ -464,7 +464,7 @@ function DealCard({ d, onOpen, onMove }: { d: Deal; onOpen: () => void; onMove: 
       <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', d.id); e.dataTransfer.effectAllowed = 'move'; setDragging(true) }} onDragEnd={() => setDragging(false)}
         role="button" tabIndex={0} aria-label={`${d.name}, ${aed(d.value)}. Press Enter for transfer checklist`} onClick={onOpen} onKeyDown={onKey}
         className="group relative rounded-2xl bg-white p-3 cursor-grab active:cursor-grabbing outline-none focus-visible:ring-2"
-        style={{ border: '1px solid #e7e8e6', boxShadow: '0 10px 24px -20px rgba(15,27,51,.5)' }}>
+        style={{ border: '1px solid #e7e8e6', boxShadow: '0 10px 24px -20px rgba(18,48,37,.5)' }}>
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap mb-1">
@@ -510,7 +510,7 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
       title={deal?.name ?? ''} subtitle={deal && <>{deptLabel(deal.type)} · {deal.client} · {deal.property}</>}>
       {deal && sp && (
         <div className="flex flex-col gap-5">
-          <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: 'linear-gradient(150deg,#0f1b33,#0f1b33)', color: '#d9e1ee' }}>
+          <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: 'linear-gradient(150deg,#123025,#123025)', color: '#ece6db' }}>
             <ProgressRing value={progress} size={86} color={SWK.champ} track="rgba(255,255,255,.12)" label={<span style={{ color: '#fff' }}>{Math.round(progress)}%</span>} />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-[.18em]" style={{ color: SWK.champ }}>{deptLabel(deal.type)}</div>
@@ -519,7 +519,7 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#ecebe4] bg-[#fafaff] p-3.5 text-xs space-y-1.5">
+          <div className="rounded-2xl border border-[#ecebe4] bg-[#fdfdfc] p-3.5 text-xs space-y-1.5">
             <div className="font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
               <ShieldCheck size={14} className="text-[#174B3B]" /> Legal Payment & 50–50% Commission Waterfall
             </div>
@@ -532,7 +532,7 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
                 <strong>-{aed(sp.a2aAmount)}</strong>
               </div>
             )}
-            <div className="flex justify-between pt-1 border-t border-[#ecebe4] font-bold text-[#0f1b33]">
+            <div className="flex justify-between pt-1 border-t border-[#ecebe4] font-bold text-[#123025]">
               <span>SWK Company Share (50% of Net Pool):</span>
               <span>{aed(sp.company50)}</span>
             </div>

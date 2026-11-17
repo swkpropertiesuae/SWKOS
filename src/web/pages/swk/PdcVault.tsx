@@ -116,7 +116,7 @@ export default function PdcVault() {
       />
 
       {notice && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="px-4 py-2.5 rounded-xl bg-[#def1ef] border border-[#b4dfda] text-[#17625f] text-sm font-semibold flex items-center gap-2">
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="px-4 py-2.5 rounded-xl bg-[#efeae0] border border-[#b4dfcf] text-[#215844] text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 size={16} />{notice}
         </motion.div>
       )}
@@ -174,7 +174,7 @@ export default function PdcVault() {
                     <tr key={c.id}>
                       <td className="font-semibold">
                         <span className="inline-flex items-center gap-1.5">
-                          <CreditCard size={14} className="text-[#0b4a5a]" />
+                          <CreditCard size={14} className="text-[#0a4a3b]" />
                           {c.chequeNo}
                         </span>
                       </td>

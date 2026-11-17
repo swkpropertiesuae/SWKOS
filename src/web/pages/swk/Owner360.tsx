@@ -270,13 +270,13 @@ export default function Owner360() {
                     onClick={() => setSelectedId(p.id)}
                     className="text-start p-4 rounded-2xl border transition-all cursor-pointer"
                     style={{
-                      background: active ? 'linear-gradient(145deg,#0f1b33,#0f1b33)' : '#fff',
-                      borderColor: active ? '#1d3a66' : 'var(--line)',
+                      background: active ? 'linear-gradient(145deg,#123025,#123025)' : '#fff',
+                      borderColor: active ? '#245f49' : 'var(--line)',
                       color: active ? '#fff' : 'var(--ink)',
                     }}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] uppercase tracking-wider" style={{ color: active ? '#dbe4ff' : 'var(--muted)' }}>{p.nationality} · {p.units.length} units</span>
+                      <span className="text-[11px] uppercase tracking-wider" style={{ color: active ? '#f2efe8' : 'var(--muted)' }}>{p.nationality} · {p.units.length} units</span>
                       <Pill tone={active ? 'champ' : 'navy'}>{aed(val, { compact: true })}</Pill>
                     </div>
                     <div className="font-display text-[17px] font-semibold mt-1">{p.name}</div>
@@ -329,7 +329,7 @@ export default function Owner360() {
                             </td>
                             <td className="num font-semibold">{aed(u.value, { compact: true })}</td>
                             <td className="num">{u.status === 'Occupied' ? aed(u.annualRent) : <Pill tone="dune">Vacant</Pill>}</td>
-                            <td className="num font-semibold text-[#17625f]">{pct(uy.net, 2)}</td>
+                            <td className="num font-semibold text-[#215844]">{pct(uy.net, 2)}</td>
                             <td>
                               {rera.maxIncreasePct > 0 ? (
                                 <Pill tone="champ">+{rera.maxIncreasePct}% ({aed(rera.maxRent)})</Pill>
@@ -411,7 +411,7 @@ export default function Owner360() {
                   />
                   <div className="text-xs leading-relaxed">
                     <div className="font-semibold text-white text-[14px]">{summary.visa.tier}</div>
-                    <div className="text-[#c8d3e6] mt-1">
+                    <div className="text-[#e0d8ce] mt-1">
                       {summary.visa.golden
                         ? `Portfolio equity of ${aed(summary.totalValue, { compact: true })} exceeds the AED 2,000,000 DLD Golden Visa threshold.`
                         : `Portfolio equity is ${aed(summary.totalValue, { compact: true })}. Add ${aed(summary.visa.gap, { compact: true })} to qualify for the 10-year Golden Visa.`}

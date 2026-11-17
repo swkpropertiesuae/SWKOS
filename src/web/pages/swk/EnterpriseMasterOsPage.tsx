@@ -94,9 +94,9 @@ export default function EnterpriseMasterOsPage() {
           role="alert"
           className="px-4 py-3 rounded-2xl text-[13px] font-semibold flex items-center justify-between gap-3"
           style={{
-            background: banner.tone === 'ok' ? '#def1ef' : '#dbe4ff',
+            background: banner.tone === 'ok' ? '#efeae0' : '#f2efe8',
             color: banner.tone === 'ok' ? SWK.oasis : SWK.dune,
-            border: `1px solid ${banner.tone === 'ok' ? '#9fd5cf' : '#f3b8a6'}`,
+            border: `1px solid ${banner.tone === 'ok' ? '#cabbaa' : '#f3b8a6'}`,
           }}
         >
           <span>{banner.text}</span>
@@ -143,27 +143,27 @@ export default function EnterpriseMasterOsPage() {
 
             <Card title="Department Summary" subtitle="Click any box to open the full list">
               <div className="grid grid-cols-2 gap-2.5 text-[12.5px]">
-                <Link to="/e/daily_reports" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                <Link to="/e/daily_reports" className="p-2.5 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                   <div className="text-muted">Daily Work Reports</div>
                   <div className="font-semibold text-[15px] text-ink">{hr.daily_reports_submitted_today ?? 0} submitted today</div>
                 </Link>
-                <Link to="/e/agent_authorisations" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                <Link to="/e/agent_authorisations" className="p-2.5 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                   <div className="text-muted">Licensed Agents</div>
                   <div className="font-semibold text-[15px] text-ink">{hr.authorised_brokers ?? 0} active ({hr.expired_broker_credentials ?? 0} expired)</div>
                 </Link>
-                <Link to="/e/immigration_cases" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                <Link to="/e/immigration_cases" className="p-2.5 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                   <div className="text-muted">Staff Visas</div>
                   <div className="font-semibold text-[15px] text-ink">{hr.open_immigration_cases ?? 0} open ({hr.delayed_immigration_cases ?? 0} delayed)</div>
                 </Link>
-                <Link to="/e/commission_entitlements" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                <Link to="/e/commission_entitlements" className="p-2.5 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                   <div className="text-muted">Ready to Pay</div>
                   <div className="font-semibold text-[15px] text-ink">{aed(fin.commission_payable_total ?? 0, { compact: true })}</div>
                 </Link>
-                <Link to="/e/communications" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                <Link to="/e/communications" className="p-2.5 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                   <div className="text-muted">WhatsApp Alerts</div>
                   <div className="font-semibold text-[15px] text-ink">{sales.whatsapp_diversion_flags ?? 0} flagged chats</div>
                 </Link>
-                <Link to="/e/dr_exercises" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                <Link to="/e/dr_exercises" className="p-2.5 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                   <div className="text-muted">Backup Checks</div>
                   <div className="font-semibold text-[15px] text-ink">{comp.verified_dr_exercises ?? 0} verified</div>
                 </Link>
@@ -179,7 +179,7 @@ export default function EnterpriseMasterOsPage() {
                   { name: 'Smart Assistant', mode: cmd?.integration_honesty?.ai_concierge_mode || 'Approval Required', route: '/ai' },
                   { name: 'Property Portals & Permits', mode: 'Permit Check Active', route: '/listings' },
                 ].map(item => (
-                  <Link key={item.name} to={item.route} className="flex items-center justify-between p-2 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
+                  <Link key={item.name} to={item.route} className="flex items-center justify-between p-2 rounded-xl bg-[#fdfdfc] hover:bg-[#ecebe4]">
                     <span className="font-medium text-ink">{item.name}</span>
                     <Pill tone={item.mode.includes('Live') ? 'oasis' : 'champ'}>{item.mode}</Pill>
                   </Link>
@@ -197,7 +197,7 @@ export default function EnterpriseMasterOsPage() {
                   className="p-3 rounded-2xl border border-[#e7e8e6] bg-white hover:border-[#c8a96b] transition flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#e8f3f6] text-[#6e521c]">Module {m.code}</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#e9f4ef] text-[#6e521c]">Module {m.code}</span>
                     <Pill tone="oasis">{m.status}</Pill>
                   </div>
                   <div className="font-semibold text-[13px] text-ink leading-snug">{m.name}</div>
@@ -535,7 +535,7 @@ export default function EnterpriseMasterOsPage() {
           subtitle="Track every property sale from offer to transfer, including ID checks, signed agreements, developer NOCs, and special cases like Power of Attorney or mortgages."
           actions={<Link to="/e/transactions?new=1" className="swk-btn swk-btn-primary"><Briefcase size={14} /> New Property Sale</Link>}
         >
-          <div className="mb-4 p-3 rounded-2xl bg-[#fafaff] text-[12px] text-ink">
+          <div className="mb-4 p-3 rounded-2xl bg-[#fdfdfc] text-[12px] text-ink">
             <strong>Supported Special Cases:</strong> {SECONDARY_SALE_EXCEPTIONS.slice(1).join(' · ')}
           </div>
           <div className="overflow-x-auto">
@@ -1035,7 +1035,7 @@ export default function EnterpriseMasterOsPage() {
             >
               <div className="space-y-2.5 text-[12.5px]">
                 {(hrlQ.data?.rows ?? []).map(h => (
-                  <div key={h.id} className="p-3 rounded-xl bg-[#fafaff] flex items-center justify-between gap-2">
+                  <div key={h.id} className="p-3 rounded-xl bg-[#fdfdfc] flex items-center justify-between gap-2">
                     <div>
                       <Link to={`/e/hr_lifecycle_cases/${h.id}`} className="font-semibold underline">{h.lifecycle_no}</Link> · {h.candidate_or_subject_name}
                       <div className="text-[11px] text-muted">{h.case_type} · Status: {h.status}</div>
@@ -1053,7 +1053,7 @@ export default function EnterpriseMasterOsPage() {
             >
               <div className="space-y-2.5 text-[12.5px]">
                 {(drxQ.data?.rows ?? []).map(d => (
-                  <div key={d.id} className="p-3 rounded-xl bg-[#fafaff] flex items-center justify-between gap-2">
+                  <div key={d.id} className="p-3 rounded-xl bg-[#fdfdfc] flex items-center justify-between gap-2">
                     <div>
                       <Link to={`/e/dr_exercises/${d.id}`} className="font-semibold underline">{d.exercise_no}</Link> · {d.title}
                       <div className="text-[11px] text-muted">Restore time: {d.actual_rto_minutes} mins · {d.records_verified_count} records checked</div>
