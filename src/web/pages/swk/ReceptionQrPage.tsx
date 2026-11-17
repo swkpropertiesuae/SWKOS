@@ -75,7 +75,7 @@ export default function ReceptionQrPage() {
       <div className="w-full max-w-[420px] rounded-3xl bg-[#141416] border border-white/10 p-6 shadow-2xl">
         <div className="flex flex-col items-center text-center mb-5">
           <img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" className="h-14 w-auto" />
-          <h1 className="font-display font-bold text-xl m-0 mt-2">{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
+          <h1 className="font-display font-bold text-xl m-0 mt-2" style={{ color: '#fff' }}>{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
         </div>
 
         <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-[12.5px] mb-4 ${onOffice ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200' : 'bg-rose-500/10 border-rose-500/40 text-rose-200'}`}>
