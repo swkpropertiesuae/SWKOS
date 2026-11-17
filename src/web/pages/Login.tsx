@@ -73,7 +73,7 @@ export function Login() {
         <div className="swk-login2-fade" aria-hidden />
         <FloatingPaths position={1} />
         <FloatingPaths position={-1} />
-        <motion.img {...rise(0)} src="/brand/swk-os-stacked.svg" alt="SWK Properties OS" className="swk-login2-logo" />
+        <motion.img {...rise(0)} src="/brand/os/logo-stacked.png" alt="SWK Properties OS" className="swk-login2-logo" />
         <motion.figure {...rise(4)} className="swk-login2-quote">
           <blockquote>Every enquiry, listing and deal in one place, <em>from first call to handover</em>.</blockquote>
           <figcaption>SWK Properties LLC <span aria-hidden>|</span> Dubai</figcaption>
@@ -83,7 +83,7 @@ export function Login() {
       <main className="swk-login2-main">
         <div className="swk-login2-glow" aria-hidden />
         <div className="swk-login2-panel">
-          <motion.img {...rise(0)} src="/brand/swk-os-stacked.svg" alt="SWK Properties OS" className="swk-login2-logo-sm" />
+          <motion.img {...rise(0)} src="/brand/os/logo-stacked.png" alt="SWK Properties OS" className="swk-login2-logo-sm" />
           <motion.h1 {...rise(1)}>Welcome back.</motion.h1>
           <motion.p {...rise(2)} className="swk-login2-sub">Sign in to your SWK Properties OS workspace.</motion.p>
 

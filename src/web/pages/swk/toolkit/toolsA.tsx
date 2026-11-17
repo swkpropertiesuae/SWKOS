@@ -49,7 +49,7 @@ export function CostToCloseTool() {
         <Donut parts={parts} center={<div><div className="text-[10.5px] uppercase tracking-wider text-muted">Fees</div><div className="font-display text-[20px] font-semibold text-ink">{fmtM(r.fees)}</div></div>} />
         <Legend items={parts} />
       </div>
-      <div className="rounded-2xl border border-[#efe9dc] p-3">
+      <div className="rounded-2xl border border-[#ecebe4] p-3">
         <div className="text-[12px] font-semibold text-muted mb-2">Cash split</div>
         <div className="flex h-3 rounded-full overflow-hidden">
           <motion.div animate={{ width: `${(r.downPayment / r.cashRequired) * 100}%` }} transition={{ duration: 0.8 }} style={{ background: SWK.navy }} />
@@ -100,7 +100,7 @@ export function MortgageTool() {
       <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-center">
         <Hero label="Monthly instalment (EMI)" value={p.emi} sub={<>Loan {aed(p.loan)} · {p.years} years @ {rate}%</>} />
         <motion.div key={p.ltv} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-          className="rounded-2xl px-5 py-4 text-center border" style={{ background: SWK.champSoft, borderColor: '#e6d7b8' }}>
+          className="rounded-2xl px-5 py-4 text-center border" style={{ background: SWK.champSoft, borderColor: '#ffe4d6' }}>
           <div className="text-[10.5px] uppercase tracking-wider font-semibold text-muted">Max LTV</div>
           <div className="font-display text-[34px] font-semibold text-ink leading-none mt-1">{pct(p.ltv * 100, 0)}</div>
           <div className="text-[11.5px] text-muted mt-1">min down {pct(100 - p.ltv * 100, 0)}</div>
@@ -128,7 +128,7 @@ export function MortgageTool() {
                 <linearGradient id="tk-bal" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={SWK.navy} stopOpacity={0.35} /><stop offset="100%" stopColor={SWK.navy} stopOpacity={0} /></linearGradient>
                 <linearGradient id="tk-paid" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={SWK.champ} stopOpacity={0.4} /><stop offset="100%" stopColor={SWK.champ} stopOpacity={0} /></linearGradient>
               </defs>
-              <CartesianGrid stroke="#efe9dc" vertical={false} />
+              <CartesianGrid stroke="#ecebe4" vertical={false} />
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} tickFormatter={v => `Y${v}`} />
               <YAxis tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1e6).toFixed(1)}M`} width={40} />
               <Tooltip formatter={(v: any, k: any) => [aed(Number(v)), k === 'balance' ? 'Balance' : 'Repaid']} labelFormatter={l => `Year ${l}`} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
@@ -168,7 +168,7 @@ export function RentIncreaseTool() {
       </>}>
       <div className="grid sm:grid-cols-2 gap-3">
         <Hero label="Max new annual rent" value={r.maxRent} sub={<>+{aed(r.maxIncrease)} · up to {r.maxIncreasePct}%</>} />
-        <div className="rounded-2xl border border-[#efe9dc] bg-[#fbf9f5] p-4 flex flex-col justify-center gap-2">
+        <div className="rounded-2xl border border-[#ecebe4] bg-[#fafaff] p-4 flex flex-col justify-center gap-2">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-muted">Position vs index</div>
           <div className="font-display text-[26px] font-semibold text-ink">{rent >= index ? 'At / above index' : `${pct(r.below)} below`}</div>
           <LiveBar value={Math.min(rent, index)} max={index} color={SWK.champ} height={10} />
@@ -195,7 +195,7 @@ export function RentIncreaseTool() {
           </tbody>
         </table>
       </div>
-      <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: '#fbe4dd', color: '#7c2c1a' }}>
+      <div className="flex items-start gap-3 rounded-2xl p-4" style={{ background: '#ffe4d6', color: '#7c2c1a' }}>
         <BellRing size={18} className="flex-none mt-0.5" />
         <div className="text-[13px]"><b>90-day written notice required before renewal</b> (Law 26/2007 as amended). Any increase must be notified at least 90 days before expiry; Ejari renewal follows the signed agreement. Disputes go to the Rental Dispute Settlement Centre (RDSC).</div>
       </div>

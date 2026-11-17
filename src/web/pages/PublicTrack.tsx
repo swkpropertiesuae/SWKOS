@@ -15,7 +15,7 @@ export function PublicTrack() {
   const pct = stages.length ? Math.round(((idx + 1) / stages.length) * 100) : 0
   return (
     <div className="min-h-full bg-pearl">
-      <header className="bg-[#0b1a33] border-b border-[#c9a96e]/30 text-[#f6f2ea]"><div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3"><img src="/brand/site/swk-emblem.svg" alt="" className="h-9 w-9 object-contain" /><img src="/brand/site/swk-wordmark.svg" alt="SWK OS" className="h-8 w-auto object-contain" /><div className="flex-1" /><span className="text-sm text-[#e8d4a2] font-semibold">Deal status · SWK Properties LLC</span></div></header>
+      <header className="bg-[#1c1c1c] border-b border-[#ff5b1f]/30 text-[#eef0f2]"><div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3"><img src="/brand/os/SWK_Emblem_Transparent.svg" alt="" className="h-9 w-9 object-contain" /><img src="/brand/os/SWK_OS_Wordmark_Logo_Transparent.svg" alt="SWK OS" className="h-8 w-auto object-contain" /><div className="flex-1" /><span className="text-sm text-[#ffe4d6] font-semibold">Deal status · SWK Properties LLC</span></div></header>
       <main className="max-w-3xl mx-auto px-4 py-6">
         {q.isLoading ? <Loading /> : q.error ? <div className="card p-8 text-center"><h1 className="text-[22px] m-0">Status link not found</h1><p className="text-muted">This link is invalid or has been switched off. Please contact your SWK Properties representative.</p></div> : (
           <div className="grid gap-4 fade-in">

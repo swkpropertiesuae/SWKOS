@@ -10,8 +10,8 @@ import { ArrowUpRight, TrendingDown, TrendingUp } from 'lucide-react'
 import { cls } from '../lib/format'
 
 export const SWK = {
-  navy: '#14305c', midnight: '#0b1a33', ocean: '#1f4b8e', sky: '#3c71b8', champ: '#c9a96e', champDeep: '#9a7a42',
-  champSoft: '#f3ead8', sand: '#f6f2ea', oasis: '#1f7a7a', dune: '#c4492f', ink: '#0b1a33', muted: '#6b7488', line: '#e7e1d4',
+  navy: '#1c1c1c', midnight: '#1c1c1c', ocean: '#3a1d10', sky: '#3c71b8', champ: '#ff5b1f', champDeep: '#c9420f',
+  champSoft: '#fff0e8', sand: '#eef0f2', oasis: '#1f7a7a', dune: '#e8261c', ink: '#1c1c1c', muted: '#6b7488', line: '#e7e8e6',
 }
 /** Ordered chart palette — navy → champagne → oasis → ocean → dune → sky → gold */
 export const CHART = [SWK.navy, SWK.champ, SWK.oasis, SWK.ocean, SWK.dune, SWK.sky, SWK.champDeep, '#8391ad']
@@ -134,7 +134,7 @@ export function Sparkline({ data, color = SWK.navy, width = 92, height = 30 }: {
 }
 
 /** Animated circular progress (occupancy, compliance, completion %). */
-export function ProgressRing({ value, size = 92, stroke = 9, color = SWK.navy, track = '#ece5d6', label, sub }: { value: number; size?: number; stroke?: number; color?: string; track?: string; label?: ReactNode; sub?: ReactNode }) {
+export function ProgressRing({ value, size = 92, stroke = 9, color = SWK.navy, track = '#ecebe4', label, sub }: { value: number; size?: number; stroke?: number; color?: string; track?: string; label?: ReactNode; sub?: ReactNode }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r, v = Math.max(0, Math.min(100, value))
   return (
     <div className="relative grid place-items-center flex-none" style={{ width: size, height: size }}>
@@ -154,7 +154,7 @@ export function ProgressRing({ value, size = 92, stroke = 9, color = SWK.navy, t
 export function Bar({ value, max = 100, color = SWK.navy, height = 8, delay = 0 }: { value: number; max?: number; color?: string; height?: number; delay?: number }) {
   const w = max ? Math.max(0, Math.min(100, (value / max) * 100)) : 0
   return (
-    <div className="w-full rounded-full overflow-hidden" style={{ height, background: '#efe9dc' }}>
+    <div className="w-full rounded-full overflow-hidden" style={{ height, background: '#ecebe4' }}>
       <motion.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} whileInView={{ width: `${w}%` }} viewport={{ once: true }} transition={{ duration: 1, delay, ease: [0.16, 1, 0.3, 1] }} />
     </div>
   )
@@ -195,7 +195,7 @@ export function Field({ label, value, onChange, suffix, prefix, step = 1, min = 
 
 /** Empty / placeholder state with brand mark. */
 export function EmptyState({ title, hint, action }: { title: string; hint?: ReactNode; action?: ReactNode }) {
-  return <div className="swk-empty"><img src="/brand/site/swk-wordmark.svg" alt="" aria-hidden /><b>{title}</b>{hint && <p>{hint}</p>}{action}</div>
+  return <div className="swk-empty"><img src="/brand/os/SWK_OS_Wordmark_Logo_Transparent.svg" alt="" aria-hidden /><b>{title}</b>{hint && <p>{hint}</p>}{action}</div>
 }
 
 /** Parallax-free tilt-on-hover photo card for properties/communities. */

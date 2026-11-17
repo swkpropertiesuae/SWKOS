@@ -128,7 +128,7 @@ export default function RecycleBinPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="card p-4 border-l-4 border-[#BE984C]">
+        <div className="card p-4 border-l-4 border-[#c9420f]">
           <div className="text-xs font-bold uppercase tracking-wider text-muted">Pending Owner Deletion Approval</div>
           <div className="text-2xl font-display font-extrabold text-ink mt-1">{counts.pending}</div>
           <div className="text-xs text-muted mt-1">Held safely in Bin until Shabib Siraj approves</div>

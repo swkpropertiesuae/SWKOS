@@ -94,7 +94,7 @@ export default function EnterpriseMasterOsPage() {
           role="alert"
           className="px-4 py-3 rounded-2xl text-[13px] font-semibold flex items-center justify-between gap-3"
           style={{
-            background: banner.tone === 'ok' ? '#def1ef' : '#fbe4dd',
+            background: banner.tone === 'ok' ? '#def1ef' : '#ffe4d6',
             color: banner.tone === 'ok' ? SWK.oasis : SWK.dune,
             border: `1px solid ${banner.tone === 'ok' ? '#9fd5cf' : '#f3b8a6'}`,
           }}
@@ -143,27 +143,27 @@ export default function EnterpriseMasterOsPage() {
 
             <Card title="Department Summary" subtitle="Click any box to open the full list">
               <div className="grid grid-cols-2 gap-2.5 text-[12.5px]">
-                <Link to="/e/daily_reports" className="p-2.5 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                <Link to="/e/daily_reports" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                   <div className="text-muted">Daily Work Reports</div>
                   <div className="font-semibold text-[15px] text-ink">{hr.daily_reports_submitted_today ?? 0} submitted today</div>
                 </Link>
-                <Link to="/e/agent_authorisations" className="p-2.5 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                <Link to="/e/agent_authorisations" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                   <div className="text-muted">Licensed Agents</div>
                   <div className="font-semibold text-[15px] text-ink">{hr.authorised_brokers ?? 0} active ({hr.expired_broker_credentials ?? 0} expired)</div>
                 </Link>
-                <Link to="/e/immigration_cases" className="p-2.5 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                <Link to="/e/immigration_cases" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                   <div className="text-muted">Staff Visas</div>
                   <div className="font-semibold text-[15px] text-ink">{hr.open_immigration_cases ?? 0} open ({hr.delayed_immigration_cases ?? 0} delayed)</div>
                 </Link>
-                <Link to="/e/commission_entitlements" className="p-2.5 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                <Link to="/e/commission_entitlements" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                   <div className="text-muted">Ready to Pay</div>
                   <div className="font-semibold text-[15px] text-ink">{aed(fin.commission_payable_total ?? 0, { compact: true })}</div>
                 </Link>
-                <Link to="/e/communications" className="p-2.5 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                <Link to="/e/communications" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                   <div className="text-muted">WhatsApp Alerts</div>
                   <div className="font-semibold text-[15px] text-ink">{sales.whatsapp_diversion_flags ?? 0} flagged chats</div>
                 </Link>
-                <Link to="/e/dr_exercises" className="p-2.5 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                <Link to="/e/dr_exercises" className="p-2.5 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                   <div className="text-muted">Backup Checks</div>
                   <div className="font-semibold text-[15px] text-ink">{comp.verified_dr_exercises ?? 0} verified</div>
                 </Link>
@@ -179,7 +179,7 @@ export default function EnterpriseMasterOsPage() {
                   { name: 'Smart Assistant', mode: cmd?.integration_honesty?.ai_concierge_mode || 'Approval Required', route: '/ai' },
                   { name: 'Property Portals & Permits', mode: 'Permit Check Active', route: '/listings' },
                 ].map(item => (
-                  <Link key={item.name} to={item.route} className="flex items-center justify-between p-2 rounded-xl bg-[#f7f4ec] hover:bg-[#efe9dc]">
+                  <Link key={item.name} to={item.route} className="flex items-center justify-between p-2 rounded-xl bg-[#fafaff] hover:bg-[#ecebe4]">
                     <span className="font-medium text-ink">{item.name}</span>
                     <Pill tone={item.mode.includes('Live') ? 'oasis' : 'champ'}>{item.mode}</Pill>
                   </Link>
@@ -194,10 +194,10 @@ export default function EnterpriseMasterOsPage() {
                 <Link
                   key={m.code}
                   to={`/e/${m.entity}`}
-                  className="p-3 rounded-2xl border border-[#e7e1d4] bg-white hover:border-[#c8a96b] transition flex flex-col justify-between gap-2"
+                  className="p-3 rounded-2xl border border-[#e7e8e6] bg-white hover:border-[#c8a96b] transition flex flex-col justify-between gap-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f3ead8] text-[#6e521c]">Module {m.code}</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fff0e8] text-[#6e521c]">Module {m.code}</span>
                     <Pill tone="oasis">{m.status}</Pill>
                   </div>
                   <div className="font-semibold text-[13px] text-ink leading-snug">{m.name}</div>
@@ -214,7 +214,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Time</th>
                     <th className="py-2 pr-3">Area</th>
                     <th className="py-2 pr-3">Action</th>
@@ -223,7 +223,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(audQ.data?.rows ?? []).slice(0, 12).map(a => (
-                    <tr key={a.id} className="border-b border-[#f1ece2]">
+                    <tr key={a.id} className="border-b border-[#ecebe4]">
                       <td className="py-2 pr-3 tabular-nums text-muted">{String(a.occurred_at || '').slice(0, 19).replace('T', ' ')}</td>
                       <td className="py-2 pr-3"><Pill tone="navy">{a.module_code}</Pill></td>
                       <td className="py-2 pr-3 font-mono text-[11.5px]">{a.event_type}</td>
@@ -259,7 +259,7 @@ export default function EnterpriseMasterOsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-[#e7e1d4] text-muted">
+                <tr className="border-b border-[#e7e8e6] text-muted">
                   <th className="py-2 pr-3">Report No.</th>
                   <th className="py-2 pr-3">Staff Member</th>
                   <th className="py-2 pr-3">Date</th>
@@ -271,7 +271,7 @@ export default function EnterpriseMasterOsPage() {
               </thead>
               <tbody>
                 {(dailyQ.data?.rows ?? []).map(r => (
-                  <tr key={r.id} className="border-b border-[#f1ece2] align-top">
+                  <tr key={r.id} className="border-b border-[#ecebe4] align-top">
                     <td className="py-3 pr-3 font-semibold"><Link to={`/e/daily_reports/${r.id}`} className="underline">{r.report_no}</Link></td>
                     <td className="py-3 pr-3">{r._labels?.employee_id || `#${r.employee_id}`}</td>
                     <td className="py-3 pr-3">
@@ -344,7 +344,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Ref No.</th>
                     <th className="py-2 pr-3">Building & Unit</th>
                     <th className="py-2 pr-3">Owner & Permit</th>
@@ -355,7 +355,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(invQ.data?.rows ?? []).map(r => (
-                    <tr key={r.id} className="border-b border-[#f1ece2]">
+                    <tr key={r.id} className="border-b border-[#ecebe4]">
                       <td className="py-3 pr-3 font-semibold"><Link to={`/e/inventory_submissions/${r.id}`} className="underline">{r.submission_no}</Link></td>
                       <td className="py-3 pr-3">
                         <div className="font-medium text-ink">{r.building_name} · Unit {r.unit_no}</div>
@@ -418,7 +418,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Agreement No.</th>
                     <th className="py-2 pr-3">Property</th>
                     <th className="py-2 pr-3">Form A & Permit</th>
@@ -428,7 +428,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(lmdQ.data?.rows ?? []).map(m => (
-                    <tr key={m.id} className="border-b border-[#f1ece2]">
+                    <tr key={m.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/listing_mandates/${m.id}`} className="underline">{m.listing_mandate_no}</Link></td>
                       <td className="py-2.5 pr-3">{m._labels?.property_id || `#${m.property_id}`}</td>
                       <td className="py-2.5 pr-3">Form A: {m.form_a_ref} · Permit: {m.trakheesi_permit_no}</td>
@@ -455,7 +455,7 @@ export default function EnterpriseMasterOsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-[#e7e1d4] text-muted">
+                <tr className="border-b border-[#e7e8e6] text-muted">
                   <th className="py-2 pr-3">Request No.</th>
                   <th className="py-2 pr-3">Developer & Property</th>
                   <th className="py-2 pr-3">Application & Certificate</th>
@@ -466,7 +466,7 @@ export default function EnterpriseMasterOsPage() {
               </thead>
               <tbody>
                 {(nocQ.data?.rows ?? []).map(r => (
-                  <tr key={r.id} className="border-b border-[#f1ece2]">
+                  <tr key={r.id} className="border-b border-[#ecebe4]">
                     <td className="py-3 pr-3 font-semibold"><Link to={`/e/developer_requests/${r.id}`} className="underline">{r.request_no}</Link></td>
                     <td className="py-3 pr-3">
                       <div className="font-medium text-ink">{r._labels?.developer_id} · {r._labels?.property_id}</div>
@@ -535,13 +535,13 @@ export default function EnterpriseMasterOsPage() {
           subtitle="Track every property sale from offer to transfer, including ID checks, signed agreements, developer NOCs, and special cases like Power of Attorney or mortgages."
           actions={<Link to="/e/transactions?new=1" className="swk-btn swk-btn-primary"><Briefcase size={14} /> New Property Sale</Link>}
         >
-          <div className="mb-4 p-3 rounded-2xl bg-[#f7f4ec] text-[12px] text-ink">
+          <div className="mb-4 p-3 rounded-2xl bg-[#fafaff] text-[12px] text-ink">
             <strong>Supported Special Cases:</strong> {SECONDARY_SALE_EXCEPTIONS.slice(1).join(' · ')}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-[#e7e1d4] text-muted">
+                <tr className="border-b border-[#e7e8e6] text-muted">
                   <th className="py-2 pr-3">Sale No.</th>
                   <th className="py-2 pr-3">Property & Value</th>
                   <th className="py-2 pr-3">Completed Checks</th>
@@ -552,7 +552,7 @@ export default function EnterpriseMasterOsPage() {
               </thead>
               <tbody>
                 {(txnQ.data?.rows ?? []).map(t => (
-                  <tr key={t.id} className="border-b border-[#f1ece2]">
+                  <tr key={t.id} className="border-b border-[#ecebe4]">
                     <td className="py-3 pr-3 font-semibold"><Link to={`/e/transactions/${t.id}`} className="underline">{t.transaction_no}</Link></td>
                     <td className="py-3 pr-3">
                       <div className="font-medium text-ink">{t._labels?.property_id}</div>
@@ -616,7 +616,7 @@ export default function EnterpriseMasterOsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-[#e7e1d4] text-muted">
+                <tr className="border-b border-[#e7e8e6] text-muted">
                   <th className="py-2 pr-3">Ref No.</th>
                   <th className="py-2 pr-3">Agent & Bank IBAN</th>
                   <th className="py-2 pr-3">Amounts (Earned / Collected / Paid)</th>
@@ -626,7 +626,7 @@ export default function EnterpriseMasterOsPage() {
               </thead>
               <tbody>
                 {(cenQ.data?.rows ?? []).map(c => (
-                  <tr key={c.id} className="border-b border-[#f1ece2]">
+                  <tr key={c.id} className="border-b border-[#ecebe4]">
                     <td className="py-3 pr-3 font-semibold"><Link to={`/e/commission_entitlements/${c.id}`} className="underline">{c.entitlement_no}</Link></td>
                     <td className="py-3 pr-3">
                       <div className="font-medium text-ink">{c._labels?.agent_id}</div>
@@ -680,7 +680,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Ref No.</th>
                     <th className="py-2 pr-3">Agent & BRN</th>
                     <th className="py-2 pr-3">Card Expiry</th>
@@ -691,7 +691,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(autQ.data?.rows ?? []).map(a => (
-                    <tr key={a.id} className="border-b border-[#f1ece2]">
+                    <tr key={a.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/agent_authorisations/${a.id}`} className="underline">{a.auth_no}</Link></td>
                       <td className="py-2.5 pr-3">{a._labels?.agent_id} · BRN: <strong>{a.brn_number}</strong></td>
                       <td className="py-2.5 pr-3">{a.rera_expiry_date}</td>
@@ -738,7 +738,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Case No.</th>
                     <th className="py-2 pr-3">Staff Member & Type</th>
                     <th className="py-2 pr-3">Application No.</th>
@@ -749,7 +749,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(proQ.data?.rows ?? []).map(p => (
-                    <tr key={p.id} className="border-b border-[#f1ece2]">
+                    <tr key={p.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/immigration_cases/${p.id}`} className="underline">{p.case_no}</Link></td>
                       <td className="py-2.5 pr-3">{p._labels?.employee_id} · {p.case_type}</td>
                       <td className="py-2.5 pr-3">{p.application_ref || '—'}</td>
@@ -787,7 +787,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Ref No.</th>
                     <th className="py-2 pr-3">Client & Channel</th>
                     <th className="py-2 pr-3">Assigned Agent</th>
@@ -798,7 +798,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(comQ.data?.rows ?? []).map(c => (
-                    <tr key={c.id} className="border-b border-[#f1ece2]">
+                    <tr key={c.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/communications/${c.id}`} className="underline">{c.comm_no}</Link></td>
                       <td className="py-2.5 pr-3">{c.customer_phone} · {c.channel}</td>
                       <td className="py-2.5 pr-3">{c._labels?.assigned_user_id}</td>
@@ -837,7 +837,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Visit No.</th>
                     <th className="py-2 pr-3">Staff Member & Location</th>
                     <th className="py-2 pr-3">Scheduled Time</th>
@@ -847,7 +847,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(fldQ.data?.rows ?? []).map(f => (
-                    <tr key={f.id} className="border-b border-[#f1ece2]">
+                    <tr key={f.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/field_sessions/${f.id}`} className="underline">{f.session_no}</Link></td>
                       <td className="py-2.5 pr-3">{f._labels?.employee_id} · {f.assigned_location}</td>
                       <td className="py-2.5 pr-3 tabular-nums">{String(f.scheduled_start || '').replace('T', ' ')} → {String(f.scheduled_end || '').replace('T', ' ')}</td>
@@ -885,7 +885,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Case No.</th>
                     <th className="py-2 pr-3">Summary & Type</th>
                     <th className="py-2 pr-3">Priority</th>
@@ -895,7 +895,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(casQ.data?.rows ?? []).map(c => (
-                    <tr key={c.id} className="border-b border-[#f1ece2]">
+                    <tr key={c.id} className="border-b border-[#ecebe4]">
                       <td className="py-3 pr-3 font-semibold"><Link to={`/e/compliance_cases/${c.id}`} className="underline">{c.case_no}</Link></td>
                       <td className="py-3 pr-3">
                         <div className="font-medium text-ink">{c.title}</div>
@@ -937,7 +937,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Review No.</th>
                     <th className="py-2 pr-3">Agent & Channel</th>
                     <th className="py-2 pr-3">Scores (Accuracy / Service / Overall)</th>
@@ -947,7 +947,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(qaQ.data?.rows ?? []).map(q => (
-                    <tr key={q.id} className="border-b border-[#f1ece2]">
+                    <tr key={q.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/qa_reviews/${q.id}`} className="underline">{q.qa_no}</Link></td>
                       <td className="py-2.5 pr-3">{q._labels?.agent_id} · {q.channel}</td>
                       <td className="py-2.5 pr-3 tabular-nums">{q.accuracy_score}% / {q.etiquette_score}% / <strong>{q.overall_score}%</strong></td>
@@ -984,7 +984,7 @@ export default function EnterpriseMasterOsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
                 <thead>
-                  <tr className="border-b border-[#e7e1d4] text-muted">
+                  <tr className="border-b border-[#e7e8e6] text-muted">
                     <th className="py-2 pr-3">Request No.</th>
                     <th className="py-2 pr-3">Request & Category</th>
                     <th className="py-2 pr-3">Priority</th>
@@ -994,7 +994,7 @@ export default function EnterpriseMasterOsPage() {
                 </thead>
                 <tbody>
                   {(aprQ.data?.rows ?? []).map(a => (
-                    <tr key={a.id} className="border-b border-[#f1ece2]">
+                    <tr key={a.id} className="border-b border-[#ecebe4]">
                       <td className="py-2.5 pr-3 font-semibold"><Link to={`/e/universal_approvals/${a.id}`} className="underline">{a.approval_no}</Link></td>
                       <td className="py-2.5 pr-3">
                         <div className="font-medium text-ink">{a.title}</div>
@@ -1035,7 +1035,7 @@ export default function EnterpriseMasterOsPage() {
             >
               <div className="space-y-2.5 text-[12.5px]">
                 {(hrlQ.data?.rows ?? []).map(h => (
-                  <div key={h.id} className="p-3 rounded-xl bg-[#f7f4ec] flex items-center justify-between gap-2">
+                  <div key={h.id} className="p-3 rounded-xl bg-[#fafaff] flex items-center justify-between gap-2">
                     <div>
                       <Link to={`/e/hr_lifecycle_cases/${h.id}`} className="font-semibold underline">{h.lifecycle_no}</Link> · {h.candidate_or_subject_name}
                       <div className="text-[11px] text-muted">{h.case_type} · Status: {h.status}</div>
@@ -1053,7 +1053,7 @@ export default function EnterpriseMasterOsPage() {
             >
               <div className="space-y-2.5 text-[12.5px]">
                 {(drxQ.data?.rows ?? []).map(d => (
-                  <div key={d.id} className="p-3 rounded-xl bg-[#f7f4ec] flex items-center justify-between gap-2">
+                  <div key={d.id} className="p-3 rounded-xl bg-[#fafaff] flex items-center justify-between gap-2">
                     <div>
                       <Link to={`/e/dr_exercises/${d.id}`} className="font-semibold underline">{d.exercise_no}</Link> · {d.title}
                       <div className="text-[11px] text-muted">Restore time: {d.actual_rto_minutes} mins · {d.records_verified_count} records checked</div>

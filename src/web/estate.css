@@ -111,7 +111,7 @@ body { background-color: var(--bg); background-image: radial-gradient(900px 500p
 .swk-search-pill kbd { margin-left: auto; font: 500 10.5px var(--font-mono); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
 .swk-search-pill:hover { border-color: var(--ember); }
 .swk-card, .card { background: var(--glass, rgba(255,255,255,.72)); backdrop-filter: blur(12px); }
-@media (max-width: 900px) { .swk-body.has-sidebar, .swk-body.has-sidebar.is-collapsed { grid-template-columns: minmax(0, 1fr); } .swk-app-sidebar { display: none; } }
+
 .swk-shimmer-text { background: linear-gradient(90deg, #ff8a3d, #ff5b1f, #ffb547); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .swk-launch-identity { background: var(--ink); border-color: var(--ink); }
 
@@ -150,3 +150,47 @@ body { background-color: var(--bg); background-image: radial-gradient(900px 500p
 .swk-login2-btn:disabled { opacity: .7; cursor: default; }
 .swk-login2-btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line-strong); box-shadow: none; }
 .swk-login2-foot { margin: 28px 0 0; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+
+/* ===== per-app sidebar + top logo ===== */
+.swk-top-logo { display: inline-flex; align-items: center; flex: none; margin-right: 6px; }
+.swk-top-logo img { height: 40px; width: auto; display: block; background: transparent; }
+.swk-top-title { padding-left: 14px; border-left: 1px solid var(--line); min-width: 0; }
+.swk-sidebar-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 8px; border-bottom: 0; }
+.swk-sidebar-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 550; color: var(--muted); padding: 6px 8px; border-radius: 8px; }
+.swk-sidebar-back:hover { background: var(--hover); color: var(--ink); }
+.swk-sidebar-group-label { display: flex; align-items: center; gap: 6px; }
+.swk-body:not(.has-sidebar) { display: block; }
+.swk-top-logo img { height: 42px; }
+.swk-login2-logo { width: 170px; height: auto; mix-blend-mode: normal; }
+.swk-login2-logo-sm { width: 96px; mix-blend-mode: normal; }
+.swk-launch-logo { display: block; height: 96px; width: auto; margin: 0 auto 6px; }
+.swk-launch-date { text-align: center; margin-bottom: 8px; }
+.swk-sidebar-head { flex-direction: row !important; align-items: center; justify-content: space-between; gap: 6px; padding-bottom: 6px; }
+.swk-sidebar-head .swk-sidebar-collapse-btn { position: static; }
+select.select { text-overflow: clip; }
+
+.swk-menu-btn { display: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); place-items: center; cursor: pointer; flex: none; }
+.swk-sb-scrim { display: none; }
+@media (max-width: 959px) {
+  .swk-body.has-sidebar, .swk-body.has-sidebar.is-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .swk-menu-btn { display: grid; }
+  .swk-app-sidebar { position: fixed; left: 0; top: 56px; bottom: 0; width: min(290px, 86vw); z-index: 60; transform: translateX(-102%); transition: transform .22s var(--ease); border-right: 1px solid var(--line); border-bottom: 0; background: var(--card); overflow-y: auto; }
+  .swk-body.sb-open .swk-app-sidebar { transform: none; box-shadow: 0 24px 64px -16px rgba(0,0,0,.35); }
+  .swk-body.sb-open .swk-sb-scrim { display: block; position: fixed; inset: 56px 0 0 0; z-index: 55; background: rgba(0,0,0,.35); }
+  .swk-sidebar-list { display: flex; flex-direction: column; overflow: visible; }
+  .swk-sidebar-link { flex: initial; }
+  .swk-sidebar-head .swk-sidebar-collapse-btn { display: none; }
+  .swk-top-logo img { height: 34px; }
+  .swk-search-pill { min-width: 0; }
+  .swk-top-title { display: none; }
+}
+@media (max-width: 640px) { .swk-launch-logo { height: 72px; } }
+@media (max-width: 768px) {
+  .swk-mobile-bottom-nav { background: color-mix(in srgb, var(--card) 88%, transparent); border-top: 1px solid var(--line); box-shadow: 0 -8px 24px -12px rgba(0,0,0,.18); }
+  .swk-mnav-item { color: var(--muted); }
+  .swk-mnav-item.active { color: #c9420f; background: var(--champ-soft); }
+}
+@media (max-width: 640px) {
+  .swk-search-pill { min-width: 36px; width: 36px; padding: 0; justify-content: center; }
+  .swk-search-pill kbd { display: none; }
+}
