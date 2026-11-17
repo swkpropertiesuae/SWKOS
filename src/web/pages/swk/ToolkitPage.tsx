@@ -192,17 +192,17 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="Upfront cash required at transfer" subtitle="Breakdown of DLD, Registration Trustee, NOC, bank & agency fees" tone="champ">
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-[#0b1a33] text-white">
-                <div className="text-[11px] uppercase tracking-wider text-[#dcc8a2]">Total cash to close</div>
+              <div className="p-4 rounded-2xl bg-[#1c1c1c] text-white">
+                <div className="text-[11px] uppercase tracking-wider text-[#ffd9c4]">Total cash to close</div>
                 <div className="font-display text-[24px] font-semibold mt-1"><AnimatedNumber value={costRes.cashRequired} format={v => aed(v)} /></div>
                 <div className="text-[11.5px] text-white/70 mt-1">Down payment + all closing costs</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">Closing fees total</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={costRes.fees} format={v => aed(v)} /></div>
                 <div className="text-[11.5px] text-muted mt-1">{costRes.feesPct.toFixed(2)}% of property price</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">Down payment</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={costRes.downPayment} format={v => aed(v)} /></div>
                 <div className="text-[11.5px] text-muted mt-1">{cUseLoan ? `${cDownPct}% equity` : '100% cash purchase'}</div>
@@ -220,7 +220,7 @@ export default function ToolkitPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="bg-white rounded-2xl p-4 border border-[#e7e1d4]">
+              <div className="bg-white rounded-2xl p-4 border border-[#e7e8e6]">
                 {costRes.lines.map((l, i) => (
                   <div key={l.key} className="swk-kv">
                     <span className="flex items-center gap-2">
@@ -264,24 +264,24 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="CBUAE pre-qualification & amortisation" subtitle="Maximum LTV, monthly EMI & Debt-Burden Ratio check">
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-[#0b1a33] text-white">
-                <div className="text-[11px] uppercase tracking-wider text-[#dcc8a2]">Monthly EMI</div>
+              <div className="p-4 rounded-2xl bg-[#1c1c1c] text-white">
+                <div className="text-[11px] uppercase tracking-wider text-[#ffd9c4]">Monthly EMI</div>
                 <div className="font-display text-[24px] font-semibold mt-1"><AnimatedNumber value={mortRes.emi} format={v => aed(v)} /></div>
                 <div className="text-[11.5px] text-white/70 mt-1">Loan {aed(mortRes.loan, { compact: true })} ({(mortRes.appliedLtv * 100).toFixed(0)}% LTV)</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">CBUAE Max LTV</div>
                 <div className="font-display text-[24px] font-semibold text-ink mt-1">{(mortRes.ltv * 100).toFixed(0)}%</div>
                 <div className="text-[11.5px] text-muted mt-1">Min down {(100 - mortRes.ltv * 100).toFixed(0)}% required</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">Max affordable price</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={mortRes.maxPriceByDbr} format={v => aed(v, { compact: true })} /></div>
                 <div className="text-[11.5px] text-muted mt-1">At 50% DBR ceiling</div>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#faf7f1] border border-[#e7e1d4] mb-4">
+            <div className="p-4 rounded-2xl bg-[#fafaff] border border-[#e7e8e6] mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[13px] font-semibold text-ink">Debt-Burden Ratio (DBR): {(mortRes.dbr * 100).toFixed(1)}% of monthly income</span>
                 <Pill tone={mortRes.dbrOk ? 'oasis' : 'dune'}>{mortRes.dbrOk ? 'Passes CBUAE ≤ 50% rule' : 'Exceeds 50% CBUAE limit'}</Pill>
@@ -299,7 +299,7 @@ export default function ToolkitPage() {
                     <linearGradient id="mBal" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={SWK.navy} stopOpacity={0.35} /><stop offset="100%" stopColor={SWK.navy} stopOpacity={0} /></linearGradient>
                     <linearGradient id="mPaid" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={SWK.champ} stopOpacity={0.45} /><stop offset="100%" stopColor={SWK.champ} stopOpacity={0} /></linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ece6da" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ecebe4" vertical={false} />
                   <XAxis dataKey="year" tickFormatter={y => `Yr ${y}`} />
                   <YAxis tickFormatter={v => aed(v, { compact: true }).replace('AED ', '')} width={54} />
                   <Tooltip formatter={(v: any) => aed(Number(v))} />
@@ -336,17 +336,17 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="RERA renewal calculation" subtitle="90-day written notice required prior to lease expiry (Law 26/2007)">
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-[#0b1a33] text-white">
-                <div className="text-[11px] uppercase tracking-wider text-[#dcc8a2]">Maximum new rent</div>
+              <div className="p-4 rounded-2xl bg-[#1c1c1c] text-white">
+                <div className="text-[11px] uppercase tracking-wider text-[#ffd9c4]">Maximum new rent</div>
                 <div className="font-display text-[24px] font-semibold mt-1"><AnimatedNumber value={reraRes.maxRent} format={v => aed(v)} /></div>
                 <div className="text-[11.5px] text-white/70 mt-1">+{aed(reraRes.maxIncrease)} / year</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">Allowed increase</div>
                 <div className="font-display text-[26px] font-semibold text-ink mt-1">{reraRes.maxIncreasePct}%</div>
                 <div className="text-[11.5px] text-muted mt-1">{reraRes.band.label}</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">Gap vs RERA index</div>
                 <div className="font-display text-[24px] font-semibold text-ink mt-1">{reraRes.below.toFixed(1)}%</div>
                 <div className="text-[11.5px] text-muted mt-1">Below index average</div>
@@ -361,7 +361,7 @@ export default function ToolkitPage() {
                 {RERA_BANDS.map(b => {
                   const match = b.increase === reraRes.maxIncreasePct
                   return (
-                    <tr key={b.label} style={match ? { background: '#f4ead5', fontWeight: 600 } : undefined}>
+                    <tr key={b.label} style={match ? { background: '#ffe4d6', fontWeight: 600 } : undefined}>
                       <td>{b.label}</td>
                       <td>{b.increase}%</td>
                       <td className="num">{aed(rCurrent * (1 + b.increase / 100))}</td>
@@ -409,7 +409,7 @@ export default function ToolkitPage() {
           </Card>
 
           <Card className="lg:col-span-7" title="Gross vs net yield after DLD costs & service charges" subtitle="Includes 4% DLD transfer & agency acquisition cost in denominator">
-            <div className="flex flex-wrap items-center gap-6 p-4 rounded-2xl bg-[#faf7f1] border border-[#e7e1d4] mb-4">
+            <div className="flex flex-wrap items-center gap-6 p-4 rounded-2xl bg-[#fafaff] border border-[#e7e8e6] mb-4">
               <ProgressRing value={Math.min(100, yieldRes.gross * 10)} size={104} color={SWK.navy} label={pct(yieldRes.gross, 2)} sub="Gross" />
               <ProgressRing value={Math.min(100, yieldRes.net * 10)} size={104} color={SWK.oasis} label={pct(yieldRes.net, 2)} sub="Net ROI" />
               <div className="flex-1 min-w-[200px] grid gap-1.5">
@@ -453,11 +453,11 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="Residency eligibility verdict" subtitle="Assessed per owner share against statutory DLD thresholds" tone={visaRes.golden ? 'navy' : 'light'}>
             <div className="flex items-center gap-4 mb-5">
-              <div className="w-14 h-14 rounded-2xl grid place-items-center bg-[#c9a96e]/20 text-[#c9a96e] flex-none">
+              <div className="w-14 h-14 rounded-2xl grid place-items-center bg-[#ff5b1f]/20 text-[#ff5b1f] flex-none">
                 <Award size={28} />
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[.2em] text-[#c9a96e]">Qualification result</div>
+                <div className="text-xs uppercase tracking-[.2em] text-[#ff5b1f]">Qualification result</div>
                 <div className="font-display text-[26px] font-semibold">{visaRes.tier}</div>
                 <div className="text-xs opacity-80 mt-0.5">Individual share: {aed(visaRes.share)} (threshold: {aed(UAE.goldenVisaMin)})</div>
               </div>
@@ -474,7 +474,7 @@ export default function ToolkitPage() {
             <div className="grid gap-2 text-[13px]">
               {visaRes.notes.map((n, i) => (
                 <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/10 border border-white/15">
-                  <ShieldCheck size={16} className="text-[#c9a96e] mt-0.5 flex-none" />
+                  <ShieldCheck size={16} className="text-[#ff5b1f] mt-0.5 flex-none" />
                   <span>{n}</span>
                 </div>
               ))}
@@ -503,17 +503,17 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="Commission waterfall & FTA tax invoice" subtitle="Net brokerage retention and agent wallet payout">
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-[#0b1a33] text-white">
-                <div className="text-[11px] uppercase tracking-wider text-[#dcc8a2]">Tax invoice (incl. 5% VAT)</div>
+              <div className="p-4 rounded-2xl bg-[#1c1c1c] text-white">
+                <div className="text-[11px] uppercase tracking-wider text-[#ffd9c4]">Tax invoice (incl. 5% VAT)</div>
                 <div className="font-display text-[22px] font-semibold mt-1"><AnimatedNumber value={commRes.invoiceTotal} format={v => aed(v)} /></div>
                 <div className="text-[11px] text-white/70 mt-1">VAT 5%: {aed(commRes.vat)}</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">SWK Agent payout</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={commRes.agent} format={v => aed(v)} /></div>
                 <div className="text-[11px] text-muted mt-1">{wAgentSplit}% of net pool</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">SWK House net</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={commRes.company} format={v => aed(v)} /></div>
                 <div className="text-[11px] text-muted mt-1">Retained by brokerage</div>
@@ -530,7 +530,7 @@ export default function ToolkitPage() {
                   { name: 'Leader', amount: commRes.leader },
                   { name: 'SWK Net', amount: commRes.company },
                 ]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ece6da" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ecebe4" vertical={false} />
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={v => aed(v, { compact: true }).replace('AED ', '')} width={54} />
                   <Tooltip formatter={(v: any) => aed(Number(v))} />
@@ -565,24 +565,24 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="Day-1 tenant cash summary" subtitle="Includes first rent cheque, deposits, Ejari & agency fee">
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <div className="p-4 rounded-2xl bg-[#0b1a33] text-white">
-                <div className="text-[11px] uppercase tracking-wider text-[#dcc8a2]">Upfront move-in total</div>
+              <div className="p-4 rounded-2xl bg-[#1c1c1c] text-white">
+                <div className="text-[11px] uppercase tracking-wider text-[#ffd9c4]">Upfront move-in total</div>
                 <div className="font-display text-[22px] font-semibold mt-1"><AnimatedNumber value={moveRes.moveIn} format={v => aed(v)} /></div>
                 <div className="text-[11px] text-white/70 mt-1">Includes 1st cheque</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">Each PDC cheque</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={moveRes.chequeAmount} format={v => aed(v)} /></div>
                 <div className="text-[11px] text-muted mt-1">{tCheques} cheques / year</div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-[#e7e1d4]">
+              <div className="p-4 rounded-2xl bg-white border border-[#e7e8e6]">
                 <div className="text-[11px] uppercase tracking-wider text-muted">DM housing fee (5%)</div>
                 <div className="font-display text-[22px] font-semibold text-ink mt-1"><AnimatedNumber value={moveRes.housingFeeMonthly} format={v => aed(v)} /></div>
                 <div className="text-[11px] text-muted mt-1">Billed monthly via DEWA</div>
               </div>
             </div>
 
-            <div className="bg-[#faf7f1] rounded-2xl p-4 border border-[#e7e1d4]">
+            <div className="bg-[#fafaff] rounded-2xl p-4 border border-[#e7e8e6]">
               {moveRes.lines.map(l => (
                 <div key={l.label} className="swk-kv">
                   <span className="flex items-center gap-2">

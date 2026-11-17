@@ -93,7 +93,7 @@ export default function ReceptionQrPage() {
     void QRCode.toDataURL(scanUrl, {
       width: 420,
       margin: 2,
-      color: { dark: '#0b1a33', light: '#ffffff' },
+      color: { dark: '#1c1c1c', light: '#ffffff' },
       errorCorrectionLevel: 'H',
     }).then(setQrDataUrl)
   }, [isPrintMode])
@@ -145,13 +145,13 @@ export default function ReceptionQrPage() {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://os.swk.properties'
     const scanUrl = `${origin}/reception-qr?scan=1&stand=${PRINTED_QR_CODE}`
     return (
-      <div className="min-h-screen bg-[#08142a] text-white flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white text-[#0b1a33] rounded-3xl p-8 shadow-2xl border-4 border-[#c9a96e] text-center space-y-5">
+      <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white text-[#1c1c1c] rounded-3xl p-8 shadow-2xl border-4 border-[#ff5b1f] text-center space-y-5">
           <div
             className="flex flex-col items-center justify-center gap-2 rounded-2xl px-5 py-3.5 mx-auto"
             style={{
-              background: 'linear-gradient(135deg, #08142a 0%, #102445 100%)',
-              border: '1px solid rgba(201,169,110,.55)',
+              background: 'linear-gradient(135deg, #0d0d0d 0%, #102445 100%)',
+              border: '1px solid rgba(255,91,31,.55)',
               WebkitPrintColorAdjust: 'exact',
               printColorAdjust: 'exact',
             }}
@@ -162,7 +162,7 @@ export default function ReceptionQrPage() {
             </div>
           </div>
 
-          <div className="p-4 bg-white rounded-2xl border-2 border-[#e7e1d4] inline-block mx-auto">
+          <div className="p-4 bg-white rounded-2xl border-2 border-[#e7e8e6] inline-block mx-auto">
             {qrDataUrl ? (
               <img src={qrDataUrl} alt="SWK Properties LLC Office Attendance QR Code" className="w-64 h-64 mx-auto block" />
             ) : (
@@ -171,7 +171,7 @@ export default function ReceptionQrPage() {
           </div>
 
           <div className="space-y-1.5">
-            <h1 className="font-display font-bold text-xl text-[#0b1a33]">Scan to Sign In &amp; Check In</h1>
+            <h1 className="font-display font-bold text-xl text-[#1c1c1c]">Scan to Sign In &amp; Check In</h1>
             <p className="text-xs text-[#5a6578] leading-relaxed">
               1. Connect your phone to <b>{networkInfo?.ssid || 'SWK-Properties-Office'}</b> Wi-Fi.
               <br />
@@ -179,7 +179,7 @@ export default function ReceptionQrPage() {
               <br />
               3. Sign in with your SWK email &amp; password.
             </p>
-            <div className="pt-1 text-[11px] font-bold text-[#08142a]">
+            <div className="pt-1 text-[11px] font-bold text-[#0d0d0d]">
               SWK Properties LLC
             </div>
             <div className="text-[10px] font-semibold text-[#8d6e35]">
@@ -191,14 +191,14 @@ export default function ReceptionQrPage() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-5 py-2.5 rounded-xl bg-[#0b1a33] text-[#f3ead8] font-bold text-xs border-0 cursor-pointer inline-flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-[#1c1c1c] text-[#fff0e8] font-bold text-xs border-0 cursor-pointer inline-flex items-center gap-2"
             >
               <Printer size={15} /> Print QR Code
             </button>
             <button
               type="button"
               onClick={() => setSearchParams({}, { replace: true })}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 text-[#0b1a33] font-semibold text-xs border border-slate-300 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 text-[#1c1c1c] font-semibold text-xs border border-slate-300 cursor-pointer"
             >
               Scan &amp; Check-In View
             </button>
@@ -211,17 +211,17 @@ export default function ReceptionQrPage() {
 
   // Scanned from camera -> ONLY Sign-In page, then ONLY Check-In confirmation message
   return (
-    <div className="min-h-screen bg-[#08142a] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-[400px] rounded-3xl bg-[#0d1f3c] border border-[#c9a96e]/35 p-6 shadow-2xl">
+    <div className="min-h-screen bg-[#0d0d0d] text-white flex items-center justify-center p-4">
+      <div className="w-full max-w-[400px] rounded-3xl bg-[#0d1f3c] border border-[#ff5b1f]/35 p-6 shadow-2xl">
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="flex items-center justify-center px-4 py-2.5 rounded-2xl bg-[#061022] border border-[#c9a96e]/35 mb-3">
+          <div className="flex items-center justify-center px-4 py-2.5 rounded-2xl bg-[#0d0d0d] border border-[#ff5b1f]/35 mb-3">
             <img src="/brand/site/swk-logo-horizontal.svg" alt="SWK Properties LLC" className="h-10 w-auto object-contain" />
           </div>
           <h1 className="font-display font-bold text-xl text-white m-0">
             {checkInResult ? 'Attendance Confirmed' : 'Office Attendance Sign-In'}
           </h1>
-          <div className="text-[11px] text-[#dcc8a2] font-semibold mt-1">
+          <div className="text-[11px] text-[#ffd9c4] font-semibold mt-1">
             SWK Properties LLC
           </div>
         </div>
@@ -243,7 +243,7 @@ export default function ReceptionQrPage() {
               )}
             </div>
 
-            <div className="rounded-2xl bg-[#08142a]/90 border border-white/10 p-4 text-xs space-y-2 text-left">
+            <div className="rounded-2xl bg-[#0d0d0d]/90 border border-white/10 p-4 text-xs space-y-2 text-left">
               <div className="flex items-center justify-between">
                 <span className="text-[#8a9ab5]">Check-In Time (GST)</span>
                 <span className="font-mono font-bold text-white">
@@ -279,7 +279,7 @@ export default function ReceptionQrPage() {
               {checkInResult.attendance_event?.event_no && (
                 <div className="flex items-center justify-between">
                   <span className="text-[#8a9ab5]">Reference</span>
-                  <span className="font-mono text-[#dcc8a2]">{checkInResult.attendance_event.event_no}</span>
+                  <span className="font-mono text-[#ffd9c4]">{checkInResult.attendance_event.event_no}</span>
                 </div>
               )}
             </div>
@@ -334,7 +334,7 @@ export default function ReceptionQrPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="name@swk.property"
-                  className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-[#08142a] border border-white/15 text-white text-sm outline-none focus:border-[#c9a96e]"
+                  className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-[#0d0d0d] border border-white/15 text-white text-sm outline-none focus:border-[#ff5b1f]"
                 />
               </div>
             </div>
@@ -353,7 +353,7 @@ export default function ReceptionQrPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#08142a] border border-white/15 text-white text-sm outline-none focus:border-[#c9a96e]"
+                  className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#0d0d0d] border border-white/15 text-white text-sm outline-none focus:border-[#ff5b1f]"
                 />
                 <button
                   type="button"
@@ -369,8 +369,8 @@ export default function ReceptionQrPage() {
             <button
               type="submit"
               disabled={busy || !networkApproved}
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-[#0b1a33] border-0 cursor-pointer flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #f1e3c2 0%, #c9a96e 100%)' }}
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-[#1c1c1c] border-0 cursor-pointer flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #ffe4d6 0%, #ff5b1f 100%)' }}
             >
               {busy ? (
                 <>
@@ -388,7 +388,7 @@ export default function ReceptionQrPage() {
             <button
               type="button"
               onClick={() => setSearchParams({ print: '1' }, { replace: true })}
-              className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-[#c9a96e]/35 text-[#f3dfb8] font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-[#ff5b1f]/35 text-[#ffd9c4] font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-2"
             >
               <QrCode size={15} /> Print Office Attendance QR (Owner &amp; Haseeb Only)
             </button>

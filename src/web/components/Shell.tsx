@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bell, Search, Plus, Check, ChevronDown, ChevronRight, LogOut, UserRound, LifeBuoy, LayoutGrid, Languages, Download, RefreshCw, ArrowLeft, PanelLeftClose, PanelLeftOpen, Smartphone, QrCode, Sparkles, Camera, BookOpen } from 'lucide-react'
+import { Bell, Search, Plus, Check, ChevronDown, ChevronRight, LogOut, UserRound, LifeBuoy, LayoutGrid, Languages, Download, RefreshCw, ArrowLeft, PanelLeftClose, PanelLeftOpen, Smartphone, QrCode, Sparkles, Camera, BookOpen, Menu } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get, post } from '../lib/api'
 import { cls, fmtIsoStamp } from '../lib/format'
@@ -10,7 +10,7 @@ import { Modal, useClickOutside } from '../ui/kit'
 import { applyUpdate, isIosBrowser, promptInstall, usePwa } from '../lib/pwa'
 import { useToast } from '../lib/toast'
 import { CommandPalette } from './CommandPalette'
-import { APP_META, QUICK_CREATE, SWK_NAV, findNav, rememberVisit } from '../swk/nav'
+import { APP_META, QUICK_CREATE, findNav, rememberVisit } from '../swk/nav'
 import { canAccessSwkAdminLogic, canPrintReceptionQr, isRestrictedStaffUser, isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 
 /** Live Dubai time (Gulf Standard Time). */
@@ -67,41 +67,39 @@ function QuickCreate() {
   )
 }
 
-/** Estate-OS style sidebar: big logo, every section listed with its pages, dark pill on the active page. */
+/** Estate-OS style sidebar for the app that is open: back link, app name, then its pages. Hidden on the All apps screen. */
 function AppSidebar({ pathname, collapsed, onToggle }: { pathname: string; collapsed: boolean; onToggle: () => void }) {
   const { me, can } = useMeta()
   const here = findNav(pathname)
   const restricted = isRestrictedStaffUser(me)
   const adminOk = canAccessSwkAdminLogic(me)
-  const groups = useMemo(() => SWK_NAV.map(sec => ({
-    sec,
-    items: sec.items.filter(i => {
+  const items = useMemo(
+    () => (here?.section.items ?? []).filter(i => {
       const cleanTo = i.to.split('?')[0]!
       if (!adminOk && (i.module === 'admin' || cleanTo.startsWith('/admin') || cleanTo === '/recycle-bin' || cleanTo === '/withdrawals' || cleanTo === '/approvals')) return false
       return (!i.module || can(i.module, 'view')) && (!restricted || isAllowedPathForRestrictedStaff(cleanTo))
     }),
-  })).filter(g => g.items.length), [can, restricted, adminOk])
+    [here, can, restricted, adminOk],
+  )
+  if (!here || items.length < 1) return null
+  const meta = APP_META[here.section.key]
   return (
     <aside className={cls('swk-app-sidebar no-print', collapsed && 'is-collapsed')}>
-      <nav className="swk-sidebar-nav" aria-label="Main">
-        <div className="swk-sidebar-brand">
-          <Link to="/dashboard" aria-label="SWK Properties OS home"><img src="/brand/swk-os-stacked.svg" alt="SWK Properties OS" /></Link>
+      <nav className="swk-sidebar-nav" aria-label={`${here.section.label} pages`}>
+        <div className="swk-sidebar-head">
+          <Link to="/home" className="swk-sidebar-back" title="All apps"><ArrowLeft size={14} /><span className="swk-sidebar-link-tx">All apps</span></Link>
           <button type="button" onClick={onToggle} className="swk-sidebar-collapse-btn swk-hide-md" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}</button>
         </div>
-        <div className="swk-sidebar-list">
-          {groups.map(({ sec, items }) => (
-            <div key={sec.key} className="swk-sidebar-group">
-              <div className="swk-sidebar-group-label">{sec.label}</div>
-              {items.map(i => {
-                const isActive = here?.item.to === i.to
-                return (
-                  <NavLink key={i.to} to={i.to} title={i.desc ? `${i.label} — ${i.desc}` : i.label} className={cls('swk-sidebar-link', isActive && 'active')} aria-current={isActive ? 'page' : undefined}>
-                    <i.icon size={16} strokeWidth={1.8} /><span className="swk-sidebar-link-tx">{i.label}</span>
-                  </NavLink>
-                )
-              })}
-            </div>
-          ))}
+        <div className="swk-sidebar-group">
+          <div className="swk-sidebar-group-label">{meta && <meta.icon size={12} />}<span className="swk-sidebar-link-tx">{here.section.label}</span></div>
+          {items.map(i => {
+            const isActive = here.item.to === i.to
+            return (
+              <NavLink key={i.to} to={i.to} title={i.desc ? `${i.label} — ${i.desc}` : i.label} className={cls('swk-sidebar-link', isActive && 'active')} aria-current={isActive ? 'page' : undefined}>
+                <i.icon size={16} strokeWidth={1.8} /><span className="swk-sidebar-link-tx">{i.label}</span>
+              </NavLink>
+            )
+          })}
         </div>
       </nav>
     </aside>
@@ -115,6 +113,8 @@ export function Shell() {
   const [palette, setPalette] = useState(false)
   const [guide, setGuide] = useState(false)
   const [userMenu, setUserMenu] = useState(false)
+  const [drawer, setDrawer] = useState(false)
+  useEffect(() => { setDrawer(false) }, [loc.pathname])
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('swk.sidebar.collapsed') === '1')
   const toggleSidebar = () => setCollapsed(c => {
     const next = !c
@@ -140,6 +140,8 @@ export function Shell() {
     <div className="swk-app">
       <div className="swk-main-col">
         <header className="swk-top no-print">
+          {!isHome && !!here && <button type="button" className="swk-menu-btn" onClick={() => setDrawer(d => !d)} aria-label="Open menu" aria-expanded={drawer}><Menu size={18} /></button>}
+          <Link to="/home" className="swk-top-logo" aria-label="SWK Properties OS home"><img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" /></Link>
           <div className="swk-top-title">
             <div className="crumb"><Link to="/home">SWK OS</Link>{here && <><ChevronRight size={11} /><span>{here.section.label}</span></>}<ChevronRight size={11} /><b>{pageTitle}</b></div>
           </div>
@@ -170,11 +172,12 @@ export function Shell() {
               </motion.div>)}</AnimatePresence>
           </div>
         </header>
-        {pwa.updateReady && <div className="no-print" role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 16, zIndex: 80, maxWidth: 440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: '#0b1a33', color: '#f6f2ea', border: '1px solid rgba(201,169,110,.35)', boxShadow: '0 8px 30px rgba(0,0,0,.35)' }}><RefreshCw size={16} /><span style={{ flex: 1, fontSize: 13.5 }}>A new version of SWK OS is ready.</span><button className="btn sm" onClick={applyUpdate}>Reload</button></div>}
+        {pwa.updateReady && <div className="no-print" role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 16, zIndex: 80, maxWidth: 440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: '#1c1c1c', color: '#eef0f2', border: '1px solid rgba(255,91,31,.35)', boxShadow: '0 8px 30px rgba(0,0,0,.35)' }}><RefreshCw size={16} /><span style={{ flex: 1, fontSize: 13.5 }}>A new version of SWK OS is ready.</span><button className="btn sm" onClick={applyUpdate}>Reload</button></div>}
         {me?.demo && <div className="demo-notice no-print"><span><strong>Demo workspace</strong> · sample data · external messages switched off</span><details><summary>Details</summary><p>Safe practice environment. Resets every night. External email and WhatsApp messages are disabled.</p><button className="btn outline sm" onClick={async () => { if (confirm('Restore the demo to its original state and sign out?')) { await post('/api/demo/reset'); window.location.href = '/login' } }}>Reset demo</button></details></div>}
         {me?.defaultPassword && !me?.demo && <div className="no-print bg-[#f3e6c4] text-[#6b4a00] px-5 py-2 text-sm font-semibold flex items-center gap-3 flex-wrap">You are signed in with the default password. <Link to="/profile" className="underline">Change it now</Link></div>}
-        <div className={cls('swk-body', 'has-sidebar', collapsed && 'is-collapsed')}>
-          {<AppSidebar pathname={loc.pathname} collapsed={collapsed} onToggle={toggleSidebar} />}
+        <div className={cls('swk-body', drawer && 'sb-open', !isHome && !!here && 'has-sidebar', !isHome && !!here && collapsed && 'is-collapsed')}>
+          {drawer && <div className="swk-sb-scrim" onClick={() => setDrawer(false)} />}
+          {!isHome && <AppSidebar pathname={loc.pathname} collapsed={collapsed} onToggle={toggleSidebar} />}
           <main className="swk-main" id="main">
             <AnimatePresence mode="wait">
               <motion.div key={loc.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: .18, ease: [0.16, 1, 0.3, 1] }}>

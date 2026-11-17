@@ -75,7 +75,7 @@ export default function App() {
     loc.pathname.startsWith('/qr-reception/')
   if (isStandaloneReceptionQr) {
     return (
-      <Suspense fallback={<div className="h-full grid place-items-center bg-[#08142a] text-white"><Loading label="Starting Standalone Reception QR Terminal…" /></div>}>
+      <Suspense fallback={<div className="h-full grid place-items-center bg-[#0d0d0d] text-white"><Loading label="Starting Standalone Reception QR Terminal…" /></div>}>
         <ReceptionQrPage />
       </Suspense>
     )
@@ -86,7 +86,7 @@ export default function App() {
     loc.pathname === '/handover-portal'
   if (isStandaloneHandover && !me) {
     return (
-      <Suspense fallback={<div className="h-full grid place-items-center bg-[#08142a] text-white"><Loading label="Loading SWK OS Handover Dossier & Staff Guide…" /></div>}>
+      <Suspense fallback={<div className="h-full grid place-items-center bg-[#0d0d0d] text-white"><Loading label="Loading SWK OS Handover Dossier & Staff Guide…" /></div>}>
         <HandoverPortalPage />
       </Suspense>
     )
@@ -102,7 +102,7 @@ export default function App() {
             <Route
               path="*"
               element={
-                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#c9a96e]/40 bg-[#0d1f3c] text-white shadow-xl">
+                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#ff5b1f]/40 bg-[#0d1f3c] text-white shadow-xl">
                   <div className="text-xs font-extrabold uppercase tracking-widest text-[#e6c98f] mb-2">
                     Staff Access Policy · SWK Properties OS
                   </div>
@@ -111,7 +111,7 @@ export default function App() {
                     Signed in as <b>{me.name}</b> (<code className="text-[#e6c98f]">{me.email}</code>). Per company security policy, full OS operational modules are restricted exclusively to <b>Owner Shabib Siraj (shabib@swk.properties)</b>, <b>Full-Access Admin (admin@swk.properties)</b>, and <b>Mohammad Haseeb (Haseeb@swk.property)</b>. Your account is authorised for <b>Attendance &amp; QR Check-In</b>, <b>Company Manual</b>, <b>Market Pulse</b>, and <b>General Workspace</b>.
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#c9a96e] text-[#08142a] font-bold text-xs no-underline">
+                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#ff5b1f] text-[#0d0d0d] font-bold text-xs no-underline">
                       Scan &amp; Check In Attendance
                     </Link>
                     <Link to="/competency" className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs no-underline border border-white/15">

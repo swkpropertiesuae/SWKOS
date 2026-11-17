@@ -110,10 +110,10 @@ export function CommissionTool() {
       <div className="h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 6, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#efe9dc" vertical={false} />
+            <CartesianGrid stroke="#ecebe4" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 10.5, fill: SWK.muted }} axisLine={false} tickLine={false} interval={0} tickFormatter={(s: string) => s.split(' ')[0]} />
             <YAxis tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} tickFormatter={v => `${Math.round(v / 1000)}k`} width={40} />
-            <Tooltip cursor={{ fill: '#f6f2ea' }} formatter={(_v: any, k: any, item: any) => (k === 'base' ? [null, null] : [aed(item?.payload?.raw), item?.payload?.label])} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
+            <Tooltip cursor={{ fill: '#eef0f2' }} formatter={(_v: any, k: any, item: any) => (k === 'base' ? [null, null] : [aed(item?.payload?.raw), item?.payload?.label])} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
             <RBar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} />
             <RBar dataKey="v" stackId="w" radius={[6, 6, 6, 6]} animationDuration={800}>
               {data.map(d => <Cell key={d.label} fill={d.color} />)}
@@ -121,7 +121,7 @@ export function CommissionTool() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="rounded-2xl border border-[#e6d7b8] p-4" style={{ background: 'linear-gradient(150deg, #fbf6ec, #f1e6cf)' }}>
+      <div className="rounded-2xl border border-[#ffe4d6] p-4" style={{ background: 'linear-gradient(150deg, #fafaff, #ffe4d6)' }}>
         <div className="flex items-center gap-2 mb-2"><Receipt size={16} color={SWK.champDeep} /><b className="text-[14px] text-ink">Tax invoice (VAT 5%)</b><Pill tone="champ" className="ml-auto">FTA</Pill></div>
         <KV k="Commission (excl. VAT)" v={aed(w.gross, { decimals: 2 })} />
         <KV k="VAT @ 5%" v={aed(w.vat, { decimals: 2 })} />
@@ -234,7 +234,7 @@ export function PaymentPlanTool() {
           <DateField label="Booking date" value={start} onChange={setStart} />
           <DateField label="Expected handover" value={hand} onChange={setHand} />
         </div>
-        <motion.div layout className="rounded-xl px-3 py-2.5 text-[13px] font-semibold flex items-center justify-between" style={{ background: plan.valid ? '#def1ef' : '#fbe4dd', color: plan.valid ? SWK.oasis : '#a33a22' }} role="status">
+        <motion.div layout className="rounded-xl px-3 py-2.5 text-[13px] font-semibold flex items-center justify-between" style={{ background: plan.valid ? '#def1ef' : '#ffe4d6', color: plan.valid ? SWK.oasis : '#a33a22' }} role="status">
           <span>{plan.valid ? 'Plan totals 100% ✓' : `Plan totals ${num(plan.planPct, 1)}% — must equal 100%`}</span>
           <span className="tabular-nums">{num(plan.planPct, 1)}%</span>
         </motion.div>
@@ -251,7 +251,7 @@ export function PaymentPlanTool() {
       </div>
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
         <ol className="relative pl-6 max-h-[360px] overflow-y-auto pr-1" aria-label="Payment timeline">
-          <span className="absolute left-[9px] top-1 bottom-1 w-0.5" style={{ background: '#e7e1d4' }} />
+          <span className="absolute left-[9px] top-1 bottom-1 w-0.5" style={{ background: '#e7e8e6' }} />
           <AnimatePresence initial={false}>
             {rows.map((r, i) => (
               <motion.li key={`${r.label}-${i}`} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.025 }} className="relative pb-3">
@@ -267,7 +267,7 @@ export function PaymentPlanTool() {
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={cumData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#efe9dc" vertical={false} />
+                <CartesianGrid stroke="#ecebe4" vertical={false} />
                 <XAxis dataKey="d" tick={{ fontSize: 10.5, fill: SWK.muted }} axisLine={false} tickLine={false} minTickGap={16} />
                 <YAxis tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1e6).toFixed(1)}M`} width={40} />
                 <Tooltip formatter={(v: any) => [aed(Number(v)), 'Paid to date']} contentStyle={{ borderRadius: 12, fontSize: 12 }} />

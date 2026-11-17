@@ -100,7 +100,7 @@ export function Pagination({ page, pageSize, total, onPage, onSize }: { page: nu
   return (
     <div className="flex items-center gap-3 px-3 py-2 text-[13px] text-muted border-t border-line flex-wrap">
       <span>{from}–{to} of {total.toLocaleString()}</span><div className="flex-1" />
-      {onSize && <select className="select" style={{ width: 84, minHeight: 30 }} value={pageSize} onChange={e => onSize(Number(e.target.value))}>{[25, 50, 100, 250].map(n => <option key={n} value={n}>{n} / pg</option>)}</select>}
+      {onSize && <select className="select" style={{ width: 124, minHeight: 30 }} value={pageSize} onChange={e => onSize(Number(e.target.value))}>{[25, 50, 100, 250].map(n => <option key={n} value={n}>{n} / pg</option>)}</select>}
       <button className="btn outline sm icon" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page"><ChevronLeft /></button>
       <span>Page {page} / {pages}</span>
       <button className="btn outline sm icon" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Next page"><ChevronRight /></button>
@@ -108,7 +108,7 @@ export function Pagination({ page, pageSize, total, onPage, onSize }: { page: nu
   )
 }
 
-export function Panel({ title, color = '#0b1a33', tools, children, className, bodyClass = '', collapsible = true }: { title: ReactNode; color?: string; tools?: ReactNode; children: ReactNode; className?: string; bodyClass?: string; collapsible?: boolean }) {
+export function Panel({ title, color = '#1c1c1c', tools, children, className, bodyClass = '', collapsible = true }: { title: ReactNode; color?: string; tools?: ReactNode; children: ReactNode; className?: string; bodyClass?: string; collapsible?: boolean }) {
   const [open, setOpen] = useState(true)
   return (
     <section className={cls('panel', className)}>
@@ -131,6 +131,6 @@ export function PageHeader({ title, subtitle, actions, back, icon }: { title: Re
   )
 }
 export function Kpi({ label, value, hint, tone, onClick, className }: { className?: string; label: string; value: ReactNode; hint?: ReactNode; tone?: 'red' | 'amber' | 'green'; onClick?: () => void }) {
-  return <div className={cls('card kpi', className, onClick && 'cursor-pointer hover:shadow-md transition-shadow')} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() } }} onClick={onClick} style={tone ? { borderTop: `3px solid ${tone === 'red' ? '#c32135' : tone === 'amber' ? '#b8955a' : '#14305c'}` } : undefined}><div className="l">{label}</div><div className="v">{value}</div>{hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}</div>
+  return <div className={cls('card kpi', className, onClick && 'cursor-pointer hover:shadow-md transition-shadow')} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} onKeyDown={e => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick() } }} onClick={onClick} style={tone ? { borderTop: `3px solid ${tone === 'red' ? '#c32135' : tone === 'amber' ? '#c9420f' : '#1c1c1c'}` } : undefined}><div className="l">{label}</div><div className="v">{value}</div>{hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}</div>
 }
 

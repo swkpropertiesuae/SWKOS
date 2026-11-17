@@ -31,7 +31,7 @@ export function DateField({ label, value, onChange }: { label: string; value: st
 
 export function Toggle({ label, checked, onChange, hint }: { label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
   return (
-    <label className="swk-toggle justify-between w-full rounded-xl border border-[#efe9dc] bg-[#fbf9f5] px-3 py-2.5">
+    <label className="swk-toggle justify-between w-full rounded-xl border border-[#ecebe4] bg-[#fafaff] px-3 py-2.5">
       <span className="min-w-0"><span className="block">{label}</span>{hint && <span className="block text-[11.5px] text-muted font-normal">{hint}</span>}</span>
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} aria-label={label} />
     </label>
@@ -74,7 +74,7 @@ export function ToolLayout({ title, subtitle, inputs, children, summary }: { tit
 
 /** Big hero figure for the primary result. */
 export function Hero({ label, value, format = v => aed(v), sub, tone = 'navy' }: { label: string; value: number; format?: (v: number) => string; sub?: ReactNode; tone?: 'navy' | 'champ' | 'oasis' | 'dune' }) {
-  const bg = tone === 'navy' ? `linear-gradient(140deg, ${SWK.navy}, ${SWK.midnight})` : tone === 'champ' ? 'linear-gradient(140deg, #fbf6ec, #f1e6cf)' : tone === 'oasis' ? 'linear-gradient(140deg, #1f7a7a, #145252)' : 'linear-gradient(140deg, #c4492f, #8f3220)'
+  const bg = tone === 'navy' ? `linear-gradient(140deg, ${SWK.navy}, ${SWK.midnight})` : tone === 'champ' ? 'linear-gradient(140deg, #fafaff, #ffe4d6)' : tone === 'oasis' ? 'linear-gradient(140deg, #1f7a7a, #145252)' : 'linear-gradient(140deg, #e8261c, #8f3220)'
   const dark = tone !== 'champ'
   return (
     <motion.div layout className="relative overflow-hidden rounded-2xl p-5" style={{ background: bg, color: dark ? '#fff' : SWK.ink }}>
@@ -88,7 +88,7 @@ export function Hero({ label, value, format = v => aed(v), sub, tone = 'navy' }:
 
 export function MiniStat({ label, value, format = v => aed(v), accent }: { label: string; value: number; format?: (v: number) => string; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-[#efe9dc] bg-[#fbf9f5] p-3 min-w-0">
+    <div className="rounded-2xl border border-[#ecebe4] bg-[#fafaff] p-3 min-w-0">
       <div className="text-[10.5px] uppercase tracking-wider font-semibold text-muted truncate">{label}</div>
       <div className="font-display text-[19px] font-semibold truncate" style={{ color: accent ?? SWK.ink }}><AnimatedNumber value={value} format={format} duration={0.7} /></div>
     </div>
@@ -103,7 +103,7 @@ export function Donut({ parts, size = 190, stroke = 22, center }: { parts: { lab
   return (
     <div className="relative flex-none" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" role="img" aria-label={parts.map(p => `${p.label} ${Math.round((p.value / total) * 100)}%`).join(', ')}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#efe9dc" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="#ecebe4" strokeWidth={stroke} fill="none" />
         {parts.map(p => {
           const len = (Math.max(0, p.value) / total) * c
           const el = <motion.circle key={p.label} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeWidth={stroke}
@@ -123,7 +123,7 @@ export function LiveRing({ value, max = 100, size = 120, stroke = 11, color = SW
   return (
     <div className="relative grid place-items-center flex-none" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#ece5d6" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="#ecebe4" strokeWidth={stroke} fill="none" />
         <motion.circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c}
           initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v) }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} />
       </svg>
@@ -138,7 +138,7 @@ export function LiveRing({ value, max = 100, size = 120, stroke = 11, color = SW
 export function LiveBar({ value, max, color = SWK.navy, height = 8 }: { value: number; max: number; color?: string; height?: number }) {
   const w = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0
   return (
-    <div className="w-full rounded-full overflow-hidden" style={{ height, background: '#efe9dc' }}>
+    <div className="w-full rounded-full overflow-hidden" style={{ height, background: '#ecebe4' }}>
       <motion.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} animate={{ width: `${w}%` }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} />
     </div>
   )
@@ -152,7 +152,7 @@ export function Gauge({ value, cap, max = 100, color, label, sub }: { value: num
   return (
     <div className="relative" style={{ width: w, maxWidth: '100%' }}>
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" role="img" aria-label={`Gauge ${Math.round(value)} of cap ${cap}`}>
-        <path d={arc} stroke="#ece5d6" strokeWidth={18} fill="none" strokeLinecap="round" />
+        <path d={arc} stroke="#ecebe4" strokeWidth={18} fill="none" strokeLinecap="round" />
         <motion.path d={arc} stroke={color} strokeWidth={18} fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: Math.max(0.001, v) }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} />
         <line x1={cx + (r - 16) * Math.cos(capA)} y1={cy - (r - 16) * Math.sin(capA)} x2={cx + (r + 16) * Math.cos(capA)} y2={cy - (r + 16) * Math.sin(capA)} stroke={SWK.ink} strokeWidth={2.5} strokeDasharray="3 2" />
         <text x={cx + (r + 22) * Math.cos(capA)} y={cy - (r + 22) * Math.sin(capA)} fontSize="10" fill={SWK.muted} textAnchor="middle">{cap}% cap</text>

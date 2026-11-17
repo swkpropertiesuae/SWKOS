@@ -22,7 +22,7 @@ export function AiPage() {
   return (
     <div className="fade-in">
       <PageHeader icon={<Bot size={20} />} title="AI Assistant & Digital Employees" subtitle="Jarvis and your automated AI employees for daily business briefings, approvals, and receptionist tasks." actions={<Link className="btn outline" to="/admin/integrations"><Settings2 /> AI settings</Link>} />
-      {!d.configured && <div className="mb-4 p-4 rounded-xl border border-[#ecd9a0] bg-[#fbf3d6] text-[14px]"><b>AI is not connected yet.</b> Configure your AI connection in <Link to="/admin/integrations" className="underline">Integrations → AI employees</Link>.</div>}
+      {!d.configured && <div className="mb-4 p-4 rounded-xl border border-[#ffe4d6] bg-[#ffe4d6] text-[14px]"><b>AI is not connected yet.</b> Configure your AI connection in <Link to="/admin/integrations" className="underline">Integrations → AI employees</Link>.</div>}
       <div className="card overflow-hidden">
         <Tabs tabs={[{ key: 'chat', label: 'Chat with Jarvis' }, { key: 'team', label: 'Employees', count: d.agents.length }, { key: 'approvals', label: 'Approvals', count: d.pending || undefined }, { key: 'voice', label: 'Voice' }, { key: 'activity', label: 'Activity' }]} value={tab} onChange={k => setSp({ tab: k })} />
         <div className="p-4 md:p-5">
