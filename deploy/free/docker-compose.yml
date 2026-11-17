@@ -1,9 +1,15 @@
 # Free hosting stack: app + Cloudflare Tunnel (no open ports, free HTTPS/CDN) + nightly file backup.
 # Run from this folder:  docker compose --env-file ../../.env up -d --build
+# Cap container logs so they can never fill the disk.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
 services:
   swkos:
     build: ../..
     restart: unless-stopped
+    logging: *logging
     env_file: [../../.env]
     environment:
       DATA_DIR: /data
@@ -14,6 +20,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
+    logging: *logging
     command: tunnel --no-autoupdate run
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
@@ -24,6 +31,7 @@ services:
   backup:
     image: alpine:3.20
     restart: unless-stopped
+    logging: *logging
     volumes:
       - swkos-data:/data:ro
       - ${BACKUP_DIR:-./backups}:/backup
