@@ -270,13 +270,16 @@ export function applyPasswordReset() {
   if (!id) return
   const key = `pwreset:${id}`
   if (q.get(`SELECT 1 AS x FROM settings WHERE key = ?`, key)) return
+  // PASSWORD_RESET_SUFFIX gives each person their own temporary password: first name + suffix (haseeb + 123). The repo never holds a password.
+  const suffix = process.env.PASSWORD_RESET_SUFFIX
   const set = (emails: string[], pw: string | undefined) => {
-    if (!pw) return 0
+    if (!pw && !suffix) return 0
     let n = 0
     for (const email of emails) {
+      const own = suffix ? email.split('@')[0] + suffix : pw!
       const row = q.get(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, email.toLowerCase())
       if (!row) continue
-      q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
+      q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(own), nowIso(), row.id)
       q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
       n++
     }
