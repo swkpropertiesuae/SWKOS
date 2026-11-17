@@ -20,10 +20,10 @@ export function ProfilePage() {
   return (
     <div className="fade-in max-w-5xl">
       <PageHeader icon={<KeyRound size={20} />} title="Profile & security" subtitle={`${me?.name} · ${me?.email} · ${me?.role}`} />
-      {me?.mustChangePassword && <div className="mb-4 p-4 rounded-xl border border-[#dbe4ff] bg-[#dbe4ff] text-[14px]"><b>Set your own password to continue.</b> The account was created with a temporary password. Choose a new one (at least 10 characters with upper-case, lower-case and a digit) – the rest of the application unlocks right after.</div>}
+      {me?.mustChangePassword && <div className="mb-4 p-4 rounded-xl border border-[#f2efe8] bg-[#f2efe8] text-[14px]"><b>Set your own password to continue.</b> The account was created with a temporary password. Choose a new one (at least 10 characters with upper-case, lower-case and a digit) – the rest of the application unlocks right after.</div>}
       <div className="grid gap-4 lg:grid-cols-2">
         <form onSubmit={changePw} className="card p-5 grid gap-3 content-start"><h3 className="m-0 text-[16px]">Change password</h3>
-          {me?.defaultPassword && <div className="text-sm bg-gold text-[#1b2f7a] rounded-lg px-3 py-2 font-semibold">You are still using the default password — please change it.</div>}
+          {me?.defaultPassword && <div className="text-sm bg-gold text-[#4a1f4d] rounded-lg px-3 py-2 font-semibold">You are still using the default password — please change it.</div>}
           <div><label className="label">Current password</label><input className="input" type="password" autoComplete="current-password" required value={cur} onChange={e => setCur(e.target.value)} /></div>
           <div><label className="label">New password</label><input className="input" type="password" autoComplete="new-password" required minLength={10} value={nw} onChange={e => setNw(e.target.value)} /><div className="help">At least 10 characters with upper-case, lower-case and a digit.</div></div>
           <div><label className="label">Repeat new password</label><input className="input" type="password" autoComplete="new-password" required value={nw2} onChange={e => setNw2(e.target.value)} /></div>

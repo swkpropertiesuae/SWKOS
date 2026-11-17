@@ -71,8 +71,8 @@ export default function ReceptionQrPage() {
 
   const onOffice = Boolean(net?.office_ip_locked && net?.ip_matches_office)
   return (
-    <div className="min-h-screen bg-[#0a1322] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-[420px] rounded-3xl bg-[#0e1a30] border border-white/10 p-6 shadow-2xl">
+    <div className="min-h-screen bg-[#0c2019] text-white flex items-center justify-center p-4">
+      <div className="w-full max-w-[420px] rounded-3xl bg-[#112d23] border border-white/10 p-6 shadow-2xl">
         <div className="flex flex-col items-center text-center mb-5">
           <img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" className="h-14 w-auto" />
           <h1 className="font-display font-bold text-xl m-0 mt-2" style={{ color: '#fff' }}>{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
@@ -90,10 +90,10 @@ export default function ReceptionQrPage() {
             <div className="relative rounded-2xl overflow-hidden bg-black aspect-square border border-white/10">
               <video ref={video} muted playsInline className="w-full h-full object-cover" />
               <canvas ref={canvas} className="hidden" />
-              <div className="absolute inset-6 border-2 border-[#2d58dc]/80 rounded-2xl pointer-events-none" />
-              <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#2d58dc]" size={20} />
+              <div className="absolute inset-6 border-2 border-[#0d5a48]/80 rounded-2xl pointer-events-none" />
+              <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#0d5a48]" size={20} />
             </div>
-            <p className="text-xs text-[#c3cde0] m-0">{camErr || 'Point the camera at the code on the reception screen. It scans by itself. There is no photo or file option.'}</p>
+            <p className="text-xs text-[#dad2c9] m-0">{camErr || 'Point the camera at the code on the reception screen. It scans by itself. There is no photo or file option.'}</p>
           </div>
         )}
 
@@ -101,19 +101,19 @@ export default function ReceptionQrPage() {
           <form onSubmit={e => void submit(e)} className="space-y-3.5">
             <p className="text-xs text-emerald-300 m-0">Code read. Sign in within 90 seconds.</p>
             <div>
-              <label htmlFor="qr-email" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">Email</label>
-              <div className="relative flex items-center"><Mail size={16} className="absolute left-3.5 text-[#8a9ab5]" />
-                <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#2d58dc]" /></div>
+              <label htmlFor="qr-email" className="block text-xs font-semibold text-[#dad2c9] mb-1.5">Email</label>
+              <div className="relative flex items-center"><Mail size={16} className="absolute left-3.5 text-[#aca093]" />
+                <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#0d5a48]" /></div>
             </div>
             <div>
-              <label htmlFor="qr-pw" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">Password</label>
-              <div className="relative flex items-center"><Lock size={16} className="absolute left-3.5 text-[#8a9ab5]" />
-                <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#2d58dc]" />
-                <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#8a9ab5] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
+              <label htmlFor="qr-pw" className="block text-xs font-semibold text-[#dad2c9] mb-1.5">Password</label>
+              <div className="relative flex items-center"><Lock size={16} className="absolute left-3.5 text-[#aca093]" />
+                <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#0d5a48]" />
+                <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#aca093] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
             </div>
             {needTotp && <input inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="Authenticator code" value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ''))} className="w-full h-11 px-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none" />}
-            <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-xl border-0 bg-[#2d58dc] text-white font-bold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
-            <button type="button" onClick={() => { setPayload(''); setStep('scan') }} className="w-full bg-transparent border-0 text-xs text-[#c3cde0] underline cursor-pointer">Scan again</button>
+            <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-xl border-0 bg-[#0d5a48] text-white font-bold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
+            <button type="button" onClick={() => { setPayload(''); setStep('scan') }} className="w-full bg-transparent border-0 text-xs text-[#dad2c9] underline cursor-pointer">Scan again</button>
           </form>
         )}
 
@@ -135,7 +135,7 @@ export default function ReceptionQrPage() {
   )
 }
 
-const Row = ({ k, v }: { k: string; v: any }) => <div className="flex justify-between gap-3"><span className="text-[#8a9ab5]">{k}</span><span className="font-semibold text-right">{v}</span></div>
+const Row = ({ k, v }: { k: string; v: any }) => <div className="flex justify-between gap-3"><span className="text-[#aca093]">{k}</span><span className="font-semibold text-right">{v}</span></div>
 
 function SetupPanel({ onChange }: { onChange: () => void }) {
   const [msg, setMsg] = useState(''), [control, setControl] = useState<{ devices: any[] } | null>(null)
@@ -144,14 +144,14 @@ function SetupPanel({ onChange }: { onChange: () => void }) {
   const act = async (body: any) => { setMsg('Working…'); try { const r = await post<any>('/api/swk-ops/attendance-setup', body); setMsg(r.office_ip_locked ? `Office network locked: ${r.public_ips}` : 'Office network cleared. Check-in is off until you lock it again.'); onChange() } catch (e: any) { setMsg(e?.message || 'Could not save.') } }
   const decide = async (id: number, approve: boolean) => { try { setControl(await post<any>(`/api/swk-ops/attendance-control/device/${id}`, { approve })) } catch (e: any) { setMsg(e?.message || 'Could not save.') } }
   return (
-    <div className="mt-5 rounded-2xl border border-white/15 bg-white/[.04] p-3 text-xs text-[#c3cde0] space-y-2">
+    <div className="mt-5 rounded-2xl border border-white/15 bg-white/[.04] p-3 text-xs text-[#dad2c9] space-y-2">
       <div className="font-semibold text-white">Attendance control (Owner / Manager)</div>
       <div className="flex gap-2 flex-wrap">
-        <button type="button" className="px-3 py-1.5 rounded-xl bg-[#2d58dc] text-white font-semibold border-0 cursor-pointer" onClick={() => void act({ lock_current_ip: true })}>Lock this network as the office</button>
+        <button type="button" className="px-3 py-1.5 rounded-xl bg-[#0d5a48] text-white font-semibold border-0 cursor-pointer" onClick={() => void act({ lock_current_ip: true })}>Lock this network as the office</button>
         <button type="button" className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-semibold border border-white/20 cursor-pointer" onClick={() => void act({ clear_ips: true })}>Clear locked networks</button>
       </div>
       {msg && <div>{msg}</div>}
-      <a href="/reception-display" className="inline-block text-[#a9bbff] underline">Open the reception code screen</a>
+      <a href="/reception-display" className="inline-block text-[#c4efd9] underline">Open the reception code screen</a>
       {!!control?.devices.length && (
         <div className="space-y-1">
           <div className="font-semibold text-white">Devices</div>

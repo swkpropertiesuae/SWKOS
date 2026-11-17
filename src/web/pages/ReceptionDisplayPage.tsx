@@ -12,7 +12,7 @@ export function ReceptionDisplayPage() {
     const load = async () => {
       try {
         const t = await get<{ token: string; expires_in: number }>('/api/swk-ops/reception-token')
-        const data = await QRCode.toDataURL(t.token, { width: 520, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#0b1424', light: '#ffffff' } })
+        const data = await QRCode.toDataURL(t.token, { width: 520, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#0d221a', light: '#ffffff' } })
         if (stop) return
         setImg(data); setErr(null); setLeft(t.expires_in)
         timer = setTimeout(() => void load(), Math.max(3, t.expires_in - 3) * 1000)

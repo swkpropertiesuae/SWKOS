@@ -10,11 +10,11 @@ import { ArrowUpRight,TrendingDown,TrendingUp } from 'lucide-react'
 import { cls } from '../lib/format'
 
 export const SWK = {
-  navy: '#0f1b33', midnight: '#0f1b33', ocean: '#12224d', sky: '#3c71b8', champ: '#2d58dc', champDeep: '#1f3fb0',
-  champSoft: '#eef2ff', sand: '#eef0f2', oasis: '#1f7a7a', dune: '#d51f16', ink: '#0f1b33', muted: '#566179', line: '#e7e8e6',
+  navy: '#123025', midnight: '#123025', ocean: '#1a4535', sky: '#1d8266', champ: '#0d5a48', champDeep: '#0a4a3b',
+  champSoft: '#e9f4ef', sand: '#f2f1ee', oasis: '#1f7a59', dune: '#d51f16', ink: '#123025', muted: '#72685d', line: '#e7e8e6',
 }
 /** Ordered chart palette — navy → champagne → oasis → ocean → dune → sky → gold */
-export const CHART = [SWK.navy, SWK.champ, SWK.oasis, SWK.ocean, SWK.dune, SWK.sky, SWK.champDeep, '#8391ad']
+export const CHART = [SWK.navy, SWK.champ, SWK.oasis, SWK.ocean, SWK.dune, SWK.sky, SWK.champDeep, '#a5998b']
 
 export const aed = (n: number | null | undefined, opts: { compact?: boolean; decimals?: number } = {}) => {
   const v = Number(n ?? 0)

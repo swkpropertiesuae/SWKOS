@@ -139,7 +139,7 @@ export default function WithdrawalsPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="card p-4 border-l-4 border-[#1f3fb0]">
+        <div className="card p-4 border-l-4 border-[#0a4a3b]">
           <div className="text-xs font-bold uppercase tracking-wider text-muted">Developer / Seller Withdrawal Rule</div>
           <div className="text-sm font-semibold text-ink mt-1">100% Full Refund of Client Funds</div>
           <div className="text-xs text-muted mt-1">When a developer cancels/delays or a secondary seller defaults on Form F, 0% deduction is applied to the buyer.</div>
