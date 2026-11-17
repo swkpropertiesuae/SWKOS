@@ -25,6 +25,7 @@ import { AiPage } from './pages/AiPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
 import { ChatPage } from './pages/ChatPage'
 import { PortalPage } from './pages/PortalPage'
+import { ReceptionDisplayPage } from './pages/ReceptionDisplayPage'
 import { InspectList, InspectPage } from './pages/InspectPage'
 import { SmartSearchPage } from './pages/SmartSearchPage'
 import { BankImportPage, YearEndPage, WpsPage } from './pages/FinanceExtras'
@@ -142,6 +143,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />
+          <Route path="/reception-display" element={<ReceptionDisplayPage />} />
           <Route path="/handover" element={<HandoverPortalPage />} />
           <Route path="/handover-portal" element={<HandoverPortalPage />} />
           <Route path="/recycle-bin" element={<Guard module="admin"><RecycleBinPage /></Guard>} />

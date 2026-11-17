@@ -253,6 +253,19 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     );
     CREATE INDEX chat_messages_thread ON chat_messages(thread_id, id);
   ` },
+  { id: '010_staff_devices', sql: `
+    CREATE TABLE staff_devices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      device_id TEXT NOT NULL,
+      label TEXT,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      first_seen TEXT NOT NULL,
+      last_seen TEXT NOT NULL,
+      decided_by INTEGER,
+      UNIQUE(user_id, device_id)
+    );
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

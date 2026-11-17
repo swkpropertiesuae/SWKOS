@@ -157,7 +157,7 @@ export function Shell() {
                 <div className="px-3 py-2"><div className="font-semibold text-ink text-[14px] truncate">{me?.name}</div><div className="text-xs text-muted truncate">{me?.email}</div></div>
                 <div className="sep" />
                 {canPrintReceptionQr(me) ? (
-                  <Link to="/reception-qr?print=1" onClick={() => setUserMenu(false)}><span className="ic"><QrCode size={16} /></span>Print Office Attendance QR</Link>
+                  <Link to="/reception-display" onClick={() => setUserMenu(false)}><span className="ic"><QrCode size={16} /></span>Reception check-in code screen</Link>
                 ) : (
                   <Link to="/reception-qr" onClick={() => setUserMenu(false)}><span className="ic"><Camera size={16} /></span>Scan &amp; Check-In Attendance</Link>
                 )}
