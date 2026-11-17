@@ -1,3 +1,4 @@
+import { signInDemo } from './ui-login.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -13,18 +14,14 @@ server.stdout.on('data', b => { logs += b }); server.stderr.on('data', b => { lo
 const check = (label, condition) => { assert.ok(condition, label); checks++; console.log(`  ✓ ${label}`) }
 try {
   let online = false
-  for (let i = 0; i < 120; i++) { try { if ((await fetch(base + '/api/health')).ok) { online = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 120; i++) { try { if ((await fetch(base + '/api/health')).ok && (await (await fetch(base + '/api/demo/status')).json()).enabled) { online = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
   assert.ok(online, logs)
   browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' })
   const page = await context.newPage(), errors = []
   page.on('pageerror', e => errors.push(e.message))
   const demo = await (await context.request.get(base + '/api/demo/status')).json()
-  await page.goto(base + '/login')
-  await page.locator('input[type=email]').fill(demo.email)
-  await page.locator('input[type=password]').fill(demo.password)
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await page.waitForURL('**/home', { timeout: 90000 })
+  await signInDemo(page, base, demo)
   const api = async (url, payload) => {
     const r = payload === undefined ? await context.request.get(base + url) : await context.request.put(base + url, { data: payload, headers: { 'x-swk-client': 'web' } })
     return { status: r.status(), data: await r.json() }

@@ -1,3 +1,4 @@
+import { signInDemo } from './ui-login.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -11,14 +12,13 @@ const server = spawn(process.execPath, ['dist/server/index.mjs'], { env: { ...pr
 let logs = '', browser; server.stdout.on('data', b => logs += b); server.stderr.on('data', b => logs += b)
 try {
   let ready = false
-  for (let i = 0; i < 90; i++) { try { if ((await fetch(base + '/api/health')).ok) { ready = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 90; i++) { try { if ((await fetch(base + '/api/health')).ok && (await (await fetch(base + '/api/demo/status')).json()).enabled) { ready = true; break } } catch {} await new Promise(r => setTimeout(r, 500)) }
   assert.ok(ready, logs)
   browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || execFileSync('bash', ['-c', 'command -v google-chrome || command -v chromium'], { encoding: 'utf8' }).trim(), headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }), page = await context.newPage(), errors = []
   page.on('pageerror', e => errors.push(e.message))
   const demo = await (await context.request.get(base + '/api/demo/status')).json()
-  await page.goto(base + '/login'); await page.locator('input[type="email"]').fill(demo.email); await page.locator('input[type="password"]').fill(demo.password)
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click(); await page.waitForURL('**/home')
+  await signInDemo(page, base, demo)
 
   // 1. service worker registers and takes control after a reload
   await page.evaluate(() => navigator.serviceWorker.ready)
