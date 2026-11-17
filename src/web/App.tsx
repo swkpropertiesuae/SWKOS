@@ -103,7 +103,11 @@ export default function App() {
             <Route
               path="*"
               element={
+<<<<<<< HEAD
                 <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#2d58dc]/40 bg-[#0d1f3c] text-white shadow-xl">
+=======
+                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#3461e8]/40 bg-[#0d1f3c] text-white shadow-xl">
+>>>>>>> origin/main
                   <div className="text-xs font-extrabold uppercase tracking-widest text-[#dbe4ff] mb-2">
                     Staff Access Policy · SWK Properties OS
                   </div>
@@ -112,7 +116,11 @@ export default function App() {
                     Signed in as <b>{me.name}</b> (<code className="text-[#dbe4ff]">{me.email}</code>). Per company security policy, full OS operational modules are restricted exclusively to <b>Owner Shabib Siraj (shabib@swk.properties)</b>, <b>Full-Access Admin (admin@swk.properties)</b>, and <b>Mohammad Haseeb (Haseeb@swk.property)</b>. Your account is authorised for <b>Attendance &amp; QR Check-In</b>, <b>Company Manual</b>, <b>Market Pulse</b>, and <b>General Workspace</b>.
                   </p>
                   <div className="flex flex-wrap gap-3">
+<<<<<<< HEAD
                     <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#2d58dc] text-white font-bold text-xs no-underline">
+=======
+                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#3461e8] text-[#0a1322] font-bold text-xs no-underline">
+>>>>>>> origin/main
                       Scan &amp; Check In Attendance
                     </Link>
                     <Link to="/competency" className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs no-underline border border-white/15">

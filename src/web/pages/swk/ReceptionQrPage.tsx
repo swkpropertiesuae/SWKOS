@@ -90,8 +90,13 @@ export default function ReceptionQrPage() {
             <div className="relative rounded-2xl overflow-hidden bg-black aspect-square border border-white/10">
               <video ref={video} muted playsInline className="w-full h-full object-cover" />
               <canvas ref={canvas} className="hidden" />
+<<<<<<< HEAD
               <div className="absolute inset-6 border-2 border-[#2d58dc]/80 rounded-2xl pointer-events-none" />
               <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#2d58dc]" size={20} />
+=======
+              <div className="absolute inset-6 border-2 border-[#3461e8]/80 rounded-2xl pointer-events-none" />
+              <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#3461e8]" size={20} />
+>>>>>>> origin/main
             </div>
             <p className="text-xs text-[#c3cde0] m-0">{camErr || 'Point the camera at the code on the reception screen. It scans by itself. There is no photo or file option.'}</p>
           </div>
@@ -103,16 +108,28 @@ export default function ReceptionQrPage() {
             <div>
               <label htmlFor="qr-email" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">Email</label>
               <div className="relative flex items-center"><Mail size={16} className="absolute left-3.5 text-[#8a9ab5]" />
+<<<<<<< HEAD
                 <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#2d58dc]" /></div>
+=======
+                <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#3461e8]" /></div>
+>>>>>>> origin/main
             </div>
             <div>
               <label htmlFor="qr-pw" className="block text-xs font-semibold text-[#c3cde0] mb-1.5">Password</label>
               <div className="relative flex items-center"><Lock size={16} className="absolute left-3.5 text-[#8a9ab5]" />
+<<<<<<< HEAD
                 <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#2d58dc]" />
                 <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#8a9ab5] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
             </div>
             {needTotp && <input inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="Authenticator code" value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ''))} className="w-full h-11 px-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none" />}
             <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-xl border-0 bg-[#2d58dc] text-white font-bold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
+=======
+                <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none focus:border-[#3461e8]" />
+                <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#8a9ab5] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
+            </div>
+            {needTotp && <input inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="Authenticator code" value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ''))} className="w-full h-11 px-3 rounded-xl bg-white/[.06] border border-white/15 text-white text-sm outline-none" />}
+            <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-xl border-0 bg-[#3461e8] text-white font-bold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
+>>>>>>> origin/main
             <button type="button" onClick={() => { setPayload(''); setStep('scan') }} className="w-full bg-transparent border-0 text-xs text-[#c3cde0] underline cursor-pointer">Scan again</button>
           </form>
         )}
@@ -147,7 +164,11 @@ function SetupPanel({ onChange }: { onChange: () => void }) {
     <div className="mt-5 rounded-2xl border border-white/15 bg-white/[.04] p-3 text-xs text-[#c3cde0] space-y-2">
       <div className="font-semibold text-white">Attendance control (Owner / Manager)</div>
       <div className="flex gap-2 flex-wrap">
+<<<<<<< HEAD
         <button type="button" className="px-3 py-1.5 rounded-xl bg-[#2d58dc] text-white font-semibold border-0 cursor-pointer" onClick={() => void act({ lock_current_ip: true })}>Lock this network as the office</button>
+=======
+        <button type="button" className="px-3 py-1.5 rounded-xl bg-[#3461e8] text-white font-semibold border-0 cursor-pointer" onClick={() => void act({ lock_current_ip: true })}>Lock this network as the office</button>
+>>>>>>> origin/main
         <button type="button" className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-semibold border border-white/20 cursor-pointer" onClick={() => void act({ clear_ips: true })}>Clear locked networks</button>
       </div>
       {msg && <div>{msg}</div>}

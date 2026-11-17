@@ -452,11 +452,19 @@ export default function ToolkitPage() {
 
           <Card className="lg:col-span-7" title="Residency eligibility verdict" subtitle="Assessed per owner share against statutory DLD thresholds" tone={visaRes.golden ? 'navy' : 'light'}>
             <div className="flex items-center gap-4 mb-5">
+<<<<<<< HEAD
               <div className="w-14 h-14 rounded-2xl grid place-items-center bg-[#2d58dc]/20 text-[#2d58dc] flex-none">
                 <Award size={28} />
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[.2em] text-[#2d58dc]">Qualification result</div>
+=======
+              <div className="w-14 h-14 rounded-2xl grid place-items-center bg-[#3461e8]/20 text-[#3461e8] flex-none">
+                <Award size={28} />
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[.2em] text-[#3461e8]">Qualification result</div>
+>>>>>>> origin/main
                 <div className="font-display text-[26px] font-semibold">{visaRes.tier}</div>
                 <div className="text-xs opacity-80 mt-0.5">Individual share: {aed(visaRes.share)} (threshold: {aed(UAE.goldenVisaMin)})</div>
               </div>
@@ -473,7 +481,11 @@ export default function ToolkitPage() {
             <div className="grid gap-2 text-[13px]">
               {visaRes.notes.map((n, i) => (
                 <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/10 border border-white/15">
+<<<<<<< HEAD
                   <ShieldCheck size={16} className="text-[#2d58dc] mt-0.5 flex-none" />
+=======
+                  <ShieldCheck size={16} className="text-[#3461e8] mt-0.5 flex-none" />
+>>>>>>> origin/main
                   <span>{n}</span>
                 </div>
               ))}

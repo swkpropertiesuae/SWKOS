@@ -6,6 +6,7 @@
   --font-sans: 'Geist Variable', 'Geist', system-ui, 'Noto Sans Arabic', sans-serif;
   --font-display: 'Geist Variable', 'Geist', system-ui, 'Noto Sans Arabic', sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, monospace;
+<<<<<<< HEAD
   --ember: #2d58dc; --blaze: #d51f16; --live: #46e08a; --ocean: #007ea7;
   --bg: #eef0f2; --card: #ffffff; --ink: #0f1b33; --body: #3b3b37; --muted: #8a8a83;
   --line: #e1e3e0; --line-strong: #c6c9c4; --soft: #ecebe4; --hover: #f5f5f2; --focus: #2d58dc;
@@ -15,6 +16,17 @@
   --color-emerald: #0f1b33; --color-fold: #000; --color-signal: #d51f16; --color-graphite: #0f1b33; --color-pearl: #eef0f2;
   --color-ocean: #007ea7; --color-teal: #007ea7; --color-copper: #7f9cf5; --color-champagne: #dbe4ff; --color-champ: #2d58dc; --color-navy: #0f1b33;
   --color-midnight: #0a1322; --color-dune: #2d58dc; --color-oasis: #148a4b; --color-mint: #e5f6ec; --color-sky: #e1f2f9; --color-sand: #ecebe4; --color-gold: #fdf3dc;
+=======
+  --ember: #3461e8; --blaze: #e8261c; --live: #46e08a; --ocean: #007ea7;
+  --bg: #eef0f2; --card: #ffffff; --ink: #0f1b33; --body: #3b3b37; --muted: #8a8a83;
+  --line: #e1e3e0; --line-strong: #c6c9c4; --soft: #ecebe4; --hover: #f5f5f2; --focus: #3461e8;
+  --emerald: #0f1b33; --fold: #000000; --navy: #0f1b33; --midnight: #0a1322; --graphite: #0f1b33;
+  --signal: #e8261c; --dune: #3461e8; --oasis: #148a4b;
+  --champ: #3461e8; --champ-deep: #1f3fb0; --champ-soft: #eef2ff;
+  --color-emerald: #0f1b33; --color-fold: #000; --color-signal: #e8261c; --color-graphite: #0f1b33; --color-pearl: #eef0f2;
+  --color-ocean: #007ea7; --color-teal: #007ea7; --color-copper: #7f9cf5; --color-champagne: #dbe4ff; --color-champ: #3461e8; --color-navy: #0f1b33;
+  --color-midnight: #0a1322; --color-dune: #3461e8; --color-oasis: #148a4b; --color-mint: #e5f6ec; --color-sky: #e1f2f9; --color-sand: #ecebe4; --color-gold: #fdf3dc;
+>>>>>>> origin/main
   --ease: cubic-bezier(.2,.7,.2,1);
 }
 :root[data-theme='dark'] {
@@ -74,7 +86,11 @@ tbody tr { transition: background .12s; } tbody tr:hover { background: var(--hov
 .swk-os-tag small, .swk-chip { color: var(--body); background: var(--card); border: 1px solid var(--line); }
 .swk-chip b { color: var(--ink); }
 .swk-os-tag b { background: var(--ink); color: var(--card); }
+<<<<<<< HEAD
 .swk-app-tile, .swk-app-tile[class*='tone-'] { --t1: #0f1b33; --t2: #000; --tc: #2d58dc; border-radius: 16px; }
+=======
+.swk-app-tile, .swk-app-tile[class*='tone-'] { --t1: #0f1b33; --t2: #000; --tc: #3461e8; border-radius: 16px; }
+>>>>>>> origin/main
 .swk-app-tile:hover { border-color: var(--ember); transform: translateY(-2px); box-shadow: 0 12px 28px -14px rgba(52,97,232,.4); }
 .swk-sidebar-link-ic { background: var(--soft); color: var(--ink); border-color: var(--line); }
 .swk-sidebar-link.active .swk-sidebar-link-ic { background: var(--ember); color: #fff; border-color: var(--ember); }
@@ -112,7 +128,11 @@ body { background-color: var(--bg); background-image: radial-gradient(900px 500p
 .swk-search-pill:hover { border-color: var(--ember); }
 .swk-card, .card { background: var(--glass, rgba(255,255,255,.72)); backdrop-filter: blur(12px); }
 
+<<<<<<< HEAD
 .swk-shimmer-text { background: linear-gradient(90deg, #7f9cf5, #2d58dc, #ffb547); -webkit-background-clip: text; background-clip: text; color: transparent; }
+=======
+.swk-shimmer-text { background: linear-gradient(90deg, #7f9cf5, #3461e8, #ffb547); -webkit-background-clip: text; background-clip: text; color: transparent; }
+>>>>>>> origin/main
 .swk-launch-identity { background: var(--ink); border-color: var(--ink); }
 
 /* ===== Sign-in (Split Login layout) ===== */
@@ -213,7 +233,11 @@ body { background-color: #f3f1ed; }
 .swk-tbtn, .swk-menu-btn, .swk-apps-btn { background: rgba(255,255,255,.06); border: 1px solid var(--obs-line); color: var(--obs-text); }
 .swk-tbtn:hover, .swk-menu-btn:hover { background: rgba(52,97,232,.18); border-color: var(--ember); color: #fff; }
 .swk-tbtn .count { border-color: #0b1424; }
+<<<<<<< HEAD
 .swk-avatar { background: linear-gradient(135deg, #a9bbff, #2d58dc); color: #1a0d05; border: 0; font-weight: 700; }
+=======
+.swk-avatar { background: linear-gradient(135deg, #a9bbff, #3461e8); color: #1a0d05; border: 0; font-weight: 700; }
+>>>>>>> origin/main
 
 .swk-app-sidebar { background: linear-gradient(180deg, #0e1a30, #0a1322); border-right: 1px solid var(--obs-line); backdrop-filter: none; }
 .swk-sidebar-back { color: var(--obs-mute); }
@@ -225,7 +249,11 @@ body { background-color: #f3f1ed; }
 .swk-sidebar-link svg { color: var(--obs-mute); }
 .swk-sidebar-link:hover { background: rgba(255,255,255,.07); color: #fff; }
 .swk-sidebar-link:hover svg { color: #fff; }
+<<<<<<< HEAD
 .swk-sidebar-link.active { background: linear-gradient(135deg, #5b82ff, #2d58dc); color: #fff; box-shadow: 0 6px 18px -8px rgba(52,97,232,.7); }
+=======
+.swk-sidebar-link.active { background: linear-gradient(135deg, #5b82ff, #3461e8); color: #fff; box-shadow: 0 6px 18px -8px rgba(52,97,232,.7); }
+>>>>>>> origin/main
 .swk-sidebar-link.active svg { color: #fff; }
 
 /* home hero panel */
@@ -269,18 +297,31 @@ body { background-color: #f3f1ed; }
 
 /* ===== Midnight & Sapphire: navy chrome keeps the champagne-gold logo and white text vivid; sapphire is the single accent; cool paper content ===== */
 :root {
+<<<<<<< HEAD
   --ember: #2d58dc; --accent: #2d58dc; --champ: #2d58dc; --champ-deep: #1f3fb0; --champ-soft: #eef2ff; --focus: #2d58dc;
   --bg: #eef1f6; --card: #ffffff; --ink: #0f1b33; --body: #3d4a63; --muted: #566179; --line: #dfe4ee; --line-strong: #c9d1e0; --soft: #e8ecf4; --hover: #f1f4fa;
+=======
+  --ember: #3461e8; --accent: #3461e8; --champ: #3461e8; --champ-deep: #1f3fb0; --champ-soft: #eef2ff; --focus: #3461e8;
+  --bg: #eef1f6; --card: #ffffff; --ink: #0f1b33; --body: #3d4a63; --muted: #7a869c; --line: #dfe4ee; --line-strong: #c9d1e0; --soft: #e8ecf4; --hover: #f1f4fa;
+>>>>>>> origin/main
   --obs: #0b1424; --obs-2: #0e1a30; --obs-line: rgba(255,255,255,.09); --obs-text: #eef1f8; --obs-mute: #98a3bb;
   --grid-line: rgba(15,27,51,.055);
 }
 body { background-color: #eef1f6; background-image: radial-gradient(900px 500px at 85% -10%, rgba(52,97,232,.09), transparent 60%), linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); background-size: auto, 56px 56px, 56px 56px; background-attachment: fixed; }
 .swk-app-sidebar { background: linear-gradient(180deg, #0e1a30, #0a1322); }
+<<<<<<< HEAD
 .swk-sidebar-link.active { background: linear-gradient(135deg, #3b69f0, #2d58dc); box-shadow: 0 6px 18px -8px rgba(52,97,232,.8); }
 .swk-sidebar-group-label { color: #e8c896; }
 .swk-launch-hero { background: radial-gradient(700px 300px at 85% -20%, rgba(52,97,232,.32), transparent 60%), radial-gradient(500px 260px at 10% 120%, rgba(232,200,150,.14), transparent 60%), linear-gradient(160deg, #12203a, #0a1322); }
 .swk-login2-aside { background: radial-gradient(600px 360px at 100% 0%, rgba(52,97,232,.30), transparent 60%), linear-gradient(165deg, #12203a, #0a1322); }
 .swk-avatar { background: linear-gradient(135deg, #a9bbff, #2d58dc); color: #0a1322; }
+=======
+.swk-sidebar-link.active { background: linear-gradient(135deg, #4f7cff, #3461e8); box-shadow: 0 6px 18px -8px rgba(52,97,232,.8); }
+.swk-sidebar-group-label { color: #e8c896; }
+.swk-launch-hero { background: radial-gradient(700px 300px at 85% -20%, rgba(52,97,232,.32), transparent 60%), radial-gradient(500px 260px at 10% 120%, rgba(232,200,150,.14), transparent 60%), linear-gradient(160deg, #12203a, #0a1322); }
+.swk-login2-aside { background: radial-gradient(600px 360px at 100% 0%, rgba(52,97,232,.30), transparent 60%), linear-gradient(165deg, #12203a, #0a1322); }
+.swk-avatar { background: linear-gradient(135deg, #a9bbff, #3461e8); color: #0a1322; }
+>>>>>>> origin/main
 .swk-shimmer-text { background: linear-gradient(90deg, #e8c896, #fff3d6, #e8c896); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* ===== App frame like Estate OS: light breadcrumb bar on top, logo and navigation in the navy sidebar ===== */
@@ -297,7 +338,11 @@ body { background-color: #eef1f6; background-image: radial-gradient(900px 500px 
 .swk-tbtn, .swk-menu-btn, .swk-apps-btn { background: #fff; border: 1px solid var(--line); color: var(--ink); }
 .swk-tbtn:hover, .swk-menu-btn:hover { background: var(--champ-soft); border-color: var(--ember); color: var(--ink); }
 .swk-tbtn .count { border-color: #fff; }
+<<<<<<< HEAD
 .swk-create { background: linear-gradient(135deg, #3b69f0, #2d58dc); color: #fff; box-shadow: 0 8px 18px -10px rgba(52,97,232,.8); }
+=======
+.swk-create { background: linear-gradient(135deg, #4f7cff, #3461e8); color: #fff; box-shadow: 0 8px 18px -10px rgba(52,97,232,.8); }
+>>>>>>> origin/main
 .swk-sidebar-logo { display: block; padding: 6px 6px 12px; margin-bottom: 2px; border-bottom: 1px solid var(--obs-line); }
 .swk-sidebar-logo img { width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 0 18px rgba(232,200,150,.22)); }
 .swk-app-sidebar.is-collapsed .swk-sidebar-logo img { width: 40px; height: 40px; object-fit: cover; object-position: left center; }
@@ -307,6 +352,7 @@ body { background-color: #eef1f6; background-image: radial-gradient(900px 500px 
 .swk-dash-date { font: 500 11px var(--font-mono); letter-spacing: .12em; color: var(--muted); }
 .swk-dash-title { margin: 6px 0 0; font: 400 clamp(32px, 4vw, 46px)/1.05 'Instrument Serif', Georgia, serif; letter-spacing: -.01em; color: var(--ink); }
 .swk-dash-title em { font-style: italic; color: var(--ember); }
+<<<<<<< HEAD
 .swk-btn-primary { background: linear-gradient(135deg, #3b69f0, #2d58dc); color: #fff; box-shadow: 0 8px 18px -10px rgba(52,97,232,.8); }
 .swk-btn-outline { background: #fff; color: var(--ink); border: 1px solid var(--line-strong); }
 .swk-btn-outline:hover { border-color: var(--ember); }
@@ -383,3 +429,8 @@ tr[class*="text-"] > th, thead[class*="text-"] th { color: inherit; }
 .swk-tl-empty { font-size: 13px; color: var(--muted); margin: 8px 0; }
 .swk-pulse-bars { flex: 1; min-height: 84px; }
 .swk-tl-tx { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+=======
+.swk-btn-primary { background: linear-gradient(135deg, #4f7cff, #3461e8); color: #fff; box-shadow: 0 8px 18px -10px rgba(52,97,232,.8); }
+.swk-btn-outline { background: #fff; color: var(--ink); border: 1px solid var(--line-strong); }
+.swk-btn-outline:hover { border-color: var(--ember); }
+>>>>>>> origin/main

@@ -20,7 +20,11 @@ function FloatingPaths({ position }: { position: number }) {
   }))
   return (
     <div className="pointer-events-none absolute inset-0">
+<<<<<<< HEAD
       <svg className="h-full w-full" style={{ color: '#2d58dc' }} fill="none" viewBox="0 0 696 316">
+=======
+      <svg className="h-full w-full" style={{ color: '#3461e8' }} fill="none" viewBox="0 0 696 316">
+>>>>>>> origin/main
         {paths.map(p => (
           <motion.path key={p.id} d={p.d} stroke="currentColor" strokeOpacity={0.08 + p.id * 0.025} strokeWidth={p.width}
             initial={{ pathLength: 0.3 }} animate={reduce ? undefined : { pathLength: 1, pathOffset: [0, 1, 0] }}
