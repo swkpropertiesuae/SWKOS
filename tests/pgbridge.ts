@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { Worker, MessageChannel } from 'node:worker_threads'
+import { readFileSync } from 'node:fs'
 import { PgConn, waitForPgReply } from '../src/server/pgbridge.js'
+
+// pgbridge loads 'pg' by name at runtime, so dead-code tools miss it; production crashes at boot without it.
+assert.ok(JSON.parse(readFileSync('package.json', 'utf8')).dependencies?.pg, "'pg' must stay in dependencies")
 
 const sab = new SharedArrayBuffer(4)
 const sig = new Int32Array(sab)
