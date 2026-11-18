@@ -1,5 +1,5 @@
 /* Lead routing, scoring, pool, mortgage cases, payment plans, matching and leaderboard.  Needs a server on a fresh data directory:  npx tsx tests/growth.ts */
-import { QR_PAYLOAD_RE } from '../src/shared/qr-payload'
+import { QR_PAYLOAD_RE,qrCodeFrom,qrLink } from '../src/shared/qr-payload'
 import crypto from 'node:crypto'
 import { Api, ok, sec, finish, BASE } from './_api'
 
@@ -171,6 +171,8 @@ async function main() {
   const tf = await code()
   ok('the default code is fixed: same every time and not a link', /^SWK2\.[A-Za-z0-9_-]{43}$/.test(tf) && !/https?:/.test(tf) && (await code()) === tf, tf)
   ok('the check-in page camera accepts the fixed code the server issues', QR_PAYLOAD_RE.test(tf), tf)
+  ok('the QR is a link a normal phone camera can open, and the page reads the code back from it', qrLink('https://os.swk.properties', tf) === `https://os.swk.properties/reception-qr#c=${tf}` && qrCodeFrom(qrLink('https://os.swk.properties/', tf)) === tf && qrCodeFrom(tf) === tf && qrCodeFrom('#c=' + tf) === tf)
+  ok('anything that is not a reception code is ignored by the page', qrCodeFrom('https://example.com/#c=abc') === '' && qrCodeFrom('SWK2.short') === '' && qrCodeFrom('') === '')
   ok('other staff cannot regenerate the reception code', (await b.post('/api/swk-ops/reception-token/regenerate', {})).status === 403)
   const regen = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
   ok('regenerating gives a different fixed code', regen !== tf && (await code()) === regen && regen.startsWith('SWK2.'))

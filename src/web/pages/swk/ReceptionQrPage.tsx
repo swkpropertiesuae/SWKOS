@@ -1,6 +1,6 @@
 import { useEffect,useRef,useState } from 'react'
 import { canPrintReceptionQr } from '@shared/swk-staff-access'
-import { QR_PAYLOAD_RE } from '@shared/qr-payload'
+import { qrCodeFrom } from '@shared/qr-payload'
 import jsQR from 'jsqr'
 import { CheckCircle2,Eye,EyeOff,Loader2,Lock,Mail,ScanLine,Wifi,WifiOff } from 'lucide-react'
 import { get,post } from '../../lib/api'
@@ -12,7 +12,7 @@ type Step = 'scan' | 'signin' | 'done'
 
 /**
  * Office check-in terminal. Check-in works only on the office Wi-Fi, only by scanning the code on the reception screen with the live camera
- * in this page (there is no upload or gallery option, and the code is not a link), and only from this person's own registered phone.
+ * in this page (there is no upload or gallery option); a phone's normal camera also works, because the QR is a link to this page, and only from this person's own registered phone.
  */
 export default function ReceptionQrPage() {
   const { me } = useMeta()
@@ -24,6 +24,12 @@ export default function ReceptionQrPage() {
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [result, setResult] = useState<any>(null)
   const video = useRef<HTMLVideoElement>(null), canvas = useRef<HTMLCanvasElement>(null)
   const canSetup = canPrintReceptionQr(me)
+
+  // opened from the printed QR with a phone's normal camera: the code arrives in the link (#c=…), so go straight to sign-in
+  useEffect(() => {
+    const code = qrCodeFrom(window.location.hash)
+    if (code) { setPayload(code); setStep('signin'); window.history.replaceState(null, '', window.location.pathname) }
+  }, [])
 
   const loadNet = () => { void get<Net>('/api/public/reception-qr/wifi-config').then(setNet).catch(() => {}) }
   useEffect(loadNet, [])
@@ -45,7 +51,8 @@ export default function ReceptionQrPage() {
             const k = Math.min(1, 640 / v.videoWidth); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k)
             ctx.drawImage(v, 0, 0, c.width, c.height)
             const img = ctx.getImageData(0, 0, c.width, c.height), hit = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })
-            if (hit && QR_PAYLOAD_RE.test(hit.data)) { setPayload(hit.data); setStep('signin'); return }
+            const code = hit ? qrCodeFrom(hit.data) : ''
+            if (code) { setPayload(code); setStep('signin'); return }
           }
           raf = window.setTimeout(tick, 120)
         }

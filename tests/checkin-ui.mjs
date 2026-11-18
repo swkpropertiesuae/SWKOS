@@ -25,9 +25,9 @@ try {
   for (const mode of ['fixed', 'rotating']) {
     const tok = (await (await api.post(base + '/api/swk-ops/reception-token/mode', { headers: H, data: { mode } })).json()).token
     assert.ok(tok.startsWith(mode === 'fixed' ? 'SWK2.' : 'SWK1.'), `${mode} code issued`)
-    // fake camera: a short motion-JPEG video of the real QR, drawn by the browser itself (no external tools)
+    // fake camera: a short motion-JPEG video of the real QR (a link, like the printed one), drawn by the browser itself (no external tools)
     const mjpeg = path.join(data, `${mode}.mjpeg`)
-    const dataUrl = await QRCode.toDataURL(tok, { width: 480, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
+    const dataUrl = await QRCode.toDataURL(`${base}/reception-qr#c=${tok}`, { width: 480, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
     const shot = await (await adminBrowser.newPage({ viewport: { width: 640, height: 480 } }))
     await shot.setContent(`<body style="margin:0;background:#fff;display:grid;place-items:center;height:100vh"><img src="${dataUrl}" width="480" height="480">`)
     const frame = await shot.screenshot({ type: 'jpeg', quality: 95 })
@@ -40,6 +40,12 @@ try {
       await page.getByText(/Code read/i).waitFor({ timeout: 20000 })
       assert.ok(await page.locator('#qr-email').isVisible(), `${mode}: sign-in form appears after the camera reads the code`)
       console.log(`  ✓ camera reads the ${mode} code and opens the sign-in form`)
+      // a phone's normal camera opens the link in the browser: it must land on the sign-in step and hide the code from the address bar
+      const link = await (await b.newContext()).newPage()
+      await link.goto(`${base}/reception-qr#c=${tok}`)
+      await link.getByText(/Code read/i).waitFor({ timeout: 20000 })
+      assert.ok(await link.locator('#qr-email').isVisible() && !link.url().includes('#c='), `${mode}: opening the link goes straight to sign-in`)
+      console.log(`  ✓ opening the ${mode} QR link goes straight to the sign-in form`)
     } finally { await b.close() }
   }
   await adminBrowser.close()
