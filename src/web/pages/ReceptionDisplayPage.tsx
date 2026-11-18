@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { QrCode } from 'lucide-react'
 import { get,post } from '../lib/api'
 import { PageHeader,ErrorBox } from '../ui/kit'
+import { qrLink } from '@shared/qr-payload'
 
 type Tok = { token: string; expires_in: number; mode: 'fixed' | 'rotating' }
 
@@ -10,7 +11,7 @@ type Tok = { token: string; expires_in: number; mode: 'fixed' | 'rotating' }
 export function ReceptionDisplayPage() {
   const [img, setImg] = useState(''), [mode, setMode] = useState<Tok['mode']>('fixed'), [left, setLeft] = useState(0), [err, setErr] = useState<Error | null>(null), [busy, setBusy] = useState(false)
   const show = useCallback(async (t: Tok) => {
-    const data = await QRCode.toDataURL(t.token, { width: 520, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
+    const data = await QRCode.toDataURL(qrLink(window.location.origin, t.token), { width: 520, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
     setImg(data); setMode(t.mode); setLeft(t.expires_in); setErr(null)
   }, [])
   useEffect(() => {
@@ -33,7 +34,7 @@ export function ReceptionDisplayPage() {
     try { await show(await post<Tok>(path, body)) } catch (e: any) { setErr(e) } finally { setBusy(false) }
   }
   return <div className="space-y-4">
-    <PageHeader icon={<QrCode size={22} />} title="Reception check-in code" subtitle={mode === 'fixed' ? 'This code is the same every day. Print it and stick it at reception. Staff scan it with the camera inside SWK OS check-in.' : 'Leave this open on the reception monitor. Staff open SWK OS check-in on their phone and scan it with the camera.'} />
+    <PageHeader icon={<QrCode size={22} />} title="Reception check-in code" subtitle={mode === 'fixed' ? 'This code is the same every day. Print it and stick it at reception. Staff scan it with their phone camera and sign in.' : 'Leave this open on the reception monitor. Staff open SWK OS check-in on their phone and scan it with the camera.'} />
     {err && <ErrorBox error={err} />}
     <div className="swk-card p-6 grid place-items-center gap-3">
       {img ? <img src={img} alt="Check-in QR code" style={{ width: 'min(70vh, 520px)', maxWidth: '100%', borderRadius: 16, background: '#fff' }} /> : <p className="text-muted">Loading code…</p>}
