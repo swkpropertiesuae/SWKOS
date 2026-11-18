@@ -207,6 +207,8 @@ async function main() {
   await hm.post(`/api/swk-ops/attendance-control/device/${pend.id}`, { approve: true })
   const good = await checkin('rota1@a.example', keyA, await code())
   ok('office network + live code + own device + password works', good.status === 200 && good.data.verification_summary?.verified_by === 'Office Wi-Fi', good.data)
+  const dubaiNow = Date.parse(new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dubai' }).slice(0, 16).replace(' ', 'T') + 'Z')
+  ok('the check-in time is the Dubai wall clock, not UTC', Math.abs(Date.parse(String(good.data.event?.check_in_at) + 'Z') - dubaiNow) < 3 * 60_000 && Math.abs(Date.parse(String(good.data.verification_summary?.timestamp_gst) + 'Z') - dubaiNow) < 3 * 60_000, [good.data.event?.check_in_at, good.data.verification_summary?.timestamp_gst])
   ok('the connection IP is recorded', !!good.data.event?.client_ip && !!good.data.event?.device_id, good.data.event)
   const again = await checkin('rota1@a.example', keyA, await code())
   ok('checking in twice does not duplicate the record', again.status === 200 && again.data.already_checked_in === true && again.data.event.id === good.data.event.id, again.data)

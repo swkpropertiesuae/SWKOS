@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { q,tx } from '../db'
 import { can,createRecord,deleteRecord,getDef,patchRecord,SYSTEM_CTX,updateRecord,type Ctx } from '../engine'
-import { HttpError,fromCents,nowIso,toCents,todayStr } from '../util'
+import { HttpError,fromCents,nowIso,nowLocal,toCents,todayStr } from '../util'
 import { notify,notifyLeadership } from '../notify'
 import { sendWhatsApp,ownerNumbers } from '../integrations/whatsapp'
 import { getSetting,setSettings } from '../settings'
@@ -813,7 +813,7 @@ export async function sendOwner1030AttendanceReport() {
     const row = attByEmp.get(emp.id)
     if (!row || (!row.check_in && row.status === 'Absent')) {
       absentOrUnaccounted.push(`${emp.name} (${emp.emp_code})`)
-    } else if (row.status === 'Late' || (row.check_in && String(row.check_in) > '10:05')) {
+    } else if (row.status === 'Late' || (row.check_in && String(row.check_in).slice(-5) > '10:05')) {
       lateAfter1005.push(`${emp.name} (checked in ${row.check_in || 'late'}${row.late_minutes ? `, +${row.late_minutes}m` : ''})`)
     } else if (row.checkin_mode === 'Field Site Visit Live GPS' || row.status === 'Field Visit') {
       fieldCheckIn.push(`${emp.name} (${row.check_in || 'Field GPS'})`)
@@ -1533,7 +1533,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
       if (!emp) {
         emp = createRecord(getDef('employees'), { name: authUser.name || authUser.email.split('@')[0], user_id: authUser.id, email: authUser.email, designation: 'Staff', status: 'Active', branch_id: authUser.branch_id ?? 1 }, SYSTEM_CTX)
       }
-      const now = nowIso()
+      const now = nowLocal() // company-time wall clock (Dubai), the form every date-time field stores
       const shiftInfo = computeDubaiShiftInfo(new Date())
       const existingToday = q.get<any>(`SELECT * FROM attendance_events WHERE employee_id = ? AND work_date = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`, emp.id, todayStr())
       if (existingToday?.device_id && existingToday.device_id !== deviceId) throw new HttpError(403, 'You already checked in today from a different device.')
@@ -1547,7 +1547,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
             grace_minutes: 5,
             terminal_type: 'Dynamic QR',
             qr_token_ref: 'encrypted-rotating',
-            check_in_at: now.slice(0, 16),
+            check_in_at: now,
             duty_status: shiftInfo.isLate ? 'Late Arrival' : 'On Duty',
             late_minutes: shiftInfo.lateMinutes,
             manager_verified: true,
@@ -1559,7 +1559,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
           }, SYSTEM_CTX)
 
       if (!q.get(`SELECT 1 AS x FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL`, emp.id, todayStr())) {
-        createRecord(getDef('attendance'), { employee_id: emp.id, att_date: todayStr(), check_in: now.slice(0, 16), checkin_mode: 'Office QR Scan', status: shiftInfo.isLate ? 'Late' : 'Present', note: `Reception QR Check-in (${eventRecord.event_no})` }, SYSTEM_CTX)
+        createRecord(getDef('attendance'), { employee_id: emp.id, att_date: todayStr(), check_in: now, checkin_mode: 'Office QR Scan', status: shiftInfo.isLate ? 'Late' : 'Present', note: `Reception QR Check-in (${eventRecord.event_no})` }, SYSTEM_CTX)
       }
       return {
         verified: true,
