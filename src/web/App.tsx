@@ -3,7 +3,7 @@ import { CompetencyPage } from './pages/EnterprisePages'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
@@ -56,6 +56,12 @@ function Guard({ module, children }: { module: string; children: ReactNode }) {
     return <ErrorBox error={new Error('Administration access is restricted until proper role access is granted by the Owner.')} />
   }
   return can(module, 'view') ? <>{children}</> : <ErrorBox error={new Error('You do not have access to this page. Ask an administrator to grant the permission.')} />
+}
+/** The reception code screen exists only for Owner, Admin and Haseeb: everyone else is sent home and never loads the page code. */
+function QrGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canPrintReceptionQr(me) ? <>{children}</> : <Navigate to="/home" replace />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -143,7 +149,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />
-          <Route path="/reception-display" element={<ReceptionDisplayPage />} />
+          <Route path="/reception-display" element={<QrGuard><ReceptionDisplayPage /></QrGuard>} />
           <Route path="/handover" element={<HandoverPortalPage />} />
           <Route path="/handover-portal" element={<HandoverPortalPage />} />
           <Route path="/recycle-bin" element={<Guard module="admin"><RecycleBinPage /></Guard>} />

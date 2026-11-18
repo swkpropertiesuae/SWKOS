@@ -57,7 +57,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   office_wifi_strict_ip: true,
   office_gps_lat: '25.2532',
   office_gps_lng: '55.2972',
-  office_gps_radius_m: 200, qr_token_secret: '', device_binding_enforce: true, gps_max_accuracy_m: 150,
+  office_gps_radius_m: 200, qr_token_secret: '', qr_mode: 'fixed', qr_fixed_version: 1, device_binding_enforce: true, gps_max_accuracy_m: 150,
   // --- tracking
   tracking_provider: 'none', tracking_api_key: '', tracking_webhook_secret: '',
   // --- e-invoicing (UAE PINT AE / Peppol)

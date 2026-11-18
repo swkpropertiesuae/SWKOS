@@ -14,15 +14,27 @@ function secret(): string {
 }
 const key = () => crypto.createHash('sha256').update('swk-qr-v1:' + secret()).digest()
 const b64u = (b: Buffer) => b.toString('base64url')
-/** The code on the reception screen is AES-256-GCM encrypted, so it looks like random text and cannot be read, edited or made up. It is not a link: only the in-app camera can use it. */
+/** Fixed mode (default): one code that never changes until the Owner regenerates it, so it can be printed and stuck on the wall. Rotating mode: an encrypted code that changes every 30 s. */
+const qrMode = () => (String(getSetting('qr_mode') || 'fixed') === 'rotating' ? 'rotating' : 'fixed')
+const fixedToken = () => 'SWK2.' + crypto.createHmac('sha256', key()).update('fixed:' + (Number(getSetting('qr_fixed_version')) || 1)).digest('base64url')
+/** Makes every printed fixed code useless and returns the new one (use it if a photo of the code leaks). */
+export function regenerateFixedQr() { setSettings({ qr_fixed_version: (Number(getSetting('qr_fixed_version')) || 1) + 1 }); return fixedToken() }
+export function setQrMode(mode: string) { setSettings({ qr_mode: mode === 'rotating' ? 'rotating' : 'fixed' }) }
+/** The rotating code is AES-256-GCM encrypted, so it looks like random text and cannot be read, edited or made up. It is not a link: only the in-app camera can use it. */
 export function currentQrToken(now = Date.now()) {
+  if (qrMode() === 'fixed') return { token: fixedToken(), expires_in: 600, step_s: 600, mode: 'fixed' as const }
   const w = Math.floor(now / STEP_MS), iv = crypto.randomBytes(12)
   const c = crypto.createCipheriv('aes-256-gcm', key(), iv)
   const enc = Buffer.concat([c.update(JSON.stringify({ w, n: crypto.randomBytes(6).toString('hex') })), c.final()])
-  return { token: 'SWK1.' + b64u(Buffer.concat([iv, c.getAuthTag(), enc])), expires_in: Math.ceil(((w + 1) * STEP_MS - now) / 1000), step_s: STEP_MS / 1000 }
+  return { token: 'SWK1.' + b64u(Buffer.concat([iv, c.getAuthTag(), enc])), expires_in: Math.ceil(((w + 1) * STEP_MS - now) / 1000), step_s: STEP_MS / 1000, mode: 'rotating' as const }
 }
 export function qrTokenValid(token: unknown, now = Date.now()): boolean {
-  const m = /^SWK1\.([A-Za-z0-9_-]{40,200})$/.exec(String(token ?? ''))
+  const t = String(token ?? '')
+  if (qrMode() === 'fixed') {
+    const want = Buffer.from(fixedToken()), got = Buffer.from(t)
+    return got.length === want.length && crypto.timingSafeEqual(got, want)
+  }
+  const m = /^SWK1\.([A-Za-z0-9_-]{40,200})$/.exec(t)
   if (!m) return false
   try {
     const raw = Buffer.from(m[1], 'base64url')

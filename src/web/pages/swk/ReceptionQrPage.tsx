@@ -1,4 +1,5 @@
 import { useEffect,useRef,useState } from 'react'
+import { canPrintReceptionQr } from '@shared/swk-staff-access'
 import jsQR from 'jsqr'
 import { CheckCircle2,Eye,EyeOff,Loader2,Lock,Mail,ScanLine,Wifi,WifiOff } from 'lucide-react'
 import { get,post } from '../../lib/api'
@@ -21,7 +22,7 @@ export default function ReceptionQrPage() {
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [totp, setTotp] = useState(''), [needTotp, setNeedTotp] = useState(false), [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [result, setResult] = useState<any>(null)
   const video = useRef<HTMLVideoElement>(null), canvas = useRef<HTMLCanvasElement>(null)
-  const canSetup = Boolean(me && ['shabib@swk.properties', 'haseeb@swk.properties'].includes(String(me.email).toLowerCase()))
+  const canSetup = canPrintReceptionQr(me)
 
   const loadNet = () => { void get<Net>('/api/public/reception-qr/wifi-config').then(setNet).catch(() => {}) }
   useEffect(loadNet, [])
