@@ -166,8 +166,15 @@ async function main() {
     return { status: res.status, data: await res.json().catch(() => ({})), challenge: ch }
   }
   const code = async () => (await hm.get('/api/swk-ops/reception-token')).data.token as string
+  // fixed code (default): the same every time, printable, and the Owner or Manager can replace it
+  const tf = await code()
+  ok('the default code is fixed: same every time and not a link', /^SWK2\.[A-Za-z0-9_-]{43}$/.test(tf) && !/https?:/.test(tf) && (await code()) === tf, tf)
+  ok('other staff cannot regenerate the reception code', (await b.post('/api/swk-ops/reception-token/regenerate', {})).status === 403)
+  const regen = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
+  ok('regenerating gives a different fixed code', regen !== tf && (await code()) === regen && regen.startsWith('SWK2.'))
+  ok('the rotating mode can be switched on', (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).data.mode === 'rotating')
   const t1 = await code()
-  ok('the reception code is encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
+  ok('the rotating code is encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
   ok('every code is different', (await code()) !== t1)
   ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
   const early = await checkin('rota1@a.example', keyA, t1)
@@ -209,6 +216,18 @@ async function main() {
   const keyC = mkKey()
   const mc = await checkin('fresh@a.example', keyC, await code())
   ok('a temporary password cannot check in until it is changed', !!fresh.id && mc.status === 403 && /password/i.test(mc.data.error ?? ''), mc)
+  // back to the fixed code: a person can check in with it, the old rotating and replaced fixed codes no longer work
+  await new Promise(r => setTimeout(r, 62_000)) // the check-in route allows 20 requests a minute per IP
+  const fx = (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'fixed' })).data.token as string
+  const u3 = (await a.post('/api/e/users', { name: 'Rota Three', email: 'rota3@a.example', password: PW, role_id: salesRole, branch_id: dxb, active: true })).data
+  const keyD = mkKey()
+  ok('in fixed mode a rotating code is refused', !!u3.id && (await checkin('rota3@a.example', keyD, t1)).status === 400)
+  await checkin('rota3@a.example', keyD, fx)
+  for (const d of (await hm.get('/api/swk-ops/attendance-control')).data.devices.filter((x: any) => x.status === 'Pending')) await hm.post(`/api/swk-ops/attendance-control/device/${d.id}`, { approve: true })
+  const fxIn = await checkin('rota3@a.example', keyD, fx)
+  ok('the fixed code works with the office network, own device and password', fxIn.status === 200 && fxIn.data.verification_summary?.verified_by === 'Office Wi-Fi', fxIn.data)
+  const fx2 = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
+  ok('after regenerating, the old printed code is refused', fx2 !== fx && (await checkin('rota3@a.example', keyD, fx)).status === 400)
   const cleared = await hm.post('/api/swk-ops/attendance-setup', { clear_ips: true })
   ok('clearing the locked network switches check-in off', cleared.data.office_ip_locked === false, cleared.data)
 

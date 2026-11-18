@@ -6,7 +6,7 @@ import { notify,notifyLeadership } from '../notify'
 import { sendWhatsApp,ownerNumbers } from '../integrations/whatsapp'
 import { getSetting,setSettings } from '../settings'
 import { attemptLogin,destroyUserSessions,hashPassword } from '../auth'
-import { currentQrToken,qrTokenValid,checkPasswordForCheckin,deviceGate,newChallenge,verifyDeviceProof } from '../domain/attendance-security'
+import { currentQrToken,qrTokenValid,regenerateFixedQr,setQrMode,checkPasswordForCheckin,deviceGate,newChallenge,verifyDeviceProof } from '../domain/attendance-security'
 import { config } from '../config'
 import { canAccessSwkAdminLogic,canPrintReceptionQr,isOwnerSwkUser } from '../../shared/swk-staff-access'
 import { checkEmployeeAndDocumentExpiries,computeMonthlyTargetSummaries,notifyEmployeeTargets } from '../domain/compliance'
@@ -1362,6 +1362,8 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   const resolveClientIp = (req: any): string => {
     const cf = req.headers?.['cf-connecting-ip']
     if (typeof cf === 'string' && cf.trim()) return cf.trim()
+    // Production is reachable only through the Cloudflare Tunnel, which always sets Cf-Connecting-Ip. X-Forwarded-For can be typed by anyone, so it is never trusted here.
+    if (config.isProd) return String(req.raw?.socket?.remoteAddress || '')
     const xff = req.headers?.['x-forwarded-for']
     if (typeof xff === 'string' && xff.trim()) return xff.split(',')[0]!.trim()
     return String(req.ip || '127.0.0.1')
@@ -1447,6 +1449,19 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     if (cfg.office_ip_locked && !cfg.ip_matches_office) throw new HttpError(403, `Open the reception screen on the office network (${cfg.ssid}).`)
     return currentQrToken()
   })
+  // Owner/Manager: make every printed fixed code useless (use after a leak) or switch between the fixed and the 30-second rotating code
+  app.post('/api/swk-ops/reception-token/regenerate', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can change the reception code.')
+    regenerateFixedQr()
+    return currentQrToken()
+  })
+  app.post('/api/swk-ops/reception-token/mode', async (req) => {
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can change the reception code.')
+    const mode = String((req.body as any)?.mode || '')
+    if (mode !== 'fixed' && mode !== 'rotating') throw new HttpError(400, 'mode must be fixed or rotating')
+    setQrMode(mode)
+    return currentQrToken()
+  })
   const attendanceControl = () => ({
     devices: q.all(`SELECT d.id, d.user_id, u.name, d.label, d.device_id, d.status, d.first_seen, d.last_seen FROM staff_devices d JOIN users u ON u.id = d.user_id ORDER BY (d.status = 'Pending') DESC, d.last_seen DESC LIMIT 100`),
     field: q.all(`SELECT e.id, e.event_no, e.work_date, e.check_in_at, e.checkin_method, e.security_flags, e.gps_lat, e.gps_lng, e.gps_accuracy_m, emp.name FROM attendance_events e LEFT JOIN employees emp ON emp.id = e.employee_id WHERE e.field_review = 'Pending' AND e.deleted_at IS NULL ORDER BY e.id DESC LIMIT 100`),
@@ -1499,7 +1514,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const wifiConfig = getWifiCfg(clientIp)
     if (!wifiConfig.office_ip_locked) throw new HttpError(403, 'Check-in is not set up yet. The Owner or Manager must lock the office network first.')
     if (!wifiConfig.ip_matches_office) throw new HttpError(403, `Check-in works only on the office Wi-Fi (${wifiConfig.ssid}). Your connection (${wifiConfig.detected_client_ip}) is not the office network. Mobile data and other Wi-Fi are refused.`)
-    if (!qrTokenValid(b.qr_payload)) throw new HttpError(400, 'Scan the code on the reception screen with the camera in this page. Screenshots, photos and codes older than about 90 seconds do not work.')
+    if (!qrTokenValid(b.qr_payload)) throw new HttpError(400, 'Scan the code on the reception screen with the camera in this page. The code must be the current one from the reception screen.')
     const deviceId = verifyDeviceProof({ challenge: String(b.challenge || ''), payload: String(b.qr_payload), pub: b.device_pub, sig: String(b.device_sig || '') }, clientIp)
 
     const loginEmail = String(b.email || '').trim().toLowerCase()
