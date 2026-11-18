@@ -177,6 +177,12 @@ async function main() {
   ok('the rotating code is encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
   ok('every code is different', (await code()) !== t1)
   ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
+  ok('the administrator (admin@swk.properties) can open the reception code', (await a.get('/api/swk-ops/reception-token')).status === 200)
+  const pubCur = JSON.stringify((await a.get('/api/public/reception-qr/current')).data) + JSON.stringify(cfg)
+  ok('public pages never carry the code, the stand code or the office address', !/SWK[12]\.|STAND|lifelong|allowed_public_ips|"public_ips"/.test(pubCur), pubCur.slice(0, 200))
+  const imp = (await a.post('/api/e/users', { name: 'Mohammad Haseeb', email: 'imposter@a.example', password: PW, role_id: salesRole, branch_id: dxb, active: true })).data
+  const impApi = new Api(); await impApi.login('imposter@a.example', PW)
+  ok('a person with the Manager name but another email cannot open, regenerate or switch the code', !!imp.id && (await impApi.get('/api/swk-ops/reception-token')).status === 403 && (await impApi.post('/api/swk-ops/reception-token/regenerate', {})).status === 403 && (await impApi.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).status === 403)
   const early = await checkin('rota1@a.example', keyA, t1)
   ok('check-in is off until the office network is locked', early.status === 403 && /not set up/i.test(early.data.error ?? ''), early)
   const lock = await hm.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })

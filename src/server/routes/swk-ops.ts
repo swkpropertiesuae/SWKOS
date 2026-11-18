@@ -1395,25 +1395,16 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     }
   }
 
-  app.get('/api/public/reception-qr/current', async (req) => {
-    const branchId = Number((req.query as any)?.branch_id || 1)
-    const standCode = `SWK-RECEPTION-STAND-DXB-${branchId}`
-    const wifiConfig = getWifiCfg(resolveClientIp(req))
-    const shiftInfo = computeDubaiShiftInfo(new Date())
-    return {
-      standalone: true,
-      requires_login: false,
-      token: standCode,
-      token_code: standCode,
-      short_code: `STAND${branchId}`,
-      stand_code: standCode,
-      lifelong_stand_code: standCode,
-      office_wifi: wifiConfig,
-      shift_info: shiftInfo,
-    }
-  })
+  // Public pages need only the network status. They never receive any attendance code, and the office's public address is not disclosed.
+  const publicWifi = (cfg: ReturnType<typeof getWifiCfg>) => { const { public_ips: _a, allowed_public_ips: _b, ...rest } = cfg; return rest }
+  app.get('/api/public/reception-qr/current', async (req) => ({
+    standalone: true,
+    requires_login: false,
+    office_wifi: publicWifi(getWifiCfg(resolveClientIp(req))),
+    shift_info: computeDubaiShiftInfo(new Date()),
+  }))
 
-  app.get('/api/public/reception-qr/wifi-config', async (req) => getWifiCfg(resolveClientIp(req)))
+  app.get('/api/public/reception-qr/wifi-config', async (req) => publicWifi(getWifiCfg(resolveClientIp(req))))
 
   const saveWifiConfig = async (req: any) => {
     if (!canPrintReceptionQr(req.user)) {
@@ -1443,19 +1434,22 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   app.post('/api/public/reception-qr/wifi-config', saveWifiConfig)
   app.post('/api/swk-ops/attendance-setup', saveWifiConfig)
   // ---- rotating QR for the reception screen: only the Owner or Manager, and only from the office network once it is locked
-  app.get('/api/swk-ops/reception-token', async (req) => {
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can open the reception screen.')
+  app.get('/api/swk-ops/reception-token', async (req, reply) => {
+    reply.header('cache-control', 'no-store')
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin and Haseeb can open the reception code screen.')
     const cfg = getWifiCfg(resolveClientIp(req))
     if (cfg.office_ip_locked && !cfg.ip_matches_office) throw new HttpError(403, `Open the reception screen on the office network (${cfg.ssid}).`)
     return currentQrToken()
   })
   // Owner/Manager: make every printed fixed code useless (use after a leak) or switch between the fixed and the 30-second rotating code
-  app.post('/api/swk-ops/reception-token/regenerate', async (req) => {
+  app.post('/api/swk-ops/reception-token/regenerate', async (req, reply) => {
+    reply.header('cache-control', 'no-store')
     if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can change the reception code.')
     regenerateFixedQr()
     return currentQrToken()
   })
-  app.post('/api/swk-ops/reception-token/mode', async (req) => {
+  app.post('/api/swk-ops/reception-token/mode', async (req, reply) => {
+    reply.header('cache-control', 'no-store')
     if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can change the reception code.')
     const mode = String((req.body as any)?.mode || '')
     if (mode !== 'fixed' && mode !== 'rotating') throw new HttpError(400, 'mode must be fixed or rotating')

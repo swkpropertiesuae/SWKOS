@@ -184,23 +184,18 @@ const FULL_ACCESS_EMAILS = new Set<string>([
   'demo@swkpropertiesuae.com',
 ])
 
+/** The ONLY three accounts that may see, print, regenerate or switch the attendance QR. Matched on the exact email: no role, name or domain rule can add anyone. */
+const QR_VIEWER_EMAILS: ReadonlySet<string> = new Set(['shabib@swk.properties', 'admin@swk.properties', 'haseeb@swk.properties'])
+
 /**
- * HARD RULE: ONLY Haseeb (Mohammad Haseeb) and Owner (Shabib Siraj / Admin) can view or print the Office Attendance QR code.
- * All other staff must never see any UI, menu item, poster, or control related to printing the QR code — they only scan and check in.
+ * HARD RULE: ONLY Owner Shabib, Admin and Manager Haseeb can view, print or change the Office Attendance QR code.
+ * Everyone else only scans it with the camera inside the check-in page.
  */
 export function canPrintReceptionQr(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
-  const email = String(user.email || '').trim().toLowerCase()
-  const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  const name = String(user.name || '').trim().toLowerCase()
-  if (role === 'owner' || role === 'admin') return true
-  if (RESTRICTED_STAFF_EMAILS.has(email)) return false
-  if (QR_PRINT_ALLOWED_EMAILS.has(email)) return true
-  if (name === 'shabib siraj' || name === 'mohammad haseeb') return true
-  if (role === 'manager' && (name.includes('haseeb') || email.includes('haseeb') || email.includes('manager'))) return true
-  return false
+  return QR_VIEWER_EMAILS.has(String(user.email || '').trim().toLowerCase())
 }
 
 /**
