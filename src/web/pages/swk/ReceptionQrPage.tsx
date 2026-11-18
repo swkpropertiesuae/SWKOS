@@ -1,5 +1,6 @@
 import { useEffect,useRef,useState } from 'react'
 import { canPrintReceptionQr } from '@shared/swk-staff-access'
+import { QR_PAYLOAD_RE } from '@shared/qr-payload'
 import jsQR from 'jsqr'
 import { CheckCircle2,Eye,EyeOff,Loader2,Lock,Mail,ScanLine,Wifi,WifiOff } from 'lucide-react'
 import { get,post } from '../../lib/api'
@@ -44,7 +45,7 @@ export default function ReceptionQrPage() {
             const k = Math.min(1, 640 / v.videoWidth); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k)
             ctx.drawImage(v, 0, 0, c.width, c.height)
             const img = ctx.getImageData(0, 0, c.width, c.height), hit = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })
-            if (hit && /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(hit.data)) { setPayload(hit.data); setStep('signin'); return }
+            if (hit && QR_PAYLOAD_RE.test(hit.data)) { setPayload(hit.data); setStep('signin'); return }
           }
           raf = window.setTimeout(tick, 120)
         }
