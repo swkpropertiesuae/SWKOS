@@ -25,11 +25,15 @@ try {
   for (const mode of ['fixed', 'rotating']) {
     const tok = (await (await api.post(base + '/api/swk-ops/reception-token/mode', { headers: H, data: { mode } })).json()).token
     assert.ok(tok.startsWith(mode === 'fixed' ? 'SWK2.' : 'SWK1.'), `${mode} code issued`)
-    // fake camera: a looping video of the real QR
-    const png = path.join(data, `${mode}.png`), y4m = path.join(data, `${mode}.y4m`)
-    await QRCode.toFile(png, tok, { width: 480, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-loop', '1', '-i', png, '-t', '4', '-r', '10', '-vf', 'scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:(ow-iw)/2:(oh-ih)/2:white,format=yuv420p', y4m])
-    const b = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`] })
+    // fake camera: a short motion-JPEG video of the real QR, drawn by the browser itself (no external tools)
+    const mjpeg = path.join(data, `${mode}.mjpeg`)
+    const dataUrl = await QRCode.toDataURL(tok, { width: 480, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
+    const shot = await (await adminBrowser.newPage({ viewport: { width: 640, height: 480 } }))
+    await shot.setContent(`<body style="margin:0;background:#fff;display:grid;place-items:center;height:100vh"><img src="${dataUrl}" width="480" height="480">`)
+    const frame = await shot.screenshot({ type: 'jpeg', quality: 95 })
+    await shot.close()
+    fs.writeFileSync(mjpeg, Buffer.concat(Array.from({ length: 60 }, () => frame)))
+    const b = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${mjpeg}`] })
     try {
       const page = await (await b.newContext({ permissions: ['camera'] })).newPage()
       await page.goto(base + '/reception-qr')
