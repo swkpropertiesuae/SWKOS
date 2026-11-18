@@ -1,4 +1,5 @@
 /* Lead routing, scoring, pool, mortgage cases, payment plans, matching and leaderboard.  Needs a server on a fresh data directory:  npx tsx tests/growth.ts */
+import { QR_PAYLOAD_RE } from '../src/shared/qr-payload'
 import crypto from 'node:crypto'
 import { Api, ok, sec, finish, BASE } from './_api'
 
@@ -169,11 +170,13 @@ async function main() {
   // fixed code (default): the same every time, printable, and the Owner or Manager can replace it
   const tf = await code()
   ok('the default code is fixed: same every time and not a link', /^SWK2\.[A-Za-z0-9_-]{43}$/.test(tf) && !/https?:/.test(tf) && (await code()) === tf, tf)
+  ok('the check-in page camera accepts the fixed code the server issues', QR_PAYLOAD_RE.test(tf), tf)
   ok('other staff cannot regenerate the reception code', (await b.post('/api/swk-ops/reception-token/regenerate', {})).status === 403)
   const regen = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
   ok('regenerating gives a different fixed code', regen !== tf && (await code()) === regen && regen.startsWith('SWK2.'))
   ok('the rotating mode can be switched on', (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).data.mode === 'rotating')
   const t1 = await code()
+  ok('the check-in page camera accepts the rotating code the server issues', QR_PAYLOAD_RE.test(t1), t1)
   ok('the rotating code is encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
   ok('every code is different', (await code()) !== t1)
   ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
