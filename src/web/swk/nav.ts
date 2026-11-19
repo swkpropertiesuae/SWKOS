@@ -6,7 +6,7 @@ KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRou
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
 ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen
 } from 'lucide-react';
-import { canAccessSwkAdminLogic,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
+import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }
@@ -43,6 +43,8 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Developers', to: '/e/developers', icon: DevIcon, module: 'masters', desc: 'Master developers' },
   ] },
   { key: 'clients', label: 'CRM', items: [
+    { label: 'CRM Property Vault', to: '/crm-vault', icon: ShieldCheck, module: 'admin', isNew: true, desc: 'Leadership Vault · 3,600+ properties & masked dispatch' },
+    { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Dispatched deals & hard-masked calling' },
     { label: 'Leads', to: '/e/leads', icon: UserPlus, module: 'crm', desc: 'Step 1 · New enquiries' },
     { label: 'Phone Calls', to: '/e/voice_calls', icon: PhoneCall, module: 'crm', desc: 'Step 2 · Call log & notes' },
     { label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle, module: 'crm', desc: 'Step 3 · Live WhatsApp chat' },
@@ -127,9 +129,6 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Daily Reports', to: '/e/daily_reports', icon: ClipboardCheck, module: 'hr', desc: 'Step 4 · End-of-day summary' },
   ] },
   { key: 'tools', label: 'Documents & Manual', items: [
-    { label: 'Handover & Staff Guide', to: '/handover', icon: BookOpen, desc: 'Engineering dossier, staff user guide & explanatory video' },
-    { label: 'Company Manual', to: '/competency', icon: BookOpen, desc: 'Official SOPs, rules & knowledge base' },
-    { label: 'Manual Articles', to: '/e/knowledge_articles', icon: ScrollText, desc: 'RERA, Wi-Fi & company guidelines' },
     { label: 'Calculators', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI & mortgage tools' },
     { label: 'Letter Studio', to: '/studio', icon: FileCode2, module: 'documents', desc: 'Contracts & letter templates' },
     { label: 'Reports', to: '/reports', icon: BarChart3, module: 'reports', desc: 'Custom business exports' },
@@ -203,15 +202,12 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   },
   {
     key: 'manual',
-    label: 'Company Manual',
-    blurb: 'SWK Properties LLC handbook, RERA rules, SOPs & calculators',
-    icon: BookOpen,
+    label: 'Deal Calculators',
+    blurb: 'DLD fee, ROI & mortgage calculators',
+    icon: Calculator,
     tone: 'navy',
-    landing: '/competency',
+    landing: '/toolkit',
     items: [
-      { label: 'Handover & Staff Guide', to: '/handover', icon: BookOpen, desc: 'All-staff quick-start guide & walkthrough video' },
-      { label: 'Company Manual & SOPs', to: '/competency', icon: BookOpen, desc: 'Official staff handbook & knowledge test' },
-      { label: 'SOP Articles', to: '/e/knowledge_articles', icon: ScrollText, desc: 'Company policies & procedures' },
       { label: 'Deal Calculators', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI & mortgage calculator' },
     ],
   },
@@ -237,6 +233,7 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
     tone: 'ocean',
     landing: '/calendar',
     items: [
+      { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Assigned properties & hard-masked calling' },
       { label: 'Calendar', to: '/calendar', icon: CalendarDays, desc: 'Company schedule & events' },
       { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Internal SWK AI assistant' },
     ],
@@ -252,7 +249,8 @@ function isAdminOnlyItem(item: NavItem): boolean {
     clean === '/withdrawals' ||
     clean === '/approvals' ||
     clean === '/e/universal_approvals' ||
-    clean === '/enterprise/master-os'
+    clean === '/enterprise/master-os' ||
+    clean === '/crm-vault'
   )
 }
 
@@ -262,10 +260,12 @@ export function launcherApps(can: (module: string, action?: 'view') => boolean, 
     return RESTRICTED_STAFF_LAUNCHER_APPS
   }
   const adminOk = canAccessSwkAdminLogic(user)
+  const vaultOk = canAccessCrmVault(user)
   const out: LauncherApp[] = []
   for (const s of SWK_NAV) {
     if (s.key === 'admin' && !adminOk) continue
     const items = s.items.filter(i => {
+      if (i.to === '/crm-vault' && !vaultOk) return false
       if (!adminOk && isAdminOnlyItem(i)) return false
       return !i.module || can(i.module, 'view')
     })

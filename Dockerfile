@@ -14,6 +14,7 @@ ENV NODE_ENV=production DATA_DIR=/data PORT=8080 CHROME_PATH=/usr/bin/chromium P
 COPY package*.json ./
 RUN npm ci --omit=dev && apt-get purge -y python3 make g++ && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/data-seed ./data-seed
 RUN mkdir -p /data && chown node:node /data /app
 USER node
 VOLUME /data

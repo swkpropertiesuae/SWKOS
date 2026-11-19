@@ -1,9 +1,8 @@
 import EmailPage from './pages/EmailPage'
-import { CompetencyPage } from './pages/EnterprisePages'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
@@ -48,7 +47,8 @@ const EnterpriseMasterOsPage = lazy(() => import('./pages/swk/EnterpriseMasterOs
 const ReceptionQrPage = lazy(() => import('./pages/swk/ReceptionQrPage'))
 const RecycleBinPage = lazy(() => import('./pages/swk/RecycleBinPage'))
 const WithdrawalsPage = lazy(() => import('./pages/swk/WithdrawalsPage'))
-const HandoverPortalPage = lazy(() => import('./pages/swk/HandoverPortalPage'))
+const CrmVaultPage = lazy(() => import('./pages/swk/CrmVaultPage'))
+const MyAssignedDealsPage = lazy(() => import('./pages/swk/MyAssignedDealsPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -62,6 +62,11 @@ function QrGuard({ children }: { children: ReactNode }) {
   const { me } = useMeta()
   if (!me) return <Loading />
   return canPrintReceptionQr(me) ? <>{children}</> : <Navigate to="/home" replace />
+}
+function CrmVaultGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessCrmVault(me) ? <>{children}</> : <ErrorBox error={new Error('CRM Property Vault is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')} />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -87,17 +92,6 @@ export default function App() {
       </Suspense>
     )
   }
-  const isStandaloneHandover =
-    loc.pathname === '/handover' ||
-    loc.pathname.startsWith('/handover/') ||
-    loc.pathname === '/handover-portal'
-  if (isStandaloneHandover && !me) {
-    return (
-      <Suspense fallback={<div className="h-full grid place-items-center bg-[#0c2019] text-white"><Loading label="Loading SWK OS Handover Dossier & Staff Guide…" /></div>}>
-        <HandoverPortalPage />
-      </Suspense>
-    )
-  }
   if (loading) return <div className="h-full grid place-items-center"><Loading label="Starting SWK OS…" /></div>
   if (!me) return <Routes><Route path="/login" element={<Login />} /><Route path="*" element={<Navigate to="/login" replace state={{ from: loc.pathname }} />} /></Routes>
   if (me.mustChangePassword && !loc.pathname.startsWith('/profile') && !loc.pathname.startsWith('/print')) return <Navigate to="/profile" replace />
@@ -120,9 +114,6 @@ export default function App() {
                   <div className="flex flex-wrap gap-3">
                     <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#0d5a48] text-white font-bold text-xs no-underline">
                       Scan &amp; Check In Attendance
-                    </Link>
-                    <Link to="/competency" className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs no-underline border border-white/15">
-                      Company Manual
                     </Link>
                     <Link to="/market" className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs no-underline border border-white/15">
                       Market Pulse
@@ -150,10 +141,10 @@ export default function App() {
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />
           <Route path="/reception-display" element={<QrGuard><ReceptionDisplayPage /></QrGuard>} />
-          <Route path="/handover" element={<HandoverPortalPage />} />
-          <Route path="/handover-portal" element={<HandoverPortalPage />} />
           <Route path="/recycle-bin" element={<Guard module="admin"><RecycleBinPage /></Guard>} />
           <Route path="/withdrawals" element={<Guard module="admin"><WithdrawalsPage /></Guard>} />
+          <Route path="/crm-vault" element={<CrmVaultGuard><CrmVaultPage /></CrmVaultGuard>} />
+          <Route path="/my-deals" element={<MyAssignedDealsPage />} />
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/market" element={<MarketPage />} />
           <Route path="/toolkit" element={<ToolkitPage />} />
@@ -168,7 +159,6 @@ export default function App() {
           <Route path="/workspace-tools" element={<WorkspaceUtilities />} />
           <Route path="/e/:entity" element={<EntityListPage />} />
           <Route path="/e/:entity/:id" element={<EntityRecordPage />} />
-          <Route path="/competency" element={<Guard module="hr"><CompetencyPage /></Guard>} />
           <Route path="/work/queues" element={<Guard module="projects"><WorkQueuePage /></Guard>} />
           <Route path="/work/handovers" element={<Guard module="projects"><HandoverPage /></Guard>} />
           <Route path="/email" element={<EmailPage />} />

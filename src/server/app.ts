@@ -27,7 +27,7 @@ const PUBLIC = [/^\/api\/demo\/status$/, /^\/api\/health$/, /^\/api\/auth\/login
  * Any other endpoint is company-wide (bank balances, rate cards, other customers' open items) and stays closed to portal accounts, whatever module permissions the portal role carries.
  */
 const PORTAL_OK = [
-  /^\/api\/auth\//, /^\/api\/meta$/, /^\/api\/dashboard$/, /^\/api\/notifications(\/read|\/stream)?$/, /^\/api\/calendar(\/context)?$/, /^\/api\/tags$/, /^\/api\/search\/(jobs|global)$/,
+  /^\/api\/auth\//, /^\/api\/meta$/, /^\/api\/dashboard$/, /^\/api\/notifications(\/read|\/stream)?$/, /^\/api\/sync\/changes$/, /^\/api\/calendar(\/context)?$/, /^\/api\/tags$/, /^\/api\/search\/(jobs|global)$/,
   /^\/api\/e\/[a-z_]+(\/\d+|\/lookup)?$/, /^\/api\/print\/[a-z_]+\/\d+\/parties$/, /^\/api\/pdf\/(status|[a-z_]+\/\d+)$/, /^\/api\/files\/\d+\/download$/, /^\/api\/finance\/statement\/\d+$/, /^\/api\/jobs\/\d+\/tracking-token$/,
   /^\/api\/portal\/maintenance(\/\d+\/(vendor-update|landlord-decision|feedback))?$/,
 ]
@@ -35,7 +35,7 @@ const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-p
 
 export async function buildApp(): Promise<FastifyInstance> {
   // Webhook secrets and tracking tokens travel in the URL path; keep them out of the request log.
-  const redactUrl = (u: string) => u.replace(/^(\/api\/public\/(?:bank|voice|tracking|track|deal)\/)[^/?#]+/, '$1[redacted]')
+  const redactUrl = (u: string) => u.replace(/^(\/api\/public\/(?:bank|voice|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
   const app = Fastify({ logger, trustProxy: config.trustProxy, bodyLimit: 12 * 1024 * 1024 })
 
@@ -107,10 +107,6 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   app.addHook('preHandler', async (req) => {
     const url = req.url.split('?')[0]
-    if (url.startsWith('/handover/') && /\.(pdf|webm)$/i.test(url)) {
-      if (!req.user || req.user.party_id) throw new HttpError(401, 'Please sign in as company staff to access handover documents')
-      return
-    }
     if (!url.startsWith('/api/')) return
     if (PUBLIC.some(r => r.test(url))) return
     if (!req.user) throw new HttpError(401, 'Please sign in')
@@ -137,10 +133,10 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // routes
   const mods = await Promise.all([
-    import('./routes/studio'), import('./routes/writing'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
+    import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/mobile'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'), import('./routes/crm-vault'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
