@@ -251,7 +251,7 @@ export default function CrmVaultPage() {
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#d4b672]">
             <ShieldCheck className="w-4 h-4" /> Leadership Eyes Only · Admin, Shabib &amp; Haseeb
           </div>
-          <h1 className="text-2xl font-bold mt-1">SWK Master CRM Property Vault &amp; Hard-Masked Dispatch</h1>
+          <h1 className="text-2xl font-bold mt-1" style={{ color: "#fff" }}>SWK Master CRM Property Vault &amp; Hard-Masked Dispatch</h1>
           <p className="text-xs text-emerald-100/80 mt-1">
             Full unmasked inventory, owner contacts &amp; territory playbooks. Dispatch selected deals to agents with strict field-level visibility — owner phone numbers are permanently hard-masked from agent screens and phone call history.
           </p>
