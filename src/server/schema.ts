@@ -266,6 +266,104 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       UNIQUE(user_id, device_id)
     );
   ` },
+  { id: '011_crm_vault', sql: `
+    CREATE TABLE crm_vault_properties (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      external_deal_id TEXT NOT NULL UNIQUE,
+      source_dataset TEXT NOT NULL,
+      source_sheet TEXT NOT NULL,
+      suggested_agent TEXT,
+      agent_cluster_territory TEXT,
+      agent_deal_rank INTEGER,
+      deal_division TEXT NOT NULL,
+      dubai_area_community TEXT,
+      primary_area_dld TEXT,
+      master_project TEXT,
+      building_or_project TEXT,
+      exact_unit_door_no TEXT,
+      floor_or_zone TEXT,
+      property_layout_type TEXT,
+      area_sqm REAL,
+      size_sqft REAL,
+      urgency_or_deal_window TEXT,
+      score REAL,
+      target_deal_value_aed REAL,
+      current_or_benchmark_aed REAL,
+      est_agency_commission_aed REAL,
+      event_or_expiry_date TEXT,
+      days_to_event INTEGER,
+      portal_or_source_status TEXT,
+      owner_name TEXT,
+      owner_entity_type TEXT,
+      owner_nationality TEXT,
+      direct_mobile_enc TEXT,
+      direct_mobile_masked TEXT,
+      direct_mobile_hash TEXT,
+      secondary_phone_enc TEXT,
+      secondary_phone_masked TEXT,
+      email_address_enc TEXT,
+      email_address_masked TEXT,
+      closing_strategy_playbook TEXT,
+      extra_json TEXT,
+      vault_status TEXT NOT NULL DEFAULT 'In Vault',
+      assigned_user_id INTEGER,
+      assigned_by_user_id INTEGER,
+      assigned_at TEXT,
+      visible_fields_json TEXT,
+      agent_notes TEXT,
+      agent_outcome TEXT,
+      last_contacted_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX ix_crm_vault_dataset ON crm_vault_properties(source_dataset, deal_division);
+    CREATE INDEX ix_crm_vault_assigned ON crm_vault_properties(assigned_user_id, vault_status);
+    CREATE INDEX ix_crm_vault_suggested ON crm_vault_properties(suggested_agent, vault_status);
+    CREATE INDEX ix_crm_vault_community ON crm_vault_properties(dubai_area_community);
+    CREATE INDEX ix_crm_vault_phone_hash ON crm_vault_properties(direct_mobile_hash);
+
+    CREATE TABLE crm_vault_route_tracker (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      route_date TEXT NOT NULL,
+      cluster_id TEXT NOT NULL,
+      territory_captain TEXT NOT NULL,
+      assigned_user_id INTEGER,
+      assigned_corridor TEXT,
+      total_cluster_units INTEGER DEFAULT 0,
+      morning_towers_scheduled TEXT,
+      makani_0915_checkin TEXT DEFAULT 'Pending',
+      target_doors_swept INTEGER DEFAULT 0,
+      watchmen_snaggers_onboarded INTEGER DEFAULT 0,
+      qr_serials_issued TEXT,
+      direct_forma_keys_locked INTEGER DEFAULT 0,
+      afternoon_viewings_conducted INTEGER DEFAULT 0,
+      overflow_tenants_routed_80ltv INTEGER DEFAULT 0,
+      ejaris_closed_today INTEGER DEFAULT 0,
+      day21_landlord_equity_pitches INTEGER DEFAULT 0,
+      manager_haseeb_signoff TEXT DEFAULT 'Pending',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(route_date, cluster_id)
+    );
+    CREATE INDEX ix_crm_route_date ON crm_vault_route_tracker(route_date, assigned_user_id);
+
+    CREATE TABLE crm_masked_call_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vault_property_id INTEGER NOT NULL,
+      agent_user_id INTEGER NOT NULL,
+      agent_name TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      provider_call_sid TEXT,
+      status TEXT NOT NULL,
+      duration_sec INTEGER DEFAULT 0,
+      recording_url TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX ix_crm_mcall_prop ON crm_masked_call_logs(vault_property_id, created_at);
+    CREATE INDEX ix_crm_mcall_agent ON crm_masked_call_logs(agent_user_id, created_at);
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

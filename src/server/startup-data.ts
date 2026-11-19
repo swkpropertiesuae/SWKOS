@@ -7,6 +7,7 @@ import { nowIso } from './util'
 import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusinessData,starterDeclined,starterLoaded } from './domain/business-data'
 import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset } from './seed'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
+import { loadEncryptedVaultSeedIfConfigured } from './domain/crm-vault'
 
 const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
 
@@ -60,5 +61,11 @@ export async function runStartupDataTasks() {
   if (config.starterData && !starterLoaded() && !starterDeclined() && businessDataSummary().total === 0) {
     const r = loadSwkStarterData(SYSTEM_CTX) as any
     if (r.loaded) console.log(`SWK OS starter data loaded (${r.invoices?.length} invoices, ${r.jobs?.length} jobs).`)
+  }
+  try {
+    const v = loadEncryptedVaultSeedIfConfigured()
+    if (v.loaded) console.log(`SWK CRM Vault encrypted seed loaded (${v.properties} properties, ${v.routes} route rows).`)
+  } catch (e) {
+    console.error('Could not load encrypted CRM Vault seed:', e)
   }
 }

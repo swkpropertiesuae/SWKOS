@@ -156,6 +156,19 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     fullAccess: false,
     controlledBy: 'shabib@swk.properties',
   },
+  {
+    email: 'sanketh@swk.properties',
+    displayEmail: 'sanketh@swk.properties',
+    aliases: ['sanketh@swk.property', 'sanketh@swkpropertiesuae.com'],
+    name: 'Sanketh',
+    empNo: 'EMP-SANKETH',
+    roleName: 'Staff (Attendance & General)',
+    departmentCode: 'SAL',
+    designation: 'Property Consultant',
+    phone: '+971 50 100 0009',
+    fullAccess: false,
+    controlledBy: 'shabib@swk.properties',
+  },
 ] as const
 
 const OWNER_EMAILS = new Set<string>([
@@ -192,6 +205,18 @@ const QR_VIEWER_EMAILS: ReadonlySet<string> = new Set(['shabib@swk.properties', 
  * Everyone else only scans it with the camera inside the check-in page.
  */
 export function canPrintReceptionQr(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id) return false
+  return QR_VIEWER_EMAILS.has(String(user.email || '').trim().toLowerCase())
+}
+
+/**
+ * HARD RULE: ONLY Owner Shabib (shabib@swk.properties), Admin (admin@swk.properties),
+ * and Operations Manager Haseeb (haseeb@swk.properties) can access the Master CRM Vault,
+ * view unmasked owner phone numbers, or assign/revoke deals to field agents.
+ */
+export function canAccessCrmVault(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
@@ -245,6 +270,9 @@ const RESTRICTED_STAFF_EMAILS = new Set<string>([
   'samarth@swk.property',
   'samarth@swk.properties',
   'samarth@swkpropertiesuae.com',
+  'sanketh@swk.property',
+  'sanketh@swk.properties',
+  'sanketh@swkpropertiesuae.com',
 ])
 
 export const RESTRICTED_STAFF_PERMISSIONS: Record<string, string[]> = {
@@ -352,6 +380,7 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/calendar',
     '/ai',
     '/profile',
+    '/my-deals',
     '/workspace-tools',
     '/handover',
     '/handover-portal',

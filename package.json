@@ -20,6 +20,7 @@
     "test": "tsx --env-file-if-exists=.env tests/smoke.ts",
     "test:integrations": "tsx --env-file-if-exists=.env tests/phase2.ts",
     "data:reset": "tsx --env-file-if-exists=.env tools/data/reset-business-data.ts",
+    "crm:import": "tsx --env-file-if-exists=.env tools/data/import-crm-vault.ts",
     "test:compliance": "tsx --env-file-if-exists=.env tests/compliance.ts",
     "test:documents": "node tests/documents-ui.mjs",
     "test:all": "bash tests/run-all.sh"

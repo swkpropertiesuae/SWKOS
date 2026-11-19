@@ -2,7 +2,7 @@ import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
@@ -47,6 +47,8 @@ const EnterpriseMasterOsPage = lazy(() => import('./pages/swk/EnterpriseMasterOs
 const ReceptionQrPage = lazy(() => import('./pages/swk/ReceptionQrPage'))
 const RecycleBinPage = lazy(() => import('./pages/swk/RecycleBinPage'))
 const WithdrawalsPage = lazy(() => import('./pages/swk/WithdrawalsPage'))
+const CrmVaultPage = lazy(() => import('./pages/swk/CrmVaultPage'))
+const MyAssignedDealsPage = lazy(() => import('./pages/swk/MyAssignedDealsPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -60,6 +62,11 @@ function QrGuard({ children }: { children: ReactNode }) {
   const { me } = useMeta()
   if (!me) return <Loading />
   return canPrintReceptionQr(me) ? <>{children}</> : <Navigate to="/home" replace />
+}
+function CrmVaultGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessCrmVault(me) ? <>{children}</> : <ErrorBox error={new Error('CRM Property Vault is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')} />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -136,6 +143,8 @@ export default function App() {
           <Route path="/reception-display" element={<QrGuard><ReceptionDisplayPage /></QrGuard>} />
           <Route path="/recycle-bin" element={<Guard module="admin"><RecycleBinPage /></Guard>} />
           <Route path="/withdrawals" element={<Guard module="admin"><WithdrawalsPage /></Guard>} />
+          <Route path="/crm-vault" element={<CrmVaultGuard><CrmVaultPage /></CrmVaultGuard>} />
+          <Route path="/my-deals" element={<MyAssignedDealsPage />} />
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/market" element={<MarketPage />} />
           <Route path="/toolkit" element={<ToolkitPage />} />

@@ -35,7 +35,7 @@ const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-p
 
 export async function buildApp(): Promise<FastifyInstance> {
   // Webhook secrets and tracking tokens travel in the URL path; keep them out of the request log.
-  const redactUrl = (u: string) => u.replace(/^(\/api\/public\/(?:bank|voice|tracking|track|deal)\/)[^/?#]+/, '$1[redacted]')
+  const redactUrl = (u: string) => u.replace(/^(\/api\/public\/(?:bank|voice|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
   const app = Fastify({ logger, trustProxy: config.trustProxy, bodyLimit: 12 * 1024 * 1024 })
 
@@ -136,7 +136,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/mobile'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'), import('./routes/crm-vault'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
