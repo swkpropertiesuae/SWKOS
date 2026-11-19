@@ -51,5 +51,6 @@ ok('unknown tool rejected', (await a.post('/api/ai/tool', { tool: 'nope', input:
 ok('status', (await a.get('/api/ai/tools-status')).data.tools.length >= 8)
 
 sec('Handover manual removed')
-ok('/handover not served', (await fetch(BASE + '/handover/x.pdf')).status !== 200)
+const hv = await fetch(BASE + '/handover/SWK_OS_Complete_Software_Handover_And_Staff_Credentials_By_Shameem_Harfath.pdf')
+ok('handover files are gone (no PDF/video is served; unknown paths fall through to the app shell)', !/pdf|video/i.test(hv.headers.get('content-type') ?? '') && !(await hv.text()).startsWith('%PDF'))
 finish()
