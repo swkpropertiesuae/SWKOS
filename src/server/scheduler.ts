@@ -21,6 +21,8 @@ export function startScheduler() {
   setInterval(tick, 60 * 60 * 1000).unref()
   setInterval(() => { void processOutbox() }, 60 * 1000).unref()
   setInterval(() => { void periodic() }, 5 * 60 * 1000).unref()
+  const planTick = () => { try { void import('./domain/dailyplan').then(m => m.dailyPlanSweep()) } catch (e) { console.error('daily-plan', e) } }
+  setInterval(planTick, 60 * 1000).unref(); setTimeout(planTick, 15_000)
   setTimeout(() => { void periodic() }, 20_000)
 }
 

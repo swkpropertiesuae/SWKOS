@@ -214,6 +214,8 @@ export const dailyReportHooks: Hooks = {
   },
 }
 
+import * as dailyplan from './dailyplan'
+const require_dailyplan = () => dailyplan
 export function submitDailyReport(id: number, ctx: Ctx) {
   assertCan(ctx, 'hr', 'edit')
   const r = getRecord(getDef('daily_reports'), id, ctx)
@@ -221,8 +223,8 @@ export function submitDailyReport(id: number, ctx: Ctx) {
   if (['Approved Leave (Exempt)', 'Public Holiday (Exempt)', 'Medical / Approved Exemption'].includes(r.day_type)) {
     return patchRecord(getDef('daily_reports'), id, { status: 'Exemption Logged', submitted_at: nowIso() }, { ...ctx, system: true })
   }
-  if (!String(r.outcomes_narrative ?? '').trim() || !String(r.next_day_priorities ?? '').trim()) {
-    throw bad('Complete both the workday outcomes narrative and next-day priorities before submitting')
+  if (String(r.outcomes_narrative ?? '').trim().length < 30 || String(r.next_day_priorities ?? '').trim().length < 30) {
+    throw bad('Both the workday outcomes (min 30 characters) and the next-day plan (min 30 characters) are mandatory before you can submit')
   }
   const snap = computeActivitySnapshot(r.employee_id, r.user_id, r.report_date)
   const at = nowIso()
@@ -247,6 +249,7 @@ export function submitDailyReport(id: number, ctx: Ctx) {
       evidence_summary: `Confidential channel invoked on ${r.report_date} by employee #${r.employee_id}. Routed separately from line management.`,
     }, { ...ctx, system: true })
   }
+  try { (require_dailyplan()).alertReportSubmitted({ ...r, ...updated }) } catch { /* alerting must never block submission */ }
   recordEnterpriseAudit(ctx, '3.06', '4.01', 'daily_report.submitted', 'daily_reports', id, `Daily report ${r.report_no} submitted and frozen (v${rev})`, snap.system_snapshot)
   return updated
 }

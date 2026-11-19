@@ -7,6 +7,7 @@ import { getSetting } from './settings'
 import { hooksFor,type HookArgs } from './hooks'
 import { runAutomations } from './automation'
 import { emitWebhooks } from './webhooks'
+import { emitChange } from './changefeed'
 import { notifyLeadership } from './notify'
 import {
 isRestrictedStaffUser,
@@ -625,6 +626,7 @@ export function createRecord(def: EntityDef, payload: Rec, ctx: Ctx): Rec {
     const label = fresh._title
     auditLog(c2, def, id, 'create', null, label)
     after.push(() => emitWebhooks(def.key + '.created', fresh))
+    after.push(() => emitChange(def.key, def.module, id, 'create'))
     syncWorkQueues(def.key,fresh)
     runAutomations(def.key, 'created', fresh, null)
     return fresh
@@ -690,6 +692,7 @@ export function updateRecord(def: EntityDef, id: number, payload: Rec, ctx: Ctx)
       }
     }
     after.push(() => emitWebhooks(def.key + '.updated', fresh))
+    after.push(() => emitChange(def.key, def.module, id, 'update'))
     syncWorkQueues(def.key,fresh)
     if (Object.keys(changes).length) runAutomations(def.key, 'updated', fresh, old, d)
     return fresh
@@ -742,6 +745,7 @@ export function deleteRecord(def: EntityDef, id: number, ctx: Ctx) {
     }
   })
   emitWebhooks(def.key + '.deleted', { id })
+  emitChange(def.key, def.module, id, 'delete')
 }
 
 /**

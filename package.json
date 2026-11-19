@@ -22,7 +22,6 @@
     "data:reset": "tsx --env-file-if-exists=.env tools/data/reset-business-data.ts",
     "test:compliance": "tsx --env-file-if-exists=.env tests/compliance.ts",
     "test:documents": "node tests/documents-ui.mjs",
-    "test:handover": "tsx --env-file-if-exists=.env tests/handover.ts",
     "test:all": "bash tests/run-all.sh"
   },
   "dependencies": {
