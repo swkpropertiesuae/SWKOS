@@ -5,7 +5,7 @@ import { isPg,PgDatabase,q } from './db'
 import { SYSTEM_CTX } from './engine'
 import { nowIso } from './util'
 import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusinessData,starterDeclined,starterLoaded } from './domain/business-data'
-import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset } from './seed'
+import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,applySwk2026Passwords } from './seed'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
 import { loadEncryptedVaultSeedIfConfigured } from './domain/crm-vault'
 
@@ -56,7 +56,9 @@ export async function runStartupDataTasks() {
     clearStarterDeclined()
     console.log(`Business data cleared (${r.total} rows). Backup: ${r.backup}`)
   }
+  syncSwkStaffRoster()
   applyConfiguredPasswords()
+  applySwk2026Passwords()
   applyPasswordReset()
   if (config.starterData && !starterLoaded() && !starterDeclined() && businessDataSummary().total === 0) {
     const r = loadSwkStarterData(SYSTEM_CTX) as any

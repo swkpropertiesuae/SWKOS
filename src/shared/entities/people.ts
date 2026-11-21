@@ -10,7 +10,7 @@ export const people: EntityDef[] = [
       T('emp_no', 'Employee no.', { readonly: true, list: true, search: true, section: 'Employee' }), T('name', 'Full name', { required: true, list: true, search: true, span: 2 }), R('user_id', 'Linked user', 'users'),
       R('department_id', 'Department', 'departments', { list: true }), T('designation', 'Designation', { list: true }), R('branch_id', 'Branch', 'branches', { list: true }), R('manager_id', 'Reports to', 'employees'),
       S('status', 'Status', ['Active', 'On leave', 'Probation', 'Resigned', 'Terminated'], { default: 'Active', list: true }), D('join_date', 'Join date', { list: true }), S('contract_type', 'Contract', ['Unlimited', 'Limited', 'Part-time', 'Contractor']),
-      PH('phone', 'Phone'), E('email', 'Work e-mail'), T('nationality', 'Nationality'), S('gender', 'Gender', ['Male', 'Female']), D('dob', 'Date of birth'),
+      PH('phone', 'Phone'), E('email', 'Work e-mail', { list: true, search: true }), T('nationality', 'Nationality'), S('gender', 'Gender', ['Male', 'Female']), D('dob', 'Date of birth'),
       T('passport_no', 'Passport no.', { section: 'Documents' }), D('passport_expiry', 'Passport expiry', { list: true }), T('emirates_id', 'Emirates ID'), D('eid_expiry', 'Emirates ID expiry'), T('visa_no', 'Visa / residence no.'), D('visa_expiry', 'Visa expiry', { list: true }), T('labour_card_no', 'Labour card no.'),
       D('health_card_expiry', 'Health insurance expiry'), T('work_permit_no', 'Work permit no.'), D('work_permit_expiry', 'Work permit / labour contract expiry', { list: false }),
       S('iloe_status', 'Unemployment insurance (ILOE)', ['Subscribed', 'Not subscribed', 'Exempt'], { default: 'Not subscribed' }),

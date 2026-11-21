@@ -1,7 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import crypto from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
+import { pipeline } from 'node:stream/promises'
+import { config, dirs } from '../config'
 import { q } from '../db'
-import { bad, forbidden, notFound, nowIso } from '../util'
+import { bad, forbidden, notFound, nowIso, todayStr } from '../util'
 import { canAccessCrmVault } from '../../shared/swk-staff-access'
 import {
   assignVaultProperties,
@@ -17,6 +22,7 @@ import {
   updateAgentAssignedProperty,
 } from '../domain/crm-vault'
 import { getSetting, setSettings } from '../settings'
+import { addDoc, deleteDoc, DOC_KINDS, docPage, handoverOverview, isTopCustodian, myDocs, openDoc, readDoc, recallDoc, releaseDocToStaff, releaseToManager } from '../domain/handover'
 
 const visibleFieldsSchema = z.object({
   show_owner_name: z.boolean().optional(),
@@ -36,6 +42,57 @@ export default async function crmVaultRoutes(app: FastifyInstance) {
       throw forbidden('CRM Vault access is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')
     }
   }
+
+  // ---------------------------------------------------------------- Custody handover (Admin -> Operations Manager -> staff)
+  app.get('/api/handover/overview', async (req) => handoverOverview(req.user!))
+  app.post('/api/handover/release-to-manager', async (req) => {
+    const b = z.object({ staff_email: z.string().email().nullish() }).parse(req.body ?? {})
+    return releaseToManager(req.user!, b.staff_email)
+  })
+  app.post('/api/handover/docs/:id/release-to-staff', async (req) => releaseDocToStaff(req.user!, Number((req.params as any).id)))
+  app.post('/api/handover/docs/:id/recall', async (req) => recallDoc(req.user!, Number((req.params as any).id)))
+  app.get('/api/handover/my-docs', async (req) => myDocs(req.user!))
+  app.get('/api/handover/docs/:id/read', async (req, reply) => { reply.header('cache-control', 'private, no-store'); return readDoc(req.user!, Number((req.params as any).id)) })
+  app.get('/api/handover/docs/:id/file', async (req, reply) => {
+    const f = await openDoc(req.user!, Number((req.params as any).id))
+    reply.header('content-type', f.mime).header('content-disposition', `inline; filename="${f.name.replace(/[^\w.\- ]+/g, '_')}"`).header('cache-control', 'private, no-store')
+    return reply.send(f.body)
+  })
+  app.get('/api/handover/docs/:id/page/:n', async (req, reply) => {
+    const p = req.params as any
+    const img = await docPage(req.user!, Number(p.id), Number(p.n))
+    return reply.header('content-type', 'image/jpeg').header('cache-control', 'private, no-store').header('content-disposition', 'inline').send(img)
+  })
+  app.delete('/api/handover/docs/:id', async (req) => deleteDoc(req.user!, Number((req.params as any).id)))
+  // Owner/Admin upload. Fields (kind, staff_email, contains_contacts) apply only to file names the system does not recognise.
+  app.post('/api/handover/docs', async (req) => {
+    if (!isTopCustodian(req.user)) throw forbidden('Only the Owner or the Admin can upload handover documents.')
+    if (!req.isMultipart()) throw bad('Expected a multipart upload')
+    const fields: Record<string, string> = {}
+    const saved: { name: string; stored: string; mime: string }[] = []
+    const dayDir = path.join(dirs.uploads, todayStr().slice(0, 7))
+    fs.mkdirSync(dayDir, { recursive: true })
+    try {
+      for await (const part of req.parts()) {
+        if (part.type === 'field') { fields[part.fieldname] = String(part.value); continue }
+        const name = path.basename(part.filename || 'file').replace(/[^\w.\- ()]+/g, '_').slice(0, 150)
+        const ext = path.extname(name).slice(1).toLowerCase()
+        if (!['pdf', 'xlsx'].includes(ext)) { part.file.resume(); throw bad(`${name}: only PDF and Excel (.xlsx) files can be uploaded.`) }
+        const stored = path.join(todayStr().slice(0, 7), crypto.randomBytes(16).toString('hex') + '.' + ext)
+        await pipeline(part.file, fs.createWriteStream(path.join(dirs.uploads, stored)))
+        if ((part.file as any).truncated) { fs.rmSync(path.join(dirs.uploads, stored), { force: true }); throw bad(`${name} exceeds the ${config.maxUploadMb} MB limit`) }
+        saved.push({ name, stored, mime: part.mimetype })
+      }
+    } catch (e) { for (const f of saved) fs.rmSync(path.join(dirs.uploads, f.stored), { force: true }); throw e }
+    if (!saved.length) throw bad('No file received')
+    const kind = (DOC_KINDS as readonly string[]).includes(fields.kind) ? (fields.kind as (typeof DOC_KINDS)[number]) : undefined
+    const results = []
+    for (const f of saved) {
+      try { results.push({ ok: true, ...(await addDoc(req.user!, f, { kind, staff_email: fields.staff_email || null, contains_contacts: fields.contains_contacts === 'true', title: fields.title })) }) }
+      catch (e: any) { results.push({ ok: false, name: f.name, error: e?.message ?? String(e) }) }
+    }
+    return { results }
+  })
 
   // ---------------------------------------------------------------- Leadership Endpoints (Admin, Shabib, Haseeb ONLY)
 

@@ -5,6 +5,7 @@ import { ENTITIES } from '../../shared/entities'
 import { getDef,getRecord,labelsFor,assertCan,can } from '../engine'
 import { bad,forbidden,nowIso,safeJson } from '../util'
 import { idOf } from './helpers'
+import { canOpenEmployeeRecords } from '../../shared/swk-staff-access'
 import { notify } from '../notify'
 import { z } from 'zod'
 
@@ -13,6 +14,7 @@ export default async function (app: FastifyInstance) {
     const p = req.params as any
     const def = getDef(p.entity)
     if (!def.panel) throw bad('This record type has no collaboration panel')
+    if (def.key === 'employees' && !canOpenEmployeeRecords(req.user)) throw forbidden('Only the Owner and the Admin can open employee records.')
     const id = idOf(p.id)
     const r = getRecord(def, id, req.ctx, { children: false })
     return { def, id, r }
