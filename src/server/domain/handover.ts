@@ -8,6 +8,7 @@ import { notify } from '../notify'
 import { canAccessCrmVault, canOpenEmployeeRecords } from '../../shared/swk-staff-access'
 import { upsertVaultProperties, type RawVaultPropertyInput } from './crm-vault'
 import type { SessionUser } from '../engine'
+import { redactForStaff } from '../../shared/redact'
 
 /**
  * Controlled handover of lead data and staff documents (chain of custody):
@@ -28,6 +29,8 @@ export interface HandoverDocMeta {
   offset: number
   length: number
   sha256: string
+  /** Redacted reading copy for staff (playbooks, field guides). Staff never receive the file itself. */
+  text?: string
 }
 
 export const HANDOVER_DATASET = 'ejari_dialer_2026'
@@ -146,21 +149,33 @@ export function recallDoc(u: SessionUser, docId: number) {
 }
 
 export function myDocs(u: SessionUser) {
-  return q.all(`SELECT id, title, kind, size, staff_released_at FROM custody_documents WHERE recipient_user_id = ? AND stage = 'Released to Staff' AND contains_contacts = 0 ORDER BY kind, title`, u.id)
+  // size is omitted: staff only see the reading copy
+  return q.all(`SELECT id, title, kind, staff_released_at FROM custody_documents WHERE recipient_user_id = ? AND stage = 'Released to Staff' AND contains_contacts = 0 ORDER BY kind, title`, u.id)
 }
 
 /** Returns the file only to someone entitled to it at its current custody stage. */
 export function openDoc(u: SessionUser, docId: number): { name: string; mime: string; body: Buffer } {
   const d = q.get<any>(`SELECT * FROM custody_documents WHERE id = ?`, docId)
   if (!d) throw notFound('Document not found')
-  const ok = isTopCustodian(u)
-    || (canAccessCrmVault(u) && d.stage !== 'Admin Custody')
-    || (d.stage === 'Released to Staff' && d.recipient_user_id === u.id && !d.contains_contacts)
-  if (!ok) throw forbidden('This document has not been released to you.')
+  // The original file stays with management; staff read the redacted copy (readDoc).
+  const ok = isTopCustodian(u) || (canAccessCrmVault(u) && d.stage !== 'Admin Custody')
+  if (!ok) throw forbidden('The original file is held by management. Open the reading copy instead.')
   const b = readBundle()
   if (!b) throw bad('The handover file is not available on this server (SWK_HANDOVER_KEY missing).')
   const body = b.body.subarray(d.bundle_offset, d.bundle_offset + d.size)
   if (crypto.createHash('sha256').update(body).digest('hex') !== d.sha256) throw bad('The stored document does not match its checksum.')
   audit(u, 'download', d.title, { docId })
   return { name: d.name, mime: d.mime, body }
+}
+
+/** Reading copy: text only, contact details and company totals hidden, watermarked with the reader. */
+export function readDoc(u: SessionUser, docId: number) {
+  const d = q.get<any>(`SELECT * FROM custody_documents WHERE id = ?`, docId)
+  if (!d) throw notFound('Document not found')
+  const ok = canAccessCrmVault(u) ? isTopCustodian(u) || d.stage !== 'Admin Custody' : d.stage === 'Released to Staff' && d.recipient_user_id === u.id && !d.contains_contacts
+  if (!ok) throw forbidden('This document has not been released to you.')
+  const text = readBundle()?.header.docs.find(x => x.name === d.name)?.text
+  if (!text) throw bad('No reading copy is available for this document.')
+  audit(u, 'read', d.title, { docId })
+  return { title: d.title, kind: d.kind, text: redactForStaff(text), watermark: `${u.name} · ${u.email} · ${nowIso().slice(0, 10)} · Confidential – SWK Properties` }
 }
