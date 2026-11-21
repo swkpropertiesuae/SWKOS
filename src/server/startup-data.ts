@@ -73,7 +73,7 @@ export async function runStartupDataTasks() {
   }
   try {
     const h = loadHandoverBundle()
-    if (h.loaded) console.log(`Handover loaded into Admin Custody (${h.leads} leads, ${h.docs} documents).`)
+    if (h.loaded) console.log(`Handover loaded into Admin Custody (${h.leads} leads).`)
   } catch (e) {
     console.error('Could not load the handover bundle:', e)
   }

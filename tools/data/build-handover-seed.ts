@@ -2,16 +2,12 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
-import { execFileSync } from 'node:child_process'
-import os from 'node:os'
 import readXlsxFile from 'read-excel-file/node'
-import { SWK_STAFF_ACCOUNTS } from '../../src/shared/swk-staff-access'
 import type { RawVaultPropertyInput } from '../../src/server/domain/crm-vault'
-import type { HandoverDocMeta } from '../../src/server/domain/handover'
 
 /**
- * Builds data-seed/swk-handover.enc.bin: the Ejari 0–60D dialer leads (all 7 desks) plus the staff playbooks,
- * field guides, calling booklets and dialer workbooks, encrypted with AES-256-GCM.
+ * Builds data-seed/swk-handover.enc.bin: the Ejari 0–60D dialer leads (all 7 desks), encrypted with AES-256-GCM.
+ * Documents are uploaded by the Admin in SWK OS instead (CRM Vault → Custody & Handover).
  * The file holds no readable name or phone number without SWK_HANDOVER_KEY.
  *
  * Usage: SWK_HANDOVER_KEY=<64-hex> tsx tools/data/build-handover-seed.ts <folder with the unzipped uploads>
@@ -20,11 +16,6 @@ const blank = (v: unknown) => { const s = v == null ? '' : String(v).trim(); ret
 const num = (v: unknown) => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return blank(v) && Number.isFinite(n) ? n : null }
 const int = (v: unknown) => { const n = num(v); return n == null ? null : Math.round(n) }
 const date = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : blank(v).slice(0, 32))
-
-function staffEmail(name: string): string | null {
-  const first = name.toLowerCase().replace(/^muhammad\s+/, '').split(/[\s_]+/)[0]
-  return SWK_STAFF_ACCOUNTS.find(a => a.email.split('@')[0] === first)?.email ?? null
-}
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
@@ -101,28 +92,6 @@ async function leadsFromWorkbook(file: string): Promise<RawVaultPropertyInput[]>
   return out
 }
 
-/** Staff view copy: every page rendered exactly as uploaded (needs poppler's pdftoppm). Staff never receive the PDF. */
-function renderPages(file: string): Buffer[] {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'swk-pages-'))
-  try {
-    execFileSync('pdftoppm', ['-r', '100', '-jpeg', '-jpegopt', 'quality=75', file, path.join(dir, 'p')])
-    return fs.readdirSync(dir).sort().map(n => fs.readFileSync(path.join(dir, n)))
-  } finally { fs.rmSync(dir, { recursive: true, force: true }) }
-}
-
-function docMeta(file: string): Omit<HandoverDocMeta, 'offset' | 'length' | 'sha256'> | null {
-  const name = path.basename(file)
-  const lower = name.toLowerCase()
-  const mime = lower.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  let m: RegExpMatchArray | null
-  if ((m = name.match(/^SWK_Playbook_(Muhammad_)?([A-Za-z]+)_(.+)\.pdf$/))) return { name, title: `Personal Playbook – ${m[2]}: ${m[3].replace(/_/g, ' ')}`, kind: 'Personal Playbook', staff_email: staffEmail(m[2]), contains_contacts: false, mime }
-  if ((m = name.match(/^SWK_([A-Za-z]+)\.pdf$/))) return { name, title: `Field Guide – ${m[1]}`, kind: 'Field Guide', staff_email: staffEmail(m[1]), contains_contacts: false, mime }
-  if ((m = name.match(/^\d\d_([A-Za-z]+)(_Shabbir)?_Ejari_30D_60D_Leasing_Calling_Booklet\.pdf$/))) return { name, title: `Ejari 0–60D Calling Booklet – ${m[1]}`, kind: 'Calling Booklet', staff_email: staffEmail(m[1]), contains_contacts: true, mime }
-  if ((m = name.match(/^\d\d_([A-Za-z]+)(_Shabbir)?_Ejari_30D_60D_Leasing_Dialer_Workbook\.xlsx$/))) return { name, title: `Ejari 0–60D Dialer Workbook – ${m[1]}`, kind: 'Dialer Workbook', staff_email: staffEmail(m[1]), contains_contacts: true, mime }
-  if (/^00_SWK_7_Desks_.*Master_Roster_Index\.xlsx$/.test(name)) return { name, title: '7 Desks Master Roster Index (15,253 leads)', kind: 'Roster Index', staff_email: null, contains_contacts: false, mime }
-  return null // CSV dialer masters duplicate the workbooks; their rows are in the lead import
-}
-
 async function main() {
   const folder = process.argv[2]
   const keyHex = String(process.env.SWK_HANDOVER_KEY || '').trim()
@@ -140,33 +109,14 @@ async function main() {
   const ids = new Set(leads.map(l => l.external_deal_id))
   if (ids.size !== leads.length) throw new Error(`Duplicate lead ids: ${leads.length - ids.size}`)
 
-  const docs: HandoverDocMeta[] = []
-  const blobs: Buffer[] = []
-  const seen = new Set<string>()
-  let offset = 0
-  for (const f of files) {
-    const meta = docMeta(f)
-    if (!meta || seen.has(meta.name)) continue // the booklets ship in two zips; keep one copy
-    seen.add(meta.name)
-    const buf = fs.readFileSync(f)
-    docs.push({ ...meta, offset, length: buf.length, sha256: crypto.createHash('sha256').update(buf).digest('hex') })
-    blobs.push(buf)
-    offset += buf.length
-    if (meta.contains_contacts || meta.mime !== 'application/pdf') continue
-    const pages: { offset: number; length: number }[] = []
-    for (const img of renderPages(f)) { pages.push({ offset, length: img.length }); blobs.push(img); offset += img.length }
-    docs[docs.length - 1].pages = pages
-  }
-  const header = Buffer.from(JSON.stringify({ version: 1, built_at: new Date().toISOString(), leads, docs }))
-  const len = Buffer.alloc(4); len.writeUInt32BE(header.length)
-  const gz = zlib.gzipSync(Buffer.concat([len, header, ...blobs]), { level: 9 })
+  // Documents are not bundled: the Admin uploads them on Custody & Handover (stored in Cloudflare R2).
+  const gz = zlib.gzipSync(Buffer.from(JSON.stringify({ version: 2, built_at: new Date().toISOString(), leads })), { level: 9 })
   const iv = crypto.randomBytes(12)
   const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(keyHex, 'hex'), iv)
   const ct = Buffer.concat([cipher.update(gz), cipher.final()])
   const out = path.resolve('data-seed', 'swk-handover.enc.bin')
   fs.writeFileSync(out, Buffer.concat([iv, cipher.getAuthTag(), ct]))
-  console.log(`\n${leads.length} leads, ${docs.length} documents -> ${out} (${(fs.statSync(out).size / 1048576).toFixed(1)} MB)`)
-  for (const d of docs) console.log(`  ${d.kind.padEnd(18)} ${d.staff_email ?? 'management only'}  ${d.name}`)
+  console.log(`\n${leads.length} leads -> ${out} (${(fs.statSync(out).size / 1048576).toFixed(1)} MB)`)
 }
 
 main().catch(e => { console.error(e); process.exit(1) })

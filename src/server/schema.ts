@@ -389,6 +389,10 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     );
     CREATE INDEX ix_custody_docs_recipient ON custody_documents(recipient_user_id, stage);
   ` },
+  { id: '013_custody_documents_storage', sql: `
+    ALTER TABLE custody_documents ADD COLUMN stored_name TEXT;
+    ALTER TABLE custody_documents ADD COLUMN page_names TEXT;
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

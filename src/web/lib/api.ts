@@ -41,11 +41,11 @@ export const del = <T = any>(p: string, extraHeaders?: Record<string, string>) =
 
 export const api = Object.assign(rawApi, { get, post, put, del })
 
-export async function upload(files: File[], fields: Record<string, string | number | undefined>) {
+export async function upload(files: File[], fields: Record<string, string | number | undefined>, path = '/api/files') {
   const fd = new FormData()
   for (const [k, v] of Object.entries(fields)) if (v !== undefined && v !== '') fd.append(k, String(v))
   for (const f of files) fd.append('file', f)
-  const res = await fetch('/api/files', {
+  const res = await fetch(path, {
     method: 'POST',
     body: fd,
     headers: buildClientHeaders(),

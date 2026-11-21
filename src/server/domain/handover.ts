@@ -2,10 +2,14 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
+import { execFileSync } from 'node:child_process'
+import type { Readable } from 'node:stream'
 import { q, tx } from '../db'
+import { dirs } from '../config'
+import { openStored, persistUpload, removeStored, useR2 } from '../integrations/storage'
 import { bad, forbidden, notFound, nowIso } from '../util'
 import { notify } from '../notify'
-import { canAccessCrmVault, canOpenEmployeeRecords } from '../../shared/swk-staff-access'
+import { canAccessCrmVault, canOpenEmployeeRecords, SWK_STAFF_ACCOUNTS } from '../../shared/swk-staff-access'
 import { upsertVaultProperties, type RawVaultPropertyInput } from './crm-vault'
 import type { SessionUser } from '../engine'
 
@@ -18,18 +22,28 @@ import type { SessionUser } from '../engine'
  * Documents that carry client phone numbers (calling booklets, dialer workbooks) never leave management:
  * staff receive those leads only through the masked CRM Vault queue.
  */
+export const DOC_KINDS = ['Personal Playbook', 'Field Guide', 'Calling Booklet', 'Dialer Workbook', 'Roster Index', 'Other'] as const
 export interface HandoverDocMeta {
-  name: string
   title: string
-  kind: 'Personal Playbook' | 'Field Guide' | 'Calling Booklet' | 'Dialer Workbook' | 'Roster Index'
+  kind: (typeof DOC_KINDS)[number]
   staff_email: string | null
   contains_contacts: boolean
-  mime: string
-  offset: number
-  length: number
-  sha256: string
-  /** Page images, exactly as uploaded, for the staff viewer (playbooks, field guides). Staff never receive the file itself. */
-  pages?: { offset: number; length: number }[]
+}
+
+function staffEmail(name: string): string | null {
+  const first = name.toLowerCase().replace(/^muhammad\s+/, '').split(/[\s_]+/)[0]
+  return SWK_STAFF_ACCOUNTS.find(a => a.email.split('@')[0] === first)?.email ?? null
+}
+
+/** Recognises SWK file names (SWK_Playbook_<Name>_..., SWK_<Name>.pdf, NN_<Name>_..._Calling_Booklet.pdf …). */
+export function guessDocMeta(name: string): HandoverDocMeta | null {
+  let m: RegExpMatchArray | null
+  if ((m = name.match(/^SWK_Playbook_(Muhammad_)?([A-Za-z]+)_(.+)\.pdf$/i))) return { title: `Personal Playbook – ${m[2]}: ${m[3].replace(/_/g, ' ')}`, kind: 'Personal Playbook', staff_email: staffEmail(m[2]), contains_contacts: false }
+  if ((m = name.match(/^SWK_([A-Za-z]+)\.pdf$/i))) return { title: `Field Guide – ${m[1]}`, kind: 'Field Guide', staff_email: staffEmail(m[1]), contains_contacts: false }
+  if ((m = name.match(/^\d\d_([A-Za-z]+)(_Shabbir)?_Ejari_30D_60D_Leasing_Calling_Booklet\.pdf$/i))) return { title: `Ejari 0–60D Calling Booklet – ${m[1]}`, kind: 'Calling Booklet', staff_email: staffEmail(m[1]), contains_contacts: true }
+  if ((m = name.match(/^\d\d_([A-Za-z]+)(_Shabbir)?_Ejari_30D_60D_Leasing_Dialer_(Workbook\.xlsx|Master\.csv)$/i))) return { title: `Ejari 0–60D Dialer ${m[3].startsWith('W') ? 'Workbook' : 'Master'} – ${m[1]}`, kind: 'Dialer Workbook', staff_email: staffEmail(m[1]), contains_contacts: true }
+  if (/^00_SWK_7_Desks_.*Master_Roster_Index\.xlsx$/i.test(name)) return { title: '7 Desks Master Roster Index', kind: 'Roster Index', staff_email: null, contains_contacts: false }
+  return null
 }
 
 export const HANDOVER_DATASET = 'ejari_dialer_2026'
@@ -39,49 +53,37 @@ export const isTopCustodian = (u: SessionUser | null | undefined) => canOpenEmpl
 /** Rows in Admin Custody are hidden from everyone except Owner and Admin. */
 export const custodyFilter = (u: SessionUser, alias = 'p') => (isTopCustodian(u) ? '' : ` AND (${alias}.custody IS NULL OR ${alias}.custody <> 'admin')`)
 
-let cache: { sha: string; body: Buffer; header: { leads: RawVaultPropertyInput[]; docs: HandoverDocMeta[] } } | null = null
 
 function bundleKey(): Buffer | null {
   const k = String(process.env.SWK_HANDOVER_KEY || '').trim()
   return /^[0-9a-f]{64}$/i.test(k) ? Buffer.from(k, 'hex') : null
 }
 
-function readBundle() {
-  const key = bundleKey()
-  if (!key || !fs.existsSync(BUNDLE)) return null
-  const raw = fs.readFileSync(BUNDLE)
-  const sha = crypto.createHash('sha256').update(raw).digest('hex')
-  if (cache?.sha === sha) return cache
+function readBundle(key: Buffer, raw: Buffer): { leads: RawVaultPropertyInput[] } {
   const d = crypto.createDecipheriv('aes-256-gcm', key, raw.subarray(0, 12))
   d.setAuthTag(raw.subarray(12, 28))
-  const plain = zlib.gunzipSync(Buffer.concat([d.update(raw.subarray(28)), d.final()]))
-  const len = plain.readUInt32BE(0)
-  cache = { sha, header: JSON.parse(plain.subarray(4, 4 + len).toString('utf8')), body: plain.subarray(4 + len) }
-  return cache
+  return JSON.parse(zlib.gunzipSync(Buffer.concat([d.update(raw.subarray(28)), d.final()])).toString('utf8'))
 }
 
 /** Start-up: loads a new bundle once into Admin Custody. Leads already released or dispatched keep their custody. */
-export function loadHandoverBundle(): { loaded: boolean; leads?: number; docs?: number; reason?: string } {
-  if (!bundleKey()) return { loaded: false, reason: 'SWK_HANDOVER_KEY not set' }
+export function loadHandoverBundle(): { loaded: boolean; leads?: number; reason?: string } {
+  const key = bundleKey()
+  if (!key) return { loaded: false, reason: 'SWK_HANDOVER_KEY not set' }
   if (!fs.existsSync(BUNDLE)) return { loaded: false, reason: 'bundle not present' }
-  const sha = crypto.createHash('sha256').update(fs.readFileSync(BUNDLE)).digest('hex')
+  const raw = fs.readFileSync(BUNDLE)
+  const sha = crypto.createHash('sha256').update(raw).digest('hex')
   if (q.val(`SELECT value FROM settings WHERE key = 'handover:bundle'`) === sha) return { loaded: false, reason: 'already loaded' }
-  const b = readBundle()!
+  const { leads } = readBundle(key, raw)
   const known = new Set(q.all<{ external_deal_id: string }>(`SELECT external_deal_id FROM crm_vault_properties WHERE source_dataset = ?`, HANDOVER_DATASET).map(r => r.external_deal_id))
-  upsertVaultProperties(b.header.leads)
+  upsertVaultProperties(leads)
   const now = nowIso()
   tx(() => {
-    for (const l of b.header.leads) if (!known.has(l.external_deal_id)) q.run(`UPDATE crm_vault_properties SET custody = 'admin' WHERE external_deal_id = ?`, l.external_deal_id)
-    for (const d of b.header.docs) {
-      const ex = q.get<{ id: number }>(`SELECT id FROM custody_documents WHERE name = ?`, d.name)
-      if (ex) q.run(`UPDATE custody_documents SET title = ?, kind = ?, staff_email = ?, contains_contacts = ?, mime = ?, size = ?, sha256 = ?, bundle_offset = ?, updated_at = ? WHERE id = ?`, d.title, d.kind, d.staff_email, d.contains_contacts ? 1 : 0, d.mime, d.length, d.sha256, d.offset, now, ex.id)
-      else q.run(`INSERT INTO custody_documents(name, title, kind, staff_email, contains_contacts, mime, size, sha256, bundle_offset, stage, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,'Admin Custody',?,?)`, d.name, d.title, d.kind, d.staff_email, d.contains_contacts ? 1 : 0, d.mime, d.length, d.sha256, d.offset, now, now)
-    }
+    for (const l of leads) if (!known.has(l.external_deal_id)) q.run(`UPDATE crm_vault_properties SET custody = 'admin' WHERE external_deal_id = ?`, l.external_deal_id)
     q.run(`INSERT INTO settings(key, value, updated_at) VALUES ('handover:bundle', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, sha, now)
   })
   const admin = q.val<number>(`SELECT id FROM users WHERE lower(email) = 'admin@swk.properties' AND deleted_at IS NULL`)
-  notify(admin, 'New handover received into Admin Custody', `${b.header.leads.length} Ejari leads and ${b.header.docs.length} documents are waiting for review and release to the Operations Manager.`, '/crm-vault?tab=custody', 'approval')
-  return { loaded: true, leads: b.header.leads.length, docs: b.header.docs.length }
+  notify(admin, 'New handover received into Admin Custody', `${leads.length} Ejari leads are waiting for review and release to the Operations Manager. Upload the matching documents on the Custody & Handover tab.`, '/crm-vault?tab=custody', 'approval')
+  return { loaded: true, leads: leads.length }
 }
 
 const audit = (u: SessionUser, action: string, label: string, changes: unknown) =>
@@ -152,17 +154,73 @@ export function myDocs(u: SessionUser) {
   return q.all(`SELECT id, title, kind, staff_released_at FROM custody_documents WHERE recipient_user_id = ? AND stage = 'Released to Staff' AND contains_contacts = 0 ORDER BY kind, title`, u.id)
 }
 
-/** Returns the file only to someone entitled to it at its current custody stage. */
-export function openDoc(u: SessionUser, docId: number): { name: string; mime: string; body: Buffer } {
+/** Owner/Admin: store an uploaded document in Admin Custody (Cloudflare R2 when configured). Re-uploading a name replaces it and returns it to Admin Custody. */
+export async function addDoc(u: SessionUser, file: { name: string; stored: string; mime: string }, fallback: Partial<HandoverDocMeta>) {
+  const full = path.join(dirs.uploads, file.stored)
+  const created: string[] = [file.stored]
+  let pagesDir = ''
+  try {
+    if (!isTopCustodian(u)) throw forbidden('Only the Owner or the Admin can upload handover documents.')
+    // Cloudflare Containers wipe the local disk on restart: there, files must go to R2.
+    if (process.env.REQUIRE_DATABASE_URL === 'true' && !useR2()) throw bad('Turn on Cloudflare R2 under Settings → Storage before uploading documents. This server\'s disk is wiped on every restart.')
+    const pdf = file.name.toLowerCase().endsWith('.pdf')
+    const head = fs.readFileSync(full).subarray(0, 4).toString('latin1')
+    if (pdf ? head !== '%PDF' : !head.startsWith('PK') && !file.name.toLowerCase().endsWith('.csv')) throw bad(`${file.name} is not a valid ${pdf ? 'PDF' : 'Excel'} file.`)
+    const meta = guessDocMeta(file.name) ?? (fallback.kind ? { title: fallback.title || file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' '), kind: fallback.kind, staff_email: fallback.staff_email || null, contains_contacts: !!fallback.contains_contacts || fallback.kind === 'Calling Booklet' || fallback.kind === 'Dialer Workbook' } : null)
+    if (!meta) throw bad(`${file.name}: file name not recognised. Choose the document type and staff member, then upload it again.`)
+    const size = fs.statSync(full).size
+    const sha256 = crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex')
+    const pageNames: string[] = []
+    if (pdf && !meta.contains_contacts) {
+      // Staff see these page images, exactly as issued; the PDF itself stays with management.
+      const rel = path.join(path.dirname(file.stored), crypto.randomBytes(8).toString('hex'))
+      fs.mkdirSync(path.join(dirs.uploads, rel), { recursive: true })
+      pagesDir = path.join(dirs.uploads, rel)
+      execFileSync('pdftoppm', ['-r', '100', '-jpeg', '-jpegopt', 'quality=75', full, path.join(dirs.uploads, rel, 'p')], { timeout: 120_000 })
+      for (const n of fs.readdirSync(path.join(dirs.uploads, rel)).sort()) { const kept = await persistUpload(path.join(rel, n), 'image/jpeg'); created.push(kept); pageNames.push(kept) }
+      if (useR2()) fs.rmSync(path.join(dirs.uploads, rel), { recursive: true, force: true }) // pages now live in R2
+    }
+    const stored = await persistUpload(file.stored, file.mime)
+    created[0] = stored
+    const old = q.get<any>(`SELECT id, stored_name, page_names FROM custody_documents WHERE name = ?`, file.name)
+    const now = nowIso()
+    if (old) q.run(`UPDATE custody_documents SET title = ?, kind = ?, staff_email = ?, contains_contacts = ?, mime = ?, size = ?, sha256 = ?, stored_name = ?, page_names = ?, stage = 'Admin Custody', recipient_user_id = NULL, manager_released_at = NULL, manager_released_by = NULL, staff_released_at = NULL, staff_released_by = NULL, updated_at = ? WHERE id = ?`, meta.title, meta.kind, meta.staff_email, meta.contains_contacts ? 1 : 0, file.mime, size, sha256, stored, JSON.stringify(pageNames), now, old.id)
+    else q.run(`INSERT INTO custody_documents(name, title, kind, staff_email, contains_contacts, mime, size, sha256, bundle_offset, stored_name, page_names, stage, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,0,?,?,'Admin Custody',?,?)`, file.name, meta.title, meta.kind, meta.staff_email, meta.contains_contacts ? 1 : 0, file.mime, size, sha256, stored, JSON.stringify(pageNames), now, now)
+    if (old) await removeDocFiles(old)
+    audit(u, 'upload', meta.title, { name: file.name, pages: pageNames.length })
+    return { name: file.name, title: meta.title, kind: meta.kind, staff_email: meta.staff_email, pages: pageNames.length, replaced: !!old }
+  } catch (e) {
+    await Promise.all(created.map(n => removeStored(n)))
+    if (pagesDir) fs.rmSync(pagesDir, { recursive: true, force: true })
+    throw e
+  }
+}
+
+async function removeDocFiles(d: { stored_name?: string | null; page_names?: string | null }) {
+  const names = [d.stored_name, ...JSON.parse(d.page_names || '[]')].filter(Boolean) as string[]
+  await Promise.all(names.map(n => removeStored(n)))
+}
+
+/** Owner/Admin: delete a document and its stored files. */
+export async function deleteDoc(u: SessionUser, docId: number) {
+  if (!isTopCustodian(u)) throw forbidden('Only the Owner or the Admin can delete a handover document.')
+  const d = q.get<any>(`SELECT * FROM custody_documents WHERE id = ?`, docId)
+  if (!d) throw notFound('Document not found')
+  q.run(`DELETE FROM custody_documents WHERE id = ?`, docId)
+  await removeDocFiles(d)
+  audit(u, 'delete', d.title, { docId })
+  return { ok: true }
+}
+
+/** Returns the original file only to management, at its current custody stage. */
+export async function openDoc(u: SessionUser, docId: number): Promise<{ name: string; mime: string; body: Readable }> {
   const d = q.get<any>(`SELECT * FROM custody_documents WHERE id = ?`, docId)
   if (!d) throw notFound('Document not found')
   // The original file stays with management; staff view the page images (readDoc / docPage).
   const ok = isTopCustodian(u) || (canAccessCrmVault(u) && d.stage !== 'Admin Custody')
-  if (!ok) throw forbidden('The original file is held by management. Open the reading copy instead.')
-  const b = readBundle()
-  if (!b) throw bad('The handover file is not available on this server (SWK_HANDOVER_KEY missing).')
-  const body = b.body.subarray(d.bundle_offset, d.bundle_offset + d.size)
-  if (crypto.createHash('sha256').update(body).digest('hex') !== d.sha256) throw bad('The stored document does not match its checksum.')
+  if (!ok) throw forbidden('The original file is held by management. Open the view copy instead.')
+  const body = d.stored_name ? await openStored(d.stored_name) : null
+  if (!body) throw bad('The stored file is missing. Upload the document again.')
   audit(u, 'download', d.title, { docId })
   return { name: d.name, mime: d.mime, body }
 }
@@ -172,10 +230,9 @@ function viewable(u: SessionUser, docId: number) {
   if (!d) throw notFound('Document not found')
   const ok = canAccessCrmVault(u) ? isTopCustodian(u) || d.stage !== 'Admin Custody' : d.stage === 'Released to Staff' && d.recipient_user_id === u.id && !d.contains_contacts
   if (!ok) throw forbidden('This document has not been released to you.')
-  const b = readBundle()
-  const pages = b?.header.docs.find(x => x.name === d.name)?.pages
-  if (!b || !pages?.length) throw bad('No view copy is available for this document.')
-  return { d, b, pages }
+  const pages: string[] = JSON.parse(d.page_names || '[]')
+  if (!pages.length) throw bad('No view copy is available for this document.')
+  return { d, pages }
 }
 
 /** View copy: the original pages as images, watermarked in the viewer with the reader's identity. */
@@ -185,9 +242,11 @@ export function readDoc(u: SessionUser, docId: number) {
   return { title: d.title, kind: d.kind, pages: pages.length, watermark: `${u.name} · ${u.email} · ${nowIso().slice(0, 10)} · Confidential – SWK Properties` }
 }
 
-export function docPage(u: SessionUser, docId: number, page: number): Buffer {
-  const { b, pages } = viewable(u, docId)
-  const p = pages[page - 1]
-  if (!p) throw notFound('Page not found')
-  return b.body.subarray(p.offset, p.offset + p.length)
+export async function docPage(u: SessionUser, docId: number, page: number): Promise<Readable> {
+  const { pages } = viewable(u, docId)
+  const name = pages[page - 1]
+  if (!name) throw notFound('Page not found')
+  const body = await openStored(name)
+  if (!body) throw bad('The stored page is missing. Upload the document again.')
+  return body
 }
