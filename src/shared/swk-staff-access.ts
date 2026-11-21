@@ -423,3 +423,17 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
   }
   return false
 }
+
+/** Employee records (and the Access & usage view) open only for the Owner and the Admin. */
+export function canOpenEmployeeRecords(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id) return false
+  return isOwnerSwkUser(user) || isAdminSwkUser(user)
+}
+
+/** Password pattern for every hardcoded account except the Manager: first part of the email, capitalised, + '@swk2026' (Shabib@swk2026). */
+export function swkPatternPassword(email: string): string {
+  const local = String(email).split('@')[0]
+  return local.charAt(0).toUpperCase() + local.slice(1).toLowerCase() + '@swk2026'
+}
