@@ -105,7 +105,7 @@ async function leadsFromWorkbook(file: string): Promise<RawVaultPropertyInput[]>
 function renderPages(file: string): Buffer[] {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'swk-pages-'))
   try {
-    execFileSync('pdftoppm', ['-r', '120', '-jpeg', '-jpegopt', 'quality=85', file, path.join(dir, 'p')])
+    execFileSync('pdftoppm', ['-r', '100', '-jpeg', '-jpegopt', 'quality=75', file, path.join(dir, 'p')])
     return fs.readdirSync(dir).sort().map(n => fs.readFileSync(path.join(dir, n)))
   } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 }
