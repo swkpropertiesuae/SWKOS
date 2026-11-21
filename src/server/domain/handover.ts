@@ -8,7 +8,6 @@ import { notify } from '../notify'
 import { canAccessCrmVault, canOpenEmployeeRecords } from '../../shared/swk-staff-access'
 import { upsertVaultProperties, type RawVaultPropertyInput } from './crm-vault'
 import type { SessionUser } from '../engine'
-import { redactForStaff } from '../../shared/redact'
 
 /**
  * Controlled handover of lead data and staff documents (chain of custody):
@@ -29,8 +28,8 @@ export interface HandoverDocMeta {
   offset: number
   length: number
   sha256: string
-  /** Redacted reading copy for staff (playbooks, field guides). Staff never receive the file itself. */
-  text?: string
+  /** Page images, exactly as uploaded, for the staff viewer (playbooks, field guides). Staff never receive the file itself. */
+  pages?: { offset: number; length: number }[]
 }
 
 export const HANDOVER_DATASET = 'ejari_dialer_2026'
@@ -157,7 +156,7 @@ export function myDocs(u: SessionUser) {
 export function openDoc(u: SessionUser, docId: number): { name: string; mime: string; body: Buffer } {
   const d = q.get<any>(`SELECT * FROM custody_documents WHERE id = ?`, docId)
   if (!d) throw notFound('Document not found')
-  // The original file stays with management; staff read the redacted copy (readDoc).
+  // The original file stays with management; staff view the page images (readDoc / docPage).
   const ok = isTopCustodian(u) || (canAccessCrmVault(u) && d.stage !== 'Admin Custody')
   if (!ok) throw forbidden('The original file is held by management. Open the reading copy instead.')
   const b = readBundle()
@@ -168,14 +167,27 @@ export function openDoc(u: SessionUser, docId: number): { name: string; mime: st
   return { name: d.name, mime: d.mime, body }
 }
 
-/** Reading copy: text only, contact details and company totals hidden, watermarked with the reader. */
-export function readDoc(u: SessionUser, docId: number) {
+function viewable(u: SessionUser, docId: number) {
   const d = q.get<any>(`SELECT * FROM custody_documents WHERE id = ?`, docId)
   if (!d) throw notFound('Document not found')
   const ok = canAccessCrmVault(u) ? isTopCustodian(u) || d.stage !== 'Admin Custody' : d.stage === 'Released to Staff' && d.recipient_user_id === u.id && !d.contains_contacts
   if (!ok) throw forbidden('This document has not been released to you.')
-  const text = readBundle()?.header.docs.find(x => x.name === d.name)?.text
-  if (!text) throw bad('No reading copy is available for this document.')
+  const b = readBundle()
+  const pages = b?.header.docs.find(x => x.name === d.name)?.pages
+  if (!b || !pages?.length) throw bad('No view copy is available for this document.')
+  return { d, b, pages }
+}
+
+/** View copy: the original pages as images, watermarked in the viewer with the reader's identity. */
+export function readDoc(u: SessionUser, docId: number) {
+  const { d, pages } = viewable(u, docId)
   audit(u, 'read', d.title, { docId })
-  return { title: d.title, kind: d.kind, text: redactForStaff(text), watermark: `${u.name} · ${u.email} · ${nowIso().slice(0, 10)} · Confidential – SWK Properties` }
+  return { title: d.title, kind: d.kind, pages: pages.length, watermark: `${u.name} · ${u.email} · ${nowIso().slice(0, 10)} · Confidential – SWK Properties` }
+}
+
+export function docPage(u: SessionUser, docId: number, page: number): Buffer {
+  const { b, pages } = viewable(u, docId)
+  const p = pages[page - 1]
+  if (!p) throw notFound('Page not found')
+  return b.body.subarray(p.offset, p.offset + p.length)
 }

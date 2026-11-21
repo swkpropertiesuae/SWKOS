@@ -17,7 +17,7 @@ import {
   updateAgentAssignedProperty,
 } from '../domain/crm-vault'
 import { getSetting, setSettings } from '../settings'
-import { handoverOverview, myDocs, openDoc, readDoc, recallDoc, releaseDocToStaff, releaseToManager } from '../domain/handover'
+import { docPage, handoverOverview, myDocs, openDoc, readDoc, recallDoc, releaseDocToStaff, releaseToManager } from '../domain/handover'
 
 const visibleFieldsSchema = z.object({
   show_owner_name: z.boolean().optional(),
@@ -48,6 +48,11 @@ export default async function crmVaultRoutes(app: FastifyInstance) {
   app.post('/api/handover/docs/:id/recall', async (req) => recallDoc(req.user!, Number((req.params as any).id)))
   app.get('/api/handover/my-docs', async (req) => myDocs(req.user!))
   app.get('/api/handover/docs/:id/read', async (req, reply) => { reply.header('cache-control', 'private, no-store'); return readDoc(req.user!, Number((req.params as any).id)) })
+  app.get('/api/handover/docs/:id/page/:n', async (req, reply) => {
+    const p = req.params as any
+    const img = docPage(req.user!, Number(p.id), Number(p.n))
+    return reply.header('content-type', 'image/jpeg').header('cache-control', 'private, no-store').header('content-disposition', 'inline').send(img)
+  })
   app.get('/api/handover/docs/:id/file', async (req, reply) => {
     const f = openDoc(req.user!, Number((req.params as any).id))
     reply.header('content-type', f.mime).header('content-disposition', `inline; filename="${f.name.replace(/[^\w.\- ]+/g, '_')}"`).header('cache-control', 'private, no-store')

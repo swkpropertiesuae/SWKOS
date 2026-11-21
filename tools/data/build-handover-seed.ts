@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
 import { execFileSync } from 'node:child_process'
-import { redactForStaff } from '../../src/shared/redact'
+import os from 'node:os'
 import readXlsxFile from 'read-excel-file/node'
 import { SWK_STAFF_ACCOUNTS } from '../../src/shared/swk-staff-access'
 import type { RawVaultPropertyInput } from '../../src/server/domain/crm-vault'
@@ -101,12 +101,13 @@ async function leadsFromWorkbook(file: string): Promise<RawVaultPropertyInput[]>
   return out
 }
 
-/** Staff reading copy: the PDF's words only (needs poppler's pdftotext), page furniture removed, redacted. */
-function readingText(file: string): string {
-  const raw = execFileSync('pdftotext', ['-enc', 'UTF-8', file, '-'], { maxBuffer: 64 << 20 }).toString('utf8')
-  const lines = raw.split(/\r?\n/).map(l => l.replace(/\s+$/, ''))
-  const furniture = (l: string) => /^(S W K|[A-Z]{1,3}( [A-Z]{1,3}){3,}|SWK PROPERTIES LLC$|[\/\d]{1,2}$)/.test(l.trim()) || /^\d+ \/ \d+$/.test(l.trim()) || /^[“"].*[”"]$/.test(l.trim()) && lines.filter(x => x === l).length > 3
-  return redactForStaff(lines.filter(l => !furniture(l)).join('\n').replace(/\f/g, '\n').replace(/\n\s*\n(?=\S{1,40}\n)/g, '\n').replace(/\n{3,}/g, '\n\n').trim())
+/** Staff view copy: every page rendered exactly as uploaded (needs poppler's pdftoppm). Staff never receive the PDF. */
+function renderPages(file: string): Buffer[] {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'swk-pages-'))
+  try {
+    execFileSync('pdftoppm', ['-r', '120', '-jpeg', '-jpegopt', 'quality=85', file, path.join(dir, 'p')])
+    return fs.readdirSync(dir).sort().map(n => fs.readFileSync(path.join(dir, n)))
+  } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 }
 
 function docMeta(file: string): Omit<HandoverDocMeta, 'offset' | 'length' | 'sha256'> | null {
@@ -148,10 +149,13 @@ async function main() {
     if (!meta || seen.has(meta.name)) continue // the booklets ship in two zips; keep one copy
     seen.add(meta.name)
     const buf = fs.readFileSync(f)
-    const text = !meta.contains_contacts && meta.mime === 'application/pdf' ? readingText(f) : undefined
-    docs.push({ ...meta, ...(text ? { text } : {}), offset, length: buf.length, sha256: crypto.createHash('sha256').update(buf).digest('hex') })
+    docs.push({ ...meta, offset, length: buf.length, sha256: crypto.createHash('sha256').update(buf).digest('hex') })
     blobs.push(buf)
     offset += buf.length
+    if (meta.contains_contacts || meta.mime !== 'application/pdf') continue
+    const pages: { offset: number; length: number }[] = []
+    for (const img of renderPages(f)) { pages.push({ offset, length: img.length }); blobs.push(img); offset += img.length }
+    docs[docs.length - 1].pages = pages
   }
   const header = Buffer.from(JSON.stringify({ version: 1, built_at: new Date().toISOString(), leads, docs }))
   const len = Buffer.alloc(4); len.writeUInt32BE(header.length)

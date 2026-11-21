@@ -37,7 +37,7 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
    - **Hidden by default:** owner name and commission. Show them only when the deal stage needs it.
    - **Shown:** unit, floor, rent, expiry date and playbook, as needed for the conversation.
 7. Dispatch in working batches (for example a week of calls at a time). Do not dispatch a whole desk at once. This keeps the data a staff member holds to what they are actively working.
-8. **Documents:** release each **Personal Playbook** and **Field Guide** to its named staff member with **Release to staff**. The staff member reads it under *My Assigned Deals → My documents*. Staff get a **reading copy only**: the full text of the scripts, conversations and guidance, with phone numbers, e-mail addresses and company money totals hidden. Each copy is watermarked with the reader's name, e-mail and date, and cannot be copied or printed in the app. The original file never leaves management.
+8. **Documents:** release each **Personal Playbook** and **Field Guide** to its named staff member with **Release to staff**. The staff member reads it under *My Assigned Deals → My documents*. Staff see the document **exactly as issued**: every page, in its original design, shown page by page inside SWK OS. Each page carries the reader's name, e-mail and date as a watermark, and the viewer blocks downloading, copying, right-clicking and printing. The original file never leaves management.
 9. **Calling Booklets and Dialer Workbooks contain raw client numbers. They stay with management and are never sent to staff, by e-mail, WhatsApp, USB or print.** The system blocks their release. Staff work the same leads through their masked queue.
 
 ### Step 4 – Execution and control (staff and Manager)
@@ -48,7 +48,7 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
 ## 4. Controls
 
 - **Segregation of duties:** Admin cannot skip the Manager, and the Manager cannot take data out of Admin Custody.
-- **Least privilege:** staff see only their own dispatched leads and the reading copies of their released documents. They never receive a file.
+- **Least privilege:** staff see only their own dispatched leads and view-only copies of their released documents. They never receive a file.
 - **Audit trail:** every release, dispatch, recall and document download is logged with user and time. See *Administration → Audit*, and the *Access & usage* tab on each employee record.
 - **Encryption:** data at rest is AES-256 encrypted. The handover file opens only with the `SWK_HANDOVER_KEY` server secret.
 - **No side channels:** lead data must not be exported, screenshotted or forwarded outside SWK OS.
