@@ -4,7 +4,7 @@ import { q,qi,tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue,recordTitle,type EntityDef,type FieldDef } from '../../shared/types'
 import { attachLabels,createRecord,deleteRecord,requestDeleteOrExecute,getDef,getRecord,labelsFor,listRecords,rowToApi,updateRecord,can,assertCan,maskRecs,maskedFieldsFor,MASK,titleCols,customFieldsFor,invalidateCustomFields,type Ctx } from '../engine'
-import { canOpenEmployeeRecords } from '../../shared/swk-staff-access'
+import { canViewEmployeeRecords } from '../../shared/swk-staff-access'
 import { bad,HttpError,forbidden,notFound,parseCsv,safeJson,toCsv,nowLocal,nowIso,todayStr } from '../util'
 import { body,idOf,parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
@@ -173,7 +173,7 @@ export default async function (app: FastifyInstance) {
   app.get('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    if (def.key === 'employees' && !req.ctx.system && !canOpenEmployeeRecords(req.user)) throw forbidden('Only the Owner and the Admin can open employee records.')
+    if (def.key === 'employees' && !req.ctx.system && !canViewEmployeeRecords(req.user)) throw forbidden('Only the Owner, the Admin and the Operations Manager can open employee records.')
     return maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
   })
   // Party blocks for print documents (invoices, quotations, …): { [party_id]: { name, address… } }

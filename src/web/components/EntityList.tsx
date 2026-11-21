@@ -5,7 +5,7 @@ import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X } from 'lucide-react'
 import type { FieldDef } from '@shared/types'
 import { optValue } from '@shared/types'
-import { canOpenEmployeeRecords } from '@shared/swk-staff-access'
+import { canViewEmployeeRecords } from '@shared/swk-staff-access'
 import { useMeta,type MetaEntity } from '../lib/meta'
 import { del,get,post,put,downloadUrl } from '../lib/api'
 import { CellValue } from './Fields'
@@ -70,7 +70,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
   const statusOpts = def.statusField ? (def.fields.find(f => f.name === def.statusField)?.options ?? []).map(optValue) : []
   const rows = query.data?.rows ?? []
   const refresh = () => qc.invalidateQueries({ queryKey: ['list', entity] })
-  const lockedRows = entity === 'employees' && !canOpenEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id })
+  const lockedRows = entity === 'employees' && !canViewEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id })
   const open = (r: any) => (lockedRows ? undefined : onOpen ? onOpen(r) : nav(recordPath(entity, r.id)))
   const allSel = rows.length > 0 && rows.every(r => selected.has(r.id))
 

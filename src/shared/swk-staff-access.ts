@@ -432,6 +432,15 @@ export function canOpenEmployeeRecords(
   return isOwnerSwkUser(user) || isAdminSwkUser(user)
 }
 
+/** Employee records open for the Owner, the Admin and the Operations Manager (Haseeb). Handover custody and Access & usage stay Owner/Admin only (canOpenEmployeeRecords). */
+export function canViewEmployeeRecords(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id) return false
+  const e = String(user.email ?? '').trim().toLowerCase()
+  return canOpenEmployeeRecords(user) || ['haseeb@swk.properties', 'haseeb@swk.property', 'haseeb@swkpropertiesuae.com', 'manager@swkpropertiesuae.com'].includes(e)
+}
+
 /** Password pattern for every hardcoded account except the Manager: first part of the email, capitalised, + '@swk2026' (Shabib@swk2026). */
 export function swkPatternPassword(email: string): string {
   const local = String(email).split('@')[0]
