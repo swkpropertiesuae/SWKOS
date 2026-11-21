@@ -18,6 +18,8 @@
  *   - Shahid@swk.property
  *   - Umar@swk.property
  *   - Saifullah@swk.property
+ *   - Meenakshi@swk.properties
+ *   - Fareed, Shahid, Umar, Sanketh sign in with @swk.rent (their @swk.properties address stays as an alias).
  *   - Any other staff account assigned the 'Staff (Attendance & General)' role.
  */
 
@@ -92,9 +94,9 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     controlledBy: 'shabib@swk.properties',
   },
   {
-    email: 'fareed@swk.properties',
-    displayEmail: 'fareed@swk.properties',
-    aliases: ['fareed@swk.property', 'fareed@swkpropertiesuae.com'],
+    email: 'fareed@swk.rent',
+    displayEmail: 'fareed@swk.rent',
+    aliases: ['fareed@swk.properties', 'fareed@swk.property', 'fareed@swkpropertiesuae.com'],
     name: 'Fareed',
     empNo: 'EMP-FAREED',
     roleName: 'Staff (Attendance & General)',
@@ -105,9 +107,9 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     controlledBy: 'shabib@swk.properties',
   },
   {
-    email: 'shahid@swk.properties',
-    displayEmail: 'shahid@swk.properties',
-    aliases: ['shahid@swk.property', 'shahid@swkpropertiesuae.com'],
+    email: 'shahid@swk.rent',
+    displayEmail: 'shahid@swk.rent',
+    aliases: ['shahid@swk.properties', 'shahid@swk.property', 'shahid@swkpropertiesuae.com'],
     name: 'Shahid',
     empNo: 'EMP-SHAHID',
     roleName: 'Staff (Attendance & General)',
@@ -118,9 +120,9 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     controlledBy: 'shabib@swk.properties',
   },
   {
-    email: 'umar@swk.properties',
-    displayEmail: 'umar@swk.properties',
-    aliases: ['umar@swk.property', 'umar@swkpropertiesuae.com'],
+    email: 'umar@swk.rent',
+    displayEmail: 'umar@swk.rent',
+    aliases: ['umar@swk.properties', 'umar@swk.property', 'umar@swkpropertiesuae.com'],
     name: 'Umar',
     empNo: 'EMP-UMAR',
     roleName: 'Staff (Attendance & General)',
@@ -157,15 +159,28 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     controlledBy: 'shabib@swk.properties',
   },
   {
-    email: 'sanketh@swk.properties',
-    displayEmail: 'sanketh@swk.properties',
-    aliases: ['sanketh@swk.property', 'sanketh@swkpropertiesuae.com'],
+    email: 'sanketh@swk.rent',
+    displayEmail: 'sanketh@swk.rent',
+    aliases: ['sanketh@swk.properties', 'sanketh@swk.property', 'sanketh@swkpropertiesuae.com'],
     name: 'Sanketh',
     empNo: 'EMP-SANKETH',
     roleName: 'Staff (Attendance & General)',
     departmentCode: 'SAL',
     designation: 'Property Consultant',
     phone: '+971 50 100 0009',
+    fullAccess: false,
+    controlledBy: 'shabib@swk.properties',
+  },
+  {
+    email: 'meenakshi@swk.properties',
+    displayEmail: 'meenakshi@swk.properties',
+    aliases: ['meenakshi@swk.property', 'meenakshi@swkpropertiesuae.com'],
+    name: 'Meenakshi',
+    empNo: 'EMP-MEENAKSHI',
+    roleName: 'Staff (Attendance & General)',
+    departmentCode: 'SAL',
+    designation: 'Property Consultant',
+    phone: '+971 50 100 0010',
     fullAccess: false,
     controlledBy: 'shabib@swk.properties',
   },
@@ -258,12 +273,15 @@ const RESTRICTED_STAFF_EMAILS = new Set<string>([
   'fareed@swk.property',
   'fareed@swk.properties',
   'fareed@swkpropertiesuae.com',
+  'fareed@swk.rent',
   'shahid@swk.property',
   'shahid@swk.properties',
   'shahid@swkpropertiesuae.com',
+  'shahid@swk.rent',
   'umar@swk.property',
   'umar@swk.properties',
   'umar@swkpropertiesuae.com',
+  'umar@swk.rent',
   'saifullah@swk.property',
   'saifullah@swk.properties',
   'saifullah@swkpropertiesuae.com',
@@ -273,6 +291,10 @@ const RESTRICTED_STAFF_EMAILS = new Set<string>([
   'sanketh@swk.property',
   'sanketh@swk.properties',
   'sanketh@swkpropertiesuae.com',
+  'sanketh@swk.rent',
+  'meenakshi@swk.property',
+  'meenakshi@swk.properties',
+  'meenakshi@swkpropertiesuae.com',
 ])
 
 export const RESTRICTED_STAFF_PERMISSIONS: Record<string, string[]> = {
@@ -307,7 +329,7 @@ export const RESTRICTED_STAFF_SELF_SCOPED_ENTITIES = new Set<string>([
 
 export function isSwkCompanyEmail(email: string | null | undefined): boolean {
   const e = String(email || '').trim().toLowerCase()
-  return e.endsWith('@swk.properties') || e.endsWith('@swk.property') || e.endsWith('@swkpropertiesuae.com')
+  return e.endsWith('@swk.properties') || e.endsWith('@swk.property') || e.endsWith('@swkpropertiesuae.com') || e.endsWith('@swk.rent')
 }
 
 export function isOwnerSwkUser(

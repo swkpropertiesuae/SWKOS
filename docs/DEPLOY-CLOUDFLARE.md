@@ -71,7 +71,7 @@ npx wrangler secret put APP_SECRET          # a long random text – make one wi
 npx wrangler secret put OWNER_PASSWORD      # shabib@swk.properties (Owner)
 npx wrangler secret put ADMIN_SWK_PASSWORD  # admin@swk.properties (Admin)
 npx wrangler secret put MANAGER_PASSWORD    # haseeb@swk.properties (Manager)
-npx wrangler secret put BDM_PASSWORD        # initial password for the staff accounts (talha, fareed, shahid, umar, saifullah, samarth @swk.properties)
+npx wrangler secret put BDM_PASSWORD        # initial password for the staff accounts (talha, saifullah, samarth, meenakshi @swk.properties; fareed, shahid, umar, sanketh @swk.rent)
 npx wrangler secret put ADMIN_PASSWORD      # required by the Worker; not used for a login
 ```
 

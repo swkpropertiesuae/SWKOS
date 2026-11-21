@@ -286,9 +286,48 @@ export function applyPasswordReset() {
     return n
   }
   const mgr = set(['haseeb@swk.properties'], process.env.MANAGER_PASSWORD)
-  const staff = set(['talha', 'fareed', 'shahid', 'umar', 'saifullah', 'samarth'].map(n => `${n}@swk.properties`), process.env.BDM_PASSWORD)
+  const staff = set(SWK_STAFF_ACCOUNTS.filter(a => a.roleName === 'Staff (Attendance & General)').map(a => a.email), process.env.BDM_PASSWORD)
   q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?)`, key, JSON.stringify(true), nowIso())
   console.log(`Password reset ${id}: manager ${mgr}, staff ${staff} account(s). Each person must choose a new password at next sign-in.`)
+}
+
+/**
+ * Runs on every start. Moves a staff user whose official email changed (fareed@swk.properties -> fareed@swk.rent)
+ * and creates any roster account that has no user yet. Never changes an existing user's password or role.
+ */
+export function syncSwkStaffRoster() {
+  const staffRoleId = idOf('roles', 'name', 'Staff (Attendance & General)')
+  const dxb = idOf('branches', 'code', 'DXB') ?? 1
+  const dept = (code: string) => idOf('departments', 'code', code) ?? idOf('departments', 'code', 'MGT') ?? 1
+  const userIdBy = (email: string) => q.val<number>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1`, email.toLowerCase())
+  for (const acc of SWK_STAFF_ACCOUNTS) {
+    let userId = userIdBy(acc.email)
+    if (!userId) {
+      const oldId = acc.aliases.map(userIdBy).find(Boolean)
+      if (oldId) {
+        q.run(`UPDATE users SET email = ?, updated_at = ? WHERE id = ?`, acc.displayEmail, nowIso(), oldId)
+        q.run(`UPDATE employees SET email = ?, updated_at = ? WHERE user_id = ? AND deleted_at IS NULL`, acc.displayEmail, nowIso(), oldId)
+        console.log(`Staff email moved to ${acc.displayEmail}.`)
+        continue
+      }
+    }
+    if (userId || acc.fullAccess || !staffRoleId) continue
+    const pw = resolveStaffAccountPassword(acc)
+    userId = createRecord(getDef('users'), {
+      name: acc.name, email: acc.displayEmail, password: pw, role_id: staffRoleId, branch_id: dxb,
+      department_id: dept(acc.departmentCode), designation: acc.designation, active: true, must_change_password: true,
+    }, SYSTEM_CTX).id
+    const empId = q.val<number>(`SELECT id FROM employees WHERE (emp_no = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`, acc.empNo, acc.email.toLowerCase())
+    if (empId) q.run(`UPDATE employees SET user_id = ?, email = ?, updated_at = ? WHERE id = ?`, userId, acc.displayEmail, nowIso(), empId)
+    else createRecord(getDef('employees'), {
+      emp_no: acc.empNo, name: acc.name, user_id: userId, department_id: dept(acc.departmentCode), designation: acc.designation,
+      branch_id: dxb, status: 'Active', join_date: nowIso().slice(0, 10), contract_type: 'Unlimited', phone: acc.phone, email: acc.displayEmail,
+      compensation_model: 'Commission Only (50/50 Company Visa – 0 Basic)', company_visa_sponsored: true,
+      commission_split_company_pct: 50, commission_split_agent_pct: 50, basic_salary: 0,
+    }, SYSTEM_CTX)
+    if (!process.env.BDM_PASSWORD && !process.env.SWK_DEV_FIXTURE_PASSWORD) console.warn(`[staff] ${acc.email} created with a generated password (BDM_PASSWORD is not set): ${pw}`)
+    else console.log(`[staff] ${acc.email} created; they must choose a new password at first sign-in.`)
+  }
 }
 
 export function ensureHardcodedSwkStaffAccounts() {
