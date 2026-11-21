@@ -77,7 +77,7 @@ export default async function crmVaultRoutes(app: FastifyInstance) {
         if (part.type === 'field') { fields[part.fieldname] = String(part.value); continue }
         const name = path.basename(part.filename || 'file').replace(/[^\w.\- ()]+/g, '_').slice(0, 150)
         const ext = path.extname(name).slice(1).toLowerCase()
-        if (!['pdf', 'xlsx', 'csv'].includes(ext)) { part.file.resume(); throw bad(`${name}: only PDF, Excel (.xlsx) and CSV files can be uploaded.`) }
+        if (!['pdf', 'xlsx'].includes(ext)) { part.file.resume(); throw bad(`${name}: only PDF and Excel (.xlsx) files can be uploaded.`) }
         const stored = path.join(todayStr().slice(0, 7), crypto.randomBytes(16).toString('hex') + '.' + ext)
         await pipeline(part.file, fs.createWriteStream(path.join(dirs.uploads, stored)))
         if ((part.file as any).truncated) { fs.rmSync(path.join(dirs.uploads, stored), { force: true }); throw bad(`${name} exceeds the ${config.maxUploadMb} MB limit`) }

@@ -25,7 +25,7 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
 ### Step 1 – Intake (Admin)
 1. The lead data arrives encrypted and loads into **Admin Custody** automatically when the server starts. Admin receives a notification.
 2. Admin checks the counts per desk against the source roster. For the November 2026 handover these are Meenakshi 2,300 · Saifullah 2,785 · Fareed 2,322 · Shahid 2,528 · Talha 1,909 · Umar 2,273 · Sanketh 1,136, for a total of **15,253**.
-3. Admin uploads the documents (playbooks, field guides, calling booklets, dialer workbooks, roster index) on *Custody & Handover → Upload documents*. SWK file names are recognised automatically; for any other file, Admin chooses the type and staff member first. Files are stored in Cloudflare R2, never in the code repository.
+3. Admin uploads the documents (playbooks, field guides, calling booklets, roster index). Dialer workbooks are not uploaded: their leads are already in the CRM Vault, and the system refuses them on *Custody & Handover → Upload documents*. SWK file names are recognised automatically; for any other file, Admin chooses the type and staff member first. Files are stored in Cloudflare R2, never in the code repository.
 4. Admin opens a sample of documents (*View*) to confirm they are complete and correct. A wrong file is deleted or replaced by uploading a file with the same name; a replaced document returns to Admin Custody.
 
 ### Step 2 – Release to the Operations Manager (Admin)
@@ -39,7 +39,7 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
    - **Shown:** unit, floor, rent, expiry date and playbook, as needed for the conversation.
 8. Dispatch in working batches (for example a week of calls at a time). Do not dispatch a whole desk at once. This keeps the data a staff member holds to what they are actively working.
 9. **Documents:** release each **Personal Playbook** and **Field Guide** to its named staff member with **Release to staff**. The staff member reads it under *My Assigned Deals → My documents*. Staff see the document **exactly as issued**: every page, in its original design, shown page by page inside SWK OS. Each page carries the reader's name, e-mail and date as a watermark, and the viewer blocks downloading, copying, right-clicking and printing. The original file never leaves management.
-10. **Calling Booklets and Dialer Workbooks contain raw client numbers. They stay with management and are never sent to staff, by e-mail, WhatsApp, USB or print.** The system blocks their release. Staff work the same leads through their masked queue.
+10. **Calling Booklets contain raw client numbers. They stay with management and are never sent to staff, by e-mail, WhatsApp, USB or print.** The system blocks their release. Staff work the same leads through their masked queue.
 
 ### Step 4 – Execution and control (staff and Manager)
 11. Staff record every call outcome in their queue. The Manager reviews progress daily.

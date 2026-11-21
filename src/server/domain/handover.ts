@@ -19,10 +19,10 @@ import type { SessionUser } from '../engine'
  *   2. With Manager    – Owner/Admin release a desk (or everything) to the Operations Manager.
  *   3. Staff           – the Manager dispatches leads with a masking policy (CRM Vault assign) and
  *                        releases each personal document to its named staff member.
- * Documents that carry client phone numbers (calling booklets, dialer workbooks) never leave management:
+ * Documents that carry client phone numbers (calling booklets) never leave management:
  * staff receive those leads only through the masked CRM Vault queue.
  */
-export const DOC_KINDS = ['Personal Playbook', 'Field Guide', 'Calling Booklet', 'Dialer Workbook', 'Roster Index', 'Other'] as const
+export const DOC_KINDS = ['Personal Playbook', 'Field Guide', 'Calling Booklet', 'Roster Index', 'Other'] as const
 export interface HandoverDocMeta {
   title: string
   kind: (typeof DOC_KINDS)[number]
@@ -41,7 +41,6 @@ export function guessDocMeta(name: string): HandoverDocMeta | null {
   if ((m = name.match(/^SWK_Playbook_(Muhammad_)?([A-Za-z]+)_(.+)\.pdf$/i))) return { title: `Personal Playbook – ${m[2]}: ${m[3].replace(/_/g, ' ')}`, kind: 'Personal Playbook', staff_email: staffEmail(m[2]), contains_contacts: false }
   if ((m = name.match(/^SWK_([A-Za-z]+)\.pdf$/i))) return { title: `Field Guide – ${m[1]}`, kind: 'Field Guide', staff_email: staffEmail(m[1]), contains_contacts: false }
   if ((m = name.match(/^\d\d_([A-Za-z]+)(_Shabbir)?_Ejari_30D_60D_Leasing_Calling_Booklet\.pdf$/i))) return { title: `Ejari 0–60D Calling Booklet – ${m[1]}`, kind: 'Calling Booklet', staff_email: staffEmail(m[1]), contains_contacts: true }
-  if ((m = name.match(/^\d\d_([A-Za-z]+)(_Shabbir)?_Ejari_30D_60D_Leasing_Dialer_(Workbook\.xlsx|Master\.csv)$/i))) return { title: `Ejari 0–60D Dialer ${m[3].startsWith('W') ? 'Workbook' : 'Master'} – ${m[1]}`, kind: 'Dialer Workbook', staff_email: staffEmail(m[1]), contains_contacts: true }
   if (/^00_SWK_7_Desks_.*Master_Roster_Index\.xlsx$/i.test(name)) return { title: '7 Desks Master Roster Index', kind: 'Roster Index', staff_email: null, contains_contacts: false }
   return null
 }
@@ -165,8 +164,10 @@ export async function addDoc(u: SessionUser, file: { name: string; stored: strin
     if (process.env.REQUIRE_DATABASE_URL === 'true' && !useR2()) throw bad('Turn on Cloudflare R2 under Settings → Storage before uploading documents. This server\'s disk is wiped on every restart.')
     const pdf = file.name.toLowerCase().endsWith('.pdf')
     const head = fs.readFileSync(full).subarray(0, 4).toString('latin1')
-    if (pdf ? head !== '%PDF' : !head.startsWith('PK') && !file.name.toLowerCase().endsWith('.csv')) throw bad(`${file.name} is not a valid ${pdf ? 'PDF' : 'Excel'} file.`)
-    const meta = guessDocMeta(file.name) ?? (fallback.kind ? { title: fallback.title || file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' '), kind: fallback.kind, staff_email: fallback.staff_email || null, contains_contacts: !!fallback.contains_contacts || fallback.kind === 'Calling Booklet' || fallback.kind === 'Dialer Workbook' } : null)
+    // Dialer workbooks are not stored: their leads are already in the CRM Vault.
+    if (/_Dialer_(Workbook|Master)\./i.test(file.name)) throw bad(`${file.name}: dialer workbooks are not stored. Their leads are already in the CRM Vault.`)
+    if (pdf ? head !== '%PDF' : !head.startsWith('PK')) throw bad(`${file.name} is not a valid ${pdf ? 'PDF' : 'Excel'} file.`)
+    const meta = guessDocMeta(file.name) ?? (fallback.kind ? { title: fallback.title || file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' '), kind: fallback.kind, staff_email: fallback.staff_email || null, contains_contacts: !!fallback.contains_contacts || fallback.kind === 'Calling Booklet' } : null)
     if (!meta) throw bad(`${file.name}: file name not recognised. Choose the document type and staff member, then upload it again.`)
     const size = fs.statSync(full).size
     const sha256 = crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex')

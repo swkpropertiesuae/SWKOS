@@ -11,7 +11,7 @@ const STAGE_TONE: Record<string, string> = {
   'Released to Staff': 'bg-emerald-100 text-emerald-800',
 }
 const deskEmail = (desk: string) => SWK_STAFF_ACCOUNTS.find(a => a.email.split('@')[0] === desk.toLowerCase())?.email
-const KINDS = ['Personal Playbook', 'Field Guide', 'Calling Booklet', 'Dialer Workbook', 'Roster Index', 'Other']
+const KINDS = ['Personal Playbook', 'Field Guide', 'Calling Booklet', 'Roster Index', 'Other']
 
 /** Chain of custody: Admin Custody -> Operations Manager -> staff (masked leads, personal documents). */
 export function HandoverCustody({ onChanged }: { onChanged?: () => void }) {
@@ -37,7 +37,7 @@ export function HandoverCustody({ onChanged }: { onChanged?: () => void }) {
       for (const [i, f] of files.entries()) {
         setProgress(`Uploading ${i + 1} of ${files.length}: ${f.name}`)
         try {
-          const r = await upload([f], { kind, staff_email: staff, contains_contacts: kind === 'Calling Booklet' || kind === 'Dialer Workbook' ? 'true' : undefined }, '/api/handover/docs')
+          const r = await upload([f], { kind, staff_email: staff, contains_contacts: kind === 'Calling Booklet' ? 'true' : undefined }, '/api/handover/docs')
           for (const x of r.results) if (!x.ok) failed.push(x.error)
         } catch (e: any) { failed.push(`${f.name}: ${e?.message || 'upload failed'}`) }
       }
@@ -61,7 +61,7 @@ export function HandoverCustody({ onChanged }: { onChanged?: () => void }) {
         <ol className="m-0 pl-4 space-y-0.5">
           <li><b>Admin Custody</b> – Admin reviews the received leads and documents. Nobody else can see them.</li>
           <li><b>With Operations Manager</b> – Admin releases a desk (or everything) to Haseeb.</li>
-          <li><b>Staff</b> – Haseeb dispatches leads from the Master Vault with a masking policy, and releases each personal playbook and field guide to its owner. Calling booklets and dialer workbooks hold client numbers and stay with management.</li>
+          <li><b>Staff</b> – Haseeb dispatches leads from the Master Vault with a masking policy, and releases each personal playbook and field guide to its owner. Calling booklets hold client numbers and stay with management.</li>
         </ol>
         {top && anyHeld && <button disabled={busy} onClick={() => act('/api/handover/release-to-manager', {}, 'Everything in Admin Custody released to the Operations Manager')} className="mt-3 px-3 py-2 rounded-lg bg-[#0e261d] text-white font-bold flex items-center gap-1.5 disabled:opacity-50"><Send className="w-3.5 h-3.5" /> Release everything to Operations Manager</button>}
       </div>
@@ -91,11 +91,11 @@ export function HandoverCustody({ onChanged }: { onChanged?: () => void }) {
       {top && (
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs space-y-2.5">
           <div className="font-bold text-[13px] text-slate-900 flex items-center gap-2"><Upload className="w-4 h-4 text-[#0d5a48]" /> Upload documents into Admin Custody</div>
-          <p className="m-0 text-slate-600">SWK file names (playbooks, field guides, calling booklets, dialer workbooks, roster index) are recognised automatically. For any other file, choose its type and staff member first. Files are stored in Cloudflare storage; uploading a file with the same name replaces it.</p>
+          <p className="m-0 text-slate-600">SWK file names (playbooks, field guides, calling booklets, roster index) are recognised automatically. Dialer workbooks are not stored: their leads are already in the Master Vault. For any other file, choose its type and staff member first. Files are stored in Cloudflare storage; uploading a file with the same name replaces it.</p>
           <div className="flex flex-wrap items-center gap-2">
             <select value={kind} onChange={e => setKind(e.target.value)} className="px-2.5 py-2 rounded-lg border border-slate-200" aria-label="Document type"><option value="">Type: detect from name</option>{KINDS.map(k => <option key={k}>{k}</option>)}</select>
             <select value={staff} onChange={e => setStaff(e.target.value)} className="px-2.5 py-2 rounded-lg border border-slate-200" aria-label="Staff member"><option value="">Staff: detect from name</option>{SWK_STAFF_ACCOUNTS.filter(a => a.roleName !== 'Owner' && a.roleName !== 'Admin').map(a => <option key={a.email} value={a.email}>{a.name}</option>)}</select>
-            <label className={`px-3 py-2 rounded-lg bg-[#0e261d] text-white font-bold flex items-center gap-1.5 cursor-pointer ${busy ? 'opacity-50 pointer-events-none' : ''}`}><Upload className="w-3.5 h-3.5" /> Choose files<input type="file" multiple accept=".pdf,.xlsx,.csv" className="sr-only" disabled={busy} onChange={e => { uploadFiles(e.target.files); e.target.value = '' }} /></label>
+            <label className={`px-3 py-2 rounded-lg bg-[#0e261d] text-white font-bold flex items-center gap-1.5 cursor-pointer ${busy ? 'opacity-50 pointer-events-none' : ''}`}><Upload className="w-3.5 h-3.5" /> Choose files<input type="file" multiple accept=".pdf,.xlsx" className="sr-only" disabled={busy} onChange={e => { uploadFiles(e.target.files); e.target.value = '' }} /></label>
             {progress && <span className="text-slate-500" role="status">{progress}</span>}
           </div>
         </div>
