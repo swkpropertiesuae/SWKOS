@@ -1,6 +1,7 @@
 import { useMemo,useState } from 'react'
 import { Link,useNavigate } from 'react-router-dom'
 import { PulseCard,ActivityTimeline } from '../components/PulseCards'
+import { WorkflowSteps,type WorkStep } from '../components/WorkflowSteps'
 import { useQuery } from '@tanstack/react-query'
 import { motion,useReducedMotion } from 'motion/react'
 import { Area,AreaChart,CartesianGrid,Cell,Pie,PieChart,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
@@ -67,6 +68,20 @@ export function Dashboard() {
     ...(ls.renewals ?? []).map((l: any) => ({ id: `l${l.id}`, kind: 'Lease renewal', at: l.end_date, title: l.unit_title || 'Lease', sub: l.tenant, to: `/e/leases/${l.id}`, Icon: KeyRound })),
   ].sort((a, b) => String(a.at ?? '').localeCompare(String(b.at ?? ''))).slice(0, 7), [ls])
 
+  const workSteps: WorkStep[] = [
+    { title: 'Check in at the office', what: 'Scan the reception QR on the office Wi-Fi.', done: 'Your check-in time shows in Attendance.', to: '/reception-qr' },
+    { title: 'Inventory', what: 'List or update the properties you can sell or rent.', done: 'Every unit has a price and an owner.', to: '/e/properties' },
+    { title: 'Promote', what: 'Publish ads on Bayut and Dubizzle with Form A.', done: 'Each listing has a live ad and a signed Form A.', to: '/listings' },
+    { title: 'Leads', what: 'Collect enquiries from Bayut, Dubizzle, Property Finder and WhatsApp.', done: 'Every enquiry is saved as a lead with a phone number.', to: '/e/leads' },
+    { title: 'Calls and follow-ups', what: 'Call each lead, qualify it and set the next follow-up.', done: 'Every lead has a call logged and a next date.', to: '/e/activities' },
+    { title: 'Site visits', what: 'Book viewings and take the client to site with the Area Companion.', done: 'Each viewing is marked attended or rescheduled.', to: '/market' },
+    { title: 'Closing', what: 'Prepare Form F, SPA or Ejari, the NOC and the transfer.', done: 'The contract is signed and filed.', to: '/e/jobs' },
+    { title: 'Payments', what: 'Record the payment received: bank, escrow, exchange or USDT.', done: 'A receipt is issued for every payment.', to: '/e/receipts' },
+    { title: 'Commission', what: 'Split the commission 50% company and 50% advisor.', done: 'The commission is recorded for the deal.', to: '/e/agent_commissions' },
+    ...(adminOk ? [{ title: 'Withdrawals and refunds', what: 'Review and sign off client refund requests.', done: 'No request is left waiting.', to: '/withdrawals' }] : []),
+    { title: 'Daily report', what: adminOk ? 'Read the team reports and the Delete Bin.' : 'Write today\u2019s summary before you leave.', done: adminOk ? 'Every report is read and the bin is clear.' : 'Your daily report is submitted.', to: adminOk ? '/recycle-bin' : '/e/daily_reports?new=1' },
+  ].filter(st => !restricted || isAllowedPathForRestrictedStaff(st.to))
+
   if (q.error) return <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
   if (!q.data) return <DashboardSkeleton />
 
@@ -105,6 +120,8 @@ export function Dashboard() {
           </div>
         </div>
       </motion.section>
+
+      <WorkflowSteps steps={workSteps} userKey={me?.email ?? 'me'} />
 
       {/* ------------------------------------------------------------ live pulse */}
       {pulse.data && (pulse.data.leads || pulse.data.viewings || pulse.data.calls) && (
@@ -169,50 +186,6 @@ export function Dashboard() {
           ))}
         </Reveal>
       )}
-
-      {/* ------------------------------------------------------------ 10-Step Sequential UAE Real Estate Dedicated Buttons */}
-      <Reveal className="card p-5 border border-[#ecebe4] bg-white">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-          <div>
-            <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[#0a4a3b]">STEP-BY-STEP COMPANY OPERATIONS</span>
-            <h2 className="font-display font-bold text-base text-ink m-0 mt-0.5">Sequential UAE Real Estate Execution Buttons (Click Any Step)</h2>
-          </div>
-          <Link to="/home" className="btn outline sm">
-            Open Full Step-by-Step Directory <ArrowRight size={13} />
-          </Link>
-        </div>
-        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            { step: 'Step 01', title: 'Inventory & 3rd-Party A2A', sub: 'Dev, Seller, Landlord & A2A Units', to: '/e/properties' },
-            { step: 'Step 02', title: 'Promote (Bayut & Dubizzle)', sub: 'Connected Portal Ads & Form A', to: '/listings' },
-            { step: 'Step 03', title: 'Platform Leads Intake', sub: 'Bayut, Dubizzle, PF & WhatsApp', to: '/e/leads' },
-            { step: 'Step 04', title: 'Calls, Meetings & Follow-Ups', sub: 'Client Qualification & A2A Search', to: '/e/activities' },
-            { step: 'Step 05', title: 'Site Visits + Area Companion', sub: 'Live GPS, 15Y Outlook & Pitch', to: '/market' },
-            { step: 'Step 06', title: 'Closing: Form F / SPA / Ejari', sub: 'Cash / Mortgage, NOC & Transfer', to: '/e/jobs' },
-            { step: 'Step 07', title: 'Legal UAE Payment Modes', sub: 'Bank, Escrow, Exchange, USDT', to: '/e/receipts' },
-            { step: 'Step 08', title: '50–50% Commission Split', sub: '50% SWK / 50% Advisor + A2A', to: '/e/agent_commissions' },
-            ...(adminOk ? [{ step: 'Step 09', title: 'Withdrawals & Client Refunds', sub: 'Terms-Based Refund & Sign-Off', to: '/withdrawals' }] : []),
-            { step: 'Step 10', title: adminOk ? 'Attendance, Reports & Bin' : 'Attendance Scan & Check-In', sub: adminOk ? '10am–7pm, Daily Report & Audit' : 'Scan Office QR & Daily Report', to: adminOk ? '/e/attendance' : '/reception-qr' },
-          ]
-            .filter(st => !restricted || isAllowedPathForRestrictedStaff(st.to))
-            .map(st => (
-              <Link
-                key={st.step}
-                to={st.to}
-                className="p-3 rounded-xl border border-[#ecebe4] bg-[#fdfdfc] hover:bg-[#e9f4ef] hover:border-[#0a4a3b] transition flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[#123025] text-[#f2efe8]">{st.step}</span>
-                    <ArrowUpRight size={14} className="text-muted group-hover:text-ink" />
-                  </div>
-                  <div className="font-bold text-[13px] text-ink mt-2 leading-snug">{st.title}</div>
-                  <div className="text-[11px] text-muted mt-0.5 leading-snug">{st.sub}</div>
-                </div>
-              </Link>
-            ))}
-        </div>
-      </Reveal>
 
       {adminOk && (
         <Reveal className="card p-4 border border-[#ecebe4] bg-[#fdfdfc]">
