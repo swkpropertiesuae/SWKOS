@@ -8,6 +8,7 @@ import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusine
 import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,applySwk2026Passwords } from './seed'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
 import { loadEncryptedVaultSeedIfConfigured } from './domain/crm-vault'
+import { loadHandoverBundle } from './domain/handover'
 
 const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
 
@@ -69,5 +70,11 @@ export async function runStartupDataTasks() {
     if (v.loaded) console.log(`SWK CRM Vault encrypted seed loaded (${v.properties} properties, ${v.routes} route rows).`)
   } catch (e) {
     console.error('Could not load encrypted CRM Vault seed:', e)
+  }
+  try {
+    const h = loadHandoverBundle()
+    if (h.loaded) console.log(`Handover loaded into Admin Custody (${h.leads} leads, ${h.docs} documents).`)
+  } catch (e) {
+    console.error('Could not load the handover bundle:', e)
   }
 }

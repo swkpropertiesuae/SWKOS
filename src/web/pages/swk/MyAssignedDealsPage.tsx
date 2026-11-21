@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, get, post } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { MyHandoverDocs } from './HandoverCustody'
 import { Lock, PhoneCall, MessageCircle, MapPinned, Building2, RefreshCw, Save, ShieldCheck } from 'lucide-react'
 
 const AED = (v: any) => {
@@ -100,6 +101,7 @@ export default function MyAssignedDealsPage() {
 
   return (
     <div className="p-5 max-w-6xl mx-auto space-y-5">
+      <MyHandoverDocs />
       <div className="rounded-2xl bg-[#0e261d] text-white p-5 border border-[#c8a962]/30 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#d4b672]">

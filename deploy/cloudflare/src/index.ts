@@ -12,6 +12,7 @@ interface Env {
   MANAGER_PASSWORD: string
   BDM_PASSWORD?: string
   SWK_CRM_VAULT_KEY?: string
+  SWK_HANDOVER_KEY?: string
   PUBLIC_URL?: string
   PG_SCHEMA?: string
   DEMO_ENABLED?: string
@@ -46,6 +47,7 @@ export class SwkOs extends Container<Env> {
       MANAGER_PASSWORD: env.MANAGER_PASSWORD,
       ...(env.BDM_PASSWORD ? { BDM_PASSWORD: env.BDM_PASSWORD } : {}),
       ...(env.SWK_CRM_VAULT_KEY ? { SWK_CRM_VAULT_KEY: env.SWK_CRM_VAULT_KEY } : {}),
+      ...(env.SWK_HANDOVER_KEY ? { SWK_HANDOVER_KEY: env.SWK_HANDOVER_KEY } : {}),
       ...(env.PUBLIC_URL ? { PUBLIC_URL: env.PUBLIC_URL } : {}),
     }
   }

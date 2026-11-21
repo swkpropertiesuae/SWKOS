@@ -466,7 +466,7 @@ export function ensureHardcodedSwkStaffAccounts() {
       })
       userId = created.id
       const envKey = acc.roleName === 'Owner' ? 'OWNER_PASSWORD' : acc.roleName === 'Admin' ? 'ADMIN_SWK_PASSWORD' : acc.roleName === 'Manager' ? 'MANAGER_PASSWORD' : 'BDM_PASSWORD'
-      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
+      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD && !(config.isProd && acc.roleName !== 'Manager')) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
       q.run(
         `UPDATE users SET password_hash = ?, must_change_password = 0, active = 1, role_id = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`,
         pwHash,

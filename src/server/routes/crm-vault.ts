@@ -17,6 +17,7 @@ import {
   updateAgentAssignedProperty,
 } from '../domain/crm-vault'
 import { getSetting, setSettings } from '../settings'
+import { handoverOverview, myDocs, openDoc, recallDoc, releaseDocToStaff, releaseToManager } from '../domain/handover'
 
 const visibleFieldsSchema = z.object({
   show_owner_name: z.boolean().optional(),
@@ -36,6 +37,21 @@ export default async function crmVaultRoutes(app: FastifyInstance) {
       throw forbidden('CRM Vault access is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')
     }
   }
+
+  // ---------------------------------------------------------------- Custody handover (Admin -> Operations Manager -> staff)
+  app.get('/api/handover/overview', async (req) => handoverOverview(req.user!))
+  app.post('/api/handover/release-to-manager', async (req) => {
+    const b = z.object({ staff_email: z.string().email().nullish() }).parse(req.body ?? {})
+    return releaseToManager(req.user!, b.staff_email)
+  })
+  app.post('/api/handover/docs/:id/release-to-staff', async (req) => releaseDocToStaff(req.user!, Number((req.params as any).id)))
+  app.post('/api/handover/docs/:id/recall', async (req) => recallDoc(req.user!, Number((req.params as any).id)))
+  app.get('/api/handover/my-docs', async (req) => myDocs(req.user!))
+  app.get('/api/handover/docs/:id/file', async (req, reply) => {
+    const f = openDoc(req.user!, Number((req.params as any).id))
+    reply.header('content-type', f.mime).header('content-disposition', `inline; filename="${f.name.replace(/[^\w.\- ]+/g, '_')}"`).header('cache-control', 'private, no-store')
+    return reply.send(f.body)
+  })
 
   // ---------------------------------------------------------------- Leadership Endpoints (Admin, Shabib, Haseeb ONLY)
 

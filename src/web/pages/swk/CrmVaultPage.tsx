@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, get, post } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { HandoverCustody } from './HandoverCustody'
 import {
   ShieldCheck, Lock, PhoneCall, Upload, Users, Building2, Search,
   CheckSquare, Square, Send, RefreshCw, MapPinned, History, Settings2, X,
@@ -26,7 +27,7 @@ const DEFAULT_POLICY = {
 
 export default function CrmVaultPage() {
   const toast = useToast()
-  const [tab, setTab] = useState<'vault' | 'routes' | 'calls' | 'setup'>('vault')
+  const [tab, setTab] = useState<'custody' | 'vault' | 'routes' | 'calls' | 'setup'>(() => (new URLSearchParams(window.location.search).get('tab') === 'custody' ? 'custody' : 'vault'))
   const [summary, setSummary] = useState<any>(null)
   const [filters, setFilters] = useState<{ suggested_agents: string[]; divisions: string[]; communities: string[] }>({
     suggested_agents: [], divisions: [], communities: [],
@@ -288,6 +289,7 @@ export default function CrmVaultPage() {
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
         {[
+          { id: 'custody', label: 'Custody & Handover', icon: ShieldCheck },
           { id: 'vault', label: `Master Vault (${totals.total_properties || 0})`, icon: Building2 },
           { id: 'routes', label: `Daily Route & Audit Tracker (${summary?.route_tracker_count || 0})`, icon: MapPinned },
           { id: 'calls', label: `Masked Call & WA Logs (${summary?.masked_calls_count || 0})`, icon: History },
@@ -307,6 +309,8 @@ export default function CrmVaultPage() {
         })}
       </div>
 
+      {tab === 'custody' && <HandoverCustody onChanged={loadMeta} />}
+
       {/* TAB 1: MASTER VAULT */}
       {tab === 'vault' && (
         <div className="space-y-3">
@@ -325,6 +329,7 @@ export default function CrmVaultPage() {
               <option value="all">All Datasets</option>
               <option value="cluster_1920">Cluster 1,920 (Direct Phone)</option>
               <option value="territory_nov2026">Territories 1,680 (DLD Clean-Room)</option>
+              <option value="ejari_dialer_2026">Ejari 0–60D Dialer 2026 (7 Desks)</option>
             </select>
             <select value={suggestedAgent} onChange={e => { setSuggestedAgent(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
               <option value="all">All Excel Territories</option>

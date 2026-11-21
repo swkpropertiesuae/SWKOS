@@ -364,6 +364,31 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     CREATE INDEX ix_crm_mcall_prop ON crm_masked_call_logs(vault_property_id, created_at);
     CREATE INDEX ix_crm_mcall_agent ON crm_masked_call_logs(agent_user_id, created_at);
   ` },
+  { id: '012_custody_handover', sql: `
+    ALTER TABLE crm_vault_properties ADD COLUMN custody TEXT;
+    CREATE INDEX ix_crm_vault_custody ON crm_vault_properties(custody, source_dataset);
+    CREATE TABLE custody_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      staff_email TEXT,
+      contains_contacts INTEGER NOT NULL DEFAULT 0,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      sha256 TEXT NOT NULL,
+      bundle_offset INTEGER NOT NULL,
+      stage TEXT NOT NULL DEFAULT 'Admin Custody',
+      manager_released_at TEXT,
+      manager_released_by INTEGER,
+      recipient_user_id INTEGER,
+      staff_released_at TEXT,
+      staff_released_by INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX ix_custody_docs_recipient ON custody_documents(recipient_user_id, stage);
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

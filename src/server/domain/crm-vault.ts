@@ -10,6 +10,7 @@ import { notify } from '../notify'
 import { sendWhatsApp, normalizePhone } from '../integrations/whatsapp'
 import { SWK_STAFF_ACCOUNTS, canAccessCrmVault } from '../../shared/swk-staff-access'
 import type { SessionUser } from '../engine'
+import { custodyFilter } from './handover'
 
 export interface VisibleFieldsPolicy {
   show_owner_name: boolean
@@ -105,7 +106,7 @@ function formatDateCell(v: unknown): string {
 
 export interface RawVaultPropertyInput {
   external_deal_id: string
-  source_dataset: 'cluster_1920' | 'territory_nov2026' | 'custom_import'
+  source_dataset: 'cluster_1920' | 'territory_nov2026' | 'custom_import' | 'ejari_dialer_2026'
   source_sheet: string
   suggested_agent?: string
   agent_cluster_territory?: string
@@ -584,7 +585,7 @@ export function getVaultSummary(user: SessionUser) {
       SUM(CASE WHEN assigned_user_id IS NULL THEN 1 ELSE 0 END) AS unassigned_count,
       COALESCE(SUM(target_deal_value_aed), 0) AS total_deal_volume_aed,
       COALESCE(SUM(est_agency_commission_aed), 0) AS total_commission_pool_aed
-    FROM crm_vault_properties
+    FROM crm_vault_properties p WHERE 1=1${custodyFilter(user)}
   `)
   const bySuggested = q.all<any>(`
     SELECT
@@ -594,7 +595,7 @@ export function getVaultSummary(user: SessionUser) {
       SUM(CASE WHEN direct_mobile_enc IS NOT NULL AND direct_mobile_enc <> '' THEN 1 ELSE 0 END) AS with_phone,
       COALESCE(SUM(target_deal_value_aed), 0) AS volume_aed,
       COALESCE(SUM(est_agency_commission_aed), 0) AS commission_aed
-    FROM crm_vault_properties
+    FROM crm_vault_properties p WHERE 1=1${custodyFilter(user)}
     GROUP BY COALESCE(suggested_agent, 'Unassigned')
     ORDER BY total DESC
   `)
@@ -651,7 +652,7 @@ export function listVaultPropertiesForLeadership(
   const page = Math.max(1, Number(params.page) || 1)
   const pageSize = Math.min(200, Math.max(10, Number(params.pageSize) || 50))
   const offset = (page - 1) * pageSize
-  const whereSql = where.join(' AND ')
+  const whereSql = where.join(' AND ') + custodyFilter(user)
 
   const total = q.val<number>(`SELECT COUNT(*) FROM crm_vault_properties p WHERE ${whereSql}`, ...args) ?? 0
   const rows = q.all<any>(
@@ -696,6 +697,9 @@ export function assignVaultProperties(
   const policy = normalizeVisibleFields(payload.visible_fields)
   const policyJson = JSON.stringify(policy)
   const now = nowIso()
+
+  const held = q.val<number>(`SELECT COUNT(*) FROM crm_vault_properties WHERE custody = 'admin' AND id IN (${payload.property_ids.map(() => '?').join(',')})`, ...payload.property_ids) ?? 0
+  if (held) throw bad(`${held} of the selected leads are still in Admin Custody. The Admin must release them to the Operations Manager before they can be dispatched to staff.`)
 
   let updated = 0
   tx(() => {
