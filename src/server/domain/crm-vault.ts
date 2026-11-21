@@ -237,8 +237,8 @@ export function upsertVaultProperties(rows: RawVaultPropertyInput[]): { inserted
             direct_mobile_enc, direct_mobile_masked, direct_mobile_hash,
             secondary_phone_enc, secondary_phone_masked,
             email_address_enc, email_address_masked,
-            closing_strategy_playbook, extra_json, vault_status, created_at, updated_at
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            closing_strategy_playbook, extra_json, vault_status, created_at, updated_at, custody
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           r.external_deal_id, r.source_dataset, r.source_sheet, cleanStr(r.suggested_agent) || null, cleanStr(r.agent_cluster_territory) || null,
           r.agent_deal_rank ?? null, r.deal_division, cleanStr(r.dubai_area_community) || null, cleanStr(r.primary_area_dld) || null,
           cleanStr(r.master_project) || null, cleanStr(r.building_or_project) || null, cleanStr(r.exact_unit_door_no) || null, cleanStr(r.floor_or_zone) || null,
@@ -250,6 +250,7 @@ export function upsertVaultProperties(rows: RawVaultPropertyInput[]): { inserted
           encSec, maskedSec,
           encEmail, maskedEmail,
           cleanStr(r.closing_strategy_playbook) || null, extraJson, 'In Vault', now, now,
+          r.source_dataset === 'ejari_dialer_2026' ? 'admin' : null, // chain of custody: Admin releases to the Manager
         )
         inserted++
       }
@@ -340,6 +341,81 @@ function parseCsvLines(text: string): string[][] {
 }
 
 /** Parses an uploaded .xlsx or .csv Buffer (SWK 1920 Cluster Master, Territories Nov2026, individual Agent 320 sheets, or Daily Route CSV). */
+// ---------------------------------------------------------------- SWK 7 Desks Ejari 0–60D dialer workbooks
+const ejBlank = (v: unknown) => { const s = v == null ? '' : String(v).trim(); return s === '—' || s === '-' ? '' : s }
+const ejNum = (v: unknown) => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return ejBlank(v) && Number.isFinite(n) ? n : null }
+const ejInt = (v: unknown) => { const n = ejNum(v); return n == null ? null : Math.round(n) }
+const ejDate = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : ejBlank(v).slice(0, 32))
+const ej = { blank: ejBlank, num: ejNum, int: ejInt, date: ejDate }
+const EJARI_DIVISION: Record<string, string> = {
+  '1_FINISHING_NEXT_0_TO_30_DAYS': 'EJARI_FINISHING_0_30D',
+  '2_FINISHING_NEXT_31_TO_60_DAYS': 'EJARI_FINISHING_31_60D',
+}
+
+/** Sheets 03 (all 0–60D), 04 (active seekers) and 05 (vacant) of NN_<Name>_Ejari_30D_60D_Leasing_Dialer_Workbook.xlsx. Sheets 01/02 are subsets of 03. */
+function ejariDialerRows(sheet: string, data: unknown[][], filename: string): RawVaultPropertyInput[] {
+  const seeker = sheet.startsWith('04_')
+  if (!(sheet.startsWith('03_') || seeker || sheet.startsWith('05_'))) return []
+  const desk = path.basename(filename).split('_')[0]
+  const hdr = (data[0] ?? []).map(c => ej.blank(c))
+  const v = (r: unknown[], k: string) => { const i = hdr.indexOf(k); return i < 0 ? undefined : r[i] }
+  const out: RawVaultPropertyInput[] = []
+  for (const r of data.slice(1)) {
+    const id = ej.blank(v(r, 'Forensic_Client_ID'))
+    if (!id) continue
+    const deskLabel = ej.blank(v(r, 'Assigned_SWK_Leasing_Agent'))
+    const agent = (deskLabel.match(/—\s*([^(]+)/)?.[1] ?? '').trim().split(' ')[0]
+    const passing = ej.num(v(r, seeker ? 'Current_Or_Target_Rent_AED' : 'Passing_Ejari_Rent_AED'))
+    const window = ej.blank(v(r, seeker ? 'Seeker_Cohort' : 'Urgency_Window'))
+    out.push({
+      external_deal_id: `EJ26-${desk}-${id}`,
+      source_dataset: 'ejari_dialer_2026',
+      source_sheet: sheet,
+      suggested_agent: agent,
+      agent_cluster_territory: deskLabel,
+      agent_deal_rank: ej.int(ej.blank(v(r, 'Dialer_Call_Seq')).split('-').pop()),
+      deal_division: seeker ? 'ACTIVE_UNIT_SEEKER' : sheet.startsWith('05_') ? 'VACANT_RECENTLY_EXPIRED' : (EJARI_DIVISION[window] ?? 'EJARI_FINISHING_0_60D'),
+      dubai_area_community: ej.blank(v(r, seeker ? 'Current_Or_Target_Area' : 'Area_DLD_Community')),
+      master_project: ej.blank(v(r, 'Master_Project')),
+      building_or_project: ej.blank(v(r, seeker ? 'Current_Building_And_Door' : 'Current_Building_Tower')),
+      exact_unit_door_no: ej.blank(v(r, 'Exact_Unit_Door_No')),
+      floor_or_zone: ej.blank(v(r, 'Floor')),
+      property_layout_type: ej.blank(v(r, seeker ? 'Layout_Requirement' : 'Layout_Type')),
+      area_sqm: ej.num(v(r, 'Area_SqM')),
+      size_sqft: ej.num(v(r, 'Size_SqFt')),
+      urgency_or_deal_window: window,
+      target_deal_value_aed: ej.num(v(r, 'DLD_2026_Market_Rent_AED')),
+      current_or_benchmark_aed: passing,
+      est_agency_commission_aed: passing == null ? null : Math.round(passing * 0.05),
+      event_or_expiry_date: ej.date(v(r, seeker ? 'Lease_Expiry_Or_Inquiry_Date' : 'Ejari_Expiry_Date')),
+      days_to_event: ej.int(v(r, seeker ? 'Days_To_Move_Window' : 'Days_Until_Expiry')),
+      portal_or_source_status: ej.blank(v(r, 'Portal_Listing_Status')),
+      owner_name: ej.blank(v(r, 'Client_Full_Name')),
+      owner_entity_type: ej.blank(v(r, 'Entity_Type')),
+      owner_nationality: ej.blank(v(r, 'Nationality')),
+      direct_mobile: ej.blank(v(r, 'Direct_Mobile_WhatsApp')),
+      secondary_phone: ej.blank(v(r, 'Secondary_Phone')),
+      email_address: ej.blank(v(r, 'Email_Address')),
+      closing_strategy_playbook: ej.blank(v(r, 'Leasing_First_Show_Playbook')),
+      extra: Object.fromEntries(Object.entries({
+        dialer_seq: ej.blank(v(r, 'Dialer_Call_Seq')),
+        dld_property_id: ej.blank(v(r, 'DLD_Property_ID')),
+        unit_match_precision: ej.blank(v(r, 'Unit_Match_Precision')),
+        dld_2026_audit: ej.blank(v(r, 'DLD_2026_Tx_And_Renewal_Audit')),
+        under_market_pct: ej.num(v(r, 'Under_Market_Discount_Pct')),
+        rera_increase_pct: ej.num(v(r, 'RERA_Statutory_Increase_Pct')),
+        rera_rent_shock_aed: ej.num(v(r, 'RERA_Annual_Rent_Shock_AED')),
+        arbitrage: ej.blank(v(r, 'Arbitrage_Classification')),
+        doors_held: ej.int(v(r, 'Client_Portfolio_Doors_Held')),
+        rent_roll_aed: ej.num(v(r, 'Client_Total_Annual_Rent_Roll_AED')),
+        capacity_tier: ej.blank(v(r, 'Client_Capacity_Tier')),
+        matched_units: ej.blank(v(r, 'First_Show_Matched_Available_Leasing_Units')),
+      }).filter(([, x]) => x !== '' && x != null)),
+    })
+  }
+  return out
+}
+
 export async function parseAndImportVaultBuffer(buf: Buffer, filename: string): Promise<{ properties: { inserted: number; updated: number; total: number }; routes: { inserted: number; updated: number; total: number } }> {
   const lower = filename.toLowerCase()
   if (lower.endsWith('.csv')) {
@@ -381,6 +457,12 @@ export async function parseAndImportVaultBuffer(buf: Buffer, filename: string): 
     if (rawRows.length < 2) continue
     const hdr = rawRows[0].map((c: unknown) => cleanStr(c))
     const col = (name: string) => hdr.indexOf(name)
+
+    // Format 3: SWK 7 Desks Ejari 0–60D dialer workbook (new leads land in Admin Custody)
+    if (hdr.includes('Forensic_Client_ID') && hdr.includes('Dialer_Call_Seq')) {
+      props.push(...ejariDialerRows(sheet, rawRows as unknown[][], filename))
+      continue
+    }
 
     // Format 1: SWK_6_Agents_1920_Cluster_Closing_Deals_Master & Agent_*_320_Closing_Deals
     if (hdr.includes('Assigned_SWK_Agent') && hdr.includes('Deal_Division')) {

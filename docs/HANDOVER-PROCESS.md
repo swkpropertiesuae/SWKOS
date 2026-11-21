@@ -23,7 +23,7 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
 ## 3. Procedure
 
 ### Step 1 – Intake (Admin)
-1. The lead data arrives encrypted and loads into **Admin Custody** automatically when the server starts. Admin receives a notification.
+1. Admin imports the desk dialer workbooks (`NN_<Name>_Ejari_30D_60D_Leasing_Dialer_Workbook.xlsx`) under *CRM Property Vault → Import Excel*. New leads land in **Admin Custody**. Importing the same files again updates the leads without changing their stage.
 2. Admin checks the counts per desk against the source roster. For the November 2026 handover these are Meenakshi 2,300 · Saifullah 2,785 · Fareed 2,322 · Shahid 2,528 · Talha 1,909 · Umar 2,273 · Sanketh 1,136, for a total of **15,253**.
 3. Admin uploads the documents (playbooks, field guides, calling booklets, roster index). Dialer workbooks are not uploaded: their leads are already in the CRM Vault, and the system refuses them on *Custody & Handover → Upload documents*. SWK file names are recognised automatically; for any other file, Admin chooses the type and staff member first. Files are stored in Cloudflare R2, never in the code repository.
 4. Admin opens a sample of documents (*View*) to confirm they are complete and correct. A wrong file is deleted or replaced by uploading a file with the same name; a replaced document returns to Admin Custody.
@@ -51,13 +51,10 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
 - **Segregation of duties:** Admin cannot skip the Manager, and the Manager cannot take data out of Admin Custody.
 - **Least privilege:** staff see only their own dispatched leads and view-only copies of their released documents. They never receive a file.
 - **Audit trail:** every release, dispatch, recall and document download is logged with user and time. See *Administration → Audit*, and the *Access & usage* tab on each employee record.
-- **Encryption:** data at rest is AES-256 encrypted. The handover file opens only with the `SWK_HANDOVER_KEY` server secret.
+- **Encryption:** client phone numbers and e-mails are stored AES-256 encrypted in the database and shown unmasked only to Owner, Admin and the Operations Manager.
 - **No side channels:** lead data must not be exported, screenshotted or forwarded outside SWK OS.
 
-## 5. Loading a new handover (technical)
+## 5. Loading a new handover
 
-1. Put the source files in one folder, then run:
-   `SWK_HANDOVER_KEY=<64-hex> npx tsx tools/data/build-handover-seed.ts <folder>`
-2. Commit `data-seed/swk-handover.enc.bin` (leads only, about 2 MB) and deploy. On first start the new batch lands in Admin Custody. Leads that were already released or dispatched keep their stage.
-3. Documents are not part of this file. Admin uploads them in SWK OS (step 3). This requires Cloudflare R2 to be switched on under *Settings → Storage*. The upload is refused without it, because the Cloudflare container's own disk is wiped on every restart.
-4. The key is stored only as a Cloudflare secret. It is never kept in the repository, chat or e-mail.
+1. Leads: Admin imports the workbooks in SWK OS (step 1). No deployment is needed.
+2. Documents: Admin uploads them in SWK OS (step 3). On the Cloudflare server this requires Cloudflare R2 under *Settings → Storage*. The upload is refused without it, because the container's own disk is wiped on every restart.

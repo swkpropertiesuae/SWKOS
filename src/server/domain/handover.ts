@@ -1,7 +1,6 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import zlib from 'node:zlib'
 import { execFileSync } from 'node:child_process'
 import type { Readable } from 'node:stream'
 import { q, tx } from '../db'
@@ -10,12 +9,11 @@ import { openStored, persistUpload, removeStored, useR2 } from '../integrations/
 import { bad, forbidden, notFound, nowIso } from '../util'
 import { notify } from '../notify'
 import { canAccessCrmVault, canOpenEmployeeRecords, SWK_STAFF_ACCOUNTS } from '../../shared/swk-staff-access'
-import { upsertVaultProperties, type RawVaultPropertyInput } from './crm-vault'
 import type { SessionUser } from '../engine'
 
 /**
  * Controlled handover of lead data and staff documents (chain of custody):
- *   1. Admin Custody   – loaded into the Admin account; only Owner and Admin see it.
+ *   1. Admin Custody   – leads imported (CRM Vault → Import) and documents uploaded by the Admin; only Owner and Admin see them.
  *   2. With Manager    – Owner/Admin release a desk (or everything) to the Operations Manager.
  *   3. Staff           – the Manager dispatches leads with a masking policy (CRM Vault assign) and
  *                        releases each personal document to its named staff member.
@@ -46,44 +44,11 @@ export function guessDocMeta(name: string): HandoverDocMeta | null {
 }
 
 export const HANDOVER_DATASET = 'ejari_dialer_2026'
-const BUNDLE = path.resolve(process.cwd(), 'data-seed', 'swk-handover.enc.bin')
 
 export const isTopCustodian = (u: SessionUser | null | undefined) => canOpenEmployeeRecords(u as any)
 /** Rows in Admin Custody are hidden from everyone except Owner and Admin. */
 export const custodyFilter = (u: SessionUser, alias = 'p') => (isTopCustodian(u) ? '' : ` AND (${alias}.custody IS NULL OR ${alias}.custody <> 'admin')`)
 
-
-function bundleKey(): Buffer | null {
-  const k = String(process.env.SWK_HANDOVER_KEY || '').trim()
-  return /^[0-9a-f]{64}$/i.test(k) ? Buffer.from(k, 'hex') : null
-}
-
-function readBundle(key: Buffer, raw: Buffer): { leads: RawVaultPropertyInput[] } {
-  const d = crypto.createDecipheriv('aes-256-gcm', key, raw.subarray(0, 12))
-  d.setAuthTag(raw.subarray(12, 28))
-  return JSON.parse(zlib.gunzipSync(Buffer.concat([d.update(raw.subarray(28)), d.final()])).toString('utf8'))
-}
-
-/** Start-up: loads a new bundle once into Admin Custody. Leads already released or dispatched keep their custody. */
-export function loadHandoverBundle(): { loaded: boolean; leads?: number; reason?: string } {
-  const key = bundleKey()
-  if (!key) return { loaded: false, reason: 'SWK_HANDOVER_KEY not set' }
-  if (!fs.existsSync(BUNDLE)) return { loaded: false, reason: 'bundle not present' }
-  const raw = fs.readFileSync(BUNDLE)
-  const sha = crypto.createHash('sha256').update(raw).digest('hex')
-  if (q.val(`SELECT value FROM settings WHERE key = 'handover:bundle'`) === sha) return { loaded: false, reason: 'already loaded' }
-  const { leads } = readBundle(key, raw)
-  const known = new Set(q.all<{ external_deal_id: string }>(`SELECT external_deal_id FROM crm_vault_properties WHERE source_dataset = ?`, HANDOVER_DATASET).map(r => r.external_deal_id))
-  upsertVaultProperties(leads)
-  const now = nowIso()
-  tx(() => {
-    for (const l of leads) if (!known.has(l.external_deal_id)) q.run(`UPDATE crm_vault_properties SET custody = 'admin' WHERE external_deal_id = ?`, l.external_deal_id)
-    q.run(`INSERT INTO settings(key, value, updated_at) VALUES ('handover:bundle', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, sha, now)
-  })
-  const admin = q.val<number>(`SELECT id FROM users WHERE lower(email) = 'admin@swk.properties' AND deleted_at IS NULL`)
-  notify(admin, 'New handover received into Admin Custody', `${leads.length} Ejari leads are waiting for review and release to the Operations Manager. Upload the matching documents on the Custody & Handover tab.`, '/crm-vault?tab=custody', 'approval')
-  return { loaded: true, leads: leads.length }
-}
 
 const audit = (u: SessionUser, action: string, label: string, changes: unknown) =>
   q.run(`INSERT INTO audit_log(at, user_id, user_name, entity, record_id, record_label, action, changes) VALUES (?,?,?,?,?,?,?,?)`, nowIso(), u.id, u.name, 'custody_handover', null, label, action, JSON.stringify(changes))
