@@ -14,7 +14,7 @@ import { generatePayroll,lastIssued } from '../domain/misc'
 import { destroyUserSessions,loadUser,hashPassword,validatePasswordStrength } from '../auth'
 import crypto from 'node:crypto'
 import { ENTITY_LIST } from '../../shared/entities'
-import { isOwnerSwkUser } from '../../shared/swk-staff-access'
+import { isOwnerSwkUser,canOpenEmployeeRecords } from '../../shared/swk-staff-access'
 
 export default async function (app: FastifyInstance) {
   app.post('/api/workflow-runs/:id/retry',async req=>{
@@ -93,6 +93,26 @@ export default async function (app: FastifyInstance) {
     return { total, page, pageSize: size, rows }
   })
   app.get('/api/admin/login-events', async (req) => { need(req, 'admin', 'view'); return q.all(`SELECT * FROM login_events ORDER BY id DESC LIMIT 200`) })
+
+  /** Owner / Admin only: the role, module rights and recent use of the user linked to an employee. */
+  app.get('/api/admin/employees/:id/access', async (req) => {
+    if (!canOpenEmployeeRecords(req.user)) throw forbidden('Only the Owner and the Admin can see staff access.')
+    const emp = q.get(`SELECT id, name, email, user_id FROM employees WHERE id = ? AND deleted_at IS NULL`, idOf((req.params as any).id))
+    if (!emp) throw notFound('Employee not found')
+    const userId = emp.user_id ?? q.val<number>(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, String(emp.email || '').toLowerCase())
+    if (!userId) return { employee: emp, user: null }
+    const u = loadUser(userId)
+    const row = q.get(`SELECT active, last_login_at, locked_until, failed_logins, must_change_password, totp_secret IS NOT NULL AS totp FROM users WHERE id = ?`, userId)
+    const since = new Date(Date.now() - 30 * 864e5).toISOString()
+    return {
+      employee: emp,
+      user: { id: userId, email: u?.email, role: u?.role_name, permissions: u?.permissions ?? {}, active: !!row?.active, lastLogin: row?.last_login_at, lockedUntil: row?.locked_until, failedLogins: row?.failed_logins ?? 0, mustChangePassword: !!row?.must_change_password, totp: !!row?.totp },
+      sessions: q.val<number>(`SELECT COUNT(*) FROM sessions WHERE user_id = ? AND expires_at > ?`, userId, nowIso()) ?? 0,
+      logins: q.all(`SELECT at, success, reason, ip, user_agent FROM login_events WHERE user_id = ? ORDER BY id DESC LIMIT 15`, userId),
+      usage: q.all(`SELECT entity, action, COUNT(*) AS n FROM audit_log WHERE user_id = ? AND at >= ? GROUP BY entity, action ORDER BY n DESC LIMIT 30`, userId, since),
+      recent: q.all(`SELECT at, entity, record_label, action FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 20`, userId),
+    }
+  })
 
   // ---- user administration
   /** An administrator with limited rights must not be able to lock out, unlock or strip 2-step verification from a full administrator. */

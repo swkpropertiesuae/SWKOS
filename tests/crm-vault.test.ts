@@ -38,8 +38,8 @@ async function run() {
   const admin = userByEmail('admin@swk.properties')
   const haseeb = userByEmail('haseeb@swk.properties')
   const saifullah = userByEmail('saifullah@swk.properties')
-  const fareed = userByEmail('fareed@swk.properties')
-  const sanketh = userByEmail('sanketh@swk.properties')
+  const fareed = userByEmail('fareed@swk.rent')
+  const sanketh = userByEmail('sanketh@swk.rent')
 
   // 1. Load encrypted seed bundle
   const seeded = loadEncryptedVaultSeedIfConfigured()

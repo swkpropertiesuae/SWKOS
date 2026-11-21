@@ -5,7 +5,7 @@ import { nowIso,safeJson,bad,HttpError } from './util'
 import { decryptSecret } from './settings'
 import type { SessionUser,Perms } from './engine'
 import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS,SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
-import { ensureHardcodedSwkStaffAccounts } from './seed'
+import { syncSwkStaffRoster } from './seed'
 
 // ---------------------------------------------------------------- passwords (scrypt)
 const N = 16384, R = 8, P = 1, KEYLEN = 64
@@ -94,7 +94,8 @@ export function attemptLogin(email: string, password: string, totp: string | und
   if (!row && staffMatch) {
     row = q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, staffMatch.email.toLowerCase())
     if (!row) {
-      try { ensureHardcodedSwkStaffAccounts() } catch { /* ignore */ }
+      // creates only the missing account; never resets anyone else's password
+      try { syncSwkStaffRoster() } catch { /* ignore */ }
       row =
         q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, e) ??
         q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, staffMatch.email.toLowerCase())

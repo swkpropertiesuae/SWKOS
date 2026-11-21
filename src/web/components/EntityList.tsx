@@ -5,6 +5,7 @@ import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X } from 'lucide-react'
 import type { FieldDef } from '@shared/types'
 import { optValue } from '@shared/types'
+import { canOpenEmployeeRecords } from '@shared/swk-staff-access'
 import { useMeta,type MetaEntity } from '../lib/meta'
 import { del,get,post,put,downloadUrl } from '../lib/api'
 import { CellValue } from './Fields'
@@ -33,7 +34,7 @@ export function listColumns(def: MetaEntity): FieldDef[] {
 }
 
 export function EntityList({ entity, preset, embedded, title, hideNew, createPresets, bulkActions, headerExtra, onOpen, pageSizeDefault = 25 }: { entity: string; preset?: { field: string; op: string; value: any }[]; embedded?: boolean; title?: ReactNode; hideNew?: boolean; createPresets?: Record<string, any>; bulkActions?: { label: ReactNode; run: (ids: number[]) => void | Promise<void> }[]; headerExtra?: ReactNode; onOpen?: (rec: any) => void; pageSizeDefault?: number }) {
-  const { def: getDef, can } = useMeta()
+  const { def: getDef, can, me } = useMeta()
   const def = getDef(entity)
   const nav = useNavigate(), qc = useQueryClient(), toast = useToast(), dlg = useDialogs()
   const [sp, setSp] = useSearchParams()
@@ -69,7 +70,8 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
   const statusOpts = def.statusField ? (def.fields.find(f => f.name === def.statusField)?.options ?? []).map(optValue) : []
   const rows = query.data?.rows ?? []
   const refresh = () => qc.invalidateQueries({ queryKey: ['list', entity] })
-  const open = (r: any) => (onOpen ? onOpen(r) : nav(recordPath(entity, r.id)))
+  const lockedRows = entity === 'employees' && !canOpenEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id })
+  const open = (r: any) => (lockedRows ? undefined : onOpen ? onOpen(r) : nav(recordPath(entity, r.id)))
   const allSel = rows.length > 0 && rows.every(r => selected.has(r.id))
 
   const runBulk = async (kind: 'delete' | 'status', value?: string) => {
@@ -126,7 +128,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
               </tr></thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.id} className="clickable" onClick={() => open(r)}>
+                  <tr key={r.id} className={lockedRows ? undefined : 'clickable'} onClick={() => open(r)}>
                     <td onClick={e => e.stopPropagation()}><input type="checkbox" aria-label="Select row" checked={selected.has(r.id)} onChange={e => setSelected(s => { const n = new Set(s); e.target.checked ? n.add(r.id) : n.delete(r.id); return n })} /></td>
                     {cols.map((f, i) => <td key={f.name} className={['money', 'number', 'int', 'percent'].includes(f.type) ? 'num' : ''}>{i === 0 ? <Link to={recordPath(entity, r.id)} className="link" onClick={e => e.stopPropagation()}><CellValue f={f} rec={r} statusField={def.statusField} /></Link> : <CellValue f={f} rec={r} statusField={def.statusField} />}</td>)}
                     {canDelete && <td onClick={e => e.stopPropagation()}><button className="btn red sm" aria-label={`Delete ${def.label} ${r._title ?? r.id}`} onClick={() => void deleteOne(r)}><Trash2 size={14} /> Delete</button></td>}
