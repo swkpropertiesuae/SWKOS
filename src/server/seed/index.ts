@@ -12,8 +12,8 @@ import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF
 import crypto from 'node:crypto'
 
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
-  // Production: every account except the Manager uses the name pattern (Shabib@swk2026). Dev and tests keep their fixture passwords.
-  if (config.isProd && acc.roleName !== 'Manager') return swkPatternPassword(acc.email)
+  // Production: only low-privilege staff start on the name pattern, and must change it at first sign-in. Owner, Admin and Manager never do: the pattern is readable in the repo.
+  if (config.isProd && !acc.fullAccess && acc.roleName !== 'Manager') return swkPatternPassword(acc.email)
   if (acc.roleName === 'Owner') return config.accounts.ownerPassword
   if (acc.roleName === 'Admin') return config.accounts.adminSwkPassword
   if (process.env.SWK_DEV_FIXTURE_PASSWORD) return process.env.SWK_DEV_FIXTURE_PASSWORD
@@ -276,10 +276,10 @@ export function applySwk2026Passwords() {
   if (!config.isProd || q.val(`SELECT 1 FROM settings WHERE key = ?`, key)) return
   let n = 0
   for (const acc of SWK_STAFF_ACCOUNTS) {
-    if (acc.roleName === 'Manager') continue
+    if (acc.roleName === 'Manager' || acc.fullAccess) continue
     const row = q.get(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, acc.email.toLowerCase())
     if (!row) continue
-    q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(swkPatternPassword(acc.email)), nowIso(), row.id)
+    q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(swkPatternPassword(acc.email)), nowIso(), row.id)
     q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
     n++
   }
@@ -338,7 +338,7 @@ export function syncSwkStaffRoster() {
     const pw = resolveStaffAccountPassword(acc)
     userId = createRecord(getDef('users'), {
       name: acc.name, email: acc.displayEmail, password: pw, role_id: staffRoleId, branch_id: dxb,
-      department_id: dept(acc.departmentCode), designation: acc.designation, active: true, must_change_password: !config.isProd,
+      department_id: dept(acc.departmentCode), designation: acc.designation, active: true, must_change_password: true,
     }, SYSTEM_CTX).id
     const empId = q.val<number>(`SELECT id FROM employees WHERE (emp_no = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`, acc.empNo, acc.email.toLowerCase())
     if (empId) q.run(`UPDATE employees SET user_id = ?, email = ?, updated_at = ? WHERE id = ?`, userId, acc.displayEmail, nowIso(), empId)
@@ -466,7 +466,7 @@ export function ensureHardcodedSwkStaffAccounts() {
       })
       userId = created.id
       const envKey = acc.roleName === 'Owner' ? 'OWNER_PASSWORD' : acc.roleName === 'Admin' ? 'ADMIN_SWK_PASSWORD' : acc.roleName === 'Manager' ? 'MANAGER_PASSWORD' : 'BDM_PASSWORD'
-      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD && !(config.isProd && acc.roleName !== 'Manager')) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
+      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD && !(config.isProd && !acc.fullAccess && acc.roleName !== 'Manager')) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
       q.run(
         `UPDATE users SET password_hash = ?, must_change_password = 0, active = 1, role_id = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`,
         pwHash,
