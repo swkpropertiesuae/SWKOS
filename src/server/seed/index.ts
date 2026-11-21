@@ -259,15 +259,22 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
  */
 /** A NEW admin password set as an environment secret takes effect on the next container start. The same secret is applied only once, so a password set later (Shabib@swk2026 pattern, Users page) is not overwritten on every restart. Other accounts keep the password they have. */
 export function applyConfiguredPasswords() {
-  const pw = process.env.ADMIN_SWK_PASSWORD || process.env.ADMIN_PASSWORD
-  if (!pw) return
-  const mark = crypto.createHash('sha256').update('admin-secret:' + pw).digest('hex')
-  if (q.val(`SELECT value FROM settings WHERE key = 'pwsecret:admin'`) === mark) return
-  q.run(`INSERT INTO settings(key, value, updated_at) VALUES ('pwsecret:admin', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, mark, nowIso())
-  const row = q.get(`SELECT id, password_hash FROM users WHERE lower(email) = 'admin@swk.properties' AND deleted_at IS NULL`)
-  if (!row || verifyPassword(pw, row.password_hash)) return
-  q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
-  console.log('Password for admin@swk.properties set from its environment secret.')
+  // The Admin cannot change the Owner (by design), so the Owner password has its own environment secret.
+  const targets: [string | undefined, string, string, string][] = [
+    [process.env.ADMIN_SWK_PASSWORD || process.env.ADMIN_PASSWORD, 'admin@swk.properties', 'pwsecret:admin', 'admin-secret:'],
+    [process.env.OWNER_PASSWORD, 'shabib@swk.properties', 'pwsecret:owner', 'owner-secret:'],
+  ]
+  for (const [pw, email, key, salt] of targets) {
+    if (!pw) continue
+    const mark = crypto.createHash('sha256').update(salt + pw).digest('hex')
+    if (q.val(`SELECT value FROM settings WHERE key = ?`, key) === mark) continue
+    q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, key, mark, nowIso())
+    const row = q.get(`SELECT id, password_hash FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, email)
+    if (!row || verifyPassword(pw, row.password_hash)) continue
+    q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
+    q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
+    console.log(`Password for ${email} set from its environment secret.`)
+  }
 }
 
 /** Production, once: every hardcoded account except the Manager (Haseeb) gets the name pattern password (Shabib@swk2026, Admin@swk2026, Talha@swk2026 …). Their open sessions end. */
