@@ -190,8 +190,12 @@ async function main() {
   ok('a person with the Manager name but another email cannot open, regenerate or switch the code', !!imp.id && (await impApi.get('/api/swk-ops/reception-token')).status === 403 && (await impApi.post('/api/swk-ops/reception-token/regenerate', {})).status === 403 && (await impApi.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).status === 403)
   const early = await checkin('rota1@a.example', keyA, t1)
   ok('check-in is off until the office network is locked', early.status === 403 && /not set up/i.test(early.data.error ?? ''), early)
-  const lock = await hm.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })
-  ok('manager locks the office network', lock.status === 200 && lock.data.office_ip_locked === true, lock)
+  ok('the Manager cannot lock the office network (Admin only)', (await hm.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })).status === 403)
+  const lock = await a.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })
+  ok('the Admin locks the office network', lock.status === 200 && lock.data.office_ip_locked === true, lock)
+  ok('the office network is locked once: a second lock is refused until it is cleared', (await a.post('/api/swk-ops/attendance-setup', { lock_current_ip: true })).status === 409)
+  await hm.put('/api/admin/settings', { office_wifi_public_ips: '' })
+  ok('the Manager cannot clear the locked network through the general settings either', String((await a.get('/api/swk-ops/attendance-setup')).data.public_ips ?? '') !== '')
   const off = await checkin('rota1@a.example', keyA, await code(), {}, { 'cf-connecting-ip': '203.0.113.77' })
   ok('any other network is refused (mobile data, other Wi-Fi)', off.status === 403 && /office/i.test(off.data.error ?? ''), off)
   ok('a made-up code is refused', (await checkin('rota1@a.example', keyA, 'SWK1.' + 'A'.repeat(60))).status === 400)
@@ -241,7 +245,7 @@ async function main() {
   ok('the fixed code works with the office network, own device and password', fxIn.status === 200 && fxIn.data.verification_summary?.verified_by === 'Office Wi-Fi', fxIn.data)
   const fx2 = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
   ok('after regenerating, the old printed code is refused', fx2 !== fx && (await checkin('rota3@a.example', keyD, fx)).status === 400)
-  const cleared = await hm.post('/api/swk-ops/attendance-setup', { clear_ips: true })
+  const cleared = await a.post('/api/swk-ops/attendance-setup', { clear_ips: true })
   ok('clearing the locked network switches check-in off', cleared.data.office_ip_locked === false, cleared.data)
 
   const pulse = await a.get('/api/dashboard/pulse')

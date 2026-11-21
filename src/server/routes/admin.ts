@@ -14,7 +14,7 @@ import { generatePayroll,lastIssued } from '../domain/misc'
 import { destroyUserSessions,loadUser,hashPassword,validatePasswordStrength } from '../auth'
 import crypto from 'node:crypto'
 import { ENTITY_LIST } from '../../shared/entities'
-import { isOwnerSwkUser,canOpenEmployeeRecords } from '../../shared/swk-staff-access'
+import { isOwnerSwkUser,isAdminSwkUser,canOpenEmployeeRecords } from '../../shared/swk-staff-access'
 
 export default async function (app: FastifyInstance) {
   app.post('/api/workflow-runs/:id/retry',async req=>{
@@ -49,6 +49,8 @@ export default async function (app: FastifyInstance) {
     const patch = { ...(req.body as Record<string, any>) }
     for (const k of SECRET_SETTINGS) if (patch[k] === '********') delete patch[k]
     delete patch.mail_accounts; delete patch.supabase_cursors; delete patch.seeded
+    // the office Wi-Fi and GPS lock belong to the Admin alone (Settings, Attendance Wi-Fi)
+    if (!isAdminSwkUser(req.user)) for (const k of Object.keys(patch)) if (/^office_(wifi|gps)_/.test(k)) delete patch[k]
     const num = ['quote_validity_days', 'min_margin_pct', 'bill_approval_limit', 'payment_approval_limit', 'weight_divisor_air', 'weight_divisor_courier', 'sanctions_review_days', 'free_days_default', 'smtp_port', 'aml_cash_threshold', 'aml_filing_days']
     for (const k of num) if (k in patch && patch[k] !== '') { const v = Number(patch[k]); if (!Number.isFinite(v) || v < 0) throw bad(`${k} must be a non-negative number`); patch[k] = v }
     if ('company_trn' in patch && patch.company_trn && !/^\d{15}$/.test(String(patch.company_trn).replace(/\s/g, ''))) throw bad('A UAE TRN has 15 digits')
