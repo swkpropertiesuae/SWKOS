@@ -8,7 +8,7 @@ import { getSetting,setSettings } from '../settings'
 import { attemptLogin,destroyUserSessions,hashPassword } from '../auth'
 import { currentQrToken,qrTokenValid,regenerateFixedQr,setQrMode,checkPasswordForCheckin,deviceGate,newChallenge,verifyDeviceProof } from '../domain/attendance-security'
 import { config } from '../config'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,isOwnerSwkUser } from '../../shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,isAdminSwkUser,isOwnerSwkUser } from '../../shared/swk-staff-access'
 import { checkEmployeeAndDocumentExpiries,computeMonthlyTargetSummaries,notifyEmployeeTargets } from '../domain/compliance'
 
 export function computeDubaiShiftInfo(now = new Date(), clientVariableHours = false) {
@@ -1407,13 +1407,15 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   app.get('/api/public/reception-qr/wifi-config', async (req) => publicWifi(getWifiCfg(resolveClientIp(req))))
 
   const saveWifiConfig = async (req: any) => {
-    if (!canPrintReceptionQr(req.user)) {
-      throw new HttpError(403, 'Only Owner (Shabib Siraj) or Mohammad Haseeb can modify Office Attendance QR configuration.')
+    if (!isAdminSwkUser(req.user)) {
+      throw new HttpError(403, 'Only the Admin can lock or change the office Wi-Fi. Open Settings, Attendance Wi-Fi.')
     }
     const b = (req.body ?? {}) as Record<string, any>
     const clientIp = resolveClientIp(req)
     if (b.clear_ips) b.office_wifi_public_ips = ''
     if (b.lock_current_ip && clientIp) {
+      // locked once: changing it means clearing first, both done by the Admin in Settings
+      if (String(b.office_wifi_public_ips ?? getSetting('office_wifi_public_ips') ?? '').trim()) throw new HttpError(409, 'The office network is already locked. To change it, clear it first in Settings, Attendance Wi-Fi.')
       // an IPv6 phone gets a different address each time, so lock the network prefix (first four groups); IPv4 locks the exact address
       const clean = clientIp.replace(/^::ffff:/, '')
       const lockVal = clean.includes(':') ? clean.split(':').slice(0, 4).join(':') + ':' : clean
