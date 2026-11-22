@@ -4,7 +4,7 @@ LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rock
 UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare
 } from 'lucide-react';
 import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
@@ -16,6 +16,9 @@ export type NavSection = { key: string; label: string; items: NavItem[] }
   * Every section orders its app icons step-by-step according to daily real estate workflow.
   */
 export const SWK_NAV: NavSection[] = [
+  { key: 'messages', label: 'Inside', items: [
+    { label: 'Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, groups & announcements' },
+  ] },
   { key: 'command', label: 'Dashboards', items: [
     { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, module: 'dashboard', desc: 'Daily business summary' },
     { label: 'Deal Pipeline', to: '/pipeline', icon: KanbanSquare, module: 'sales', desc: 'Track deals step by step' },
@@ -48,7 +51,6 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Leads', to: '/e/leads', icon: UserPlus, module: 'crm', desc: 'Step 1 · New enquiries' },
     { label: 'Phone Calls', to: '/e/voice_calls', icon: PhoneCall, module: 'crm', desc: 'Step 2 · Call log & notes' },
     { label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle, module: 'crm', desc: 'Step 3 · Live WhatsApp chat' },
-    { label: 'Team Chat', to: '/chat', icon: MessageCircle, desc: 'Message colleagues' },
     { label: 'Email', to: '/email', icon: Mail, module: 'crm', desc: 'Step 4 · Client email inbox' },
     { label: 'Follow-Ups', to: '/e/activities', icon: CalendarCheck, module: 'crm', desc: 'Step 5 · Tasks & callbacks' },
     { label: 'Opportunities', to: '/e/opportunities', icon: Target, module: 'crm', desc: 'Step 6 · Active requirements' },
@@ -175,6 +177,7 @@ export function findNav(pathname: string) {
 /** Launcher ("Apps") presentation for each nav section — one simple icon tile per app on the post-sign-in home screen. */
 export type AppTone = 'navy' | 'champ' | 'oasis' | 'ocean' | 'dune' | 'plum'
 export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: AppTone }> = {
+  messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessagesSquare, tone: 'oasis' },
   command: { blurb: 'Overview, deal pipeline, approvals & calendar', icon: LayoutDashboard, tone: 'navy' },
   inventory: { blurb: 'Submissions, owner permits, units & listings', icon: Building2, tone: 'champ' },
   clients: { blurb: 'Leads, calls, WhatsApp, email & follow-ups', icon: Users, tone: 'oasis' },
@@ -193,6 +196,15 @@ export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: A
 export type LauncherApp = { key: string; label: string; blurb: string; icon: LucideIcon; tone: AppTone; items: NavItem[]; landing: string }
 
 export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
+  {
+    key: 'messages',
+    label: 'Inside',
+    blurb: 'Team chats, project groups, announcements & attendance reports',
+    icon: MessagesSquare,
+    tone: 'oasis',
+    landing: '/chat',
+    items: [{ label: 'Inside Messenger', to: '/chat', icon: MessagesSquare, desc: 'Team chats, groups & announcements' }],
+  },
   {
     key: 'attendance',
     label: 'Attendance Check-In',

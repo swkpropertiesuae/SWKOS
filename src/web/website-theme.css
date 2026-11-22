@@ -142,3 +142,5 @@ table.grid tbody tr:hover td { background: #f8f8f8; }
 .swk-launch-hero h1, .swk-dash-title { font-family: var(--font-display) !important; font-weight: 500 !important; letter-spacing: -0.035em !important; }
 .swk-launch-hero { background: #121212 !important; }
 .web-btn::before, .web-btn::after { border-color: rgba(11, 38, 64, 0.35); }
+@media (max-width: 640px) { .swk-top-title { display: none; } }
+.no-focus-outline:focus-visible { outline: none; }

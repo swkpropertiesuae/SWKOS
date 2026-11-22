@@ -393,6 +393,34 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     ALTER TABLE custody_documents ADD COLUMN stored_name TEXT;
     ALTER TABLE custody_documents ADD COLUMN page_names TEXT;
   ` },
+  { id: '014_inside_messenger', sql: `
+    ALTER TABLE chat_threads ADD COLUMN description TEXT;
+    ALTER TABLE chat_threads ADD COLUMN announce INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chat_threads ADD COLUMN system_key TEXT;
+    ALTER TABLE chat_members ADD COLUMN role TEXT NOT NULL DEFAULT 'member';
+    ALTER TABLE chat_members ADD COLUMN last_delivered_id INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chat_members ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chat_members ADD COLUMN muted INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chat_members ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chat_members ADD COLUMN joined_at TEXT;
+    ALTER TABLE chat_messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text';
+    ALTER TABLE chat_messages ADD COLUMN reply_to_id INTEGER;
+    ALTER TABLE chat_messages ADD COLUMN forwarded INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chat_messages ADD COLUMN file_stored TEXT;
+    ALTER TABLE chat_messages ADD COLUMN file_name TEXT;
+    ALTER TABLE chat_messages ADD COLUMN file_mime TEXT;
+    ALTER TABLE chat_messages ADD COLUMN file_size INTEGER;
+    ALTER TABLE chat_messages ADD COLUMN edited_at TEXT;
+    ALTER TABLE chat_messages ADD COLUMN deleted_at TEXT;
+    CREATE TABLE chat_reactions (
+      message_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (message_id, user_id)
+    );
+    CREATE INDEX chat_members_user ON chat_members(user_id);
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

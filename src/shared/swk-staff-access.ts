@@ -415,6 +415,7 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/ai',
     '/profile',
     '/team',
+    '/chat',
     '/my-deals',
     '/workspace-tools',
     '/handover',
