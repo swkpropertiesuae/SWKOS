@@ -1,5 +1,7 @@
 # SWK Properties OS — Operations Manager’s Master Handbook (Mohammad Haseeb)
 
+> **Current system notes (November 2026).** Where this handbook differs, these points apply: production runs on AWS Lightsail (Stockholm), not Cloudflare or Oracle ([docs/DEPLOY-FREE.md](DEPLOY-FREE.md)); the reception QR is a fixed link by default and can be switched to a code that rotates every 30 seconds; only the Admin locks or changes the office Wi-Fi (Settings, Attendance Wi-Fi) and it is locked once ([docs/ATTENDANCE.md](ATTENDANCE.md)); the reception screen is visible only to the Owner, Admin and Haseeb; the CRM Vault starts empty and leads are imported by hand ([docs/HANDOVER-PROCESS.md](HANDOVER-PROCESS.md)); passwords and roles are in [docs/ACCESS-AND-PASSWORDS.md](ACCESS-AND-PASSWORDS.md).
+
 **Prepared Exclusively For: Mohammad Haseeb · Operations Manager**  
 **SWK Properties L.L.C · Dubai, UAE · RERA ORN 51517**  
 *Complete Daily Operations, 3-Department Brokerage Supervision, Staff Attendance (`10:00 AM – 7:00 PM`), Lead Routing, Deal Closing & Owner Escalation Guide.*

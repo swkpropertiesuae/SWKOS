@@ -1,5 +1,7 @@
 # SWK Properties OS — Complete Owner’s Master Handbook
 
+> **Current system notes (November 2026).** Where this handbook differs, these points apply: production runs on AWS Lightsail (Stockholm), not Cloudflare or Oracle ([docs/DEPLOY-FREE.md](DEPLOY-FREE.md)); the reception QR is a fixed link by default and can be switched to a code that rotates every 30 seconds; only the Admin locks or changes the office Wi-Fi (Settings, Attendance Wi-Fi) and it is locked once ([docs/ATTENDANCE.md](ATTENDANCE.md)); the reception screen is visible only to the Owner, Admin and Haseeb; the CRM Vault starts empty and leads are imported by hand ([docs/HANDOVER-PROCESS.md](HANDOVER-PROCESS.md)); passwords and roles are in [docs/ACCESS-AND-PASSWORDS.md](ACCESS-AND-PASSWORDS.md).
+
 **SWK Properties L.L.C · Dubai, UAE · RERA ORN 51517**  
 *From arrival to address — Every listing, viewing, lease, transfer, cheque, commission, and staff member in one private business workspace.*
 
@@ -538,7 +540,7 @@ Without its own platform, a growing Dubai brokerage of 25 to 50 staff members ty
 4. **Zero Vendor Lock-In**  
    No external software company can suddenly double your renewal price, restrict your exports, or shut down your account. You hold the keys to the code, the database, and the backups (`Settings → Step 6: Backups`).
 5. **Dual-Cloud & On-Premise Freedom**  
-   The repository is engineered to run anywhere: on **Cloudflare’s global edge**, on **Oracle Cloud**, on any **VPS / dedicated office server via Docker**, or locally. You can switch hosting providers in minutes at any time.
+   The repository is engineered to run anywhere: on **AWS Lightsail with Docker** (the current production host), on any other **VPS / dedicated office server via Docker**, or locally. You can switch hosting providers in minutes at any time.
 6. **Instant Customization for New Revenue Streams**  
    Whenever Dubai Land Department (DLD), RERA, or the Federal Tax Authority introduces a new rule—or whenever SWK Properties expands into a new division (such as Holiday Homes, Commercial Real Estate, Property Snagging, or Golden Visa Advisory)—new features can be added directly to your repository without waiting for an external vendor.
 7. **One Source of Truth Across Office & Mobile (`SWK OS` + `SWK ONE`)**  
