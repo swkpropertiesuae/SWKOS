@@ -6,6 +6,15 @@ import { Api, ok, sec, finish, BASE } from './_api'
 async function main() {
   const a = new Api()
   ok('administrator signs in', await a.login())
+  // website enquiry shape -> CRM lead
+  await a.put('/api/admin/settings', { lead_webhook_secret: 'site-secret-1234567890' })
+  const siteLead = { enquiryId: 'ENQ-TEST-1', context: 'viewing', contact: { name: 'Website Visitor', phone: '+971 50 123 4567', email: 'visitor@example.com', preferredContact: 'WhatsApp' }, message: 'Interested', propertyContext: { propertyRef: 'SWK-R-1', propertyTitle: 'Marina 2BR', community: 'Dubai Marina', developer: 'All' }, viewingSlot: { date: '2026-12-01', timeGst: '11:00 GST', mode: 'In-person' }, consent: { enquiryProcessing: true, marketingOptIn: false } }
+  const siteIn = await new Api().post('/api/public/lead/site-secret-1234567890', siteLead)
+  ok('the website enquiry shape becomes a lead', siteIn.status === 201 && siteIn.data.new_lead === true, siteIn)
+  const siteLeadRow = (await a.get(`/api/e/leads/${siteIn.data.lead_id}`)).data
+  ok('the lead keeps the phone and the requested viewing', String(siteLeadRow.phone).includes('971501234567') && /Viewing requested: 2026-12-01/.test(JSON.stringify(siteLeadRow)), siteLeadRow)
+  ok('a retried website delivery returns the same lead', (await new Api().post('/api/public/lead/site-secret-1234567890', siteLead)).data.duplicate_delivery === true)
+  ok('a wrong website secret is a 404', (await new Api().post('/api/public/lead/wrong-secret', siteLead)).status === 404)
 
   sec('Lead routing')
   const roles = (await a.get('/api/e/roles?pageSize=50')).data.rows
