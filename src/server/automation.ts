@@ -7,6 +7,7 @@ import { queueEmail } from './mailer'
 import { ENTITIES } from '../shared/entities'
 import { createRecord,patchRecord,insertRow,getDef,SYSTEM_CTX,type Rec } from './engine'
 import type { Hooks } from './hooks'
+import { postAutomationMessage } from './routes/chat'
 
 const lineage=new AsyncLocalStorage<number>()
 const render = (tpl: string, rec: Rec) => tpl.replace(/\{(\w+)\}/g, (_m, n) => String(rec._labels?.[n] ?? rec[n] ?? ''))
@@ -21,6 +22,7 @@ export const automationRuleHooks: Hooks={beforeSave({rec}) {
   if(rec.action==='Notify user' && !rec.assignee_id)throw bad('Choose the user to notify')
   if(rec.action==='Queue e-mail to address' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rec.target??''))throw bad('Enter a valid target email address')
   if(rec.action==='Send WhatsApp to number' && !/^\+?\d[\d\s-]{6,19}$/.test(rec.target??''))throw bad('Enter an international WhatsApp number')
+  if(rec.action==='Post to Inside group' && !q.get(`SELECT 1 AS x FROM chat_threads WHERE id=? AND kind='group'`,Number(rec.target)))throw bad('Choose an Inside group to post to')
   if(rec.action==='Set field value') {
     const field=String(rec.target??'').split('=')[0].trim(),f=def.fields.find(f=>f.name===field)
     if(!String(rec.target??'').includes('=') || !f || !['text','textarea','bool'].includes(f.type) || f.readonly || f.computed || f.virtual || f.secret || field.endsWith('_id') || /status|approval|paid|balance/i.test(field))throw bad('Workflows can only set ordinary editable fields; statuses, approvals, references and financial state require their domain actions')
@@ -65,6 +67,7 @@ function internalAction(rule:any,entity:string,rec:Rec) {
       if(current.version!==rec.version)throw bad('Source record changed; review this stale field-update action')
       return patchRecord(ENTITIES[entity],rec.id,{[field]:value.join('=').trim()},SYSTEM_CTX)
     }
+    case 'Post to Inside group': return postAutomationMessage(Number(rule.target),rule.created_by??null,`*${title}*${body?'\n'+body:''}\n${link}`)
     default:throw bad('Unsupported workflow action')
   }
 }

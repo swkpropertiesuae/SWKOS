@@ -52,6 +52,8 @@ const MyAssignedDealsPage = lazy(() => import('./pages/swk/MyAssignedDealsPage')
 const TeamDirectoryPage = lazy(() => import('./pages/swk/TeamPage').then(m => ({ default: m.TeamDirectoryPage })))
 const TeamProfilePage = lazy(() => import('./pages/swk/TeamPage').then(m => ({ default: m.TeamProfilePage })))
 const WebsiteStudioPage = lazy(() => import('./pages/swk/WebsiteStudioPage'))
+const AutomationsPage = lazy(() => import('./pages/swk/AutomationsPage'))
+const MyWorkPage = lazy(() => import('./pages/swk/MyWorkPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -148,6 +150,8 @@ export default function App() {
           <Route path="/withdrawals" element={<Guard module="admin"><WithdrawalsPage /></Guard>} />
           <Route path="/crm-vault" element={<CrmVaultGuard><CrmVaultPage /></CrmVaultGuard>} />
           <Route path="/my-deals" element={<MyAssignedDealsPage />} />
+          <Route path="/my-work" element={<Guard module="projects"><MyWorkPage /></Guard>} />
+          <Route path="/automations" element={<Guard module="admin"><AutomationsPage /></Guard>} />
           <Route path="/team" element={<TeamDirectoryPage />} />
           <Route path="/team/:slug" element={<TeamProfilePage />} />
           <Route path="/website" element={<Guard module="website"><WebsiteStudioPage /></Guard>} />

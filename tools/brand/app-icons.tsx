@@ -6,10 +6,10 @@
 import { writeFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { LayoutDashboard,Building2,Users,FileSignature,KeyRound,UserRoundCog,Percent,Gavel,Globe,IdCard,MapPinned,FileStack,Settings,MessagesSquare,Clock,BookOpen,LineChart,LayoutGrid,type LucideIcon } from 'lucide-react'
+import { ListChecks,LayoutDashboard,Building2,Users,FileSignature,KeyRound,UserRoundCog,Percent,Gavel,Globe,IdCard,MapPinned,FileStack,Settings,MessagesSquare,Clock,BookOpen,LineChart,LayoutGrid,type LucideIcon } from 'lucide-react'
 
 const ICONS: Record<string, LucideIcon> = {
-  messages: MessagesSquare, command: LayoutDashboard, inventory: Building2, clients: Users, sales: FileSignature, leasing: KeyRound,
+  messages: MessagesSquare, work: ListChecks, command: LayoutDashboard, inventory: Building2, clients: Users, sales: FileSignature, leasing: KeyRound,
   owners: UserRoundCog, finance: Percent, compliance: Gavel, website: Globe, team: IdCard, field: MapPinned, tools: FileStack, admin: Settings,
   attendance: Clock, manual: BookOpen, market_pulse: LineChart, general: LayoutGrid,
 }

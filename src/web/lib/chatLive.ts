@@ -53,6 +53,7 @@ export const previewOf = (m: Pick<ChatMessage, 'kind' | 'body' | 'file'>) =>
     : m.kind === 'video' ? `🎬 ${m.body || 'Video'}`
     : m.kind === 'file' ? `📄 ${m.file?.name ?? 'Document'}`
     : m.kind === 'report' ? '📋 Attendance report'
+    : m.kind === 'automation' ? `⚙️ ${m.body.split('\n')[0]!.replace(/\*/g, '')}`
     : m.body.replace(/\*/g, '')
 
 /** Desktop alert through the service worker when available (works on the installed app), else the plain Notification API. */

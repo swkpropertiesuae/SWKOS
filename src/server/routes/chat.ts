@@ -49,6 +49,18 @@ export function attendanceReportText(day = new Intl.DateTimeFormat('en-CA', { ti
   return [`*Attendance report · ${pretty}*`, `${present} of ${staff.length} staff in today`, '', ...Object.entries(groups).filter(([, v]) => v.length).flatMap(([k, v]) => [`*${k} (${v.length})*`, ...v.map(x => `• ${x}`), ''])].join('\n').trim()
 }
 
+/** Automation recipes post into a group as the rule's author (or the group's creator). Members get the normal live alert. */
+export function postAutomationMessage(tid: number, authorId: number | null, body: string) {
+  const t = q.get<{ kind: string; created_by: number; title: string | null }>(`SELECT kind, created_by, title FROM chat_threads WHERE id = ?`, tid)
+  if (!t || t.kind !== 'group') throw bad('Inside group not found')
+  const uid = authorId && q.get(`SELECT 1 AS x FROM users WHERE id = ? AND active = 1 AND deleted_at IS NULL`, authorId) ? authorId : t.created_by
+  const id = lastId(q.run(`INSERT INTO chat_messages (thread_id, user_id, body, kind, created_at) VALUES (?,?,?,?,?)`, tid, uid, body.slice(0, 4000), 'automation', nowIso()), 'chat_messages')
+  const name = q.val<string>(`SELECT name FROM users WHERE id = ?`, uid) ?? 'SWK OS'
+  for (const m of q.all<{ user_id: number; muted: number }>(`SELECT user_id, muted FROM chat_members WHERE thread_id = ?`, tid))
+    emit(m.user_id, { type: 'message', thread_id: tid, thread_title: t.title, group: true, muted: !!m.muted, message: { id, user_id: uid, name, kind: 'automation', body, created_at: nowIso(), edited: false, forwarded: false, file: null, reply: null, reactions: [], status: null } })
+  return { id }
+}
+
 /** First start: one company-wide group with every active staff member; Owner and Admin are its admins. */
 export function ensureTeamGroup() {
   if (q.val(`SELECT 1 FROM chat_threads WHERE system_key = 'team'`)) return

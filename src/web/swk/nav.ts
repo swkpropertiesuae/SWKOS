@@ -4,7 +4,7 @@ LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rock
 UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap
 } from 'lucide-react';
 import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
@@ -18,6 +18,13 @@ export type NavSection = { key: string; label: string; items: NavItem[] }
 export const SWK_NAV: NavSection[] = [
   { key: 'messages', label: 'Inside', items: [
     { label: 'Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, groups & announcements' },
+  ] },
+  { key: 'work', label: 'Work', items: [
+    { label: 'My Work', to: '/my-work', icon: ListChecks, module: 'projects', isNew: true, desc: 'Everything assigned to me, by due date' },
+    { label: 'Tasks', to: '/e/tasks', icon: ListChecks, module: 'projects', desc: 'Table, board & calendar of all tasks' },
+    { label: 'Projects', to: '/e/projects', icon: FolderKanban, module: 'projects', desc: 'Projects with owners, budgets & dates' },
+    { label: 'Automations', to: '/automations', icon: Zap, module: 'admin', isNew: true, desc: 'When this happens, do that — no code' },
+    { label: 'Automation Runs', to: '/e/workflow_runs', icon: Workflow, module: 'admin', desc: 'History of every automation run' },
   ] },
   { key: 'command', label: 'Dashboards', items: [
     { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, module: 'dashboard', desc: 'Daily business summary' },
@@ -178,6 +185,7 @@ export function findNav(pathname: string) {
 export type AppTone = 'navy' | 'champ' | 'oasis' | 'ocean' | 'dune' | 'plum'
 export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: AppTone }> = {
   messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessagesSquare, tone: 'oasis' },
+  work: { blurb: 'My work, tasks & projects on boards, calendars and no-code automations', icon: ListChecks, tone: 'champ' },
   command: { blurb: 'Overview, deal pipeline, approvals & calendar', icon: LayoutDashboard, tone: 'navy' },
   inventory: { blurb: 'Submissions, owner permits, units & listings', icon: Building2, tone: 'champ' },
   clients: { blurb: 'Leads, calls, WhatsApp, email & follow-ups', icon: Users, tone: 'oasis' },
