@@ -15,7 +15,7 @@
     "noEmit": true,
     "types": ["node"],
     "baseUrl": ".",
-    "paths": { "@shared/*": ["src/shared/*"] }
+    "paths": { "@shared/*": ["src/shared/*"], "@/*": ["src/web/*"] }
   },
   "include": ["src", "tests", "vite.config.ts"]
 }
