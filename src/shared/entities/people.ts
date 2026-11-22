@@ -130,7 +130,7 @@ export const people: EntityDef[] = [
     key: 'tasks', label: 'Task', plural: 'Tasks & follow-ups', module: 'projects', icon: 'ListChecks', title: ['title'], panel: true, statusField: 'status', kanban: { field: 'status' }, calendar: { field: 'due_date' },
     fields: [
       T('title', 'Task', { required: true, list: true, search: true, span: 2, section: 'Task' }), S('status', 'Status', ['To do', 'In progress', 'Blocked', 'Done'], { default: 'To do', list: true }), S('priority', 'Priority', ['Low', 'Medium', 'High', 'Urgent'], { default: 'Medium', list: true }),
-      D('due_date', 'Due date', { list: true }), R('assignee_id', 'Assigned to', 'users', { default: 'me', list: true }), R('project_id', 'Project', 'projects'), S('kind', 'Kind', ['Task', 'Follow-up', 'Approval', 'Document chase', 'Payment reminder', 'Viewing', 'Offer follow-up', 'Ejari renewal'], { default: 'Task', list: true }),
+      D('due_date', 'Due date', { list: true }), R('assignee_id', 'Assigned to', 'users', { default: 'me', list: true }), R('project_id', 'Project', 'projects'), R('parent_task_id', 'Parent task (this is a sub-task of)', 'tasks'), R('depends_on_id', 'Waits for task', 'tasks'), S('kind', 'Kind', ['Task', 'Follow-up', 'Approval', 'Document chase', 'Payment reminder', 'Viewing', 'Offer follow-up', 'Ejari renewal'], { default: 'Task', list: true }),
       T('link_entity', 'Linked record type', { hidden: true }), I('link_id', 'Linked record id', { hidden: true }), T('link_label', 'Linked record', { list: true, readonly: true }), DT('completed_at', 'Completed at', { readonly: true }), TA('description', 'Details'),
     ],
     defaultSort: { field: 'due_date', dir: 'asc' },
