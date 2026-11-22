@@ -57,4 +57,8 @@ Owner and Admin can recall any document back to Admin Custody at any stage.
 ## 5. Loading a new handover
 
 1. Leads: Admin imports the workbooks in SWK OS (step 1). No deployment is needed.
-2. Documents: Admin uploads them in SWK OS (step 3). On the Cloudflare server this requires Cloudflare R2 under *Settings → Storage*. The upload is refused without it, because the container's own disk is wiped on every restart.
+2. Documents: Admin uploads them in SWK OS (step 3). On the AWS server the files are kept on the server's data volume (and in the nightly backup). Only the retired Cloudflare Containers host needed Cloudflare R2 for uploads, because its disk was wiped on every restart.
+
+## 6. Starting state
+
+The CRM Vault starts **empty**. No lead file is bundled with the application and nothing is imported on start-up. Leads enter only when the Admin imports a workbook by hand (step 1). There is no `SWK_CRM_VAULT_KEY` to configure.

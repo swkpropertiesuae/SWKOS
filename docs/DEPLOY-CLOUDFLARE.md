@@ -1,3 +1,5 @@
+> **RETIRED.** SWK OS no longer runs on Cloudflare Containers. Production moved to AWS Lightsail (see [DEPLOY-FREE.md](DEPLOY-FREE.md) and [OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md)). This page is kept for history only. The "Deploy to Cloudflare" GitHub workflow is disabled and must stay disabled: running it would take `os.swk.properties` away from the AWS server.
+
 # Deploy SWK OS on Cloudflare (step by step)
 
 You will run a handful of commands on your own computer. Nothing here needs coding. Allow about **1–1½ hours the first time** (most of it waiting for builds and DNS).

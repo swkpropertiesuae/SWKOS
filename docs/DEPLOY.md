@@ -1,17 +1,22 @@
 # Deployment
 
-1. Provision a host with Docker (or Node 22 and a C toolchain for better-sqlite3).
-2. `cp .env.example .env`, set `PUBLIC_URL`, passwords, SMTP.
-3. `docker compose up -d --build`. Data lives in the `swkos-data` volume (SQLite file + uploads + backups).
-4. Put a TLS reverse proxy in front (Caddy/nginx), keep `TRUST_PROXY=true` and `COOKIE_SECURE=true`.
-5. Sign in, change both default passwords, enable TOTP for admins, set company details under Administration → Settings.
+Production is described in [DEPLOY-FREE.md](DEPLOY-FREE.md) (architecture and first-time setup) and operated with [OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md) (updates, backups, password resets, troubleshooting).
 
-**Backups:** Administration → Backup creates consistent SQLite snapshots; also snapshot the volume externally.
-**Scaling:** SQLite is single-node. It suits one company's workload; for multi-node or HA, migrate the data layer to PostgreSQL.
-**Upgrades:** rebuild the image; schema changes are applied automatically on start.
+## Summary
 
-## Release 2 additions
-* Set `APP_SECRET` (encrypts integration credentials) and keep it separate from backups.
-* The Docker image includes Chromium for server-side PDFs. Without Docker install `chromium` and set `CHROME_PATH`.
-* Public webhooks (`/api/public/whatsapp`, `/api/public/tracking/<secret>`, `/api/public/bank/<secret>`) must be reachable over HTTPS from the internet; everything else can stay behind your proxy/VPN.
-* Enable **Supabase sync** and **R2 nightly backups** under Integrations for off-site copies.
+- **Host:** AWS Lightsail instance in Stockholm, running Docker Compose from `deploy/free`.
+- **Public access:** a Cloudflare Tunnel publishes `os.swk.properties`. No inbound ports are open on the server.
+- **Database:** Supabase Postgres in Stockholm (schema `swk`). See [POSTGRES.md](POSTGRES.md).
+- **Backups:** nightly copy to Cloudflare R2 (Settings, Integrations) and a daily archive of the data volume on the server.
+
+## Settings that matter
+
+- `APP_SECRET` encrypts integration credentials. Keep it separate from backups; losing it makes stored credentials unreadable.
+- `PUBLIC_URL`, `TRUST_PROXY=true` and `COOKIE_SECURE=true` must be set behind the tunnel.
+- `OWNER_PASSWORD` and `ADMIN_SWK_PASSWORD` set the Owner and Admin passwords (see [ACCESS-AND-PASSWORDS.md](ACCESS-AND-PASSWORDS.md)).
+- The Docker image includes Chromium for server-side PDFs. Without Docker install `chromium` and set `CHROME_PATH`.
+- Public webhooks (`/api/public/whatsapp`, `/api/public/tracking/<secret>`, `/api/public/bank/<secret>`) must be reachable over HTTPS.
+
+## Upgrades
+
+Pull the code and rebuild. Schema changes apply automatically on start. See the runbook for the exact commands.

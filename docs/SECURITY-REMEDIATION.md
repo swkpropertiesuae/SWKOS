@@ -1,5 +1,7 @@
 # Two-person pilot security fixes — 8 October 2026
 
+> Historical record of the October 2026 fixes. Production now runs on AWS Lightsail ([DEPLOY-FREE.md](DEPLOY-FREE.md)); current accounts and passwords are in [ACCESS-AND-PASSWORDS.md](ACCESS-AND-PASSWORDS.md).
+
 This patch fixes reproduced authentication defects and related account/workspace controls. It does not claim completion of the 147-area enterprise scope.
 
 - The API blocks business reads, writes and API-key access while a temporary password must be changed. Profile, password change and logout remain available to the browser. Setup metadata exposes only branding and currency until the password is changed.

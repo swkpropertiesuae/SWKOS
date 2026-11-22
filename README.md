@@ -10,12 +10,15 @@
 
 ## 🏛️ 1. Company Hierarchy, Roles & Governance
 
-| Role | Account Holder | Email | Access & Governance Rules |
+| Role | Account holder | Sign-in email | Access |
 | :--- | :--- | :--- | :--- |
-| **Owner & Managing Director** | **Shabib Siraj** | `admin@swkpropertiesuae.com`<br/>`shabib@swkpropertiesuae.com` | **Complete System Control (`*`)**. Receives automated WhatsApp **Morning Briefing (09:30 AM)** and **10:30 AM Attendance & Contemptor Report**. Sole final approver for **Manager Administrative Decisions**, **Pending Delete Bin (`Recycle Bin`)** permanent deletions, and **Deal Withdrawal Client Refunds**. |
-| **Operations Manager** | **Mohammad Haseeb** | `manager@swkpropertiesuae.com`<br/>`haseeb@swkpropertiesuae.com` | **Majority Operational Access** across all 3 departments, CRM, Sales, Mandates, Transactions, Leases, HR, and Finance. Any administrative decision (`manager_admin_decisions`) or record deletion requires **Owner (Shabib Siraj)** approval before execution. |
-| **BDM & IT Admin** | **Talha Shabbir** | `talha@swkpropertiesuae.com` | Manages CRM & ERP operations, **Bayut & Dubizzle** XML/API portal syndication, digital marketing campaigns, AI employee workflows, and IT administration. |
-| **Sales Advisors** | DLD-Registered Brokers | `@swkpropertiesuae.com` | Sponsored on **SWK Properties Company Visa** with **AED 0 Basic Salary (`basic_salary = 0`)** and a **50–50% Net Commission Split** between SWK Properties and the Sales Advisor (after deducting any 3rd-Party A2A partner broker share). |
+| **Owner & Managing Director** | Shabib Siraj | `shabib@swk.properties` | Full control. Only the Owner can change the Owner account. Final approver for deletions and withdrawals. |
+| **Admin** | SWK Admin | `admin@swk.properties` | Full access, under the Owner. The only account that can lock or change the office Wi-Fi (Settings, Attendance Wi-Fi). |
+| **Operations Manager** | Mohammad Haseeb | `haseeb@swk.properties` | Broad operational access, employee records, the CRM Vault and the reception code screen. Deletions and administrative decisions need Owner approval. |
+| **Staff** | Talha, Saifullah, Samarth, Meenakshi | `@swk.properties` | Attendance and general work. Staff see leads only through masked dispatch. |
+| **Staff (swk.rent addresses)** | Fareed, Shahid, Umar, Sanketh | `@swk.rent` | Same as Staff. Their old `@swk.properties` address stays as an alias. |
+
+The roster lives in `src/shared/swk-staff-access.ts`. Passwords and access rules are explained in [docs/ACCESS-AND-PASSWORDS.md](docs/ACCESS-AND-PASSWORDS.md).
 
 ---
 
@@ -34,17 +37,14 @@ The entire web OS (`/home` Launcher, `AppSidebar`, `/dashboard`, and `/swk/pipel
 
 ## 🕒 3. Office Reception QR Attendance & Working Hours
 
-- **Official UAE Working Hours**:
-  - **Monday – Friday**: `10:00 AM – 7:00 PM` (`19:00` GST)
-  - **Saturday**: `10:00 AM – 4:00 PM` (`16:00` GST)
-  - **Sunday**: Official Holiday
-  - **Grace Period**: Until **10:05 AM**. Check-ins up to `10:05 AM` are recorded as **On-Time**; `10:06 AM+` is marked **Late** with exact late minutes.
-- **Single Printed Office Reception QR (`/reception-qr`)**:
-  - Staff scan the permanent printed QR (`SWK-RECEPTION-STAND-DXB-1`) from their camera while connected to the approved office Wi-Fi network, sign in with their company credentials, and see their check-in confirmation.
-- **Owner WhatsApp Briefings & Continuous Contemptor Alerts**:
-  - **09:30 AM Morning Briefing**: Automated WhatsApp summary sent to Owner **Shabib Siraj**.
-  - **10:30 AM Attendance Report**: Automated roll call of on-time (`≤10:05 AM`), late (`>10:05 AM`), and absent staff sent to Owner **Shabib Siraj**.
-  - **Continuous Contemptor Alert**: Any staff member with **≥3 late arrivals (`>10:05 AM`) in a rolling 7-day window** triggers a `late_contemptor_alerts` record and alerts **Owner Shabib Siraj** and **Manager Mohammad Haseeb**.
+- **Working hours (Dubai time):** Monday to Friday 10:00 AM to 7:00 PM, Saturday 10:00 AM to 4:00 PM, Sunday holiday. Check-in up to 10:05 AM is on time; later is late with the exact minutes.
+- **How check-in works:** staff scan the reception QR with the camera inside SWK OS, or with their phone's normal camera (the QR is a link that opens the sign-in step). They must be on the locked office network, use their own registered phone, and sign in with their own password. One phone can check in only one person per day.
+- **Office Wi-Fi lock:** only the Admin locks the office network, once, in Settings, Attendance Wi-Fi. Changing it means clearing it there first. Until it is locked nobody can check in.
+- **Reception code:** a fixed code (default) or a code that rotates every 30 seconds. The reception code screen and the setup are visible only to the Owner, Admin and Haseeb.
+- **Times are stored in Dubai time.** A check-in at 10:11 shows as 10:11 AM.
+- **Owner briefings:** a 09:30 AM morning briefing and a 10:30 AM attendance report go to the Owner by WhatsApp (when WhatsApp is connected).
+
+Full detail: [docs/ATTENDANCE.md](docs/ATTENDANCE.md).
 
 ---
 
@@ -95,14 +95,29 @@ Never edit synced files by hand; update the website, then re-run the sync and co
 
 ---
 
-## ▶️ 8. Running & Verifying Locally
+## ▶️ 8. Running, Verifying & Deploying
 
 ```bash
 npm install
 npm run dev                  # API on :8080 + Web on :5173
-npm run typecheck            # TypeScript validation (0 errors)
+npm run typecheck            # TypeScript validation
 npm run build                # Build Web (dist/web) + API (dist/server/index.mjs)
-npm run test:all             # Complete acceptance runner
+bash tests/run-all.sh        # All API suites, each on a fresh server (build first)
 ```
 
-See [docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md) for Cloudflare Containers deployment.
+**Production** runs on AWS Lightsail (Stockholm) as a Docker Compose stack behind a Cloudflare Tunnel, with data in Supabase Postgres and nightly backups to Cloudflare R2. Updating the server is two commands, listed in [docs/OPERATIONS-RUNBOOK.md](docs/OPERATIONS-RUNBOOK.md). The older Cloudflare Containers deployment is retired ([docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md)).
+
+---
+
+## 📚 9. Documentation
+
+| Topic | Document |
+| :--- | :--- |
+| Run and update the live server, backups, password reset, troubleshooting | [docs/OPERATIONS-RUNBOOK.md](docs/OPERATIONS-RUNBOOK.md) |
+| Production architecture and the AWS setup | [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md), [docs/DEPLOY.md](docs/DEPLOY.md) |
+| Accounts, roles, passwords, who sees what | [docs/ACCESS-AND-PASSWORDS.md](docs/ACCESS-AND-PASSWORDS.md) |
+| Attendance, Wi-Fi lock, reception QR | [docs/ATTENDANCE.md](docs/ATTENDANCE.md) |
+| CRM Vault and lead/document custody | [docs/HANDOVER-PROCESS.md](docs/HANDOVER-PROCESS.md) |
+| Database (Supabase Postgres) | [docs/POSTGRES.md](docs/POSTGRES.md) |
+| Dashboard and navigation | [docs/DASHBOARD.md](docs/DASHBOARD.md) |
+| Owner and Manager handbooks | [docs/OWNER_MASTER_HANDBOOK.md](docs/OWNER_MASTER_HANDBOOK.md), [docs/MANAGER_OPERATIONS_HANDBOOK_HASEEB.md](docs/MANAGER_OPERATIONS_HANDBOOK_HASEEB.md) |
