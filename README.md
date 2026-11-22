@@ -91,7 +91,7 @@ npm run brand:sync                                              # pull from the 
 BRAND_SOURCE=../swkpropertiesuae.com/public npm run brand:sync   # or from a local website checkout
 ```
 
-Never edit synced files by hand; update the website, then re-run the sync and commit. Gold artwork is for dark surfaces (navy/onyx plates); use the `-charcoal` variants on light backgrounds.
+The browser tab icon (`public/favicon.ico`, `public/favicon/favicon-16/32/48/64.png`) is the company favicon supplied by the owner and is not taken from the website: running `brand:sync` would overwrite it, so restore it afterwards. Never edit synced files by hand; update the website, then re-run the sync and commit. Gold artwork is for dark surfaces (navy/onyx plates); use the `-charcoal` variants on light backgrounds.
 
 ---
 
