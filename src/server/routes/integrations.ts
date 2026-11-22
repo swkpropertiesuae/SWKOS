@@ -63,6 +63,28 @@ export function ingestLead(b: LeadIn): { duplicate: true; lead_id: number } | { 
   return { duplicate: false, lead_id: leadId, created }
 }
 
+/** The company website (swkpropertiesuae.com) posts its own enquiry shape: contact, propertyContext, viewingSlot, consent. Flatten it to the intake shape; flat bodies pass through unchanged. */
+export function fromWebsiteEnquiry(body: any): any {
+  const c = body?.contact
+  if (!c || typeof c !== 'object') return body ?? {}
+  const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
+  const pc = body.propertyContext ?? {}, v = body.viewingSlot, ql = body.qualification
+  const lines = [
+    clip(body.message, 1200),
+    pc.propertyRef && pc.propertyRef !== 'N/A' ? `Property: ${clip(pc.propertyTitle, 120)} (${clip(pc.propertyRef, 60)}), ${clip(pc.community, 80)}` : '',
+    v?.date ? `Viewing requested: ${clip(v.date, 20)} ${clip(v.timeGst, 20)} (${clip(v.mode, 60)})` : '',
+    ql ? `Qualification: ${Object.entries(ql).filter(([, x]) => x).map(([k, x]) => `${k}: ${clip(x, 60)}`).join(', ')}` : '',
+    c.preferredContact ? `Preferred contact: ${clip(c.preferredContact, 30)}` : '',
+    body.pageUrl ? `Page: ${clip(body.pageUrl, 200)}` : '',
+  ].filter(Boolean)
+  const email = clip(c.email, 160)
+  return {
+    external_id: clip(body.enquiryId, 120) || undefined, name: clip(c.name, 120) || undefined, email: /^\S+@\S+\.\S+$/.test(email) ? email : undefined,
+    phone: clip(c.phone, 40) || undefined, message: lines.join('\n').slice(0, 2000) || undefined, source: 'Website', interest: clip(body.context, 60) || undefined,
+    consent: body.consent?.enquiryProcessing === true,
+  }
+}
+
 export default async function (app: FastifyInstance) {
   // =================================================================== integrations catalogue
   app.get('/api/integrations', async (req) => {
@@ -160,7 +182,7 @@ export default async function (app: FastifyInstance) {
       external_id: z.string().max(120).optional(), name: z.string().max(120).optional(), email: z.string().email().max(160).optional(),
       phone: z.string().max(40).optional(), message: z.string().max(2000).optional(), source: z.string().max(60).optional(),
       interest: z.string().max(60).optional(), consent: z.boolean().optional(),
-    }).refine(v => v.email || v.phone, 'Send an email or a phone number').parse(req.body ?? {})
+    }).refine(v => v.email || v.phone, 'Send an email or a phone number').parse(fromWebsiteEnquiry(req.body))
     const r = ingestLead(b)
     if (r.duplicate) return { ok: true, lead_id: r.lead_id, duplicate_delivery: true }
     return reply.status(r.created ? 201 : 200).send({ ok: true, lead_id: r.lead_id, new_lead: r.created })
