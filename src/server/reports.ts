@@ -126,6 +126,15 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
+    key: 'lost_reasons', label: 'Lost opportunities by reason', group: 'Sales', module: 'crm', description: 'Why opportunities were lost, grouped by the reason entered, with count and value.', params: [],
+    run: () => {
+      // free text, so group case-insensitively; the commonest reasons come first
+      const rows = q.all<any>(`SELECT MIN(TRIM(lost_reason)) AS reason, COUNT(*) AS n, COALESCE(SUM(value),0) AS v FROM opportunities WHERE stage = 'Lost' AND deleted_at IS NULL GROUP BY LOWER(TRIM(COALESCE(lost_reason, ''))) ORDER BY n DESC, v DESC`)
+        .map(r => ({ reason: r.reason || 'No reason entered', count: r.n, value: m(r.v) }))
+      return { title: 'Lost opportunities by reason', columns: [{ key: 'reason', label: 'Reason' }, { key: 'count', label: 'Opportunities', type: 'number' }, { key: 'value', label: 'Value lost', type: 'money' }], rows, totals: sumKeys(rows, ['count', 'value']) }
+    },
+  },
+  {
     key: 'pipeline', label: 'CRM pipeline', group: 'Sales', module: 'crm', description: 'Open opportunities by stage with weighted value.', params: [],
     run: () => {
       const stages = ['Prospecting', 'Qualification', 'Quotation', 'Negotiation', 'Won', 'Lost']
