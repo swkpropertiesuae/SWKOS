@@ -247,7 +247,7 @@ export default function CrmVaultPage() {
   return (
     <div className="p-5 max-w-[1600px] mx-auto space-y-5">
       {/* Header Banner */}
-      <div className="rounded-2xl bg-[#0e261d] text-white p-5 border border-[#c8a962]/30 flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-2xl bg-[#161616] text-white p-5 border border-[#c8a962]/30 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#d4b672]">
             <ShieldCheck className="w-4 h-4" /> Leadership Eyes Only · Admin, Shabib &amp; Haseeb
@@ -301,7 +301,7 @@ export default function CrmVaultPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${active ? 'bg-[#0e261d] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${active ? 'bg-[#161616] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
             >
               <Icon className="w-3.5 h-3.5" /> {t.label}
             </button>
@@ -322,7 +322,7 @@ export default function CrmVaultPage() {
                 value={q}
                 onChange={e => { setQ(e.target.value); setPage(1) }}
                 placeholder="Search building, unit, community, owner, deal ID..."
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-[#0d5a48]"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-[#0e9f6e]"
               />
             </div>
             <select value={dataset} onChange={e => { setDataset(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
@@ -360,7 +360,7 @@ export default function CrmVaultPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
             <div className="flex items-center gap-3 text-xs">
               <button onClick={toggleSelectPage} className="font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5">
-                {rows.length > 0 && rows.every(r => selected.has(r.id)) ? <CheckSquare className="w-4 h-4 text-[#0d5a48]" /> : <Square className="w-4 h-4" />}
+                {rows.length > 0 && rows.every(r => selected.has(r.id)) ? <CheckSquare className="w-4 h-4 text-[#0e9f6e]" /> : <Square className="w-4 h-4" />}
                 Select Page ({rows.length})
               </button>
               <span className="text-slate-500">Showing <b>{rows.length}</b> of <b>{total.toLocaleString()}</b> properties · Selected: <b>{selected.size}</b></span>
@@ -369,7 +369,7 @@ export default function CrmVaultPage() {
               <button
                 disabled={!selected.size}
                 onClick={() => setAssignOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg bg-[#0d5a48] text-white text-xs font-bold disabled:opacity-40 flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-[#0e9f6e] text-white text-xs font-bold disabled:opacity-40 flex items-center gap-1.5"
               >
                 <Users className="w-3.5 h-3.5" /> Assign Selected to Agent ({selected.size})
               </button>
@@ -433,7 +433,7 @@ export default function CrmVaultPage() {
                     <td className="p-2.5 align-top max-w-[240px]">
                       <div className="font-semibold text-slate-900">{r.owner_name || r.owner_entity_type || '—'}</div>
                       {r.direct_mobile ? (
-                        <div className="font-mono text-[11px] font-bold text-[#0d5a48] mt-0.5">{r.direct_mobile}</div>
+                        <div className="font-mono text-[11px] font-bold text-[#0e9f6e] mt-0.5">{r.direct_mobile}</div>
                       ) : (
                         <div className="text-[11px] text-slate-400">No direct mobile</div>
                       )}
@@ -560,12 +560,12 @@ export default function CrmVaultPage() {
           {/* Import Excel / CSV */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
             <div className="flex items-center gap-2 font-bold text-slate-900">
-              <Upload className="w-4 h-4 text-[#0d5a48]" /> Import CRM Excel / CSV Workbooks
+              <Upload className="w-4 h-4 text-[#0e9f6e]" /> Import CRM Excel / CSV Workbooks
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
               Upload <code>SWK_6_Agents_1920_Cluster_Closing_Deals_Master.xlsx</code>, <code>SWK_6_Agents_Master_Closing_Territories_Nov2026.xlsx</code>, individual <code>Agent_*_320_Closing_Deals.xlsx</code> workbooks, or <code>swk_6agent_daily_route_and_audit_tracker.csv</code>. Existing deal IDs are updated idempotently, and all phone numbers &amp; emails are AES-256-GCM encrypted in the database.
             </p>
-            <label className="block border-2 border-dashed border-slate-300 hover:border-[#0d5a48] rounded-xl p-6 text-center cursor-pointer transition">
+            <label className="block border-2 border-dashed border-slate-300 hover:border-[#0e9f6e] rounded-xl p-6 text-center cursor-pointer transition">
               <input
                 type="file"
                 multiple
@@ -574,7 +574,7 @@ export default function CrmVaultPage() {
                 onChange={e => handleUploadFiles(e.target.files)}
                 className="hidden"
               />
-              <Upload className="w-6 h-6 text-[#0d5a48] mx-auto mb-2" />
+              <Upload className="w-6 h-6 text-[#0e9f6e] mx-auto mb-2" />
               <div className="text-xs font-bold text-slate-800">{uploading ? 'Importing & Encrypting…' : 'Click to Select .xlsx / .csv Files'}</div>
               <div className="text-[11px] text-slate-500 mt-1">Supports multi-file upload · Max 12 MB per upload</div>
             </label>
@@ -583,7 +583,7 @@ export default function CrmVaultPage() {
           {/* Hard-Masked Bridge Calling Configuration */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
             <div className="flex items-center gap-2 font-bold text-slate-900">
-              <PhoneCall className="w-4 h-4 text-[#0d5a48]" /> Hard-Masked Bridge Calling (Zero Phone History Leak)
+              <PhoneCall className="w-4 h-4 text-[#0e9f6e]" /> Hard-Masked Bridge Calling (Zero Phone History Leak)
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
               When an agent clicks <b>Call Owner (Masked)</b>, SWKOS initiates a two-leg bridge call from SWK&apos;s official company number to the agent, then connects to the owner server-side. <b>The owner&apos;s real phone number never reaches the agent&apos;s screen, browser, app, SIM, or native call history.</b>
@@ -638,7 +638,7 @@ export default function CrmVaultPage() {
                 <input type="checkbox" checked={!!bridge.masked_call_record} onChange={e => setBridge({ ...bridge, masked_call_record: e.target.checked })} />
                 <span>Record bridged calls for leadership QA compliance</span>
               </label>
-              <button disabled={busy} onClick={saveBridge} className="w-full py-2.5 rounded-xl bg-[#0d5a48] text-white font-bold">
+              <button disabled={busy} onClick={saveBridge} className="w-full py-2.5 rounded-xl bg-[#0e9f6e] text-white font-bold">
                 Save Masked Bridge Configuration
               </button>
             </div>
@@ -664,7 +664,7 @@ export default function CrmVaultPage() {
               </select>
             </div>
             <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-950 flex items-start gap-2">
-              <Lock className="w-4 h-4 text-[#0d5a48] shrink-0 mt-0.5" />
+              <Lock className="w-4 h-4 text-[#0e9f6e] shrink-0 mt-0.5" />
               <div>
                 <b>Phone Number Hard-Masking (Permanent):</b> The owner&apos;s direct mobile and email are NEVER sent to the agent&apos;s device or phone call log. Agents only interact via server-side Masked Bridge Call or Masked WhatsApp Relay.
               </div>
@@ -696,7 +696,7 @@ export default function CrmVaultPage() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setAssignOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold">Cancel</button>
-              <button disabled={busy || !targetAgentId} onClick={handleAssign} className="px-4 py-2 rounded-xl bg-[#0d5a48] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-40">
+              <button disabled={busy || !targetAgentId} onClick={handleAssign} className="px-4 py-2 rounded-xl bg-[#0e9f6e] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-40">
                 <Send className="w-3.5 h-3.5" /> Confirm Dispatch
               </button>
             </div>

@@ -173,7 +173,7 @@ export default async function (app: FastifyInstance) {
   app.get('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    if (def.key === 'employees' && !req.ctx.system && !canViewEmployeeRecords(req.user)) throw forbidden('Only the Owner, the Admin and the Operations Manager can open employee records.')
+    if (def.key === 'employees' && !req.ctx.system && !canViewEmployeeRecords(req.user)) throw forbidden('Only the Owner, the Admin, the Operations Manager and HR can open employee records.')
     return maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
   })
   // Party blocks for print documents (invoices, quotations, …): { [party_id]: { name, address… } }

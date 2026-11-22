@@ -19,11 +19,11 @@ export function Letterhead() {
   const s = S()
   const companyName = normalizeSwkCompanyName(s.company_name)
   return (
-    <div className="flex items-start justify-between gap-6 pb-3 mb-4" style={{ borderBottom: '3px solid #0e241c' }}>
+    <div className="flex items-start justify-between gap-6 pb-3 mb-4" style={{ borderBottom: '3px solid #121212' }}>
       <div
         className="flex items-center gap-3"
         style={{
-          background: 'linear-gradient(135deg, #0e241c 0%, #173e30 100%)',
+          background: 'linear-gradient(135deg, #121212 0%, #173e30 100%)',
           padding: '8px 16px',
           borderRadius: 10,
           border: '1px solid rgba(201,169,110,.45)',
@@ -35,16 +35,16 @@ export function Letterhead() {
         <img src="/brand/site/swk-logo-horizontal.svg" alt={companyName} style={{ height: 42, width: 'auto', objectFit: 'contain', display: 'block' }} />
       </div>
       <div style={{ textAlign: 'right', fontSize: 10.5, lineHeight: 1.45 }}>
-        <b style={{ fontSize: 12.5, color: '#0e241c' }}>{companyName}</b>
+        <b style={{ fontSize: 12.5, color: '#121212' }}>{companyName}</b>
         <div style={{ whiteSpace: 'pre-line' }}>{s.company_address}</div>
         {s.company_phone && <div>Tel {s.company_phone}</div>}
         <div>{s.company_email}{s.company_info_email && s.company_info_email !== s.company_email ? ` · ${s.company_info_email}` : ''}</div>
-        <div style={{ fontWeight: 700, color: '#0e241c', marginTop: 1 }}>{SWK_OFFICIAL_WEBSITES_TEXT}</div>
+        <div style={{ fontWeight: 700, color: '#121212', marginTop: 1 }}>{SWK_OFFICIAL_WEBSITES_TEXT}</div>
       </div>
     </div>
   )
 }
-const Title = ({ children, sub, watermark }: { children: ReactNode; sub?: ReactNode; watermark?: string }) => <div className="flex items-end justify-between mb-3 relative"><h1>{children}</h1><div style={{ textAlign: 'right' }}>{sub}</div>{watermark && <div style={{ position: 'absolute', left: '28%', top: 40, transform: 'rotate(-12deg)', fontSize: 54, fontWeight: 800, color: '#c32135', opacity: 0.12, pointerEvents: 'none', whiteSpace: 'nowrap' }}>{watermark}</div>}</div>
+const Title = ({ children, sub, watermark }: { children: ReactNode; sub?: ReactNode; watermark?: string }) => <div className="flex items-end justify-between mb-3 relative"><h1>{children}</h1><div style={{ textAlign: 'right' }}>{sub}</div>{watermark && <div style={{ position: 'absolute', left: '28%', top: 40, transform: 'rotate(-12deg)', fontSize: 54, fontWeight: 800, color: '#dc2626', opacity: 0.12, pointerEvents: 'none', whiteSpace: 'nowrap' }}>{watermark}</div>}</div>
 const Box = ({ label, children, className }: { label: string; children: ReactNode; className?: string }) => <div className={`box ${className ?? ''}`}><div className="lbl">{label}</div><div style={{ whiteSpace: 'pre-line' }}>{children || ' '}</div></div>
 const Grid = ({ cols = 3, children }: { cols?: number; children: ReactNode }) => <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 8, marginBottom: 10 }}>{children}</div>
 const Kv = ({ items }: { items: [string, ReactNode][] }) => <div className="box" style={{ padding: 0 }}><table style={{ margin: 0 }}><tbody>{items.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => <tr key={k}><td className="lbl" style={{ width: '42%', border: 0, padding: '3px 10px' }}>{k}</td><td style={{ border: 0, padding: '3px 10px', fontWeight: 600 }}>{v}</td></tr>)}</tbody></table></div>
@@ -80,13 +80,13 @@ function InvoiceDoc({ r }: { r: any }) {
   const includeTrn = s.vat_registered !== false && ['Tax Invoice', 'Credit Note', 'Debit Note'].includes(r.doc_type)
   const title = r.doc_type === 'Tax Invoice' ? (s.vat_registered === false ? 'INVOICE' : 'TAX INVOICE') : r.doc_type.toUpperCase()
   return (<>
-    <Title watermark={r.status === 'Draft' ? 'DRAFT' : r.status === 'Void' ? 'VOID' : undefined} sub={<><div style={{ fontSize: 15, fontWeight: 800 }}>{r.invoice_no}</div><div style={{ color: '#827a71' }}>{fmtDate(r.invoice_date)}{r.status !== 'Posted' ? ` · ${r.status}` : ''}</div></>}>{title}</Title>
+    <Title watermark={r.status === 'Draft' ? 'DRAFT' : r.status === 'Void' ? 'VOID' : undefined} sub={<><div style={{ fontSize: 15, fontWeight: 800 }}>{r.invoice_no}</div><div style={{ color: '#8b8b8b' }}>{fmtDate(r.invoice_date)}{r.status !== 'Posted' ? ` · ${r.status}` : ''}</div></>}>{title}</Title>
     <Grid cols={2}><Box label="Bill to">{p.data ? party(p.data, includeTrn) : r._labels.party_id}</Box><Kv items={[['Document no.', r.invoice_no], ['Date', fmtDate(r.invoice_date)], ['Date of supply', r.supply_date ? fmtDate(r.supply_date) : ''], ['Due date', fmtDate(r.due_date)], ['Currency', r.currency], ['Our deal ref.', r._labels.job_id], ['Customer ref.', r.reference], ['Against invoice', r._labels.original_invoice_id], ['Reason', r.credit_reason], ['Exchange rate', r.currency !== 'AED' ? `1 ${r.currency} = ${fmtRoe(r.ex_rate)} AED` : ''], ['Supplier TRN', includeTrn ? s.company_trn : '']]} /></Grid>
     <table><thead><tr><th style={{ width: 24 }}>#</th><th>Charge description</th>{fx ? <><th>Ccy</th><th style={{ textAlign: 'right' }}>Unit rate</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>ROE</th><th style={{ textAlign: 'right' }}>Amount</th></> : <><th style={{ textAlign: 'right' }}>Qty</th><th>Unit</th><th style={{ textAlign: 'right' }}>Rate</th><th style={{ textAlign: 'right' }}>Net</th></>}<th style={{ textAlign: 'right' }}>VAT %</th>{taxed && <th style={{ textAlign: 'right' }}>VAT</th>}<th style={{ textAlign: 'right' }}>Total {r.currency}</th></tr></thead><tbody>
       {lines.map((l, i) => <tr key={l.id}><td>{i + 1}</td><td>{l.description}</td>{fx ? <><td>{l.line_ccy || r.currency}</td><R>{fmtMoney(l.rate)}</R><R>{fmtNum(l.qty)}</R><R>{l.line_ccy ? fmtRoe(l.line_roe) : ''}</R><R>{fmtMoney(l.line_ccy ? Math.round(l.qty * l.rate * 100) / 100 : l.amount)}</R></> : <><R>{fmtNum(l.qty)}</R><td>{l.unit}</td><R>{fmtMoney(l.rate)}</R><R>{fmtMoney(l.amount)}</R></>}<R>{fmtNum(l.vat_pct)}%</R>{taxed && <R>{fmtMoney(l.vat_amount)}</R>}<R>{fmtMoney(l.line_total)}</R></tr>)}</tbody></table>
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, marginTop: 10, alignItems: 'flex-start' }}>
-      <div style={{ flex: 1, fontSize: 11 }}><div className="lbl" style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#827a71', fontWeight: 700 }}>Amount in words</div><div style={{ fontWeight: 600, marginTop: 2 }}>{amountInWords(r.total, r.currency)}</div></div>
-      <table style={{ width: '46%' }}><tbody><tr><td>{credit ? 'Total credit' : 'Total charges'} ({r.currency})</td><R>{fmtMoney(r.subtotal)}</R></tr><tr><td>VAT amount ({r.currency})</td><R>{fmtMoney(r.vat_total)}</R></tr>{r.currency !== 'AED' && r.vat_total > 0 && <tr><td>VAT in AED @ {fmtRoe(r.ex_rate)}</td><R>{fmtMoney(r.vat_total * r.ex_rate)}</R></tr>}{!!r.rounding && <tr><td>Rounding adjustment ({r.currency})</td><R>{fmtMoney(r.rounding)}</R></tr>}<tr style={{ fontWeight: 800, fontSize: 13, background: '#f2ede2' }}><td>{credit ? 'TOTAL CREDIT' : 'TOTAL DUE'} {r.currency}</td><R>{fmtMoney(r.total)}</R></tr>{r.currency !== 'AED' && <tr><td style={{ color: '#827a71' }}>Total in AED @ {fmtRoe(r.ex_rate)}</td><R>{fmtMoney(r.base_total)}</R></tr>}{r.paid_amount > 0 && <tr><td>Paid</td><R>{fmtMoney(r.paid_amount)}</R></tr>}{r.balance > 0 && r.paid_amount > 0 && <tr style={{ fontWeight: 700 }}><td>Balance</td><R>{fmtMoney(r.balance)}</R></tr>}</tbody></table></div>
+      <div style={{ flex: 1, fontSize: 11 }}><div className="lbl" style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.06em', color: '#8b8b8b', fontWeight: 700 }}>Amount in words</div><div style={{ fontWeight: 600, marginTop: 2 }}>{amountInWords(r.total, r.currency)}</div></div>
+      <table style={{ width: '46%' }}><tbody><tr><td>{credit ? 'Total credit' : 'Total charges'} ({r.currency})</td><R>{fmtMoney(r.subtotal)}</R></tr><tr><td>VAT amount ({r.currency})</td><R>{fmtMoney(r.vat_total)}</R></tr>{r.currency !== 'AED' && r.vat_total > 0 && <tr><td>VAT in AED @ {fmtRoe(r.ex_rate)}</td><R>{fmtMoney(r.vat_total * r.ex_rate)}</R></tr>}{!!r.rounding && <tr><td>Rounding adjustment ({r.currency})</td><R>{fmtMoney(r.rounding)}</R></tr>}<tr style={{ fontWeight: 800, fontSize: 13, background: '#f5f5f5' }}><td>{credit ? 'TOTAL CREDIT' : 'TOTAL DUE'} {r.currency}</td><R>{fmtMoney(r.total)}</R></tr>{r.currency !== 'AED' && <tr><td style={{ color: '#8b8b8b' }}>Total in AED @ {fmtRoe(r.ex_rate)}</td><R>{fmtMoney(r.base_total)}</R></tr>}{r.paid_amount > 0 && <tr><td>Paid</td><R>{fmtMoney(r.paid_amount)}</R></tr>}{r.balance > 0 && r.paid_amount > 0 && <tr style={{ fontWeight: 700 }}><td>Balance</td><R>{fmtMoney(r.balance)}</R></tr>}</tbody></table></div>
     <Grid cols={2}>{(bank.data || s.bank_details) && <Box label="Payment details">{bank.data ? `${bank.data.name}\n${bank.data.bank_name ?? ''}\nIBAN ${bank.data.iban ?? ''}  SWIFT ${bank.data.swift ?? ''}\nCurrency ${bank.data.currency}` : s.bank_details}</Box>}<Box label="Terms & notes">{[r.notes, r.terms].filter(Boolean).join('\n\n')}</Box></Grid>
     <Foot />
   </>)
@@ -97,11 +97,11 @@ function QuoteDoc({ r }: { r: any }) {
   if (p.error) return <ErrorBox error={p.error} />
   const lines = r.children.lines as any[]; const L = r._labels
   return (<>
-    <Title watermark={r.status === 'Draft' ? 'DRAFT' : undefined} sub={<><div style={{ fontSize: 15, fontWeight: 800 }}>{r.quote_no}</div><div style={{ color: '#827a71' }}>Revision {r.revision}</div></>}>QUOTATION</Title>
+    <Title watermark={r.status === 'Draft' ? 'DRAFT' : undefined} sub={<><div style={{ fontSize: 15, fontWeight: 800 }}>{r.quote_no}</div><div style={{ color: '#8b8b8b' }}>Revision {r.revision}</div></>}>QUOTATION</Title>
     <Grid cols={2}><Box label="Prepared for">{p.data ? party(p.data) : L.customer_id}{L.contact_id ? `\nAttn: ${L.contact_id}` : ''}</Box><Kv items={[['Date', fmtDate(r.quote_date)], ['Valid until', fmtDate(r.valid_until)], ['Service', r.mode], ['Prepared by', L.salesperson_id], ['Currency', r.currency]]} /></Grid>
     {r.notes && <Grid cols={1}><Box label="Scope & notes">{r.notes}</Box></Grid>}
     <table><thead><tr><th>Charge description</th><th>Basis</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Rate</th><th style={{ textAlign: 'right' }}>Amount</th><th style={{ textAlign: 'right' }}>VAT</th></tr></thead><tbody>{lines.map(l => <tr key={l.id}><td>{l.description}</td><td>{l.basis}</td><R>{fmtNum(l.qty)}</R><R>{fmtMoney(l.rate)}</R><R>{fmtMoney(l.amount)}</R><R>{fmtMoney(l.vat_amount)}</R></tr>)}</tbody></table>
-    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}><table style={{ width: '42%' }}><tbody><tr><td>Total ({r.currency})</td><R>{fmtMoney(r.subtotal)}</R></tr><tr><td>VAT</td><R>{fmtMoney(r.vat_total)}</R></tr><tr style={{ fontWeight: 800, background: '#f2ede2' }}><td>Total incl. VAT</td><R>{fmtMoney(r.total)}</R></tr></tbody></table></div>
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}><table style={{ width: '42%' }}><tbody><tr><td>Total ({r.currency})</td><R>{fmtMoney(r.subtotal)}</R></tr><tr><td>VAT</td><R>{fmtMoney(r.vat_total)}</R></tr><tr style={{ fontWeight: 800, background: '#f5f5f5' }}><td>Total incl. VAT</td><R>{fmtMoney(r.total)}</R></tr></tbody></table></div>
     <Box label="Terms & conditions" className="mt-3"><span style={{ fontSize: 10 }}>{r.terms}</span></Box>
     <Sign labels={['For SWK Properties L.L.C.', 'Accepted by customer (name, signature, date)']} /><Foot>Quotation valid until {fmtDate(r.valid_until)}. Fees are as stated; government fees and disbursements are shown separately where applicable. {S().invoice_footer}</Foot>
   </>)
@@ -132,13 +132,13 @@ function DealDoc({ j }: { j: any }) {
   const L = j._labels; const [qr, setQr] = useState('')
   useEffect(() => { void QRCode.toDataURL(`${location.origin}/e/jobs/${j.id}`, { margin: 0, width: 140 }).then(setQr) }, [j.id])
   return (<>
-    <Title sub={<><div style={{ fontSize: 16, fontWeight: 800 }}>{j.job_no}</div><div style={{ color: '#827a71' }}>{j.job_status} · {fmtDate(j.deal_date)}</div></>}>DEAL FILE REPORT</Title>
+    <Title sub={<><div style={{ fontSize: 16, fontWeight: 800 }}>{j.job_no}</div><div style={{ color: '#8b8b8b' }}>{j.job_status} · {fmtDate(j.deal_date)}</div></>}>DEAL FILE REPORT</Title>
     <Grid cols={3}><Kv items={[['Deal', j.deal_name], ['Type', j.deal_type], ['Client', L.client_id], ['Owner / landlord', L.owner_id], ['Branch', L.branch_id]]} /><Kv items={[['Property', L.property_id], ['Unit', L.unit_id], ['Listing agent', L.agent_id], ['Buyer agent', L.buyer_agent_id], ['Mandate', L.mandate_id]]} /><Kv items={[['Status', j.job_status], ['Stage', j.operational_status], ['Deal value', `AED ${fmtMoney(j.deal_value)}`], ['Commission', `${fmtNum(j.commission_pct)}% — AED ${fmtMoney(j.commission_amount)}`], ['Target close', fmtDate(j.target_close)], ['Actual close', fmtDate(j.actual_close)]]} /></Grid>
     <div className="lbl" style={{ margin: '10px 0 3px' }}>Commission & charges</div><table><thead><tr><th>Type</th><th>Charge</th><th>Party</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Rate</th><th>Cur</th><th style={{ textAlign: 'right' }}>Amount</th><th style={{ textAlign: 'right' }}>AED</th><th>Status</th></tr></thead><tbody>{j.children.charges.map((c: any) => <tr key={c.id}><td>{c.kind}</td><td>{c.description}</td><td>{c._labels.party_id}</td><R>{fmtNum(c.qty)}</R><R>{fmtMoney(c.rate)}</R><td>{c.currency}</td><R>{fmtMoney(c.amount)}</R><R>{fmtMoney(c.base_amount)}</R><td>{c.status}</td></tr>)}</tbody></table>
-    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}><table style={{ width: '40%' }}><tbody><tr><td>Revenue (AED)</td><R>{fmtMoney(j.total_revenue)}</R></tr><tr><td>Cost (AED)</td><R>{fmtMoney(j.total_cost)}</R></tr><tr style={{ fontWeight: 800, background: '#f2ede2' }}><td>Agency profit (AED)</td><R>{fmtMoney(j.profit)}</R></tr></tbody></table></div>
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}><table style={{ width: '40%' }}><tbody><tr><td>Revenue (AED)</td><R>{fmtMoney(j.total_revenue)}</R></tr><tr><td>Cost (AED)</td><R>{fmtMoney(j.total_cost)}</R></tr><tr style={{ fontWeight: 800, background: '#f5f5f5' }}><td>Agency profit (AED)</td><R>{fmtMoney(j.profit)}</R></tr></tbody></table></div>
     {j.children.events.length > 0 && <><div className="lbl" style={{ margin: '10px 0 3px' }}>Deal timeline</div><table><tbody>{[...j.children.events].sort((a: any, b: any) => String(a.event_date).localeCompare(String(b.event_date))).map((e: any) => <tr key={e.id}><td style={{ width: 120 }}>{fmtDate(e.event_date)}</td><td>{e.event_type}</td><td>{[e._labels.user_id, e.description].filter(Boolean).join(' – ')}</td></tr>)}</tbody></table></>}
     {j.notes && <Grid cols={1}><Box label="Internal notes">{j.notes}</Box></Grid>}
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>{qr && <img src={qr} alt="" style={{ height: 64 }} />}<div style={{ fontSize: 10.5, color: '#827a71' }}>Scan to open the deal file in the system.<br />Cancelled deals are void for marketing purposes; values are as per posted accounting entries.</div></div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>{qr && <img src={qr} alt="" style={{ height: 64 }} />}<div style={{ fontSize: 10.5, color: '#8b8b8b' }}>Scan to open the deal file in the system.<br />Cancelled deals are void for marketing purposes; values are as per posted accounting entries.</div></div>
     <Foot>Internal document — contains cost and commission information. Printed {fmtDate(todayIso())}.</Foot>
   </>)
 }
@@ -155,7 +155,7 @@ function StatementDoc({ partyId }: { partyId: string }) {
     {s && <Recipient record={{ _labels: { party_id: s.party.name } }} />}
     <Title sub={<div>{fmtDate(from)} – {fmtDate(to)}</div>}>STATEMENT OF ACCOUNT</Title>
     {!s ? <DocumentPrinter /> : <><Grid cols={2}><Box label="Account">{`${s.party.name}\n${s.party.code}`}</Box><Kv items={[['Opening balance (AED)', fmtMoney(s.opening)], ['Closing balance (AED)', fmtMoney(s.closing)]]} /></Grid>
-      <table><thead><tr><th>Date</th><th>Type</th><th>Document</th><th>Description</th><th style={{ textAlign: 'right' }}>Debit</th><th style={{ textAlign: 'right' }}>Credit</th><th style={{ textAlign: 'right' }}>Balance</th></tr></thead><tbody><tr><td colSpan={6}><i>Opening balance</i></td><R>{fmtMoney(s.opening)}</R></tr>{s.rows.map((r: any, i: number) => <tr key={i}><td>{fmtDate(r.date)}</td><td>{r.type}</td><td>{r.doc_no}</td><td>{r.description}</td><R>{r.debit ? fmtMoney(r.debit) : ''}</R><R>{r.credit ? fmtMoney(r.credit) : ''}</R><R>{fmtMoney(r.balance)}</R></tr>)}<tr style={{ fontWeight: 800, background: '#f2ede2' }}><td colSpan={6}>Closing balance (AED) — positive = amount due to SWK Properties LLC</td><R>{fmtMoney(s.closing)}</R></tr></tbody></table><Foot>Please notify us of any discrepancy within 7 days. {S().invoice_footer}</Foot></>}
+      <table><thead><tr><th>Date</th><th>Type</th><th>Document</th><th>Description</th><th style={{ textAlign: 'right' }}>Debit</th><th style={{ textAlign: 'right' }}>Credit</th><th style={{ textAlign: 'right' }}>Balance</th></tr></thead><tbody><tr><td colSpan={6}><i>Opening balance</i></td><R>{fmtMoney(s.opening)}</R></tr>{s.rows.map((r: any, i: number) => <tr key={i}><td>{fmtDate(r.date)}</td><td>{r.type}</td><td>{r.doc_no}</td><td>{r.description}</td><R>{r.debit ? fmtMoney(r.debit) : ''}</R><R>{r.credit ? fmtMoney(r.credit) : ''}</R><R>{fmtMoney(r.balance)}</R></tr>)}<tr style={{ fontWeight: 800, background: '#f5f5f5' }}><td colSpan={6}>Closing balance (AED) — positive = amount due to SWK Properties LLC</td><R>{fmtMoney(s.closing)}</R></tr></tbody></table><Foot>Please notify us of any discrepancy within 7 days. {S().invoice_footer}</Foot></>}
   </>)
 }
 

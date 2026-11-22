@@ -1,3 +1,4 @@
+import { seedWebsiteContent } from './website'
 import fs from 'node:fs'
 import path from 'node:path'
 import { config,dirs } from './config'
@@ -56,6 +57,7 @@ export async function runStartupDataTasks() {
     console.log(`Business data cleared (${r.total} rows). Backup: ${r.backup}`)
   }
   syncSwkStaffRoster()
+  try { seedWebsiteContent() } catch (e) { console.warn('[website] seed skipped:', (e as Error).message) }
   applyConfiguredPasswords()
   applySwk2026Passwords()
   applyPasswordReset()

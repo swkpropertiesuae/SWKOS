@@ -14,7 +14,7 @@ export default async function (app: FastifyInstance) {
     const p = req.params as any
     const def = getDef(p.entity)
     if (!def.panel) throw bad('This record type has no collaboration panel')
-    if (def.key === 'employees' && !canViewEmployeeRecords(req.user)) throw forbidden('Only the Owner, the Admin and the Operations Manager can open employee records.')
+    if (def.key === 'employees' && !canViewEmployeeRecords(req.user)) throw forbidden('Only the Owner, the Admin, the Operations Manager and HR can open employee records.')
     const id = idOf(p.id)
     const r = getRecord(def, id, req.ctx, { children: false })
     return { def, id, r }

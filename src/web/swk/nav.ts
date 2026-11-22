@@ -4,7 +4,7 @@ LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rock
 UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact
 } from 'lucide-react';
 import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
@@ -112,7 +112,14 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Registrations', to: '/e/compliance_items', icon: ScrollText, module: 'documents', desc: 'Official certificates' },
     { label: 'File Vault', to: '/documents', icon: FileStack, module: 'documents', desc: 'All uploaded documents' },
   ] },
+  { key: 'website', label: 'Website', items: [
+    { label: 'Website Studio', to: '/website', icon: Globe, module: 'website', isNew: true, desc: 'Inventory, hot offers & one-click deploy' },
+    { label: 'Website Listings', to: '/e/website_listings', icon: Building2, module: 'website', desc: 'All listings on swkpropertiesuae.com' },
+    { label: 'Trending Spotlight', to: '/e/website_promotions', icon: Flame, module: 'website', desc: 'Promotions shown on the website' },
+    { label: 'Our Team', to: '/team', icon: Contact, desc: 'Team profiles as on the website' },
+  ] },
   { key: 'team', label: 'Employees', items: [
+    { label: 'Team Profiles', to: '/team', icon: Contact, desc: 'Photos, bios & role access' },
     { label: 'Staff List', to: '/e/employees', icon: Users, module: 'hr', desc: 'Step 1 · Employee profiles' },
     { label: 'Brokers (BRN)', to: '/e/agents', icon: IdCard, module: 'hr', desc: 'Step 2 · Sales & leasing agents' },
     { label: 'Joining & Exit', to: '/e/hr_lifecycle_cases', icon: Users, module: 'hr', desc: 'Step 3 · Onboarding checklist' },
@@ -176,6 +183,7 @@ export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: A
   owners: { blurb: 'Landlord portfolios, yields & payout statements', icon: UserRoundCog, tone: 'plum' },
   finance: { blurb: 'Invoices, receipts, commissions, bills & VAT', icon: Percent, tone: 'oasis' },
   compliance: { blurb: 'KYC checks, RERA permits, broker cards & AML', icon: Gavel, tone: 'dune' },
+  website: { blurb: 'Website inventory, hot offers, spotlight & deploy', icon: Globe, tone: 'oasis' },
   team: { blurb: 'Staff, brokers, visas, attendance, leave & payroll', icon: Users, tone: 'ocean' },
   field: { blurb: 'Reception QR check-in, gate logs & field visits', icon: MapPinned, tone: 'champ' },
   tools: { blurb: 'Deal calculators, contract studio & reports', icon: FileStack, tone: 'plum' },

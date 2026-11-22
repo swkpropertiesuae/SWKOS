@@ -18,7 +18,9 @@
  *   - Shahid@swk.property
  *   - Umar@swk.property
  *   - Saifullah@swk.property
- *   - Meenakshi@swk.properties
+ * - Role-based office staff (own roles, not the restricted staff role):
+ *   - Rahaba Azeez (HR — rahaba@swk.properties): HR & Payroll module, employee records, leave and attendance approvals.
+ *   - Meenakshi (Office Admin — meenakshi@swk.properties): reception, documents, calendar, support tickets, walk-in enquiries.
  *   - Fareed, Shahid, Umar, Sanketh sign in with @swk.rent (their @swk.properties address stays as an alias).
  *   - Any other staff account assigned the 'Staff (Attendance & General)' role.
  */
@@ -29,7 +31,7 @@ export interface SwkHardcodedStaffAccount {
   aliases: string[]
   name: string
   empNo: string
-  roleName: 'Owner' | 'Admin' | 'Manager' | 'Staff (Attendance & General)'
+  roleName: 'Owner' | 'Admin' | 'Manager' | 'HR' | 'Office Admin' | 'Staff (Attendance & General)'
   departmentCode: string
   designation: string
   phone: string
@@ -177,10 +179,23 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     aliases: ['meenakshi@swk.property', 'meenakshi@swkpropertiesuae.com'],
     name: 'Meenakshi',
     empNo: 'EMP-MEENAKSHI',
-    roleName: 'Staff (Attendance & General)',
-    departmentCode: 'SAL',
-    designation: 'Property Consultant',
+    roleName: 'Office Admin',
+    departmentCode: 'OPS',
+    designation: 'Office Admin',
     phone: '+971 50 100 0010',
+    fullAccess: false,
+    controlledBy: 'shabib@swk.properties',
+  },
+  {
+    email: 'rahaba@swk.properties',
+    displayEmail: 'rahaba@swk.properties',
+    aliases: ['rahaba@swk.property', 'rahaba@swkpropertiesuae.com'],
+    name: 'Rahaba Azeez',
+    empNo: 'EMP-RAHABA',
+    roleName: 'HR',
+    departmentCode: 'HR',
+    designation: 'HR Executive',
+    phone: '+971 50 100 0011',
     fullAccess: false,
     controlledBy: 'shabib@swk.properties',
   },
@@ -292,9 +307,6 @@ const RESTRICTED_STAFF_EMAILS = new Set<string>([
   'sanketh@swk.properties',
   'sanketh@swkpropertiesuae.com',
   'sanketh@swk.rent',
-  'meenakshi@swk.property',
-  'meenakshi@swk.properties',
-  'meenakshi@swkpropertiesuae.com',
 ])
 
 export const RESTRICTED_STAFF_PERMISSIONS: Record<string, string[]> = {
@@ -402,6 +414,7 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/calendar',
     '/ai',
     '/profile',
+    '/team',
     '/my-deals',
     '/workspace-tools',
     '/handover',
@@ -413,6 +426,7 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     clean.startsWith('/swk/reception-qr/') ||
     clean.startsWith('/qr-reception/') ||
     clean.startsWith('/handover/') ||
+    clean.startsWith('/team/') ||
     clean.startsWith('/print/')
   ) {
     return true
@@ -432,12 +446,13 @@ export function canOpenEmployeeRecords(
   return isOwnerSwkUser(user) || isAdminSwkUser(user)
 }
 
-/** Employee records open for the Owner, the Admin and the Operations Manager (Haseeb). Handover custody and Access & usage stay Owner/Admin only (canOpenEmployeeRecords). */
+/** Employee records open for the Owner, the Admin, the Operations Manager (Haseeb) and HR-role staff (Rahaba). Handover custody and Access & usage stay Owner/Admin only (canOpenEmployeeRecords). */
 export function canViewEmployeeRecords(
   user: { email?: string | null; role?: string | null; role_name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
   const e = String(user.email ?? '').trim().toLowerCase()
+  if (String(user.role_name || user.role || '').trim().toLowerCase() === 'hr') return true
   return canOpenEmployeeRecords(user) || ['haseeb@swk.properties', 'haseeb@swk.property', 'haseeb@swkpropertiesuae.com', 'manager@swkpropertiesuae.com'].includes(e)
 }
 
@@ -445,4 +460,27 @@ export function canViewEmployeeRecords(
 export function swkPatternPassword(email: string): string {
   const local = String(email).split('@')[0]
   return local.charAt(0).toUpperCase() + local.slice(1).toLowerCase() + '@swk2026'
+}
+
+/** Office Admin role permissions (Meenakshi): front office, documents, calendar, support and walk-in enquiries. No finance, deals or settings. */
+export const OFFICE_ADMIN_PERMISSIONS: Record<string, string[]> = {
+  dashboard: ['view'],
+  crm: ['view', 'create'],
+  documents: ['view', 'create', 'edit', 'export'],
+  projects: ['view', 'create', 'edit'],
+  support: ['view', 'create', 'edit'],
+  hr: ['view', 'create'],
+  masters: ['view'],
+  ai: ['view', 'create'],
+}
+
+/** HR role permissions (Rahaba Azeez): full HR & payroll with approvals, HR documents, no deals or finance. */
+export const HR_ROLE_PERMISSIONS: Record<string, string[]> = {
+  dashboard: ['view'],
+  hr: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
+  documents: ['view', 'create', 'edit', 'export'],
+  projects: ['view', 'create', 'edit', 'export'],
+  masters: ['view'],
+  reports: ['view', 'export'],
+  ai: ['view', 'create'],
 }

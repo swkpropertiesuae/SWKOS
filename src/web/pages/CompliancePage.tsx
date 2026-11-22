@@ -7,7 +7,7 @@ import { useToast } from '../lib/toast'
 import { PageHeader,Loading,ErrorBox,Badge,Empty,Tabs,useDialogs } from '../ui/kit'
 import { fmtDate } from '../lib/format'
 
-const ICON = { ok: <CheckCircle2 size={18} className="text-emerald" />, warn: <AlertTriangle size={18} style={{ color: '#b7791f' }} />, fail: <XCircle size={18} style={{ color: '#c32135' }} />, info: <Info size={18} className="text-muted" /> }
+const ICON = { ok: <CheckCircle2 size={18} className="text-emerald" />, warn: <AlertTriangle size={18} style={{ color: '#b7791f' }} />, fail: <XCircle size={18} style={{ color: '#dc2626' }} />, info: <Info size={18} className="text-muted" /> }
 const TONE: Record<string, 'green' | 'amber' | 'red' | 'grey'> = { ok: 'green', warn: 'amber', fail: 'red', info: 'grey' }
 const sevTone = (s: string) => (s === 'Blocker' ? 'red' : s === 'Warning' ? 'amber' : 'grey') as 'red' | 'amber' | 'grey'
 const dayText = (d: number) => (d < 0 ? `${-d} days overdue` : d === 0 ? 'today' : `in ${d} days`)

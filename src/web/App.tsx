@@ -49,6 +49,9 @@ const RecycleBinPage = lazy(() => import('./pages/swk/RecycleBinPage'))
 const WithdrawalsPage = lazy(() => import('./pages/swk/WithdrawalsPage'))
 const CrmVaultPage = lazy(() => import('./pages/swk/CrmVaultPage'))
 const MyAssignedDealsPage = lazy(() => import('./pages/swk/MyAssignedDealsPage'))
+const TeamDirectoryPage = lazy(() => import('./pages/swk/TeamPage').then(m => ({ default: m.TeamDirectoryPage })))
+const TeamProfilePage = lazy(() => import('./pages/swk/TeamPage').then(m => ({ default: m.TeamProfilePage })))
+const WebsiteStudioPage = lazy(() => import('./pages/swk/WebsiteStudioPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -87,7 +90,7 @@ export default function App() {
     loc.pathname.startsWith('/qr-reception/')
   if (isStandaloneReceptionQr) {
     return (
-      <Suspense fallback={<div className="h-full grid place-items-center bg-[#0c2019] text-white"><Loading label="Starting Standalone Reception QR Terminal…" /></div>}>
+      <Suspense fallback={<div className="h-full grid place-items-center bg-[#0b0b0b] text-white"><Loading label="Starting Standalone Reception QR Terminal…" /></div>}>
         <ReceptionQrPage />
       </Suspense>
     )
@@ -103,16 +106,16 @@ export default function App() {
             <Route
               path="*"
               element={
-                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#0d5a48]/40 bg-[#143529] text-white shadow-xl">
-                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#f2efe8] mb-2">
+                <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl border border-[#0e9f6e]/40 bg-[#121212] text-white shadow-xl">
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-[#f7f7f7] mb-2">
                     Staff Access Policy · SWK Properties OS
                   </div>
                   <h2 className="text-xl font-bold mb-2">Restricted Module — Attendance, Manual, Market Pulse &amp; General Only</h2>
                   <p className="text-sm text-slate-300 leading-relaxed mb-6">
-                    Signed in as <b>{me.name}</b> (<code className="text-[#f2efe8]">{me.email}</code>). Per company security policy, full OS operational modules are restricted exclusively to <b>Owner Shabib Siraj (shabib@swk.properties)</b>, <b>Full-Access Admin (admin@swk.properties)</b>, and <b>Mohammad Haseeb (Haseeb@swk.property)</b>. Your account is authorised for <b>Attendance &amp; QR Check-In</b>, <b>Company Manual</b>, <b>Market Pulse</b>, and <b>General Workspace</b>.
+                    Signed in as <b>{me.name}</b> (<code className="text-[#f7f7f7]">{me.email}</code>). Per company security policy, full OS operational modules are restricted exclusively to <b>Owner Shabib Siraj (shabib@swk.properties)</b>, <b>Full-Access Admin (admin@swk.properties)</b>, and <b>Mohammad Haseeb (Haseeb@swk.property)</b>. Your account is authorised for <b>Attendance &amp; QR Check-In</b>, <b>Company Manual</b>, <b>Market Pulse</b>, and <b>General Workspace</b>.
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#0d5a48] text-white font-bold text-xs no-underline">
+                    <Link to="/reception-qr?scan=1" className="px-4 py-2.5 rounded-xl bg-[#0e9f6e] text-white font-bold text-xs no-underline">
                       Scan &amp; Check In Attendance
                     </Link>
                     <Link to="/market" className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs no-underline border border-white/15">
@@ -145,6 +148,9 @@ export default function App() {
           <Route path="/withdrawals" element={<Guard module="admin"><WithdrawalsPage /></Guard>} />
           <Route path="/crm-vault" element={<CrmVaultGuard><CrmVaultPage /></CrmVaultGuard>} />
           <Route path="/my-deals" element={<MyAssignedDealsPage />} />
+          <Route path="/team" element={<TeamDirectoryPage />} />
+          <Route path="/team/:slug" element={<TeamProfilePage />} />
+          <Route path="/website" element={<Guard module="website"><WebsiteStudioPage /></Guard>} />
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/market" element={<MarketPage />} />
           <Route path="/toolkit" element={<ToolkitPage />} />

@@ -10,8 +10,8 @@ import { ArrowUpRight,TrendingDown,TrendingUp } from 'lucide-react'
 import { cls } from '../lib/format'
 
 export const SWK = {
-  navy: '#123025', midnight: '#123025', ocean: '#1a4535', sky: '#1d8266', champ: '#0d5a48', champDeep: '#0a4a3b',
-  champSoft: '#e9f4ef', sand: '#f2f1ee', oasis: '#1f7a59', dune: '#d51f16', ink: '#123025', muted: '#72685d', line: '#e7e8e6',
+  navy: '#121212', midnight: '#121212', ocean: '#1a4535', sky: '#1d8266', champ: '#0e9f6e', champDeep: '#1e1e1e',
+  champSoft: '#e8fff6', sand: '#f7f7f7', oasis: '#0e9f6e', dune: '#dc2626', ink: '#121212', muted: '#737373', line: '#e5e5e5',
 }
 /** Ordered chart palette — navy → champagne → oasis → ocean → dune → sky → gold */
 export const CHART = [SWK.navy, SWK.champ, SWK.oasis, SWK.ocean, SWK.dune, SWK.sky, SWK.champDeep, '#a5998b']
@@ -134,7 +134,7 @@ export function Sparkline({ data, color = SWK.navy, width = 92, height = 30 }: {
 }
 
 /** Animated circular progress (occupancy, compliance, completion %). */
-export function ProgressRing({ value, size = 92, stroke = 9, color = SWK.navy, track = '#ecebe4', label, sub }: { value: number; size?: number; stroke?: number; color?: string; track?: string; label?: ReactNode; sub?: ReactNode }) {
+export function ProgressRing({ value, size = 92, stroke = 9, color = SWK.navy, track = '#f5f5f5', label, sub }: { value: number; size?: number; stroke?: number; color?: string; track?: string; label?: ReactNode; sub?: ReactNode }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r, v = Math.max(0, Math.min(100, value))
   return (
     <div className="relative grid place-items-center flex-none" style={{ width: size, height: size }}>
@@ -154,7 +154,7 @@ export function ProgressRing({ value, size = 92, stroke = 9, color = SWK.navy, t
 export function Bar({ value, max = 100, color = SWK.navy, height = 8, delay = 0 }: { value: number; max?: number; color?: string; height?: number; delay?: number }) {
   const w = max ? Math.max(0, Math.min(100, (value / max) * 100)) : 0
   return (
-    <div className="w-full rounded-full overflow-hidden" style={{ height, background: '#ecebe4' }}>
+    <div className="w-full rounded-full overflow-hidden" style={{ height, background: '#f5f5f5' }}>
       <motion.div className="h-full rounded-full" style={{ background: color }} initial={{ width: 0 }} whileInView={{ width: `${w}%` }} viewport={{ once: true }} transition={{ duration: 1, delay, ease: [0.16, 1, 0.3, 1] }} />
     </div>
   )

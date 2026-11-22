@@ -166,14 +166,14 @@ export default function MarketPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Left 5 cols: Stock Ticker Card + 15-Year Forecast */}
               <div className="lg:col-span-5 space-y-4">
-                <div className="rounded-2xl p-4 text-white border border-[#0d5a48]/25" style={{ background: 'linear-gradient(135deg, #123025 0%, #123025 100%)' }}>
+                <div className="rounded-2xl p-4 text-white border border-[#0e9f6e]/25" style={{ background: 'linear-gradient(135deg, #121212 0%, #121212 100%)' }}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[11px] uppercase tracking-widest text-[#f2efe8] font-bold">{companionArea.ticker} · {companionArea.segment} Index</div>
+                      <div className="text-[11px] uppercase tracking-widest text-[#f7f7f7] font-bold">{companionArea.ticker} · {companionArea.segment} Index</div>
                       <div className="font-display text-2xl font-bold mt-0.5">{companionArea.name}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono text-2xl font-extrabold text-[#f2efe8]">AED {num(companionArea.ppsf)}<span className="text-xs font-normal">/sqft</span></div>
+                      <div className="font-mono text-2xl font-extrabold text-[#f7f7f7]">AED {num(companionArea.ppsf)}<span className="text-xs font-normal">/sqft</span></div>
                       <div className="text-xs font-bold text-emerald-300">▲ +{companionArea.yoyPct}% YoY · Yield {companionArea.yieldPct}%</div>
                     </div>
                   </div>
@@ -193,20 +193,20 @@ export default function MarketPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#ecebe4] bg-[#fdfdfc] p-4">
+                <div className="rounded-2xl border border-[#f5f5f5] bg-[#ffffff] p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="text-xs font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                      <TrendingUp size={14} className="text-[#174B3B]" /> 15-Year Future Trajectory (2026 → 2041)
+                      <TrendingUp size={14} className="text-[#1e1e1e]" /> 15-Year Future Trajectory (2026 → 2041)
                     </div>
                     <Pill tone="oasis">Dubai 2040 Aligned</Pill>
                   </div>
                   <p className="text-xs text-muted mb-3">{companionArea.future15YearOutlook}</p>
                   <div className="space-y-2">
                     {(companionArea.forecast15Y ?? []).map((f: any) => (
-                      <div key={f.year} className="flex items-center justify-between gap-2 text-xs p-2 rounded-xl bg-white border border-[#ecebe4]">
-                        <span className="font-mono font-extrabold text-[#123025] bg-[#f2efe8]/40 px-2 py-0.5 rounded">{f.year}</span>
+                      <div key={f.year} className="flex items-center justify-between gap-2 text-xs p-2 rounded-xl bg-white border border-[#f5f5f5]">
+                        <span className="font-mono font-extrabold text-[#121212] bg-[#f7f7f7]/40 px-2 py-0.5 rounded">{f.year}</span>
                         <span className="flex-1 text-muted truncate" title={f.catalyst}>{f.catalyst}</span>
-                        <span className="font-mono font-extrabold text-[#174B3B]">AED {num(f.projectedPpsf)}/sqft</span>
+                        <span className="font-mono font-extrabold text-[#1e1e1e]">AED {num(f.projectedPpsf)}/sqft</span>
                       </div>
                     ))}
                   </div>
@@ -215,7 +215,7 @@ export default function MarketPage() {
 
               {/* Right 7 cols: Top Closing Keywords, Pitch Script, Nearby & Ongoing Projects */}
               <div className="lg:col-span-7 space-y-4">
-                <div className="rounded-2xl border-2 border-[#0a4a3b]/50 bg-[#0a4a3b]/10 p-4">
+                <div className="rounded-2xl border-2 border-[#1e1e1e]/50 bg-[#1e1e1e]/10 p-4">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                     <div className="text-xs font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
                       <Flame size={15} className="text-[#7E3039]" /> Top Closing Keywords to Say on Field Visit
@@ -228,7 +228,7 @@ export default function MarketPage() {
                         key={kw}
                         type="button"
                         onClick={() => { void navigator.clipboard?.writeText(kw); toast.ok(`Copied keyword: "${kw}"`) }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-[#123025] text-[#f2efe8] hover:opacity-90 transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold bg-[#121212] text-[#f7f7f7] hover:opacity-90 transition"
                       >
                         <Sparkles size={11} /> {kw} <Copy size={10} />
                       </button>
@@ -237,7 +237,7 @@ export default function MarketPage() {
                   <div className="space-y-2 mt-2">
                     <div className="text-[11px] font-bold uppercase tracking-wider text-muted">Verbatim Site-Visit Pitch Lines (What to Tell the Client):</div>
                     {(companionArea.fieldVisitPitchScript ?? []).map((line: string, idx: number) => (
-                      <div key={idx} className="p-2.5 rounded-xl bg-white border border-[#ecebe4] text-xs font-medium text-ink flex items-start justify-between gap-2">
+                      <div key={idx} className="p-2.5 rounded-xl bg-white border border-[#f5f5f5] text-xs font-medium text-ink flex items-start justify-between gap-2">
                         <span><strong className="text-[#7E3039]">#{idx + 1}:</strong> “{line}”</span>
                         <button
                           type="button"
@@ -253,18 +253,18 @@ export default function MarketPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-[#ecebe4] bg-white p-3.5 text-xs space-y-2">
+                  <div className="rounded-2xl border border-[#f5f5f5] bg-white p-3.5 text-xs space-y-2">
                     <div className="font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                      <MapPin size={14} className="text-[#174B3B]" /> What’s Nearby ({companionArea.name})
+                      <MapPin size={14} className="text-[#1e1e1e]" /> What’s Nearby ({companionArea.name})
                     </div>
                     <div className="flex items-start gap-1.5"><Train size={13} className="text-muted flex-none mt-0.5" /> <span><strong>Metro / Transit:</strong> {companionArea.nearby?.metro}</span></div>
                     <div className="flex items-start gap-1.5"><Landmark size={13} className="text-muted flex-none mt-0.5" /> <span><strong>Landmarks:</strong> {(companionArea.nearby?.landmarks ?? []).join(' · ')}</span></div>
                     <div className="flex items-start gap-1.5"><GraduationCap size={13} className="text-muted flex-none mt-0.5" /> <span><strong>Schools:</strong> {(companionArea.nearby?.schools ?? []).join(' · ')}</span></div>
                     <div className="flex items-start gap-1.5"><Hospital size={13} className="text-muted flex-none mt-0.5" /> <span><strong>Hospitals:</strong> {(companionArea.nearby?.hospitals ?? []).join(' · ')}</span></div>
                   </div>
-                  <div className="rounded-2xl border border-[#ecebe4] bg-white p-3.5 text-xs space-y-2">
+                  <div className="rounded-2xl border border-[#f5f5f5] bg-white p-3.5 text-xs space-y-2">
                     <div className="font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                      <Building2 size={14} className="text-[#0a4a3b]" /> Ongoing Flagship Projects & Catalysts
+                      <Building2 size={14} className="text-[#1e1e1e]" /> Ongoing Flagship Projects & Catalysts
                     </div>
                     <ul className="list-disc pl-4 space-y-1 text-ink font-medium">
                       {(companionArea.ongoingProjects ?? []).map((proj: string) => (
@@ -323,7 +323,7 @@ export default function MarketPage() {
                       </td>
                       <td className="num font-mono text-xs">{num(t.area_sqft)}</td>
                       <td className="num font-bold text-ink">{aed(t.actual_worth, { compact: true })}</td>
-                      <td className="num font-mono font-bold text-[#174B3B]">AED {num(t.price_per_sqft)}</td>
+                      <td className="num font-mono font-bold text-[#1e1e1e]">AED {num(t.price_per_sqft)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -344,7 +344,7 @@ export default function MarketPage() {
           >
             <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
               {(pulseQ.data?.news ?? []).map((n: any) => (
-                <div key={n.id} className="p-3 rounded-2xl border border-[#ecebe4] bg-[#fdfdfc] space-y-1.5">
+                <div key={n.id} className="p-3 rounded-2xl border border-[#f5f5f5] bg-[#ffffff] space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <Pill tone={n.impact_level?.includes('High') ? 'champ' : 'navy'}>{n.category}</Pill>
                     <span className="text-[11px] text-muted">{n.published_date} · {n.source_name}</span>
@@ -352,7 +352,7 @@ export default function MarketPage() {
                   <div className="font-bold text-sm text-ink">{n.headline}</div>
                   <p className="text-xs text-muted">{n.summary}</p>
                   {n.client_pitch_talking_point && (
-                    <div className="p-2 rounded-xl bg-white border border-[#ecebe4] text-xs text-[#174B3B] font-semibold">
+                    <div className="p-2 rounded-xl bg-white border border-[#f5f5f5] text-xs text-[#1e1e1e] font-semibold">
                       💡 <strong>Tell Client:</strong> {n.client_pitch_talking_point}
                     </div>
                   )}
@@ -371,7 +371,7 @@ export default function MarketPage() {
           actions={<Link to="/toolkit" className="swk-btn swk-btn-ghost !h-8 !text-xs">Open Full Toolkit <ArrowUpRight size={13} /></Link>}
         >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            <div className="lg:col-span-5 space-y-3 p-4 rounded-2xl bg-[#fdfdfc] border border-[#ecebe4]">
+            <div className="lg:col-span-5 space-y-3 p-4 rounded-2xl bg-[#ffffff] border border-[#f5f5f5]">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Property Price (AED)</label>
@@ -397,18 +397,18 @@ export default function MarketPage() {
                   <input className="input" type="number" step="5000" value={mIncome} onChange={e => setMIncome(Number(e.target.value))} />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#ecebe4] text-center">
-                <div className="p-2.5 rounded-xl bg-white border border-[#ecebe4]">
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#f5f5f5] text-center">
+                <div className="p-2.5 rounded-xl bg-white border border-[#f5f5f5]">
                   <div className="text-[11px] text-muted">Max Loan ({Math.round(mPlan.appliedLtv * 100)}% LTV)</div>
                   <div className="font-display font-bold text-sm text-ink">{aed(mPlan.loan, { compact: true })}</div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white border border-[#ecebe4]">
+                <div className="p-2.5 rounded-xl bg-white border border-[#f5f5f5]">
                   <div className="text-[11px] text-muted">Monthly EMI</div>
-                  <div className="font-display font-extrabold text-sm text-[#174B3B]">{aed(mPlan.emi)}/mo</div>
+                  <div className="font-display font-extrabold text-sm text-[#1e1e1e]">{aed(mPlan.emi)}/mo</div>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white border border-[#ecebe4]">
+                <div className="p-2.5 rounded-xl bg-white border border-[#f5f5f5]">
                   <div className="text-[11px] text-muted">CBUAE DBR Ratio</div>
-                  <div className={`font-display font-bold text-sm ${mPlan.dbrOk ? 'text-[#174B3B]' : 'text-[#7E3039]'}`}>
+                  <div className={`font-display font-bold text-sm ${mPlan.dbrOk ? 'text-[#1e1e1e]' : 'text-[#7E3039]'}`}>
                     {pct(mPlan.dbr * 100, 1)} {mPlan.dbrOk ? '✓ OK' : '⚠ >50%'}
                   </div>
                 </div>
@@ -431,7 +431,7 @@ export default function MarketPage() {
                   {(pulseQ.data?.mortgageBanks ?? []).map((b: any) => (
                     <tr key={b.bank}>
                       <td className="font-bold text-ink">{b.bank}</td>
-                      <td className="num font-mono font-bold text-[#174B3B]">{b.fixedRate3Y}%</td>
+                      <td className="num font-mono font-bold text-[#1e1e1e]">{b.fixedRate3Y}%</td>
                       <td className="num font-mono">{b.fixedRate5Y}%</td>
                       <td className="num text-xs">{b.preApprovalDays} days</td>
                       <td className="text-xs text-muted max-w-[240px]">{b.highlight}</td>
@@ -463,7 +463,7 @@ export default function MarketPage() {
                 key={seg}
                 type="button"
                 onClick={() => setSegFilter(seg)}
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition ${segFilter === seg ? 'bg-[#123025] text-white border-[#123025]' : 'bg-white text-ink border-[#ecebe4]'}`}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition ${segFilter === seg ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-ink border-[#f5f5f5]'}`}
               >
                 {seg}
               </button>
@@ -475,7 +475,7 @@ export default function MarketPage() {
             const ours = props.filter(p => matchCommunity(p)?.id === c.id).length
             return (
               <motion.button key={c.id} type="button" onClick={() => { setOpen(c); if (c.code) setCompanionCode(c.code) }} whileTap={{ scale: 0.98 }}
-                className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0d5a48]/50"
+                className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#0e9f6e]/50"
                 aria-label={`Open ${c.name} market detail`}>
                 <PhotoCard src={c.image} title={`${c.name} (${c.ticker ?? c.code})`}
                   subtitle={`${aed(c.ppsf)}/sq ft · ${pct(c.yieldPct)} gross · SC AED ${c.serviceCharge}/sq ft`}
@@ -494,7 +494,7 @@ export default function MarketPage() {
             {[...COMMUNITIES].sort((a, b) => b.yieldPct - a.yieldPct).slice(0, 12).map((c, i) => (
               <div key={c.id} className="grid grid-cols-[minmax(0,155px)_1fr_auto] items-center gap-3">
                 <button type="button" onClick={() => { setOpen(c); if (c.code) setCompanionCode(c.code) }} className="text-[13px] font-semibold text-ink truncate text-left hover:underline">{c.name}</button>
-                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: '#ecebe4' }}>
+                <div className="h-2.5 rounded-full overflow-hidden" style={{ background: '#f5f5f5' }}>
                   <motion.div className="h-full rounded-full" style={{ background: i < 3 ? SWK.oasis : SWK.navy }} initial={{ width: 0 }} whileInView={{ width: `${(c.yieldPct / 8.5) * 100}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }} />
                 </div>
                 <span className="text-[13px] font-semibold tabular-nums text-ink">{pct(c.yieldPct)}</span>
@@ -530,8 +530,8 @@ function Ticker({ onPick }: { onPick: (c: Community) => void }) {
           <div className="swk-ticker" aria-label="Community price ticker">
             {items.map((c, i) => (
               <button key={`${c.id}-${i}`} type="button" onClick={() => onPick(c)} tabIndex={i >= COMMUNITIES.length ? -1 : 0} aria-hidden={i >= COMMUNITIES.length || undefined}
-                className="flex items-center gap-2.5 px-5 py-3 whitespace-nowrap border-r border-[#ecebe4] hover:bg-[#fdfdfc] transition-colors">
-                <span className="font-mono text-[11px] font-bold text-[#0a4a3b]">{c.ticker}</span>
+                className="flex items-center gap-2.5 px-5 py-3 whitespace-nowrap border-r border-[#f5f5f5] hover:bg-[#ffffff] transition-colors">
+                <span className="font-mono text-[11px] font-bold text-[#1e1e1e]">{c.ticker}</span>
                 <span className="text-[13px] font-semibold text-ink">{c.name}</span>
                 <span className="text-[13px] tabular-nums text-muted">AED {num(c.ppsf)}/sqft</span>
                 <DeltaChip value={yoy(c)} />
@@ -567,7 +567,7 @@ function TrendCard() {
             const on = sel.includes(c.id)
             return (
               <motion.button key={c.id} type="button" layout onClick={() => toggle(c.id)} aria-pressed={on} whileTap={{ scale: 0.95 }}
-                className={cls('inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11.5px] font-semibold border transition-colors', on ? 'text-white' : 'text-ink bg-white border-[#e7e8e6] hover:border-[#0d5a48]')}
+                className={cls('inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11.5px] font-semibold border transition-colors', on ? 'text-white' : 'text-ink bg-white border-[#e5e5e5] hover:border-[#0e9f6e]')}
                 style={on ? { background: colorOf(c.id), borderColor: colorOf(c.id) } : undefined}>
                 {on ? <Check size={12} /> : <span className="w-2 h-2 rounded-full" style={{ background: colorOf(c.id) }} />}{c.name}
               </motion.button>
@@ -584,7 +584,7 @@ function TrendCard() {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid stroke="#ecebe4" vertical={false} />
+              <CartesianGrid stroke="#f5f5f5" vertical={false} />
               <XAxis dataKey="q" tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} />
               <YAxis tickFormatter={m.axis} tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} width={48} domain={['auto', 'auto']} />
               <Tooltip contentStyle={{ borderRadius: 12, border: `1px solid ${SWK.line}`, fontSize: 12 }} formatter={(v: any, k: any) => [m.fmt(Number(v)), COMMUNITIES.find(c => c.id === k)?.name ?? k]} />
@@ -611,7 +611,7 @@ function ScatterCard({ onPick }: { onPick: (c: Community) => void }) {
         <div className="absolute right-3 bottom-10 text-[11px] font-semibold uppercase tracking-wider pointer-events-none" style={{ color: SWK.champDeep }}>Prime · capital growth</div>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 22, right: 20, bottom: 8, left: 0 }}>
-            <CartesianGrid stroke="#ecebe4" />
+            <CartesianGrid stroke="#f5f5f5" />
             <XAxis type="number" dataKey="x" name="Price/sqft" tickFormatter={v => `${(v / 1000).toFixed(1)}k`} tick={{ fontSize: 11, fill: SWK.muted }} domain={[900, 5100]} />
             <YAxis type="number" dataKey="y" name="Yield" tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: SWK.muted }} domain={[4.5, 8.6]} width={44} />
             <ZAxis type="number" dataKey="z" range={[120, 900]} />
@@ -619,7 +619,7 @@ function ScatterCard({ onPick }: { onPick: (c: Community) => void }) {
             <ReferenceLine y={ay} stroke={SWK.champ} strokeDasharray="4 4" />
             <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }: any) => {
               const p = payload?.[0]?.payload; if (!p) return null
-              return <div className="rounded-xl border border-[#e7e8e6] bg-white px-3 py-2 text-[12px] shadow-lg"><b className="text-ink">{p.name}</b><div className="text-muted">AED {num(p.x)}/sqft · {pct(p.y)} · {num(p.z)} deals</div></div>
+              return <div className="rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-[12px] shadow-lg"><b className="text-ink">{p.name}</b><div className="text-muted">AED {num(p.x)}/sqft · {pct(p.y)} · {num(p.z)} deals</div></div>
             }} />
             <Scatter data={pts} onClick={(d: any) => { const c = COMMUNITIES.find(x => x.id === (d?.id ?? d?.payload?.id)); if (c) onPick(c) }} animationDuration={900} style={{ cursor: 'pointer' }}>
               {pts.map(p => <Cell key={p.id} fill={p.color} fillOpacity={0.78} stroke="#fff" strokeWidth={2} />)}
@@ -654,7 +654,7 @@ function PortfolioCard({ props, loading }: { props: Prop[]; loading: boolean }) 
               {(['Below market', 'At market', 'Premium'] as const).map(k => {
                 const n = tracked.filter(r => verdict(r.diff!).t === k).length
                 return (
-                  <div key={k} className="rounded-2xl border border-[#ecebe4] bg-[#fdfdfc] p-3">
+                  <div key={k} className="rounded-2xl border border-[#f5f5f5] bg-[#ffffff] p-3">
                     <div className="text-[11px] uppercase tracking-wider font-semibold text-muted">{k}</div>
                     <div className="font-display text-[24px] font-semibold text-ink"><AnimatedNumber value={n} /></div>
                   </div>
@@ -696,7 +696,7 @@ function PositionBar({ diff }: { diff: number }) {
   const clamp = Math.max(-50, Math.min(50, diff))
   const color = diff < -5 ? SWK.oasis : diff > 5 ? SWK.champDeep : SWK.navy
   return (
-    <div className="relative h-2.5 rounded-full" style={{ background: '#ecebe4' }} aria-label={`${diff.toFixed(1)}% vs market`}>
+    <div className="relative h-2.5 rounded-full" style={{ background: '#f5f5f5' }} aria-label={`${diff.toFixed(1)}% vs market`}>
       <div className="absolute top-[-3px] bottom-[-3px] w-px left-1/2" style={{ background: SWK.muted }} />
       <motion.div className="absolute top-0 bottom-0 rounded-full" style={{ background: color, [clamp < 0 ? 'right' : 'left']: '50%' }}
         initial={{ width: 0 }} whileInView={{ width: `${Math.abs(clamp)}%` }} viewport={{ once: true }} transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }} />
@@ -714,13 +714,13 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
   const rent = [{ k: 'Studio', v: c.rentStudio }, { k: '1 BR', v: c.rent1 }, { k: '2 BR', v: c.rent2 }, { k: '3 BR', v: c.rent3 }]
   return (
     <>
-      <motion.div className="fixed inset-0 z-[80] bg-[#123025]/45 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+      <motion.div className="fixed inset-0 z-[80] bg-[#121212]/45 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
       <motion.aside role="dialog" aria-modal="true" aria-label={`${c.name} market detail`}
-        className="fixed right-0 top-0 bottom-0 z-[81] w-full sm:w-[560px] bg-[#f2f1ee] shadow-2xl overflow-y-auto"
+        className="fixed right-0 top-0 bottom-0 z-[81] w-full sm:w-[560px] bg-[#f7f7f7] shadow-2xl overflow-y-auto"
         initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 260, damping: 32 }}>
         <div className="relative h-[220px]">
           <motion.div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${c.image})` }} initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }} />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(18,48,37,.1), rgba(18,48,37,.9))' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(18,18,18,.1), rgba(18,18,18,.9))' }} />
           <button type="button" onClick={onClose} autoFocus className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 grid place-items-center text-ink hover:bg-white" aria-label="Close"><X size={18} /></button>
           <div className="absolute left-5 right-5 bottom-4 text-white">
             <div className="flex gap-1.5 mb-2"><Pill tone="champ">{c.ticker ?? c.segment}</Pill><Pill tone="grey"><img src="/brand/os/SWK_Emblem_Transparent.svg" alt="" className="w-3.5 h-3.5 object-contain" /> {c.lat.toFixed(3)}, {c.lng.toFixed(3)}</Pill></div>
@@ -734,7 +734,7 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
               { l: 'Gross yield', v: <AnimatedNumber value={c.yieldPct} format={v => pct(v, 1)} />, s: <span className="text-[11px] text-muted">index rents</span> },
               { l: 'Service charge', v: <AnimatedNumber value={c.serviceCharge} format={v => `AED ${v.toFixed(0)}`} />, s: <span className="text-[11px] text-muted">per sq ft / yr</span> },
             ].map(x => (
-              <div key={x.l} className="rounded-2xl bg-white border border-[#ecebe4] p-3">
+              <div key={x.l} className="rounded-2xl bg-white border border-[#f5f5f5] p-3">
                 <div className="text-[10.5px] uppercase tracking-wider font-semibold text-muted">{x.l}</div>
                 <div className="font-display text-[20px] font-semibold text-ink">{x.v}</div>
                 <div className="mt-1">{x.s}</div>
@@ -743,19 +743,19 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
           </motion.div>
 
           {companion && (
-            <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#ecebe4] p-4 space-y-2.5">
+            <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#f5f5f5] p-4 space-y-2.5">
               <div className="font-bold text-sm text-ink flex items-center gap-1.5">
                 <Flame size={15} className="text-[#7E3039]" /> Site-Visit Closing Keywords & 15-Year Outlook
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {(companion.closingKeywords ?? []).map((kw: string) => (
-                  <span key={kw} className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#123025] text-[#f2efe8]">{kw}</span>
+                  <span key={kw} className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#121212] text-[#f7f7f7]">{kw}</span>
                 ))}
               </div>
               <p className="text-xs text-muted">{companion.future15YearOutlook}</p>
               <div className="space-y-1.5 pt-1">
                 {(companion.fieldVisitPitchScript ?? []).map((line: string, i: number) => (
-                  <div key={i} className="p-2 rounded-xl bg-[#fdfdfc] border border-[#ecebe4] text-xs font-medium text-ink">
+                  <div key={i} className="p-2 rounded-xl bg-[#ffffff] border border-[#f5f5f5] text-xs font-medium text-ink">
                     “{line}”
                   </div>
                 ))}
@@ -763,16 +763,16 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
             </motion.div>
           )}
 
-          <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#ecebe4] p-4">
+          <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#f5f5f5] p-4">
             <div className="flex items-center justify-between mb-2"><b className="text-[14px] text-ink">RERA rent index (annual)</b><Pill tone="navy">Indicative</Pill></div>
             <div className="h-[190px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rent} margin={{ top: 18, right: 4, left: 0, bottom: 0 }}>
                   <defs><linearGradient id="mk-rent" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={SWK.navy} /><stop offset="100%" stopColor={SWK.ocean} /></linearGradient></defs>
-                  <CartesianGrid stroke="#ecebe4" vertical={false} />
+                  <CartesianGrid stroke="#f5f5f5" vertical={false} />
                   <XAxis dataKey="k" tick={{ fontSize: 11, fill: SWK.muted }} axisLine={false} tickLine={false} />
                   <YAxis hide />
-                  <Tooltip cursor={{ fill: '#f2f1ee' }} formatter={(v: any) => [aed(Number(v)), 'Avg rent']} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
+                  <Tooltip cursor={{ fill: '#f7f7f7' }} formatter={(v: any) => [aed(Number(v)), 'Avg rent']} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
                   <RBar dataKey="v" fill="url(#mk-rent)" radius={[8, 8, 0, 0]} animationDuration={900}>
                     <LabelList dataKey="v" position="top" formatter={(v: any) => `${Math.round(Number(v) / 1000)}k`} style={{ fontSize: 11, fill: SWK.ink, fontWeight: 600 }} />
                   </RBar>
@@ -781,7 +781,7 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
             </div>
           </motion.div>
 
-          <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#ecebe4] p-4 flex items-center gap-4">
+          <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#f5f5f5] p-4 flex items-center gap-4">
             <ProgressRing value={c.offPlanShare} size={96} color={SWK.champ} sub="off-plan" />
             <div className="min-w-0 flex-1 text-[13px]">
               <div className="swk-kv"><span>Quarterly transactions</span><b>{num(c.transactionsQ)}</b></div>
@@ -790,14 +790,14 @@ function CommunityDrawer({ c, companion, props, onClose }: { c: Community; compa
             </div>
           </motion.div>
 
-          <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#ecebe4] p-4">
+          <motion.div variants={drawerItem} className="rounded-2xl bg-white border border-[#f5f5f5] p-4">
             <div className="flex items-center justify-between mb-1"><b className="text-[14px] text-ink">SWK listings in {c.name}</b><Pill tone={ours.length ? 'oasis' : 'grey'}>{ours.length}</Pill></div>
             {ours.length === 0 ? <p className="text-[12.5px] text-muted py-3">No SWK inventory matched yet — a mandate opportunity. Raise a Form A or source a 3rd-party A2A partner in this community.</p> : ours.map(p => {
               const pr = Number(p.price) || Number(p.list_price) || 0
               const ppsf = Number(p.price_per_sqft) || (pr && Number(p.area_sqft) ? pr / Number(p.area_sqft) : 0)
               const d = ppsf ? (ppsf / c.ppsf - 1) * 100 : null
               return (
-                <Link key={p.id} to={`/e/properties/${p.id}`} className="swk-row hover:bg-[#fdfdfc] rounded-xl px-1 -mx-1">
+                <Link key={p.id} to={`/e/properties/${p.id}`} className="swk-row hover:bg-[#ffffff] rounded-xl px-1 -mx-1">
                   <span className="swk-row-ic"><Building2 size={17} /></span>
                   <span className="min-w-0 flex-1"><span className="swk-row-t block">{p.title ?? p._title}</span><span className="swk-row-s block">{aed(pr, { compact: true })} · {num(p.area_sqft)} sq ft · {p.status ?? '—'}</span></span>
                   {d !== null && <Pill tone={d < -5 ? 'oasis' : d > 5 ? 'champ' : 'navy'}>{d > 0 ? '+' : ''}{d.toFixed(0)}%</Pill>}
