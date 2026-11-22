@@ -1,4 +1,4 @@
-import { useMemo,useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 import { Link,useNavigate } from 'react-router-dom'
 import { motion,useReducedMotion } from 'motion/react'
 import { ArrowUpRight,Clock3,Search,X } from 'lucide-react'
@@ -6,6 +6,8 @@ import { useMeta } from '../lib/meta'
 import { launcherApps,recentItems } from '../swk/nav'
 
 const ease = [0.16, 1, 0.3, 1] as const
+// The entrance plays once per page load; replaying it on every return to /home looked like the page breaking.
+let entrancePlayed = false
 
 function dubaiHour() { return Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', hour12: false }).format(new Date())) }
 function greeting() { const h = dubaiHour(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
@@ -19,6 +21,8 @@ export function Launcher() {
   const { me, can } = useMeta()
   const nav = useNavigate()
   const reduce = useReducedMotion()
+  const [animate] = useState(() => !entrancePlayed)
+  useEffect(() => { entrancePlayed = true }, [])
   const [query, setQuery] = useState('')
   const apps = useMemo(() => launcherApps(can, me), [can, me])
   const recents = useMemo(() => recentItems(can, 4, me), [can, me])
@@ -36,7 +40,7 @@ export function Launcher() {
 
   return (
     <div className="swk-launch">
-      <motion.header className="swk-launch-hero" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease }}>
+      <motion.header className="swk-launch-hero" initial={animate ? { opacity: 0, y: 6 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease }}>
         <img src="/brand/os/logo-horizontal.png" alt="SWK Properties OS" className="swk-launch-logo" />
         <div className="swk-eyebrow swk-launch-date">SWK Properties LLC · Business Workspace · {today()}</div>
         <h1>{greeting()}{firstName ? `, ${firstName}` : ''}.</h1>
@@ -49,7 +53,7 @@ export function Launcher() {
       </motion.header>
 
       {!needle && recents.length > 0 && (
-        <motion.section className="swk-launch-recent" aria-label="Recently opened" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.32 }}>
+        <motion.section className="swk-launch-recent" aria-label="Recently opened" initial={animate ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.32 }}>
           <span className="lbl"><Clock3 size={14} />Recent</span>
           {recents.map(r => <Link key={r.to} to={r.to} className="swk-launch-chip"><r.icon size={15} />{r.label}</Link>)}
         </motion.section>
@@ -67,7 +71,7 @@ export function Launcher() {
       )}
 
       {shownApps.length > 0 && (
-        <motion.section className="swk-launch-grid" aria-label="Apps" variants={container} initial="hidden" animate="show" key={needle ? 'f' : 'all'}>
+        <motion.section className="swk-launch-grid" aria-label="Apps" variants={container} initial={animate || needle ? 'hidden' : false} animate="show" key={needle ? 'f' : 'all'}>
           {shownApps.map(a => (
             <motion.div key={a.key} variants={rise}>
               <Link to={a.landing} className={`swk-app-tile tone-${a.tone}`} title={a.blurb}>
