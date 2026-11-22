@@ -11,6 +11,10 @@ interface Env {
   ADMIN_PASSWORD: string
   MANAGER_PASSWORD: string
   BDM_PASSWORD?: string
+  WEBSITE_GITHUB_TOKEN?: string
+  WEBSITE_GITHUB_REPO?: string
+  WEBSITE_GITHUB_BRANCH?: string
+  WEBSITE_DEPLOY_HOOK_URL?: string
   SWK_CRM_VAULT_KEY?: string
   PUBLIC_URL?: string
   PG_SCHEMA?: string
@@ -45,6 +49,10 @@ export class SwkOs extends Container<Env> {
       ADMIN_PASSWORD: env.ADMIN_PASSWORD,
       MANAGER_PASSWORD: env.MANAGER_PASSWORD,
       ...(env.BDM_PASSWORD ? { BDM_PASSWORD: env.BDM_PASSWORD } : {}),
+      ...(env.WEBSITE_GITHUB_TOKEN ? { WEBSITE_GITHUB_TOKEN: env.WEBSITE_GITHUB_TOKEN } : {}),
+      ...(env.WEBSITE_GITHUB_REPO ? { WEBSITE_GITHUB_REPO: env.WEBSITE_GITHUB_REPO } : {}),
+      ...(env.WEBSITE_GITHUB_BRANCH ? { WEBSITE_GITHUB_BRANCH: env.WEBSITE_GITHUB_BRANCH } : {}),
+      ...(env.WEBSITE_DEPLOY_HOOK_URL ? { WEBSITE_DEPLOY_HOOK_URL: env.WEBSITE_DEPLOY_HOOK_URL } : {}),
       ...(env.SWK_CRM_VAULT_KEY ? { SWK_CRM_VAULT_KEY: env.SWK_CRM_VAULT_KEY } : {}),
       ...(env.PUBLIC_URL ? { PUBLIC_URL: env.PUBLIC_URL } : {}),
     }
