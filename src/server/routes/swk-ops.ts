@@ -26,7 +26,7 @@ export function computeDubaiShiftInfo(now = new Date(), clientVariableHours = fa
   const isSun = wk === 'Sun'
   const isSat = wk === 'Sat'
   const shiftName = isSun
-    ? 'Sunday (Holiday — Client Variable Hours)'
+    ? 'Sunday Holiday (Client Exception)'
     : isSat
       ? 'Saturday 10:00–16:00'
       : 'Mon–Fri 10:00–19:00'
