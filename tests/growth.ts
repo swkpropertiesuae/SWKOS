@@ -15,6 +15,13 @@ async function main() {
   ok('the lead keeps the phone and the requested viewing', String(siteLeadRow.phone).includes('971501234567') && /Viewing requested: 2026-12-01/.test(JSON.stringify(siteLeadRow)), siteLeadRow)
   ok('a retried website delivery returns the same lead', (await new Api().post('/api/public/lead/site-secret-1234567890', siteLead)).data.duplicate_delivery === true)
   ok('a wrong website secret is a 404', (await new Api().post('/api/public/lead/wrong-secret', siteLead)).status === 404)
+  // lost-reason report
+  const anyParty = (await a.post('/api/e/parties', { name: 'Lost Reason Client', is_customer: true, status: 'Active' })).data.id
+  for (const [t, r] of [['Lost A', 'Price too high'], ['Lost B', 'price too high '], ['Lost C', 'Went to a competitor']]) { const lo = await a.post('/api/e/opportunities', { title: t, party_id: anyParty, stage: 'Lost', lost_reason: r }); ok(`lost opportunity ${t} saved`, lo.status < 300, lo.data) }
+  ok('an opportunity cannot be marked Lost without a reason', (await a.post('/api/e/opportunities', { title: 'Lost D', party_id: anyParty, stage: 'Lost' })).status === 400)
+  const lostRep = (await a.get('/api/reports/lost_reasons')).data
+  const priceRow = lostRep.rows?.find((x: any) => /price too high/i.test(x.reason))
+  ok('the lost-reason report groups the same reason typed in different ways', priceRow?.count === 2 && lostRep.rows[0] === priceRow, lostRep)
 
   sec('Lead routing')
   const roles = (await a.get('/api/e/roles?pageSize=50')).data.rows
