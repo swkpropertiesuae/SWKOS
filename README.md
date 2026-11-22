@@ -118,6 +118,8 @@ bash tests/run-all.sh        # All API suites, each on a fresh server (build fir
 | Accounts, roles, passwords, who sees what | [docs/ACCESS-AND-PASSWORDS.md](docs/ACCESS-AND-PASSWORDS.md) |
 | Attendance, Wi-Fi lock, reception QR | [docs/ATTENDANCE.md](docs/ATTENDANCE.md) |
 | CRM Vault and lead/document custody | [docs/HANDOVER-PROCESS.md](docs/HANDOVER-PROCESS.md) |
+| Review requests after a won deal | [docs/REVIEW-REQUESTS.md](docs/REVIEW-REQUESTS.md) |
+| Website enquiries into the CRM | [docs/WEBSITE-LEADS.md](docs/WEBSITE-LEADS.md) |
 | Database (Supabase Postgres) | [docs/POSTGRES.md](docs/POSTGRES.md) |
 | Dashboard and navigation | [docs/DASHBOARD.md](docs/DASHBOARD.md) |
 | Owner and Manager handbooks | [docs/OWNER_MASTER_HANDBOOK.md](docs/OWNER_MASTER_HANDBOOK.md), [docs/MANAGER_OPERATIONS_HANDBOOK_HASEEB.md](docs/MANAGER_OPERATIONS_HANDBOOK_HASEEB.md) |

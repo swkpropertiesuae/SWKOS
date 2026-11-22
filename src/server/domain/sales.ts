@@ -35,6 +35,26 @@ export const leadHooks: Hooks = {
     }
   },
 }
+/** When a deal is won, queue a review request as a message draft. It is never sent by itself: a second person approves it in Message Drafts. Needs the review link in Settings. */
+export function requestReview(opp: Rec) {
+  try {
+    const link = String(getSetting('review_request_link') || '').trim()
+    if (!/^https:\/\//i.test(link) || !opp?.id) return
+    const source = `Review request ${opp.opp_no ?? opp.id}`
+    if (q.get(`SELECT 1 FROM message_drafts WHERE source = ? AND deleted_at IS NULL`, source)) return
+    const c = opp.contact_id ? q.get<any>(`SELECT name, mobile, phone, email FROM contacts WHERE id = ? AND deleted_at IS NULL`, opp.contact_id) : null
+    const p = opp.party_id ? q.get<any>(`SELECT name, phone, email FROM parties WHERE id = ? AND deleted_at IS NULL`, opp.party_id) : null
+    const phone = c?.mobile || c?.phone || p?.phone || '', email = c?.email || p?.email || ''
+    const channel = phone ? 'WhatsApp' : email ? 'Email' : ''
+    const name = c?.name || p?.name
+    if (!channel || !name) return
+    createRecord(getDef('message_drafts'), {
+      channel, to_name: name, to_phone: phone || null, to_email: email || null, subject: 'How was your experience with SWK Properties?', source, status: 'Pending approval',
+      body: `Hello ${String(name).split(' ')[0]}, thank you for choosing SWK Properties. If you were happy with our service, we would be very grateful for a short review: ${link}\nThank you!`,
+    }, SYSTEM_CTX)
+    notifyRole('crm', 'Review request ready for approval', `${name}: ${opp.title}`, '/e/message_drafts', 'info', `review-${opp.id}`)
+  } catch { /* a review request must never block saving the deal */ }
+}
 export const opportunityHooks: Hooks = {
   beforeSave({ rec, old }) {
     if (rec.stage === 'Won') rec.probability = 100
@@ -44,6 +64,7 @@ export const opportunityHooks: Hooks = {
   },
   afterSave({ rec, old, ctx }) {
     if (old && old.stage !== rec.stage && rec.stage === 'Won') notifyRole('crm', `Opportunity won: ${rec.title}`, `${rec.value}`, `/e/opportunities/${rec.id}`, 'info', `won-${rec.id}`)
+    if (rec.stage === 'Won' && old?.stage !== 'Won') requestReview(rec)
     void ctx
   },
 }
@@ -134,7 +155,7 @@ export function convertQuoteToJob(quoteId: number, ctx: Ctx): Rec {
   }, ctx)
   patchRecord(getDef('quotations'), quoteId, { status: 'Converted to job', job_id: job.id }, ctx)
   addJobEvent(job.id, 'Note', { description: `Created from quotation ${quote.quote_no}`, user_id: ctx.user?.id })
-  if (quote.opportunity_id) q.run(`UPDATE opportunities SET stage = 'Won', probability = 100 WHERE id = ? AND stage <> 'Won'`, quote.opportunity_id)
+  if (quote.opportunity_id && q.run(`UPDATE opportunities SET stage = 'Won', probability = 100 WHERE id = ? AND stage <> 'Won'`, quote.opportunity_id).changes) requestReview(getRecord(getDef('opportunities'), quote.opportunity_id, ctx, { children: false }))
   return job
 }
 

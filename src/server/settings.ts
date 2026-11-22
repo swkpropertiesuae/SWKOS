@@ -46,6 +46,8 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   wa_template_lang: 'en', wa_tpl_notify: '', wa_tpl_reminder: '', wa_tpl_report: '',
   wa_auto_leads: true, wa_auto_milestones: false, wa_auto_overdue: false, wa_owner_daily_report: false, wa_staff_bot: true, wa_customer_bot: true,
   // --- Voice (AI receptionist over a SIP trunk, e.g. du)
+  // --- Review requests: when an opportunity is won, a message draft asking for a review is created for approval (only when this https link is set)
+  review_request_link: '',
   voice_enabled: false, voice_secret: '', lead_webhook_secret: '', voice_transfer_number: '', voice_greeting_en: '', voice_greeting_ar: '', voice_record_notice: true, voice_retention_days: 90,
   // --- Hard-Masked Agent Bridge Calling (Zero Phone History Exposure)
   masked_call_provider: 'none', masked_call_caller_id: '', masked_call_twilio_sid: '', masked_call_twilio_token: '', masked_call_webhook_url: '', masked_call_webhook_secret: '', masked_call_record: true,
