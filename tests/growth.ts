@@ -28,6 +28,18 @@ async function main() {
   ok('a task cannot wait for itself', (await a.put(`/api/e/tasks/${tParent}`, { depends_on_id: tParent })).status === 400)
   ok('two tasks cannot wait on each other', (await a.put(`/api/e/tasks/${tSub}`, { depends_on_id: tAfter })).status === 400)
   ok('finishing the sub-task, then the waiting task, then the parent works', (await a.put(`/api/e/tasks/${tSub}`, { status: 'Done' })).status === 200 && (await a.put(`/api/e/tasks/${tAfter}`, { status: 'Done' })).status === 200 && (await a.put(`/api/e/tasks/${tParent}`, { status: 'Done' })).status === 200)
+  // review request after a won deal
+  const revParty = (await a.post('/api/e/parties', { name: 'Happy Client', is_customer: true, status: 'Active', phone: '+971501112233' })).data.id
+  const revOpp = (await a.post('/api/e/opportunities', { title: 'Review deal', party_id: revParty })).data
+  const draftsFor = async () => ((await a.get('/api/e/message_drafts?pageSize=100')).data.rows ?? []).filter((d: any) => String(d.source).startsWith('Review request'))
+  await a.put(`/api/e/opportunities/${revOpp.id}`, { stage: 'Negotiation' })
+  ok('no review request is queued before the deal is won', (await draftsFor()).length === 0)
+  await a.put('/api/admin/settings', { review_request_link: 'https://g.page/r/swk-test/review' })
+  await a.put(`/api/e/opportunities/${revOpp.id}`, { stage: 'Won' })
+  const revDrafts = await draftsFor()
+  ok('winning a deal queues a review request for approval, not a sent message', revDrafts.length === 1 && revDrafts[0].status === 'Pending approval' && revDrafts[0].channel === 'WhatsApp' && /g\.page\/r\/swk-test/.test(JSON.stringify(revDrafts[0])), revDrafts)
+  await a.put(`/api/e/opportunities/${revOpp.id}`, { notes: 'edited after the win' })
+  ok('editing the won deal does not queue a second request', (await draftsFor()).length === 1)
   const lostRep = (await a.get('/api/reports/lost_reasons')).data
   const priceRow = lostRep.rows?.find((x: any) => /price too high/i.test(x.reason))
   ok('the lost-reason report groups the same reason typed in different ways', priceRow?.count === 2 && lostRep.rows[0] === priceRow, lostRep)
