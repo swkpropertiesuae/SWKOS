@@ -114,6 +114,29 @@ export const employeeHooks: Hooks = {
 // ---------------------------------------------------------------- tasks, tickets, activities
 export const taskHooks: Hooks = {
   beforeSave({ rec, old }) {
+    const id = old?.id ?? rec.id
+    // links must never loop: follow both links from each chosen task and refuse to come back to this one
+    for (const f of ['parent_task_id', 'depends_on_id']) {
+      if (!rec[f]) continue
+      if (id && Number(rec[f]) === Number(id)) throw bad('A task cannot be linked to itself')
+      const seen = new Set<number>(), stack = [Number(rec[f])]
+      while (stack.length && seen.size < 200) {
+        const cur = stack.pop()!
+        if (seen.has(cur)) continue
+        seen.add(cur)
+        if (id && cur === Number(id)) throw bad('That link would make the tasks wait on each other')
+        const r = q.get<any>(`SELECT parent_task_id, depends_on_id FROM tasks WHERE id = ? AND deleted_at IS NULL`, cur)
+        if (r?.parent_task_id) stack.push(Number(r.parent_task_id))
+        if (r?.depends_on_id) stack.push(Number(r.depends_on_id))
+      }
+    }
+    // a task is finished only after the task it waits for and all of its sub-tasks
+    if (rec.status === 'Done' && old?.status !== 'Done') {
+      const dep = rec.depends_on_id ? q.get<any>(`SELECT title, status FROM tasks WHERE id = ? AND deleted_at IS NULL`, rec.depends_on_id) : null
+      if (dep && dep.status !== 'Done') throw bad(`Finish "${dep.title}" first: this task waits for it`)
+      const open = id ? q.val<number>(`SELECT COUNT(*) FROM tasks WHERE parent_task_id = ? AND status <> 'Done' AND deleted_at IS NULL`, id) ?? 0 : 0
+      if (open) throw bad(`Finish its ${open} open sub-task${open === 1 ? '' : 's'} first`)
+    }
     if (rec.status === 'Done' && !rec.completed_at) rec.completed_at = nowLocal()
     if (rec.status !== 'Done') rec.completed_at = null
     if (rec.link_entity && rec.link_id && (!rec.link_label || old?.link_id !== rec.link_id)) {

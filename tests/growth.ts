@@ -19,6 +19,15 @@ async function main() {
   const anyParty = (await a.post('/api/e/parties', { name: 'Lost Reason Client', is_customer: true, status: 'Active' })).data.id
   for (const [t, r] of [['Lost A', 'Price too high'], ['Lost B', 'price too high '], ['Lost C', 'Went to a competitor']]) { const lo = await a.post('/api/e/opportunities', { title: t, party_id: anyParty, stage: 'Lost', lost_reason: r }); ok(`lost opportunity ${t} saved`, lo.status < 300, lo.data) }
   ok('an opportunity cannot be marked Lost without a reason', (await a.post('/api/e/opportunities', { title: 'Lost D', party_id: anyParty, stage: 'Lost' })).status === 400)
+  // sub-tasks and dependencies
+  const tParent = (await a.post('/api/e/tasks', { title: 'Parent task' })).data.id
+  const tSub = (await a.post('/api/e/tasks', { title: 'Sub task', parent_task_id: tParent })).data.id
+  const tAfter = (await a.post('/api/e/tasks', { title: 'After the sub task', depends_on_id: tSub })).data.id
+  ok('a task cannot be finished while its sub-task is open', (await a.put(`/api/e/tasks/${tParent}`, { status: 'Done' })).status === 400)
+  ok('a task cannot be finished before the task it waits for', (await a.put(`/api/e/tasks/${tAfter}`, { status: 'Done' })).status === 400)
+  ok('a task cannot wait for itself', (await a.put(`/api/e/tasks/${tParent}`, { depends_on_id: tParent })).status === 400)
+  ok('two tasks cannot wait on each other', (await a.put(`/api/e/tasks/${tSub}`, { depends_on_id: tAfter })).status === 400)
+  ok('finishing the sub-task, then the waiting task, then the parent works', (await a.put(`/api/e/tasks/${tSub}`, { status: 'Done' })).status === 200 && (await a.put(`/api/e/tasks/${tAfter}`, { status: 'Done' })).status === 200 && (await a.put(`/api/e/tasks/${tParent}`, { status: 'Done' })).status === 200)
   const lostRep = (await a.get('/api/reports/lost_reasons')).data
   const priceRow = lostRep.rows?.find((x: any) => /price too high/i.test(x.reason))
   ok('the lost-reason report groups the same reason typed in different ways', priceRow?.count === 2 && lostRep.rows[0] === priceRow, lostRep)
