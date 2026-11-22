@@ -20,6 +20,8 @@
 
 The roster lives in `src/shared/swk-staff-access.ts`. Passwords and access rules are explained in [docs/ACCESS-AND-PASSWORDS.md](docs/ACCESS-AND-PASSWORDS.md).
 
+**Staff workbook:** the complete guide to every screen, button, form and the start-to-end workflow is [docs/SWK-OS-WORKBOOK.md](docs/SWK-OS-WORKBOOK.md), with every form field in [docs/SWK-OS-WORKBOOK-FORMS.md](docs/SWK-OS-WORKBOOK-FORMS.md) (regenerate with `npx tsx tools/docs/gen-form-reference.ts`).
+
 ---
 
 ## 🏢 2. Three Core Operational Departments & Step-by-Step UAE Workflow
