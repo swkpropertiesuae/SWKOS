@@ -179,11 +179,10 @@ export function Shell() {
           {drawer && <div className="swk-sb-scrim" onClick={() => setDrawer(false)} />}
           {!isHome && <AppSidebar pathname={loc.pathname} collapsed={collapsed} onToggle={toggleSidebar} />}
           <main className="swk-main" id="main">
-            <AnimatePresence mode="wait">
-              <motion.div key={loc.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: .18, ease: [0.16, 1, 0.3, 1] }}>
-                <Outlet context={{ openGuide: () => setGuide(true), openSearch: () => setPalette(true), logout }} />
-              </motion.div>
-            </AnimatePresence>
+            {/* Fade the new page in only: an exit phase (mode="wait") kept the old page on screen in the new layout, then a blank frame. */}
+            <motion.div key={loc.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .18, ease: [0.16, 1, 0.3, 1] }}>
+              <Outlet context={{ openGuide: () => setGuide(true), openSearch: () => setPalette(true), logout }} />
+            </motion.div>
           </main>
         </div>
 
