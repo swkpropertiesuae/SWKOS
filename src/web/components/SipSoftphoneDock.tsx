@@ -33,7 +33,7 @@ function fmtDuration(sec: number): string {
  * Persistent floating SIP/VoIP Softphone dock widget.
  * Keeps WebRTC calls alive across page navigation inside Shell.tsx.
  */
-export function SipSoftphoneDock() {
+export function SipSoftphoneDock({ docked = false }: { docked?: boolean } = {}) {
   const { me } = useMeta()
   const snap = useSipClient()
   const toast = useToast()
@@ -139,9 +139,11 @@ export function SipSoftphoneDock() {
   }
 
   return (
-    <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-4 right-3 md:right-4 z-[85] no-print flex flex-col items-end gap-2">
+    <div className={docked
+      ? 'relative no-print flex flex-col items-end gap-2'
+      : 'fixed bottom-4 right-4 z-[65] hidden md:flex no-print flex-col items-end gap-2'}>
       {open && (
-        <div className="w-[320px] rounded-2xl border border-white/15 bg-[#121212] text-white shadow-[0_24px_64px_rgba(0,0,0,0.45)] overflow-hidden">
+        <div className="w-[320px] rounded-2xl border border-white/15 bg-[#0b1f2a] text-white shadow-[0_24px_64px_rgba(11,31,42,0.42)] overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#181818]">
             <div className="flex items-center gap-2 min-w-0">
@@ -468,17 +470,17 @@ export function SipSoftphoneDock() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`h-11 px-3.5 rounded-full border shadow-[0_12px_32px_rgba(0,0,0,0.28)] flex items-center gap-2 text-xs font-bold cursor-pointer transition-transform active:scale-95 ${
+        className={`h-11 px-4 rounded-full border shadow-[0_12px_30px_rgba(11,31,42,0.24)] flex items-center gap-2 text-xs font-semibold cursor-pointer transition-all hover:-translate-y-0.5 active:scale-95 ${
           call?.state === 'ringing_in'
             ? 'bg-[#0e9f6e] border-white/30 text-white animate-pulse'
             : call
-              ? 'bg-[#121212] border-[#0e9f6e] text-white'
-              : 'bg-[#121212] border-white/15 text-white hover:border-[#d4b672]/50'
+              ? 'bg-[#0b1f2a] border-[#0e9f6e] text-white'
+              : 'bg-white border-[#cbd5e1] text-[#0b1f2a] hover:border-[#0b1f2a]'
         }`}
         aria-label="Toggle SWK Softphone"
       >
         <span className={`size-2 rounded-full ${statusColor}`} />
-        <Phone size={14} className="text-[#d4b672]" />
+        <Phone size={14} className={call ? 'text-[#d4a752]' : 'text-[#0b1f2a]'} />
         {call ? (
           <span className="font-mono">
             {call.isMaskedVault ? 'Vault Call' : call.remoteDisplay} · {call.state === 'connected' ? fmtDuration(call.durationSec) : 'Ringing'}

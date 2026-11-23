@@ -162,7 +162,7 @@ export function ChatNotifier() {
 
   return (
     <>
-      <Link to="/chat" className="swk-tbtn relative" aria-label={`Inside messenger, ${unread} unread`} title="Inside messenger">
+      <Link to="/chat" className="swk-tbtn relative !hidden md:!grid" aria-label={`Inside messenger, ${unread} unread`} title="Inside messenger">
         <MessagesSquare size={17} />
         {unread > 0 && (
           <span className="count" style={{ background: '#8a621c' }}>

@@ -251,16 +251,16 @@ export default function PipelinePage() {
               key={tab.key}
               type="button"
               onClick={() => switchDept(tab.key)}
-              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#0f2a33] text-white border-[#16363f] shadow-lg' : 'bg-white text-ink border-[#f4f0e8] hover:border-[#16363f]'}`}
+              className={`text-left p-4 rounded-2xl border transition-all cursor-pointer ${active ? 'bg-[#0b1f2a] text-white border-[#0b1f2a] shadow-lg' : 'bg-white text-ink border-[#e2e8f0] hover:border-[#0b1f2a]'}`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#16363f] text-white' : 'bg-[#ffffff] text-muted'}`}>
+                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${active ? 'bg-white/15 text-[#d4a752]' : 'bg-[#f1f5f9] text-[#526273]'}`}>
                   {tab.badge}
                 </span>
-                <span className="font-mono font-extrabold text-lg">{tab.count} deals</span>
+                <span className="font-mono font-bold text-lg">{tab.count} deals</span>
               </div>
-              <div className="font-display font-bold text-base mt-2">{tab.title}</div>
-              <div className={`text-xs mt-0.5 ${active ? 'text-white/75' : 'text-muted'}`}>{tab.sub}</div>
+              <div className={`font-display font-bold text-base mt-2 ${active ? 'text-white' : 'text-ink'}`}>{tab.title}</div>
+              <div className={`text-xs mt-0.5 ${active ? 'text-white/80' : 'text-muted'}`}>{tab.sub}</div>
             </button>
           )
         })}

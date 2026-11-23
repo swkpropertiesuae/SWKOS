@@ -1,0 +1,223 @@
+/* =====================================================================================
+   SWK OS — Unified Corporate Design Tokens (Light Executive Porcelain + Midnight Obsidian)
+   WCAG AA >= 4.5:1 guaranteed across light and dark themes.
+   ===================================================================================== */
+
+:root {
+  --font-sans: 'Switzer', 'Geist Variable', 'Plus Jakarta Sans', 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Noto Sans Arabic', sans-serif;
+  --font-display: 'Switzer', 'Plus Jakarta Sans', 'Geist Variable', system-ui, 'Noto Sans Arabic', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Core Porcelain & Obsidian Surfaces */
+  --bg: #f5f7fb;
+  --bg-white: #ffffff;
+  --bg-offwhite: #f8fafc;
+  --bg-cta-light: #f1f5f9;
+  --bg-subtle: #e2e8f0;
+  --bg-obsidian: #0b1f2a;
+  --bg-obsidian-card: #122d3d;
+
+  --card: #ffffff;
+  --soft: #f1f5f9;
+  --hover: #edf2f7;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+
+  /* High-Contrast Typography (>= 6:1 on white) */
+  --ink: #0b1f2a;
+  --ink-primary: #0b1f2a;
+  --body: #334155;
+  --ink-secondary: #334155;
+  --muted: #526273;
+  --ink-muted: #526273;
+  --ink-subtle: #64748b;
+
+  /* Brand & Vibrant Corporate Semantic Accents */
+  --navy: #0b1f2a;
+  --midnight: #091821;
+  --graphite: #111827;
+  --fold: #0b1f2a;
+  --emerald: #0e9f6e;
+  --emerald-deep: #047857;
+  --emerald-soft: #ecfdf5;
+  --sapphire: #2563eb;
+  --sapphire-soft: #eff6ff;
+  --champ: #b78328;
+  --champ-bright: #d4a752;
+  --champ-deep: #8a5f14;
+  --champ-soft: #fef7e6;
+  --oasis: #0d9488;
+  --dune: #dc2626;
+  --signal: #dc2626;
+  --signal-soft: #fef2f2;
+  --amber: #d97706;
+  --amber-soft: #fffbeb;
+  --violet: #7c3aed;
+  --violet-soft: #f5f3ff;
+
+  --accent-mint: #d4a752;
+  --accent-mint-deep: #8a5f14;
+  --focus: #2563eb;
+  --ember: #b78328;
+  --section-tint: #fef7e6;
+  --section-ink: #0b1f2a;
+
+  /* Motion & Elevation */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-swiss: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-fast: 160ms;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --surface-raised: 0 1px 2px rgba(11, 31, 42, 0.04), 0 8px 24px -12px rgba(11, 31, 42, 0.1);
+  --surface-floating: 0 16px 44px -16px rgba(11, 31, 42, 0.18);
+  --elevation: 0 12px 32px -14px rgba(11, 31, 42, 0.16);
+  --workspace-ground: #f5f7fb;
+}
+
+:root[data-theme='dark'] {
+  --bg: #08131a;
+  --workspace-ground: #08131a;
+  --card: #0f202b;
+  --soft: #162c3a;
+  --hover: #1c3647;
+  --line: #213c4d;
+  --line-strong: #35566b;
+  --ink: #f8fafc;
+  --ink-primary: #f8fafc;
+  --body: #cbd5e1;
+  --ink-secondary: #cbd5e1;
+  --muted: #94a3b8;
+  --ink-muted: #94a3b8;
+  --ink-subtle: #94a3b8;
+  --focus: #d4a752;
+  --champ-soft: rgba(212, 167, 82, 0.16);
+  --section-tint: #162c3a;
+  --section-ink: #f8fafc;
+  --surface-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.55);
+  --surface-floating: 0 22px 54px -16px rgba(0, 0, 0, 0.72);
+}
+
+@layer base {
+  html {
+    height: 100%;
+    color-scheme: light;
+    background-color: var(--bg);
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--body);
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(920px 440px at 10% -8%, rgba(212, 167, 82, 0.14), transparent 60%),
+      radial-gradient(880px 420px at 90% -6%, rgba(56, 189, 248, 0.11), transparent 60%),
+      linear-gradient(180deg, #fafbfe 0%, #f3f6fb 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    caret-color: var(--focus);
+  }
+  :root[data-theme='dark'] body {
+    background-image:
+      radial-gradient(800px 380px at 15% -10%, rgba(212, 167, 82, 0.08), transparent 60%),
+      linear-gradient(180deg, #08131a 0%, #0b1922 100%);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--ink);
+    letter-spacing: -0.025em;
+    line-height: 1.18;
+  }
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    line-height: 1.18;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  button {
+    font-family: inherit;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: #0b1f2a;
+    color: #d4a752;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* Arabic / RTL support */
+  html[dir='rtl'] body,
+  html[dir='rtl'] input,
+  html[dir='rtl'] select,
+  html[dir='rtl'] textarea,
+  html[dir='rtl'] button {
+    font-family: 'Noto Sans Arabic', var(--font-sans);
+  }
+  html[dir='rtl'] h1,
+  html[dir='rtl'] h2,
+  html[dir='rtl'] h3,
+  html[dir='rtl'] .font-display,
+  html[dir='rtl'] .modal-head {
+    font-family: 'Noto Sans Arabic', var(--font-display);
+    letter-spacing: 0;
+  }
+  html[dir='rtl'] .num,
+  html[dir='rtl'] td.num,
+  html[dir='rtl'] th.num {
+    text-align: left;
+    direction: ltr;
+  }
+  html[dir='rtl'] input[type='email'],
+  html[dir='rtl'] input[type='tel'],
+  html[dir='rtl'] input[type='url'],
+  html[dir='rtl'] .mono,
+  html[dir='rtl'] code {
+    direction: ltr;
+    text-align: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

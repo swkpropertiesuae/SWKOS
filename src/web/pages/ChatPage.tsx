@@ -179,9 +179,9 @@ export function ChatPage() {
   }
 
   return (
-    <div className="mx-auto -mb-6 grid h-[calc(100dvh-136px)] min-h-[480px] max-md:h-[calc(100dvh-190px)] max-w-[1400px] overflow-hidden rounded-[1.25rem] border border-white/70 bg-white shadow-[0_24px_60px_rgba(15,42,51,0.10)] md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+    <div className="mx-auto grid h-[calc(100dvh-136px)] min-h-[460px] max-md:h-[calc(100dvh-184px)] max-md:min-h-[400px] max-w-[1400px] overflow-hidden rounded-[22px] border border-[#e2e8f0] bg-white shadow-[0_18px_48px_-18px_rgba(11,31,42,0.14)] md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
       {/* ------------------------------------------------ chat list */}
-      <aside className={`flex min-h-0 flex-col border-r border-[#e6e0d4] ${sel ? 'hidden md:flex' : 'flex'}`} aria-label="Chats">
+      <aside className={`flex min-h-0 flex-col border-r border-[#e2e8f0] ${sel ? 'hidden md:flex' : 'flex'}`} aria-label="Chats">
         <header className="flex items-center gap-2 px-5 pb-3 pt-5">
           <div className="min-w-0 flex-1"><div className="web-eyebrow">SWK internal</div><h1 className="m-0 text-[24px] font-medium tracking-[-0.035em]">Inside</h1></div>
           <button type="button" className="swk-tbtn" title="New chat" aria-label="New chat" onClick={() => setNewChat('dm')}><MessageSquarePlus size={17} /></button>

@@ -32,7 +32,7 @@ function Avatar({ name, email, online, size = 32 }: { name: string; email?: stri
  * for a new direct message, and the conversation itself. Uses the same Inside threads, live stream and read receipts
  * as the full messenger at /chat.
  */
-export function ChatDock() {
+export function ChatDock({ docked = false }: { docked?: boolean } = {}) {
   const { me } = useMeta(), qc = useQueryClient(), nav = useNavigate(), { pathname } = useLocation()
   const [state, setState] = useState(load)
   const [view, setView] = useState<View>({ kind: 'list' })
@@ -77,15 +77,19 @@ export function ChatDock() {
 
   if (!state.open) return (
     <button type="button" onClick={() => save({ open: true, min: false })} aria-label={`Open messages, ${unread} unread`}
-      className="no-print fixed bottom-5 right-5 z-[80] hidden items-center gap-2 rounded-full border-0 bg-[#0f2a33] py-3 pl-4 pr-5 text-[13px] font-semibold text-white shadow-[0_14px_34px_rgba(15,42,51,0.28)] hover:bg-[#163a45] md:flex">
-      <MessageCircleMore size={18} className="text-[#d4a752]" /> Messages
-      {unread > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#a3263a] px-1.5 text-[10.5px]">{unread > 99 ? '99+' : unread}</span>}
+      className={docked
+        ? 'no-print flex h-11 items-center gap-2 rounded-full border border-white/15 bg-[#0b1f2a] pl-4 pr-5 text-[13px] font-semibold text-white shadow-[0_12px_30px_rgba(11,31,42,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#143344] cursor-pointer'
+        : 'no-print fixed bottom-5 right-5 z-[65] hidden items-center gap-2 rounded-full border border-white/15 bg-[#0b1f2a] py-2.5 pl-4 pr-5 text-[13px] font-semibold text-white shadow-[0_14px_34px_rgba(11,31,42,0.28)] hover:bg-[#143344] md:flex cursor-pointer'}>
+      <MessageCircleMore size={17} className="text-[#d4a752]" /> Inside
+      {unread > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dc2626] px-1.5 text-[10.5px] font-bold">{unread > 99 ? '99+' : unread}</span>}
     </button>
   )
 
   return (
-    <section aria-label="Messages" className="no-print fixed bottom-0 right-5 z-[80] hidden w-[360px] flex-col overflow-hidden rounded-t-xl border border-b-0 border-[#e6e0d4] bg-white shadow-[0_18px_50px_rgba(15,42,51,0.22)] md:flex" style={{ height: state.min ? 44 : 500 }}>
-      <header className="flex h-11 shrink-0 cursor-pointer items-center gap-1 bg-[#0f2a33] pl-3 pr-1.5 text-white" onClick={() => save({ ...state, min: !state.min })}>
+    <section aria-label="Messages" className={docked
+      ? 'no-print flex w-[360px] flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_22px_54px_rgba(11,31,42,0.24)]'
+      : 'no-print fixed bottom-4 right-5 z-[65] hidden w-[360px] flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_22px_54px_rgba(11,31,42,0.24)] md:flex'} style={{ height: state.min ? 46 : 492 }}>
+      <header className="flex h-[46px] shrink-0 cursor-pointer items-center gap-1 bg-[#0b1f2a] pl-3.5 pr-1.5 text-white" onClick={() => save({ ...state, min: !state.min })}>
         {view.kind !== 'list' && !state.min && <button type="button" aria-label="Back" className="dock-btn" onClick={e => { e.stopPropagation(); setView({ kind: 'list' }) }}><ArrowLeft size={15} /></button>}
         <b className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{title}</b>
         {unread > 0 && state.min && <span className="mr-1 rounded-full bg-[#a3263a] px-1.5 text-[10.5px] font-semibold">{unread}</span>}

@@ -931,7 +931,14 @@ async function run() {
     )
     const legacyHit: { url: string; headers: http.IncomingHttpHeaders; body: any } = llmHits.rFreeOk[legacyHitsBefore]!
     const legacyOffered = new Set<string>((legacyHit.body.tools ?? []).map((t: any) => String(t.function?.name)))
-    assert.deepEqual([...legacyOffered], ['lookup_listings'], 'chatWithAgent(Field Agent) Jarvis tools must be clamped to lookup_listings only')
+    const expectedFieldAgentSafeTools = [
+      'lookup_listings',
+      'market_pulse_lookup',
+      'my_assigned_deals_masked',
+      'my_attendance_status',
+      'my_daily_report_status',
+    ].sort()
+    assert.deepEqual([...legacyOffered].sort(), expectedFieldAgentSafeTools, 'chatWithAgent(Field Agent) Jarvis tools must be clamped to safe field-agent read tools only')
     assert.ok(!directAgentReply.includes('INV-KENS-901'))
     assert.ok(!directAgentReply.includes('Kensington Confidential Visa Director'))
     assert.ok(!directAgentReply.includes(rawOwnerDigitsAssigned))

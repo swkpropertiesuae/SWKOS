@@ -9,27 +9,6 @@ import { getMobileDeviceAuthPayload,isNativeMobile,setMobileSession } from '../l
 
 const WEBSITE_TEAM = SWK_TEAM_PROFILES.filter(m => m.onWebsite && m.photo)
 
-function CornerBrackets() {
-  const base = 'pointer-events-none absolute h-[8px] w-[8px] border-[#0b2640]/35 transition-all duration-300 ease-out group-hover/brk:border-[#d4a752]'
-  return (
-    <>
-      <span aria-hidden className={`${base} -top-[4px] -left-[4px] border-t-2 border-l-2 group-hover/brk:-top-[6px] group-hover/brk:-left-[6px]`} />
-      <span aria-hidden className={`${base} -top-[4px] -right-[4px] border-t-2 border-r-2 group-hover/brk:-top-[6px] group-hover/brk:-right-[6px]`} />
-      <span aria-hidden className={`${base} -bottom-[4px] -left-[4px] border-b-2 border-l-2 group-hover/brk:-bottom-[6px] group-hover/brk:-left-[6px]`} />
-      <span aria-hidden className={`${base} -bottom-[4px] -right-[4px] border-b-2 border-r-2 group-hover/brk:-bottom-[6px] group-hover/brk:-right-[6px]`} />
-    </>
-  )
-}
-
-function CrossDecor({ at }: { at: 'tl' | 'br' }) {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
-      className={`pointer-events-none absolute z-10 size-3.5 text-[#5b676e] ${at === 'tl' ? 'left-0 top-0 -translate-x-1/2 -translate-y-1/2' : 'bottom-0 right-0 translate-x-1/2 translate-y-1/2'}`}>
-      <path d="M5 12h14" /><path d="M12 5v14" />
-    </svg>
-  )
-}
-
 /**
  * SWK Properties OS sign-in — exact visual continuation of swkpropertiesuae.com:
  * sky-gradient canvas, architectural vertical hairline grid, frosted glass header,
@@ -92,19 +71,11 @@ export function Login() {
 
   return (
     <div
-      className="relative flex min-h-svh w-full flex-col overflow-x-clip text-[#0f2a33]"
-      style={{ background: 'linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%)' }}
+      className="relative flex min-h-svh w-full flex-col overflow-x-clip text-[#0b1f2a]"
+      style={{ background: 'radial-gradient(920px 440px at 12% -8%, rgba(212,167,82,0.16), transparent 60%), radial-gradient(880px 420px at 88% -6%, rgba(56,189,248,0.14), transparent 60%), linear-gradient(180deg, #fafbfe 0%, #f3f6fb 100%)' }}
     >
-      {/* Signature swkpropertiesuae.com architectural vertical hairline grid + editorial top veil */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 bg-arch-grid opacity-60" />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[520px]"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.16) 58%, transparent 100%)' }}
-      />
-
-      {/* Frosted Glass Header — direct continuation of swkpropertiesuae.com SiteHeader */}
-      <header className="sticky top-0 z-30 w-full border-b border-white/70 bg-white/80 shadow-[0_12px_36px_rgba(12,56,96,0.08)] backdrop-blur-2xl">
+      {/* Frosted Glass Header */}
+      <header className="sticky top-0 z-30 w-full border-b border-[#e2e8f0]/80 bg-white/88 shadow-[0_8px_28px_rgba(11,31,42,0.06)] backdrop-blur-2xl">
         <div className="mx-auto flex h-[76px] max-w-[1260px] items-center justify-between gap-4 px-4 sm:px-8">
           <div className="flex items-center gap-3">
             <a
@@ -171,9 +142,7 @@ export function Login() {
         <div className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12">
           {/* Sign-In Card (shown first on mobile, right column on desktop) */}
           <div className="order-1 lg:order-2 lg:col-span-5">
-            <div className="relative rounded-3xl border border-white/85 bg-white/88 p-6 shadow-[0_24px_64px_rgba(12,56,96,0.12)] backdrop-blur-2xl sm:p-9">
-              <CrossDecor at="tl" />
-              <CrossDecor at="br" />
+            <div className="relative rounded-[28px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_64px_rgba(11,31,42,0.1)] sm:p-9">
 
               <div className="mb-6">
                 <div className="inline-flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[#8a621c]">
@@ -292,9 +261,8 @@ export function Login() {
                   <button
                     type="submit"
                     disabled={busy}
-                    className="group/brk relative inline-flex h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-full border-0 bg-[#0f2a33] px-6 text-[12px] font-semibold uppercase tracking-[0.16em] text-white shadow-[0_14px_34px_rgba(12,35,58,0.22)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-[#d4a752] hover:text-[#0a1624] hover:shadow-[0_16px_38px_rgba(212,167,82,0.34)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                    className="relative inline-flex h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-full border-0 bg-[#0b1f2a] px-6 text-[13px] font-semibold tracking-[0.04em] text-white shadow-[0_14px_34px_rgba(11,31,42,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b78328] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
                   >
-                    <CornerBrackets />
                     <span>{busy ? 'Signing in…' : 'Sign in'}</span>
                   </button>
                 </div>
