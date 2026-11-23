@@ -89,7 +89,20 @@ function isForbiddenQrPayload(raw: string): string | null {
 }
 
 function todayDateInput(): string {
-  return new Date().toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date())
+}
+
+function addMonthsUtc(baseYear: number, baseMonth1To12: number, baseDay: number, offsetMonths: number): string {
+  const zeroBasedMonth = (baseMonth1To12 - 1) + offsetMonths
+  const targetYear = baseYear + Math.floor(zeroBasedMonth / 12)
+  const targetMonthIndex = ((zeroBasedMonth % 12) + 12) % 12
+  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonthIndex + 1, 0)).getUTCDate()
+  const clampedDay = Math.min(baseDay, lastDayOfTargetMonth)
+  const dueUtc = new Date(Date.UTC(targetYear, targetMonthIndex, clampedDay))
+  const yyyy = String(dueUtc.getUTCFullYear()).padStart(4, '0')
+  const mm = String(dueUtc.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(dueUtc.getUTCDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 export default function ToolkitPage({ embedded = false }: { embedded?: boolean }) {
@@ -219,17 +232,19 @@ export default function ToolkitPage({ embedded = false }: { embedded?: boolean }
   const pdcSchedule = useMemo(() => {
     const n = Math.max(1, Number(pdcCount))
     const monthsStep = 12 / n
-    const baseDate = pdcStart ? new Date(`${pdcStart}T00:00:00`) : new Date()
-    const validBase = Number.isNaN(baseDate.getTime()) ? new Date() : baseDate
+    const parsed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(pdcStart || '')
+    const fallback = /^(\d{4})-(\d{2})-(\d{2})$/.exec(todayDateInput())!
+    const baseYear = parsed ? Number(parsed[1]) : Number(fallback[1])
+    const baseMonth = parsed ? Number(parsed[2]) : Number(fallback[2])
+    const baseDay = parsed ? Number(parsed[3]) : Number(fallback[3])
     const rent = Math.max(0, pdcRent)
     const perCheque = Math.floor((rent / n) * 100) / 100
     const rows = Array.from({ length: n }, (_, i) => {
-      const due = new Date(validBase)
-      due.setMonth(due.getMonth() + Math.round(i * monthsStep))
+      const dueDate = addMonthsUtc(baseYear, baseMonth, baseDay, Math.round(i * monthsStep))
       const amount = i === n - 1 ? Math.round((rent - perCheque * (n - 1)) * 100) / 100 : perCheque
       return {
         index: i + 1,
-        dueDate: due.toISOString().slice(0, 10),
+        dueDate,
         amount,
       }
     })
