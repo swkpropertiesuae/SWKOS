@@ -1,13 +1,18 @@
 import { useEffect,useMemo,useState } from 'react'
 import { Link,useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3,Download,Play,Printer,Gauge,Sigma,Check,X } from 'lucide-react'
+import { BarChart3,Download,Play,Printer,Gauge,Sigma,Check,X,Sparkles,LayoutDashboard } from 'lucide-react'
 import { buildApiPath, downloadAuthFile, get } from '../lib/api'
+import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
 import { RefSelect } from '../components/RefSelect'
 import { Empty,ErrorBox,Kpi,Loading,PageHeader,Spinner } from '../ui/kit'
 import { cls,fmtDate,fmtDateTime,fmtMoney,fmtNum } from '../lib/format'
 import { Badge } from '../ui/kit'
+import { AnalyticsBento } from '@/components/ui/analytics-bento'
+import { Web3Bento } from '@/components/ui/web3-bento'
+import { UiBadge } from '@/components/ui/badge'
+import { buildSwkAnalyticsBentoProps, buildSwkTreasuryBentoProps, useSwkDarkTheme } from '../swk/executive-analytics'
 
 function fmtCell(c: any, v: any) {
   if (v === null || v === undefined || v === '') return ''
@@ -82,18 +87,152 @@ export function ReportsPage({ fixed }: { fixed?: string[] }) {
 void Link; void Spinner
 
 export function KpiPage() {
+  const { me, can } = useMeta()
+  const dark = useSwkDarkTheme()
+  const [viewMode, setViewMode] = useState<'all' | 'treasury' | 'analytics' | 'kpis'>('all')
   const q = useQuery({ queryKey: ['kpi'], queryFn: () => get<any>('/api/kpi') })
+  const dashQ = useQuery({ queryKey: ['kpi-dashboard-snap'], queryFn: () => get<any>('/api/dashboard'), retry: false })
+  const pulseQ = useQuery({ queryKey: ['kpi-pulse-snap'], queryFn: () => get<any>('/api/dashboard/pulse'), retry: false })
+  const propsQ = useQuery({
+    queryKey: ['kpi-props-snap'],
+    queryFn: () => get<any>('/api/e/properties', { pageSize: 24 }),
+    enabled: can('properties', 'view'),
+    retry: false,
+  })
+
+  const treasuryProps = useMemo(
+    () => buildSwkTreasuryBentoProps(dashQ.data, q.data, dark, me?.name),
+    [dashQ.data, q.data, dark, me?.name],
+  )
+  const analyticsProps = useMemo(
+    () => buildSwkAnalyticsBentoProps(dashQ.data, pulseQ.data, propsQ.data?.rows ?? []),
+    [dashQ.data, pulseQ.data, propsQ.data?.rows],
+  )
+
   if (q.error) return <ErrorBox error={q.error} />
   if (!q.data) return <Loading />
-  const fmt = (k: any) => k.value === null ? '—' : (k.unit === 'AED' ? fmtMoney(k.value, 0) : fmtNum(k.value)) + (k.unit && k.unit !== 'AED' ? (k.unit === '%' ? '%' : ' ' + k.unit) : '')
+  const fmt = (k: any) =>
+    k.value === null
+      ? '—'
+      : (k.unit === 'AED' ? fmtMoney(k.value, 0) : fmtNum(k.value)) +
+        (k.unit && k.unit !== 'AED' ? (k.unit === '%' ? '%' : ' ' + k.unit) : '')
+
+  const tabs: { id: typeof viewMode; label: string }[] = [
+    { id: 'all', label: 'Full Executive Suite' },
+    { id: 'treasury', label: 'Treasury & Accounts' },
+    { id: 'analytics', label: 'Brokerage Analytics' },
+    { id: 'kpis', label: 'Management Scorecards' },
+  ]
+
   return (
-    <div className="fade-in">
-      <PageHeader icon={<Gauge size={20} />} title="KPI Dashboard" subtitle={q.data.period} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {q.data.kpis.map((k: any) => <Kpi key={k.key} label={k.label} value={<span className="flex items-center gap-2">{fmt(k)}{k.status === 'good' ? <Check size={18} className="text-emerald" /> : k.status === 'bad' ? <X size={18} className="text-signal" /> : null}</span>} tone={k.status === 'good' ? 'green' : k.status === 'bad' ? 'red' : undefined} hint={<>{k.hint}{k.target !== null && <span className="block">Target {k.target}{k.unit === '%' ? '%' : k.unit ? ' ' + k.unit : ''}</span>}</>} />)}
+    <div className="fade-in grid gap-5 max-w-[1440px] mx-auto pb-8">
+      <PageHeader
+        icon={<Gauge size={20} />}
+        title="Executive KPIs & Treasury"
+        subtitle={`${q.data.period} · Live AED financial velocity, corporate accounts & RERA brokerage benchmarks`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/dashboard" className="btn outline sm">
+              <LayoutDashboard size={14} /> Overview
+            </Link>
+            <Link to="/command-glass" className="btn navy sm">
+              <Sparkles size={14} /> Spatial Glass
+            </Link>
+          </div>
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Executive KPI views">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={viewMode === t.id}
+            onClick={() => setViewMode(t.id)}
+            className={cls(
+              'rounded-full px-4 py-2 text-[12.5px] font-semibold border transition-colors cursor-pointer',
+              viewMode === t.id
+                ? 'bg-[#0b1f2a] border-[#0b1f2a] text-white'
+                : 'bg-card border-[#e2e8f0] text-body hover:border-[#0b1f2a]',
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-      <p className="text-xs text-muted mt-4">Targets are management defaults for property managers — adjust expectations to your own service levels. The minimum-margin target follows Company Settings.</p>
+
+      {(viewMode === 'all' || viewMode === 'kpis') && (
+        <section aria-label="Management KPI Scorecards" className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {q.data.kpis.map((k: any) => (
+              <div
+                key={k.key}
+                className="flex flex-col justify-between gap-2.5 rounded-[22px] border border-[#e2e8f0] bg-card p-4 shadow-[0_4px_18px_-12px_rgba(11,31,42,0.12)]"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-[12.5px] font-semibold text-muted">{k.label}</span>
+                  <UiBadge variant={k.status === 'good' ? 'success' : k.status === 'bad' ? 'destructive' : 'secondary'}>
+                    {k.status === 'good' ? (
+                      <>
+                        <Check size={11} /> On Target
+                      </>
+                    ) : k.status === 'bad' ? (
+                      <>
+                        <X size={11} /> Action
+                      </>
+                    ) : (
+                      'Tracked'
+                    )}
+                  </UiBadge>
+                </div>
+                <div className="font-display text-[24px] font-bold text-ink leading-tight tabular-nums">{fmt(k)}</div>
+                <div className="text-[11.5px] text-muted leading-snug">
+                  {k.hint}
+                  {k.target !== null && (
+                    <span className="block font-semibold text-ink/80 mt-0.5">
+                      Target: {k.target}
+                      {k.unit === '%' ? '%' : k.unit ? ' ' + k.unit : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted m-0">
+            Targets reflect SWK Properties Dubai management defaults — minimum margin follows Company Settings.
+          </p>
+        </section>
+      )}
+
+      {(viewMode === 'all' || viewMode === 'treasury') && (
+        <section aria-label="SWK Treasury and Escrow Bento" className="grid gap-2">
+          <div>
+            <div className="swk-eyebrow">Corporate Treasury &amp; Escrow</div>
+            <h2 className="m-0 text-[19px] font-bold text-ink">AED Accounts, Portfolio Index &amp; Settlements</h2>
+          </div>
+          <Web3Bento {...treasuryProps} className="max-w-none" />
+        </section>
+      )}
+
+      {(viewMode === 'all' || viewMode === 'analytics') && (
+        <section aria-label="Brokerage Analytics Bento" className="grid gap-2">
+          <div>
+            <div className="swk-eyebrow">Brokerage Performance</div>
+            <h2 className="m-0 text-[19px] font-bold text-ink">Revenue Velocity, Enquiries &amp; Dubai Seasonality</h2>
+          </div>
+          <AnalyticsBento
+            currency="AED "
+            credit={false}
+            revenue={analyticsProps.revenue}
+            sessions={analyticsProps.sessions}
+            categories={analyticsProps.categories}
+            seasonality={analyticsProps.seasonality}
+          />
+        </section>
+      )}
     </div>
   )
 }
 void Sigma
+void Kpi

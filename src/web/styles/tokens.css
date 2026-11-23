@@ -72,9 +72,39 @@
   --surface-floating: 0 16px 44px -16px rgba(11, 31, 42, 0.18);
   --elevation: 0 12px 32px -14px rgba(11, 31, 42, 0.16);
   --workspace-ground: #f5f7fb;
+
+  /* shadcn / 21st.dev Semantic Tokens (Light Executive Porcelain) */
+  --background: #f5f7fb;
+  --foreground: #0b1f2a;
+  --card-foreground: #0b1f2a;
+  --popover: #ffffff;
+  --popover-foreground: #0b1f2a;
+  --primary: #0b1f2a;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0b1f2a;
+  --accent: #edf2f7;
+  --accent-foreground: #0b1f2a;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #2563eb;
+  --muted-foreground: #526273;
+  --muted-surface: #f1f5f9;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-ring: var(--ring);
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+.dark {
   --bg: #08131a;
   --workspace-ground: #08131a;
   --card: #0f202b;
@@ -95,6 +125,41 @@
   --section-ink: #f8fafc;
   --surface-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.55);
   --surface-floating: 0 22px 54px -16px rgba(0, 0, 0, 0.72);
+
+  /* shadcn / 21st.dev Semantic Tokens (Dark Midnight Obsidian) */
+  --background: #08131a;
+  --foreground: #f8fafc;
+  --card-foreground: #f8fafc;
+  --popover: #112533;
+  --popover-foreground: #f8fafc;
+  --primary: #f8fafc;
+  --primary-foreground: #0b1f2a;
+  --secondary: #162c3a;
+  --secondary-foreground: #f8fafc;
+  --accent: #1c3647;
+  --accent-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #213c4d;
+  --input: #35566b;
+  --ring: #d4a752;
+  --muted-foreground: #94a3b8;
+  --muted-surface: #162c3a;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-ring: var(--ring);
+}
+
+/* Scoped surface so shadcn/21st.dev bg-muted resolves to soft fill while legacy SWK text-muted stays WCAG slate */
+.swk-shadcn-surface {
+  --muted: var(--muted-surface);
+  --color-muted: var(--muted-surface);
 }
 
 @layer base {

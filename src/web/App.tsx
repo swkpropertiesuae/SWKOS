@@ -63,6 +63,7 @@ const UnifiedSearchPage = lazy(() => import('./pages/swk/UnifiedSearchPage'))
 const PhonePage = lazy(() => import('./pages/swk/PhonePage'))
 const FieldDutyPage = lazy(() => import('./pages/swk/FieldDutyPage'))
 const FieldLiveMapPage = lazy(() => import('./pages/swk/FieldLiveMapPage'))
+const SpatialCommandPage = lazy(() => import('./pages/swk/SpatialCommandPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -169,6 +170,7 @@ export default function App() {
           <Route index element={<Navigate to={defaultLanding} replace />} />
           <Route path="/home" element={<Launcher />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/command-glass" element={<Guard module="dashboard"><SpatialCommandPage /></Guard>} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />
           <Route path="/reception-display" element={<QrGuard><ReceptionDisplayPage /></QrGuard>} />

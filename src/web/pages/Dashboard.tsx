@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Clock,
   FileSignature,
+  Gauge,
   Gavel,
   HandCoins,
   KeyRound,
@@ -28,12 +29,15 @@ import {
   Rocket,
   Scale,
   ShieldCheck,
+  Sparkles,
   Trash2,
   UserPlus,
   Users,
   Wallet,
   Wrench,
 } from 'lucide-react'
+import { AnalyticsBento } from '@/components/ui/analytics-bento'
+import { buildSwkAnalyticsBentoProps } from '../swk/executive-analytics'
 import { get, post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
@@ -140,6 +144,10 @@ export function Dashboard() {
   const weighted = funnel.filter(f => f.stage !== 'Closed').reduce((s, f) => s + (Number(f.value) || 0) * (STAGE_PROB[f.stage] ?? 0.3), 0)
   const trend: any[] = ch.revenue_trend ?? []
   const weekDays = useMemo(() => buildWeekStrip(), [])
+  const analyticsProps = useMemo(
+    () => buildSwkAnalyticsBentoProps(d, pulse.data, props.data?.rows ?? []),
+    [d, pulse.data, props.data?.rows],
+  )
 
   const agenda = useMemo(
     () =>
@@ -238,6 +246,16 @@ export function Dashboard() {
             <Link to="/toolkit" className="inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/15 px-4 py-2.5 text-[12.5px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
               <Calculator size={15} className="text-[#d4a752]" /> Deal Toolkit
             </Link>
+            {can('reports', 'view') && !restricted && (
+              <Link to="/kpi" className="inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/15 px-4 py-2.5 text-[12.5px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                <Gauge size={15} className="text-[#34d399]" /> Treasury &amp; KPIs
+              </Link>
+            )}
+            {!restricted && (
+              <Link to="/command-glass" className="inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/15 px-4 py-2.5 text-[12.5px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                <Sparkles size={15} className="text-[#fde68a]" /> Spatial Glass
+              </Link>
+            )}
           </div>
         </div>
 
@@ -411,6 +429,36 @@ export function Dashboard() {
           </div>
         </section>
       )}
+
+      {/* ------------------------------------------------------------ Live Executive Analytics Bento (21st.dev SVG Suite) */}
+      <section aria-label="Executive Analytics Bento" className="grid gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="swk-eyebrow">Executive Intelligence</div>
+            <h2 className="m-0 text-[20px] font-bold text-ink">Live Brokerage Revenue, Divisions &amp; Seasonality</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {can('reports', 'view') && !restricted && (
+              <Link to="/kpi" className="btn outline sm">
+                <Gauge size={14} /> Treasury &amp; KPIs
+              </Link>
+            )}
+            {!restricted && (
+              <Link to="/command-glass" className="btn navy sm">
+                <Sparkles size={14} /> Spatial Glass View
+              </Link>
+            )}
+          </div>
+        </div>
+        <AnalyticsBento
+          currency="AED "
+          credit={false}
+          revenue={analyticsProps.revenue}
+          sessions={analyticsProps.sessions}
+          categories={analyticsProps.categories}
+          seasonality={analyticsProps.seasonality}
+        />
+      </section>
 
       {/* ------------------------------------------------------------ Pipeline + Revenue + Portfolio + Market */}
       <Reveal className="grid gap-4 xl:grid-cols-12">

@@ -29,6 +29,8 @@ export const SWK_NAV: NavSection[] = [
   ] },
   { key: 'command', label: 'Dashboards', items: [
     { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, module: 'dashboard', desc: 'Daily business summary' },
+    { label: 'Executive KPIs', to: '/kpi', icon: Gauge, module: 'reports', isNew: true, desc: 'Treasury bento, AED analytics & KPI scorecards' },
+    { label: 'Spatial Command', to: '/command-glass', icon: Sparkles, module: 'dashboard', isNew: true, desc: 'Frosted-glass spatial executive suite' },
     { label: 'Deal Pipeline', to: '/pipeline', icon: KanbanSquare, module: 'sales', desc: 'Track deals step by step' },
     { label: 'Approvals', to: '/e/universal_approvals', icon: CheckCheck, module: 'admin', desc: 'Items waiting for sign-off' },
     { label: 'Delete Bin', to: '/recycle-bin', icon: Trash2, module: 'admin', desc: 'Owner approval for deletions' },
