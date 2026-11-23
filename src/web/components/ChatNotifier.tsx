@@ -165,7 +165,7 @@ export function ChatNotifier() {
       <Link to="/chat" className="swk-tbtn relative" aria-label={`Inside messenger, ${unread} unread`} title="Inside messenger">
         <MessagesSquare size={17} />
         {unread > 0 && (
-          <span className="count" style={{ background: '#0e9f6e' }}>
+          <span className="count" style={{ background: '#8a621c' }}>
             {unread > 99 ? '99+' : unread}
           </span>
         )}
@@ -180,7 +180,7 @@ export function ChatNotifier() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: 40 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className="pointer-events-auto rounded-2xl border border-black/10 bg-white/95 p-3 shadow-[0_24px_60px_rgba(18,18,18,0.18)] backdrop-blur-xl"
+              className="pointer-events-auto rounded-2xl border border-black/5 bg-white/95 p-3 shadow-[0_24px_60px_rgba(15,42,51,0.18)] backdrop-blur-xl"
               role="status"
             >
               <div className="flex items-start gap-3">
@@ -192,7 +192,7 @@ export function ChatNotifier() {
                     nav(`/chat?t=${b.thread_id}`)
                   }}
                 >
-                  <span className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#121212] text-[13px] font-semibold text-[#51fec0]">
+                  <span className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0f2a33] text-[13px] font-semibold text-[#d4a752]">
                     <StaffPhoto
                       email={people?.find(p => p.id === b.user_id)?.email}
                       className="size-full object-cover object-top"
@@ -205,14 +205,14 @@ export function ChatNotifier() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <b className="truncate text-[14px] font-semibold text-[#121212]">{b.group ? b.title : b.sender}</b>
-                      <span className="ml-auto shrink-0 text-[10.5px] font-medium text-[#0e9f6e]">now</span>
+                      <b className="truncate text-[14px] font-semibold text-[#0f2a33]">{b.group ? b.title : b.sender}</b>
+                      <span className="ml-auto shrink-0 text-[10.5px] font-medium text-[#8a621c]">now</span>
                     </span>
-                    <span className="line-clamp-2 text-[13px] text-[#4a4a4a]">
-                      {b.group && <b className="font-medium text-[#121212]">{b.sender}: </b>}
+                    <span className="line-clamp-2 text-[13px] text-[#3d4a51]">
+                      {b.group && <b className="font-medium text-[#0f2a33]">{b.sender}: </b>}
                       {b.text}
                     </span>
-                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-[#8b8b8b]">
+                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-[#5b676e]">
                       Inside · tap to open
                     </span>
                   </span>
@@ -220,7 +220,7 @@ export function ChatNotifier() {
                 <button
                   type="button"
                   aria-label="Dismiss"
-                  className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#8b8b8b] hover:bg-[#f5f5f5]"
+                  className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#5b676e] hover:bg-[#f4f0e8]"
                   onClick={() => setBanners(a => a.filter(x => x.thread_id !== b.thread_id))}
                 >
                   <X size={14} />
@@ -241,13 +241,13 @@ export function ChatNotifier() {
                   onBlur={() => setFocusedThreadId(k => (k === b.thread_id ? null : k))}
                   placeholder="Quick reply…"
                   aria-label={`Quick reply to ${b.group ? b.title : b.sender}`}
-                  className="h-8 min-w-0 flex-1 rounded-full border border-black/10 bg-[#f5f5f5] px-3 text-[12.5px] text-[#121212] outline-none focus:border-[#0e9f6e] focus:bg-white"
+                  className="h-8 min-w-0 flex-1 rounded-full border border-black/10 bg-[#f8f5ef] px-3 text-[12.5px] text-[#0f2a33] outline-none focus:border-[#8a621c] focus:bg-white"
                 />
                 <button
                   type="submit"
                   disabled={!(drafts[b.thread_id] ?? '').trim() || sendingThreadId === b.thread_id}
                   aria-label="Send quick reply"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-[#0e9f6e] text-white transition-transform active:scale-95 disabled:opacity-40"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-[#8a621c] text-white transition-transform active:scale-95 disabled:opacity-40"
                 >
                   <Send size={13} />
                 </button>

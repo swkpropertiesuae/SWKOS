@@ -347,7 +347,8 @@ export default async function (app: FastifyInstance) {
     const key = String((req.params as any).id)
     const stored = /^\d+$/.test(key) ? q.val<string>(`SELECT photo_stored FROM users WHERE id = ? AND deleted_at IS NULL`, Number(key)) : q.val<string>(`SELECT photo_stored FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, key.toLowerCase())
     const stream = stored ? await openStored(stored) : null
-    if (!stream) return reply.status(404).send({ error: 'No photo' })
+    // 204, not 404: "no photo yet" is normal, and the client falls back to initials without a console error.
+    if (!stream) return reply.status(204).send()
     reply.header('content-type', /\.png$/i.test(stored!) ? 'image/png' : /\.webp$/i.test(stored!) ? 'image/webp' : 'image/jpeg')
     reply.header('cache-control', 'private, max-age=300')
     return reply.send(stream)

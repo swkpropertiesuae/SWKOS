@@ -53,11 +53,11 @@ export function SmartImport({ def, onClose, onDone }: { def: MetaEntity; onClose
   return (
     <Modal open onClose={onClose} title={`Smart import into ${def.plural} (OCR)`} width={1000}
       footer={<><span className="flex-1 text-[12.5px] text-muted">{busy || (rows.length ? `${rows.length} record${rows.length === 1 ? '' : 's'} ready. Check every value before importing.` : 'PDF, Word, photos, scans, TIFF, text or CSV.')}</span><button className="btn outline" onClick={onClose}>Cancel</button><button className="web-btn" disabled={!rows.length || !!busy} onClick={() => void save()}>Import {rows.length || ''}</button></>}>
-      <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-[#cfcfcf] bg-[#f7f7f7] p-8 text-center hover:border-[#121212]"
+      <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-[#cfc6b4] bg-[#f8f5ef] p-8 text-center hover:border-[#0f2a33]"
         onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); void read(e.dataTransfer.files) }}>
-        {busy ? <Loader2 className="animate-spin text-[#0e9f6e]" /> : <Upload className="text-[#8b8b8b]" />}
+        {busy ? <Loader2 className="animate-spin text-[#8a621c]" /> : <Upload className="text-[#5b676e]" />}
         <b className="text-[14px] font-medium">{busy || 'Drop documents here or click to choose'}</b>
-        <span className="text-[12px] text-[#737373]">Scans and photos are read with OCR (English and Arabic). Values are arranged into {def.label.toLowerCase()} fields{results.some(r => r.by === 'ai') ? ' by the AI assistant' : ''}.</span>
+        <span className="text-[12px] text-[#5b676e]">Scans and photos are read with OCR (English and Arabic). Values are arranged into {def.label.toLowerCase()} fields{results.some(r => r.by === 'ai') ? ' by the AI assistant' : ''}.</span>
         <input type="file" multiple hidden accept={ACCEPT} onChange={e => { void read(e.target.files); e.target.value = '' }} disabled={!!busy} />
       </label>
       {results.length > 0 && (
@@ -65,7 +65,7 @@ export function SmartImport({ def, onClose, onDone }: { def: MetaEntity; onClose
           {results.map((r, i) => <button key={i} type="button" className="web-pill border-0" style={{ cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }} onClick={() => setShowText(showText === i ? null : i)}><FileSearch size={12} />{r.file} · {r.method === 'ocr' ? 'OCR' : r.method === 'mixed' ? 'text + OCR' : 'text'} · {r.pages}p</button>)}
         </div>
       )}
-      {showText !== null && <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-[#121212] p-3 text-[12px] text-[#e5e5e5]">{results[showText]?.text}</pre>}
+      {showText !== null && <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-[#0f2a33] p-3 text-[12px] text-[#e6e0d4]">{results[showText]?.text}</pre>}
       {rows.length > 0 && (
         <div className="mt-4 overflow-x-auto rounded-xl border border-line">
           <table className="grid">

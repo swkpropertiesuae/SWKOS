@@ -8,7 +8,6 @@ import { ChildEditor,type Row } from './ChildEditor'
 import { Modal,Loading,Badge } from '../ui/kit'
 import { useToast } from '../lib/toast'
 import { cls,fmtMoney,nowIsoLocal,todayIso } from '../lib/format'
-import { useVatRates } from '../lib/lookups'
 import { canQueue,enqueue } from '../lib/offlineQueue'
 
 
@@ -38,7 +37,6 @@ export function sectionsOf(fields: FieldDef[], allFields?: FieldDef[]): { name: 
 export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEdit = [], childKeys, title }: { def: MetaEntity; record: Row | null; presets?: Row; onSaved: (rec: Row) => void; onCancel: () => void; lockedOnEdit?: string[]; childKeys?: string[]; title?: string }) {
   const { me, def: getDef } = useMeta()
   const toast = useToast()
-  const vat = useVatRates()
   const edit = !!record?.id
   const [vals, setVals] = useState<Row>(() => initial(def, record, presets, me?.id))
   const [labels, setLabels] = useState<Record<string, string>>(record?._labels ?? {})

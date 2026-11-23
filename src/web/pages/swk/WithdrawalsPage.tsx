@@ -139,12 +139,12 @@ export default function WithdrawalsPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="card p-4 border-l-4 border-[#1e1e1e]">
+        <div className="card p-4 border-l-4 border-[#16363f]">
           <div className="text-xs font-bold uppercase tracking-wider text-muted">Developer / Seller Withdrawal Rule</div>
           <div className="text-sm font-semibold text-ink mt-1">100% Full Refund of Client Funds</div>
           <div className="text-xs text-muted mt-1">When a developer cancels/delays or a secondary seller defaults on Form F, 0% deduction is applied to the buyer.</div>
         </div>
-        <div className="card p-4 border-l-4 border-[#1e1e1e]">
+        <div className="card p-4 border-l-4 border-[#16363f]">
           <div className="text-xs font-bold uppercase tracking-wider text-muted">Client Withdrawal / Mortgage Contingency</div>
           <div className="text-sm font-semibold text-ink mt-1">Per Signed Booking / Form F Terms</div>
           <div className="text-xs text-muted mt-1">Bank rejection under pre-approval contingency = 100% refund; voluntary buyer default = agreed forfeiture % deducted.</div>
@@ -206,7 +206,7 @@ export default function WithdrawalsPage() {
                       </td>
                       <td className="num font-semibold">{fmtMoney(paid)}</td>
                       <td className="num text-signal font-semibold">{fmtMoney(ded)} ({w.agreed_forfeiture_pct ?? 0}%)</td>
-                      <td className="num font-extrabold text-[#1e1e1e]">{fmtMoney(ref)}</td>
+                      <td className="num font-extrabold text-[#16363f]">{fmtMoney(ref)}</td>
                       <td>
                         <Badge
                           value={w.status}
@@ -328,7 +328,7 @@ export default function WithdrawalsPage() {
               </div>
               <div className="text-right">
                 <div className="text-xs text-muted uppercase font-bold">Net Refundable to Client</div>
-                <div className="text-xl font-display font-extrabold text-[#1e1e1e]">{fmtMoney(computedRefund)}</div>
+                <div className="text-xl font-display font-extrabold text-[#16363f]">{fmtMoney(computedRefund)}</div>
               </div>
             </div>
             <div className="md:col-span-2">

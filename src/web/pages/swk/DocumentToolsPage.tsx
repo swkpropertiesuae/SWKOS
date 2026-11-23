@@ -370,10 +370,10 @@ export default function DocumentToolsPage({ embedded = false }: { embedded?: boo
 
   const Tool = ({ icon: I, title, blurb, children }: { icon: typeof ScanText; title: string; blurb: string; children: React.ReactNode }) => (
     <section className="web-card flex flex-col gap-3 p-6">
-      <span className="flex size-11 items-center justify-center rounded-full bg-[#121212] text-[#51fec0]"><I size={19} /></span>
+      <span className="flex size-11 items-center justify-center rounded-full bg-[#0f2a33] text-[#d4a752]"><I size={19} /></span>
       <div>
         <h2 className="m-0 text-[17px] font-medium tracking-[-0.02em]">{title}</h2>
-        <p className="m-0 mt-1 text-[13px] text-[#737373]">{blurb}</p>
+        <p className="m-0 mt-1 text-[13px] text-[#5b676e]">{blurb}</p>
       </div>
       {children}
     </section>

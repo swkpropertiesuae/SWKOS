@@ -95,8 +95,8 @@ export default function ReceptionQrPage() {
 
   const onOffice = Boolean(net?.office_ip_locked && net?.ip_matches_office)
   return (
-    <div className="min-h-screen text-[#121212] flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%)' }}>
-      <div className="w-full max-w-[420px] rounded-3xl bg-white border border-black/5 p-6 shadow-[0_24px_60px_rgba(12,56,96,0.12)]">
+    <div className="min-h-screen text-[#0f2a33] flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #fbf9f4 0%, #f3eee3 48%, #faf8f2 100%)' }}>
+      <div className="w-full max-w-[420px] rounded-3xl bg-white border border-black/5 p-6 shadow-[0_24px_60px_rgba(15,42,51,0.12)]">
         <div className="flex flex-col items-center text-center mb-5">
           <img src="/brand/web/swk-logo-light.webp" alt="SWK Properties OS" className="h-14 w-auto" />
           <h1 className="font-display font-bold text-xl m-0 mt-2">{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
@@ -114,58 +114,58 @@ export default function ReceptionQrPage() {
             <div className="relative rounded-2xl overflow-hidden bg-black aspect-square border border-white/10">
               <video ref={video} muted playsInline className="w-full h-full object-cover" />
               <canvas ref={canvas} className="hidden" />
-              <div className="absolute inset-6 border-2 border-[#0e9f6e]/80 rounded-2xl pointer-events-none" />
-              <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#0e9f6e]" size={20} />
+              <div className="absolute inset-6 border-2 border-[#8a621c]/80 rounded-2xl pointer-events-none" />
+              <ScanLine className="absolute left-1/2 top-3 -translate-x-1/2 text-[#8a621c]" size={20} />
             </div>
-            <p className="text-xs text-[#4a4a4a] m-0">{camErr || 'Point the camera at the code on the reception screen. It scans by itself. There is no photo or file option.'}</p>
+            <p className="text-xs text-[#3d4a51] m-0">{camErr || 'Point the camera at the code on the reception screen. It scans by itself. There is no photo or file option.'}</p>
           </div>
         )}
 
         {step === 'signin' && me && !me.party_id && (
           <div className="space-y-3.5 text-center">
-            <p className="m-0 text-sm text-[#4a4a4a]">Signed in as <b className="text-[#121212]">{me.name}</b></p>
-            <button type="button" disabled={busy || !onOffice} onClick={() => void submit()} className="w-full h-12 rounded-full border-0 bg-[#121212] text-white font-semibold uppercase tracking-[0.14em] text-[12px] cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" /> Checking you in…</> : 'Check in now'}</button>
+            <p className="m-0 text-sm text-[#3d4a51]">Signed in as <b className="text-[#0f2a33]">{me.name}</b></p>
+            <button type="button" disabled={busy || !onOffice} onClick={() => void submit()} className="w-full h-12 rounded-full border-0 bg-[#0f2a33] text-white font-semibold uppercase tracking-[0.14em] text-[12px] cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" /> Checking you in…</> : 'Check in now'}</button>
           </div>
         )}
         {step === 'signin' && !(me && !me.party_id) && (
           <form onSubmit={e => void submit(e)} className="space-y-3.5">
-            <p className="text-xs text-[#0e9f6e] m-0">Code read. Sign in within 90 seconds.</p>
+            <p className="text-xs text-[#8a621c] m-0">Code read. Sign in within 90 seconds.</p>
             <div>
-              <label htmlFor="qr-email" className="block text-xs font-semibold text-[#4a4a4a] mb-1.5">Email</label>
-              <div className="relative flex items-center"><Mail size={16} className="absolute left-3.5 text-[#a7a7a7]" />
-                <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-[#f7f7f7] border border-[#e5e5e5] text-[#121212] text-sm outline-none focus:border-[#0e9f6e]" /></div>
+              <label htmlFor="qr-email" className="block text-xs font-semibold text-[#3d4a51] mb-1.5">Email</label>
+              <div className="relative flex items-center"><Mail size={16} className="absolute left-3.5 text-[#6b767c]" />
+                <input id="qr-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@swk.properties" className="w-full h-11 pl-10 pr-3 rounded-xl bg-[#f8f5ef] border border-[#e6e0d4] text-[#0f2a33] text-sm outline-none focus:border-[#8a621c]" /></div>
             </div>
             <div>
-              <label htmlFor="qr-pw" className="block text-xs font-semibold text-[#4a4a4a] mb-1.5">Password</label>
-              <div className="relative flex items-center"><Lock size={16} className="absolute left-3.5 text-[#a7a7a7]" />
-                <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-[#f7f7f7] border border-[#e5e5e5] text-[#121212] text-sm outline-none focus:border-[#0e9f6e]" />
-                <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#a7a7a7] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
+              <label htmlFor="qr-pw" className="block text-xs font-semibold text-[#3d4a51] mb-1.5">Password</label>
+              <div className="relative flex items-center"><Lock size={16} className="absolute left-3.5 text-[#6b767c]" />
+                <input id="qr-pw" type={show ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className="w-full h-11 pl-10 pr-10 rounded-xl bg-[#f8f5ef] border border-[#e6e0d4] text-[#0f2a33] text-sm outline-none focus:border-[#8a621c]" />
+                <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-3 bg-transparent border-0 text-[#6b767c] cursor-pointer">{show ? <EyeOff size={16} /> : <Eye size={16} />}</button></div>
             </div>
-            {needTotp && <input inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="Authenticator code" value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ''))} className="w-full h-11 px-3 rounded-xl bg-[#f7f7f7] border border-[#e5e5e5] text-[#121212] text-sm outline-none" />}
-            <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-full border-0 bg-[#121212] text-white font-semibold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
-            <button type="button" onClick={() => { setPayload(''); setStep('scan') }} className="w-full bg-transparent border-0 text-xs text-[#4a4a4a] underline cursor-pointer">Scan again</button>
+            {needTotp && <input inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="Authenticator code" value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ''))} className="w-full h-11 px-3 rounded-xl bg-[#f8f5ef] border border-[#e6e0d4] text-[#0f2a33] text-sm outline-none" />}
+            <button type="submit" disabled={busy || !onOffice} className="w-full h-12 rounded-full border-0 bg-[#0f2a33] text-white font-semibold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy ? <><Loader2 size={16} className="animate-spin" />Checking…</> : 'Check in'}</button>
+            <button type="button" onClick={() => { setPayload(''); setStep('scan') }} className="w-full bg-transparent border-0 text-xs text-[#3d4a51] underline cursor-pointer">Scan again</button>
           </form>
         )}
 
         {step === 'done' && result && (
           <div className="space-y-3 text-sm">
-            <div className="flex items-center gap-2 text-[#0e9f6e] font-semibold"><CheckCircle2 size={20} />{result.already_checked_in ? 'You were already checked in today.' : 'You are checked in.'}</div>
-            <div className="rounded-2xl bg-[#f7f7f7] border border-[#e5e5e5] p-3.5 space-y-1.5 text-[13px]">
+            <div className="flex items-center gap-2 text-[#8a621c] font-semibold"><CheckCircle2 size={20} />{result.already_checked_in ? 'You were already checked in today.' : 'You are checked in.'}</div>
+            <div className="rounded-2xl bg-[#f8f5ef] border border-[#e6e0d4] p-3.5 space-y-1.5 text-[13px]">
               <Row k="Name" v={result.employee?.name} />
               <Row k="Time" v={String(result.verification_summary?.timestamp_gst || '').slice(0, 16).replace('T', ' ')} />
               <Row k="Status" v={result.verification_summary?.is_late ? `Late (+${result.verification_summary.late_minutes} min)` : 'On time'} />
               <Row k="Network" v={`${result.verification_summary?.office_wifi_ssid} · ${result.verification_summary?.client_ip}`} />
             </div>
-            <a href="/home" className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-[#121212] text-[12px] font-semibold uppercase tracking-[0.14em] text-white no-underline hover:bg-[#51fec0] hover:text-[#0a1624]">Continue to SWK OS</a>
-            <a href="/field-duty" className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#0e9f6e]/30 bg-[#f0fdf7] text-[12px] font-semibold uppercase tracking-[0.1em] text-[#0e9f6e] no-underline hover:bg-[#dcfce7]">
+            <a href="/home" className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-[#0f2a33] text-[12px] font-semibold uppercase tracking-[0.14em] text-white no-underline hover:bg-[#d4a752] hover:text-[#0f2a33]">Continue to SWK OS</a>
+            <a href="/field-duty" className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#8a621c]/30 bg-[#f8f5ef] text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8a621c] no-underline hover:bg-[#efe6d2]">
               <MapPinned size={15} /> Switch to Field Duty GPS
             </a>
           </div>
         )}
 
         {step !== 'done' && me && !me.party_id && (
-          <div className="mt-4 pt-3 border-t border-[#efefef] text-center">
-            <Link to="/field-duty" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0e9f6e] no-underline hover:underline">
+          <div className="mt-4 pt-3 border-t border-[#e6e0d4] text-center">
+            <Link to="/field-duty" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8a621c] no-underline hover:underline">
               <MapPinned size={14} /> Out on a viewing? Switch to Field Duty GPS
             </Link>
           </div>
@@ -177,7 +177,7 @@ export default function ReceptionQrPage() {
   )
 }
 
-const Row = ({ k, v }: { k: string; v: any }) => <div className="flex justify-between gap-3"><span className="text-[#a7a7a7]">{k}</span><span className="font-semibold text-right">{v}</span></div>
+const Row = ({ k, v }: { k: string; v: any }) => <div className="flex justify-between gap-3"><span className="text-[#6b767c]">{k}</span><span className="font-semibold text-right">{v}</span></div>
 
 function SetupPanel({ onChange }: { onChange: () => void }) {
   const [msg, setMsg] = useState(''), [control, setControl] = useState<{ devices: any[] } | null>(null)
@@ -185,18 +185,18 @@ function SetupPanel({ onChange }: { onChange: () => void }) {
   useEffect(load, [])
   const decide = async (id: number, approve: boolean) => { try { setControl(await post<any>(`/api/swk-ops/attendance-control/device/${id}`, { approve })) } catch (e: any) { setMsg(e?.message || 'Could not save.') } }
   return (
-    <div className="mt-5 rounded-2xl border border-[#e5e5e5] bg-[#f7f7f7] p-3 text-xs text-[#4a4a4a] space-y-2">
-      <div className="font-semibold text-[#121212]">Attendance control (Owner / Manager)</div>
+    <div className="mt-5 rounded-2xl border border-[#e6e0d4] bg-[#f8f5ef] p-3 text-xs text-[#3d4a51] space-y-2">
+      <div className="font-semibold text-[#0f2a33]">Attendance control (Owner / Manager)</div>
       <div>The office network is locked by the Admin in Settings, Attendance Wi-Fi.</div>
       {msg && <div>{msg}</div>}
-      <a href="/reception-display" className="inline-block text-[#0e9f6e] underline">Open the reception code screen</a>
+      <a href="/reception-display" className="inline-block text-[#8a621c] underline">Open the reception code screen</a>
       {!!control?.devices.length && (
         <div className="space-y-1">
-          <div className="font-semibold text-[#121212]">Devices</div>
+          <div className="font-semibold text-[#0f2a33]">Devices</div>
           {control.devices.map(d => (
             <div key={d.id} className="flex items-center gap-2"><span className="flex-1">{d.name} · {String(d.label || 'phone').slice(0, 24)} · <b>{d.status}</b></span>
               {d.status !== 'Approved' && <button type="button" className="px-2 py-1 rounded-lg bg-emerald-600 text-white border-0 cursor-pointer" onClick={() => void decide(d.id, true)}>Approve</button>}
-              {d.status !== 'Blocked' && <button type="button" className="px-2 py-1 rounded-lg bg-white text-[#121212] border border-[#e5e5e5] cursor-pointer" onClick={() => void decide(d.id, false)}>Block</button>}</div>
+              {d.status !== 'Blocked' && <button type="button" className="px-2 py-1 rounded-lg bg-white text-[#0f2a33] border border-[#e6e0d4] cursor-pointer" onClick={() => void decide(d.id, false)}>Block</button>}</div>
           ))}
         </div>
       )}

@@ -34,11 +34,12 @@ export function MetaProvider({ children }: { children: ReactNode }) {
   const def = useCallback((k: string) => { const e = byKey.get(k); if (!e) throw new Error('Unknown entity ' + k); return e }, [byKey])
   const can = useCallback((module: string, a: Action = 'view') => {
     if (!me) return false
+    // Mirrors the server (src/server/engine.ts can): AI tools read company-wide data, so only full-access users and the Manager get them.
+    if (module === 'ai' && ((me.permissions !== '*' && me.role !== 'Manager') || me.party_id)) return false
     if (isRestrictedStaffUser(me)) {
       const rp = RESTRICTED_STAFF_PERMISSIONS[module]
       return !!rp && (rp.includes('*') || rp.includes(a))
     }
-    if (module === 'ai' && me.party_id) return false
     if (me.permissions === '*') return true
     const p = me.permissions[module]; return !!p && (p.includes('*') || p.includes(a))
   }, [me])

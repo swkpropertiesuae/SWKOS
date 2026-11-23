@@ -426,7 +426,6 @@ export function AiPage() {
           ) : undefined
         }
       />
-
       <div className="card overflow-hidden">
         <Tabs
           tabs={tabsWithCounts}
@@ -1579,7 +1578,7 @@ function Team({ status, reload }: { status: LegacyStatus; reload: () => void }) 
             key={a.id}
             className={cls(
               'rounded-2xl border p-4 grid gap-2 content-start',
-              a.active ? 'border-[#e5e5e5] bg-card' : 'border-line bg-soft',
+              a.active ? 'border-[#e6e0d4] bg-card' : 'border-line bg-soft',
             )}
           >
             <div className="flex items-start gap-3">

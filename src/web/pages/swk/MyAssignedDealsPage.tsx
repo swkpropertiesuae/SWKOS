@@ -117,7 +117,7 @@ export default function MyAssignedDealsPage() {
   return (
     <div className="p-5 max-w-6xl mx-auto space-y-5">
       <MyHandoverDocs />
-      <div className="rounded-2xl bg-[#161616] text-white p-5 border border-[#c8a962]/30 flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-2xl bg-[#12303a] text-white p-5 border border-[#c8a962]/30 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#d4b672]">
             <ShieldCheck className="w-4 h-4" /> SWK Agent Dispatch · Hard-Masked Privacy Mode
@@ -133,10 +133,10 @@ export default function MyAssignedDealsPage() {
       </div>
 
       <div className="flex gap-2">
-        <button onClick={() => setTab('deals')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'deals' ? 'bg-[#161616] text-white' : 'bg-slate-100 text-slate-700'}`}>
+        <button onClick={() => setTab('deals')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'deals' ? 'bg-[#12303a] text-white' : 'bg-slate-100 text-slate-700'}`}>
           <Building2 className="w-3.5 h-3.5" /> Assigned Deals ({rows.length})
         </button>
-        <button onClick={() => setTab('routes')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'routes' ? 'bg-[#161616] text-white' : 'bg-slate-100 text-slate-700'}`}>
+        <button onClick={() => setTab('routes')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'routes' ? 'bg-[#12303a] text-white' : 'bg-slate-100 text-slate-700'}`}>
           <MapPinned className="w-3.5 h-3.5" /> My Daily Routes ({routes.length})
         </button>
       </div>
@@ -198,7 +198,7 @@ export default function MyAssignedDealsPage() {
                         <button
                           disabled={busyId === r.id}
                           onClick={() => triggerMaskedCall(r.id)}
-                          className="px-3 py-1.5 rounded-lg bg-[#0e9f6e] hover:bg-[#0a4638] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg bg-[#8a621c] hover:bg-[#0a4638] text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
                         >
                           <PhoneCall className="w-3.5 h-3.5" /> Call Owner (Masked)
                         </button>
@@ -234,7 +234,7 @@ export default function MyAssignedDealsPage() {
                     />
                     <div className="flex justify-end gap-2">
                       <button onClick={() => setWaOpenId(null)} className="px-3 py-1.5 rounded-lg text-xs border border-slate-200 bg-white">Cancel</button>
-                      <button disabled={busyId === r.id} onClick={() => sendMaskedWa(r.id)} className="px-3 py-1.5 rounded-lg bg-[#0e9f6e] text-white text-xs font-bold">Send Masked WhatsApp</button>
+                      <button disabled={busyId === r.id} onClick={() => sendMaskedWa(r.id)} className="px-3 py-1.5 rounded-lg bg-[#8a621c] text-white text-xs font-bold">Send Masked WhatsApp</button>
                     </div>
                   </div>
                 )}

@@ -52,7 +52,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   // --- Hard-Masked Agent Bridge Calling (Zero Phone History Exposure)
   masked_call_provider: 'none', masked_call_caller_id: '', masked_call_twilio_sid: '', masked_call_twilio_token: '', masked_call_webhook_url: '', masked_call_webhook_secret: '', masked_call_record: true,
   // --- AI
-  ai_enabled: false, ai_provider: 'groq', ai_base_url: '', ai_api_key: '', ai_model: '', ai_fallback_provider: '', ai_fallback_base_url: '', ai_fallback_api_key: '', ai_fallback_model: '', ai_company_context: '',
+  ai_enabled: false, ai_provider: 'groq', ai_base_url: '', ai_api_key: '', ai_model: '', ai_fallback_provider: '', ai_fallback_base_url: '', ai_fallback_api_key: '', ai_fallback_model: '', ai_fallback2_provider: '', ai_fallback2_base_url: '', ai_fallback2_api_key: '', ai_fallback2_model: '', ai_cloudflare_account_id: '', ai_company_context: '',
   ai_allow_nonvault_vision_free: false, ai_staff_daily_req_limit: 150, ai_staff_rpm_limit: 10,
   // --- Web Search (Utilities Unified Search)
   web_search_provider: 'duckduckgo', web_search_api_key: '', web_search_searxng_url: '',
@@ -88,7 +88,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'vapid_private_key', 'fcm_service_account_json'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'vapid_private_key', 'fcm_service_account_json'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {

@@ -192,19 +192,22 @@ const LEGACY_BASE_BY_KEY: Record<string, { base: string; model: string }> = {
 
 export function loadLegacyEndpoints(modelOverride?: string): { base: string; key: string; model: string; label: string; provider: string }[] {
   const out: { base: string; key: string; model: string; label: string; provider: string }[] = []
+  const cfAccount = String(getSetting('ai_cloudflare_account_id') || '').trim()
   const mk = (pre: string, label: string) => {
-    const provider = String(getSetting(pre ? 'ai_fallback_provider' : 'ai_provider') || '').trim()
+    const provider = String(getSetting(pre + 'provider') || '').trim()
     if (!provider) return
     const p = LEGACY_BASE_BY_KEY[provider]
-    const base = String(getSetting(pre ? 'ai_fallback_base_url' : 'ai_base_url') || p?.base || '')
+    const base = String(getSetting(pre + 'base_url') || p?.base || '')
       .trim()
       .replace(/\/+$/, '')
-    const model = String((!pre && modelOverride) || getSetting(pre ? 'ai_fallback_model' : 'ai_model') || p?.model || '').trim()
-    const key = String(getSetting(pre ? 'ai_fallback_api_key' : 'ai_api_key') || '').trim()
+      .replace('ACCOUNT_ID', cfAccount || 'ACCOUNT_ID')
+    const model = String((pre === 'ai_' && modelOverride) || getSetting(pre + 'model') || p?.model || '').trim()
+    const key = String(getSetting(pre + 'api_key') || '').trim()
     if (base && model) out.push({ base, key, model, label, provider })
   }
-  mk('', 'primary')
-  mk('f', 'fallback')
+  mk('ai_', 'primary')
+  mk('ai_fallback_', 'fallback')
+  mk('ai_fallback2_', 'second fallback')
   return out
 }
 
@@ -734,9 +737,11 @@ async function callRouteOnce(
       }
     }
 
+    // Workers AI (and other strict OpenAI-compatible servers) reject content: null on tool-call turns.
+    const wireMessages = messages.map(m => (m.content == null ? { ...m, content: '' } : m))
     const body: any = {
       model: route.model_id,
-      messages,
+      messages: wireMessages,
       temperature: opts.temperature ?? 0.2,
       max_tokens: opts.maxTokens ?? 1500,
     }

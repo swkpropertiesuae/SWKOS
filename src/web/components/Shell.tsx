@@ -13,6 +13,7 @@ import { LiveNotifications } from './LiveNotifications'
 import { ChatNotifier } from './ChatNotifier'
 import { SipSoftphoneDock } from './SipSoftphoneDock'
 import { BiometricLockOverlay } from './BiometricLockOverlay'
+import { ChatDock } from './ChatDock'
 import { StaffPhoto } from './ui/staff-photo'
 import { clearMobileSession,lockScreenNow,openManageLockPin,registerNativePush,stopNativeFieldDuty,unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient,useSipClient } from '../lib/sipClient'
@@ -43,8 +44,8 @@ function NotificationBell() {
           <div className="flex items-center px-4 py-3 border-b border-line"><b className="font-display text-[15px] text-ink">Notifications</b><div className="flex-1" />{unread > 0 && <button className="swk-btn swk-btn-ghost" style={{ height: 30, padding: '0 10px', fontSize: 12 }} onClick={() => void read()}><Check size={14} /> Mark all read</button>}</div>
           <div className="max-h-[60vh] overflow-auto">
             {!q.data?.rows.length ? <div className="p-8 text-center text-muted text-sm">You're all caught up.</div> : q.data.rows.map(n => (
-              <button key={n.id} className={cls('w-full text-start px-4 py-3 border-0 border-b border-line bg-transparent cursor-pointer hover:bg-[#f7f7f7]', !n.read_at && 'bg-[#f2fdf8]')} onClick={() => { void read([n.id]); setOpen(false); if (n.link) nav(n.link) }}>
-                <div className="flex gap-2 items-start">{!n.read_at && <span className="w-2 h-2 rounded-full bg-[#0e9f6e] mt-1.5 flex-none" />}<div className="min-w-0"><div className="text-[13.5px] font-semibold text-ink">{n.title}</div>{n.body && <div className="text-xs text-muted line-clamp-2">{n.body}</div>}<div className="text-[11px] text-muted mt-0.5">{fmtIsoStamp(n.created_at)}</div></div></div>
+              <button key={n.id} className={cls('w-full text-start px-4 py-3 border-0 border-b border-line bg-transparent cursor-pointer hover:bg-[#f8f5ef]', !n.read_at && 'bg-[#f2fdf8]')} onClick={() => { void read([n.id]); setOpen(false); if (n.link) nav(n.link) }}>
+                <div className="flex gap-2 items-start">{!n.read_at && <span className="w-2 h-2 rounded-full bg-[#8a621c] mt-1.5 flex-none" />}<div className="min-w-0"><div className="text-[13.5px] font-semibold text-ink">{n.title}</div>{n.body && <div className="text-xs text-muted line-clamp-2">{n.body}</div>}<div className="text-[11px] text-muted mt-0.5">{fmtIsoStamp(n.created_at)}</div></div></div>
               </button>))}
           </div>
         </motion.div>)}</AnimatePresence>
@@ -237,7 +238,7 @@ export function Shell() {
           </div>
         </header>
         {me?.demo && <div className="demo-notice no-print"><span><strong>Demo workspace</strong> · sample data · external messages switched off</span><details><summary>Details</summary><p>Safe practice environment. Resets every night. External email and WhatsApp messages are disabled.</p><button className="btn outline sm" onClick={async () => { if (confirm('Restore the demo to its original state and sign out?')) { await post('/api/demo/reset'); window.location.href = '/login' } }}>Reset demo</button></details></div>}
-        {me?.defaultPassword && !me?.demo && <div className="no-print bg-[#f7f7f7] text-[#4a1f4d] px-5 py-2 text-sm font-semibold flex items-center gap-3 flex-wrap">You are signed in with the default password. <Link to="/profile" className="underline">Change it now</Link></div>}
+        {me?.defaultPassword && !me?.demo && <div className="no-print bg-[#f8f5ef] text-[#4a1f4d] px-5 py-2 text-sm font-semibold flex items-center gap-3 flex-wrap">You are signed in with the default password. <Link to="/profile" className="underline">Change it now</Link></div>}
         <div className={cls('swk-body', drawer && 'sb-open', !isHome && (here?.section.items.length ?? 0) > 1 && 'has-sidebar', !isHome && (here?.section.items.length ?? 0) > 1 && collapsed && 'is-collapsed')}>
           {drawer && <div className="swk-sb-scrim" onClick={() => setDrawer(false)} />}
           {!isHome && <AppSidebar pathname={loc.pathname} collapsed={collapsed} onToggle={toggleSidebar} />}
@@ -404,6 +405,7 @@ export function Shell() {
       {isStaff && <SipSoftphoneDock />}
       {isStaff && <BiometricLockOverlay onLogout={logout} />}
       <LiveNotifications />
+      {isStaff && <ChatDock />}
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>
         <div className="grid gap-4 text-sm">

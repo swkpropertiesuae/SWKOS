@@ -16,7 +16,7 @@ type Info = { id: number; kind: string; title: string | null; description: strin
 
 const REACTIONS = ['👍', '❤️', '😂', '😮', '🙏', '✅']
 const EMOJI = ['😀', '😂', '😊', '😍', '👍', '👏', '🙏', '🔥', '🎉', '✅', '❤️', '💯', '🤝', '🏠', '🏢', '🔑', '📍', '📄', '📞', '⏰', '💰', '📈', '✨', '👀']
-const NAME_COLORS = ['#0e9f6e', '#1b6aa7', '#b45309', '#7c3aed', '#be185d', '#0f766e', '#a16207', '#4338ca']
+const NAME_COLORS = ['#8a621c', '#8a621c', '#b45309', '#7c3aed', '#be185d', '#0f766e', '#a16207', '#4338ca']
 
 const dubai = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', ...o }).format(new Date(iso))
 const dayKey = (iso: string) => dubai(iso, { year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -35,7 +35,7 @@ const colorFor = (id: number) => NAME_COLORS[id % NAME_COLORS.length]
 function Avatar({ name, email, group, size = 48, online }: { name: string; email?: string | null; group?: boolean; size?: number; online?: boolean }) {
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
-      <span className="flex size-full items-center justify-center overflow-hidden rounded-full bg-[#121212] font-semibold text-[#51fec0]" style={{ fontSize: size * 0.32 }}>
+      <span className="flex size-full items-center justify-center overflow-hidden rounded-full bg-[#0f2a33] font-semibold text-[#d4a752]" style={{ fontSize: size * 0.32 }}>
         {group ? <Users size={size * 0.44} /> : <StaffPhoto email={email} className="size-full object-cover object-top" fallback={name.replace(/\(.*?\)/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]!.toUpperCase()).join('')} />}
       </span>
       {online && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-white bg-[#22c55e]" aria-label="online" />}
@@ -47,8 +47,8 @@ function Ticks({ status, pending, failed }: { status: ChatMessage['status']; pen
   if (failed) return <AlertCircle size={14} className="text-[#dc2626]" aria-label="Failed to send" />
   if (pending) return <Clock size={14} className="text-[#8b8b8b]" aria-label="Queued" />
   if (!status) return null
-  if (status === 'sent') return <Check size={15} className="text-[#8b8b8b]" aria-label="Sent" />
-  return <CheckCheck size={15} className={status === 'read' ? 'text-[#34b7f1]' : 'text-[#8b8b8b]'} aria-label={status === 'read' ? 'Read' : 'Delivered'} />
+  if (status === 'sent') return <Check size={15} className="text-[#5b676e]" aria-label="Sent" />
+  return <CheckCheck size={15} className={status === 'read' ? 'text-[#34b7f1]' : 'text-[#5b676e]'} aria-label={status === 'read' ? 'Read' : 'Delivered'} />
 }
 
 function LocationPinCard({ body }: { body: string }) {
@@ -101,7 +101,7 @@ function LocationPinCard({ body }: { body: string }) {
 function Rich({ text }: { text: string }) {
   const parts = text.split(/(https?:\/\/[^\s]+|\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g)
   return <>{parts.map((p, i) =>
-    /^https?:\/\//.test(p) ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="break-all text-[#1b6aa7] underline">{p}</a>
+    /^https?:\/\//.test(p) ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="break-all text-[#8a621c] underline">{p}</a>
       : /^\*.+\*$/.test(p) ? <b key={i} className="font-semibold">{p.slice(1, -1)}</b>
       : /^_.+_$/.test(p) ? <i key={i}>{p.slice(1, -1)}</i>
       : /^~.+~$/.test(p) ? <s key={i}>{p.slice(1, -1)}</s>
@@ -110,10 +110,10 @@ function Rich({ text }: { text: string }) {
 
 function Menu({ children, onClose, className = '' }: { children: ReactNode; onClose: () => void; className?: string }) {
   const ref = useClickOutside<HTMLDivElement>(onClose)
-  return <div ref={ref} role="menu" className={`absolute z-40 min-w-[190px] rounded-2xl border border-black/5 bg-white p-1.5 shadow-[0_24px_60px_rgba(18,18,18,0.16)] ${className}`}>{children}</div>
+  return <div ref={ref} role="menu" className={`absolute z-40 min-w-[190px] rounded-2xl border border-black/5 bg-white p-1.5 shadow-[0_24px_60px_rgba(15,42,51,0.16)] ${className}`}>{children}</div>
 }
 const MenuItem = ({ icon: I, children, onClick, danger }: { icon: typeof Check; children: ReactNode; onClick: () => void; danger?: boolean }) => (
-  <button role="menuitem" type="button" onClick={onClick} className={`flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2 text-left text-[13.5px] hover:bg-[#f5f5f5] ${danger ? 'text-[#dc2626]' : 'text-[#121212]'}`}><I size={16} className={danger ? '' : 'text-[#737373]'} />{children}</button>
+  <button role="menuitem" type="button" onClick={onClick} className={`flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2 text-left text-[13.5px] hover:bg-[#f4f0e8] ${danger ? 'text-[#a3263a]' : 'text-[#0f2a33]'}`}><I size={16} className={danger ? '' : 'text-[#5b676e]'} />{children}</button>
 )
 
 export function ChatPage() {
@@ -179,24 +179,24 @@ export function ChatPage() {
   }
 
   return (
-    <div className="mx-auto -mb-6 grid h-[calc(100dvh-136px)] min-h-[480px] max-md:h-[calc(100dvh-190px)] max-w-[1400px] overflow-hidden rounded-[1.25rem] border border-white/70 bg-white shadow-[0_24px_60px_rgba(12,56,96,0.10)] md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+    <div className="mx-auto -mb-6 grid h-[calc(100dvh-136px)] min-h-[480px] max-md:h-[calc(100dvh-190px)] max-w-[1400px] overflow-hidden rounded-[1.25rem] border border-white/70 bg-white shadow-[0_24px_60px_rgba(15,42,51,0.10)] md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
       {/* ------------------------------------------------ chat list */}
-      <aside className={`flex min-h-0 flex-col border-r border-[#e5e5e5] ${sel ? 'hidden md:flex' : 'flex'}`} aria-label="Chats">
+      <aside className={`flex min-h-0 flex-col border-r border-[#e6e0d4] ${sel ? 'hidden md:flex' : 'flex'}`} aria-label="Chats">
         <header className="flex items-center gap-2 px-5 pb-3 pt-5">
           <div className="min-w-0 flex-1"><div className="web-eyebrow">SWK internal</div><h1 className="m-0 text-[24px] font-medium tracking-[-0.035em]">Inside</h1></div>
           <button type="button" className="swk-tbtn" title="New chat" aria-label="New chat" onClick={() => setNewChat('dm')}><MessageSquarePlus size={17} /></button>
           <button type="button" className="swk-tbtn" title="New group" aria-label="New group" onClick={() => setNewChat('group')}><Users size={17} /></button>
         </header>
         {notifPerm === 'default' && (
-          <button type="button" onClick={() => void askNotif()} className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border-0 bg-[#121212] px-4 py-3 text-left text-white">
-            <span className="flex size-9 items-center justify-center rounded-full bg-[#51fec0] text-[#0a1624]"><BellRing size={16} /></span>
+          <button type="button" onClick={() => void askNotif()} className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border-0 bg-[#0f2a33] px-4 py-3 text-left text-white">
+            <span className="flex size-9 items-center justify-center rounded-full bg-[#d4a752] text-[#0f2a33]"><BellRing size={16} /></span>
             <span className="text-[12.5px] leading-snug"><b className="block font-semibold">Get notified of new messages</b><span className="text-white/70">Turn on desktop notifications</span></span>
           </button>
         )}
         <label className="relative mx-4 mb-3">
           <span className="sr-only">Search chats and messages</span>
-          <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#8b8b8b]" />
-          <input value={term} onChange={e => setTerm(e.target.value)} placeholder="Search or start a new chat" className="h-10 w-full rounded-full border-0 bg-[#f5f5f5] pl-10 pr-4 text-[14px] outline-none focus:ring-2 focus:ring-[#51fec0]/60 no-focus-outline" />
+          <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#5b676e]" />
+          <input value={term} onChange={e => setTerm(e.target.value)} placeholder="Search or start a new chat" className="h-10 w-full rounded-full border-0 bg-[#f4f0e8] pl-10 pr-4 text-[14px] outline-none focus:ring-2 focus:ring-[#d4a752]/60 no-focus-outline" />
         </label>
         <div className="mb-2 flex gap-1.5 overflow-x-auto px-4 no-scrollbar" role="tablist" aria-label="Filter chats">
           {([['all', 'All'], ['unread', 'Unread'], ['groups', 'Groups'], ['archived', `Archived${archivedCount ? ` (${archivedCount})` : ''}`]] as const).map(([k, l]) => (
@@ -204,28 +204,28 @@ export function ChatPage() {
           ))}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {threadsQ.isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#8b8b8b]" /></div>}
+          {threadsQ.isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#5b676e]" /></div>}
           {shown.map(t => {
             const ty = typing[t.id]
             return (
-              <div key={t.id} className={`group relative flex items-center gap-3 px-4 py-3 transition-colors ${sel === t.id ? 'bg-[#f0f2f5]' : 'hover:bg-[#f7f7f7]'}`}>
+              <div key={t.id} className={`group relative flex items-center gap-3 px-4 py-3 transition-colors ${sel === t.id ? 'bg-[#f0f2f5]' : 'hover:bg-[#f8f5ef]'}`}>
                 <button type="button" className="absolute inset-0 border-0 bg-transparent" aria-label={`Open chat with ${t.title}`} onClick={() => { setSel(t.id); setShowInfo(false) }} />
                 <Avatar name={t.title} email={t.peer?.email} group={t.kind === 'group'} online={t.peer?.online} />
                 <div className="pointer-events-none min-w-0 flex-1 border-b border-[#f0f0f0] pb-3 group-last:border-0">
-                  <div className="flex items-baseline gap-2"><b className="truncate text-[15px] font-medium text-[#121212]">{t.title}</b>{t.last && <span className={`ml-auto shrink-0 text-[11.5px] ${t.unread ? 'font-semibold text-[#0e9f6e]' : 'text-[#8b8b8b]'}`}>{listTime(t.last.created_at)}</span>}</div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-[#737373]">
-                    {ty ? <span className="truncate text-[#0e9f6e]">{t.kind === 'group' ? `${ty.name.split(' ')[0]} is ` : ''}{ty.recording ? 'recording audio…' : 'typing…'}</span> : t.last ? <>
+                  <div className="flex items-baseline gap-2"><b className="truncate text-[15px] font-medium text-[#0f2a33]">{t.title}</b>{t.last && <span className={`ml-auto shrink-0 text-[11.5px] ${t.unread ? 'font-semibold text-[#8a621c]' : 'text-[#5b676e]'}`}>{listTime(t.last.created_at)}</span>}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[13px] text-[#5b676e]">
+                    {ty ? <span className="truncate text-[#8a621c]">{t.kind === 'group' ? `${ty.name.split(' ')[0]} is ` : ''}{ty.recording ? 'recording audio…' : 'typing…'}</span> : t.last ? <>
                       {t.last.user_id === me?.id && <Ticks status={t.last.status} />}
                       {t.kind === 'group' && t.last.kind !== 'system' && <span className="shrink-0">{t.last.user_id === me?.id ? 'You' : t.last.name.split(' ')[0]}:</span>}
                       <span className="truncate">{previewOf(t.last)}</span>
                     </> : <span className="truncate italic">No messages yet</span>}
                     <span className="ml-auto flex shrink-0 items-center gap-1">
                       {t.muted && <BellOff size={13} aria-label="Muted" />}{t.pinned && <Pin size={13} aria-label="Pinned" />}
-                      {t.unread > 0 && <span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-white ${t.muted ? 'bg-[#a7a7a7]' : 'bg-[#0e9f6e]'}`}>{t.unread}</span>}
+                      {t.unread > 0 && <span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-white ${t.muted ? 'bg-[#6b767c]' : 'bg-[#8a621c]'}`}>{t.unread}</span>}
                     </span>
                   </div>
                 </div>
-                <button type="button" aria-label="Chat options" className="relative z-10 flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#8b8b8b] opacity-0 hover:bg-white group-hover:opacity-100 focus-visible:opacity-100" onClick={() => setRowMenu(rowMenu === t.id ? null : t.id)}><ChevronDown size={16} /></button>
+                <button type="button" aria-label="Chat options" className="relative z-10 flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#5b676e] opacity-0 hover:bg-white group-hover:opacity-100 focus-visible:opacity-100" onClick={() => setRowMenu(rowMenu === t.id ? null : t.id)}><ChevronDown size={16} /></button>
                 {rowMenu === t.id && (
                   <Menu onClose={() => setRowMenu(null)} className="right-4 top-12">
                     <MenuItem icon={Pin} onClick={() => void prefs(t, { pinned: !t.pinned })}>{t.pinned ? 'Unpin chat' : 'Pin chat'}</MenuItem>
@@ -237,20 +237,20 @@ export function ChatPage() {
               </div>
             )
           })}
-          {!threadsQ.isLoading && !shown.length && !term && <div className="p-8 text-center text-[13px] text-[#737373]">{filter === 'archived' ? 'No archived chats' : 'No chats yet. Start one with the + button.'}</div>}
+          {!threadsQ.isLoading && !shown.length && !term && <div className="p-8 text-center text-[13px] text-[#5b676e]">{filter === 'archived' ? 'No archived chats' : 'No chats yet. Start one with the + button.'}</div>}
           {term.trim().length >= 2 && (
             <div>
               {(peopleQ.data ?? []).filter(p => p.name.toLowerCase().includes(term.trim().toLowerCase())).slice(0, 6).length > 0 && <div className="web-eyebrow px-5 pb-1 pt-3">Contacts</div>}
               {(peopleQ.data ?? []).filter(p => p.name.toLowerCase().includes(term.trim().toLowerCase())).slice(0, 6).map(p => (
-                <button key={p.id} type="button" className="flex w-full items-center gap-3 border-0 bg-transparent px-4 py-2.5 text-left hover:bg-[#f7f7f7]" onClick={async () => { const r = await post<{ id: number }>('/api/chat/threads', { user_ids: [p.id] }); setTerm(''); await qc.invalidateQueries({ queryKey: ['chat-threads'] }); setSel(r.id) }}>
-                  <Avatar name={p.name} email={p.email} size={40} online={p.online} /><span className="min-w-0"><b className="block truncate text-[14px] font-medium">{p.name}</b><small className="text-[#8b8b8b]">{p.designation || lastSeenText(p)}</small></span>
+                <button key={p.id} type="button" className="flex w-full items-center gap-3 border-0 bg-transparent px-4 py-2.5 text-left hover:bg-[#f8f5ef]" onClick={async () => { const r = await post<{ id: number }>('/api/chat/threads', { user_ids: [p.id] }); setTerm(''); await qc.invalidateQueries({ queryKey: ['chat-threads'] }); setSel(r.id) }}>
+                  <Avatar name={p.name} email={p.email} size={40} online={p.online} /><span className="min-w-0"><b className="block truncate text-[14px] font-medium">{p.name}</b><small className="text-[#5b676e]">{p.designation || lastSeenText(p)}</small></span>
                 </button>
               ))}
               {!!searchQ.data?.length && <div className="web-eyebrow px-5 pb-1 pt-3">Messages</div>}
               {searchQ.data?.map(m => (
-                <button key={m.id} type="button" className="flex w-full flex-col border-0 bg-transparent px-5 py-2.5 text-left hover:bg-[#f7f7f7]" onClick={() => { setSel(m.thread_id); setTerm('') }}>
-                  <span className="flex text-[12px] text-[#8b8b8b]"><span className="truncate">{m.title || m.name}</span><span className="ml-auto">{listTime(m.created_at)}</span></span>
-                  <span className="truncate text-[13.5px] text-[#121212]">{m.name}: {m.body.replace(/\*/g, '')}</span>
+                <button key={m.id} type="button" className="flex w-full flex-col border-0 bg-transparent px-5 py-2.5 text-left hover:bg-[#f8f5ef]" onClick={() => { setSel(m.thread_id); setTerm('') }}>
+                  <span className="flex text-[12px] text-[#5b676e]"><span className="truncate">{m.title || m.name}</span><span className="ml-auto">{listTime(m.created_at)}</span></span>
+                  <span className="truncate text-[13.5px] text-[#0f2a33]">{m.name}: {m.body.replace(/\*/g, '')}</span>
                 </button>
               ))}
             </div>
@@ -262,10 +262,10 @@ export function ChatPage() {
       {current ? (
         <Conversation key={current.id} thread={current} typing={typing[current.id]} onBack={() => setSel(null)} showInfo={showInfo} setShowInfo={setShowInfo} threads={threads} people={peopleQ.data ?? []} />
       ) : (
-        <section className="hidden flex-col items-center justify-center gap-4 bg-[#f7f7f7] p-10 text-center md:flex" style={{ backgroundImage: 'repeating-linear-gradient(to right, rgba(11,25,41,0.04) 0px, rgba(11,25,41,0.04) 1px, transparent 1px, transparent 24px)' }}>
+        <section className="hidden flex-col items-center justify-center gap-4 bg-[#f8f5ef] p-10 text-center md:flex" style={{ backgroundImage: 'repeating-linear-gradient(to right, rgba(15,42,51,0.04) 0px, rgba(15,42,51,0.04) 1px, transparent 1px, transparent 24px)' }}>
           <img src="/brand/apps/messages.svg" alt="" className="size-28" />
           <h2 className="m-0 text-[30px] font-medium tracking-[-0.035em]">Inside by SWK</h2>
-          <p className="m-0 max-w-md text-[14px] text-[#737373]">Message colleagues, run project groups and share files with the team. Messages stay inside SWK OS and are only visible to people in the chat.</p>
+          <p className="m-0 max-w-md text-[14px] text-[#5b676e]">Message colleagues, run project groups and share files with the team. Messages stay inside SWK OS and are only visible to people in the chat.</p>
           <div className="mt-2 flex gap-3"><button type="button" className="web-btn" onClick={() => setNewChat('dm')}><MessageSquarePlus size={14} /> New chat</button><button type="button" className="web-btn light" onClick={() => setNewChat('group')}><Users size={14} /> New group</button></div>
         </section>
       )}
@@ -286,7 +286,7 @@ function NewChatModal({ mode, people, onClose, onOpen }: { mode: null | 'dm' | '
   }
   return (
     <Modal open={!!mode} onClose={onClose} title={mode === 'group' ? 'New group' : 'New chat'} width={480}
-      footer={mode === 'group' ? <><div className="flex-1 text-[12.5px] text-[#737373]">{chosen.length} selected</div><button className="web-btn" disabled={busy || !chosen.length || !title.trim()} onClick={() => void start(chosen)}>Create group</button></> : undefined}>
+      footer={mode === 'group' ? <><div className="flex-1 text-[12.5px] text-[#5b676e]">{chosen.length} selected</div><button className="web-btn" disabled={busy || !chosen.length || !title.trim()} onClick={() => void start(chosen)}>Create group</button></> : undefined}>
       {mode === 'group' && (
         <div className="mb-4 grid gap-3">
           <label><span className="label">Group name</span><input className="input" value={title} onChange={e => setTitle(e.target.value)} maxLength={80} placeholder="e.g. Palm Jebel Ali launch, Leasing team" autoFocus /></label>
@@ -298,11 +298,11 @@ function NewChatModal({ mode, people, onClose, onOpen }: { mode: null | 'dm' | '
         {list.map(p => {
           const on = chosen.includes(p.id)
           return (
-            <button key={p.id} type="button" disabled={busy} className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f7f7f7]"
+            <button key={p.id} type="button" disabled={busy} className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f8f5ef]"
               onClick={() => mode === 'group' ? setChosen(c => on ? c.filter(x => x !== p.id) : [...c, p.id]) : void start([p.id])} aria-pressed={mode === 'group' ? on : undefined}>
               <Avatar name={p.name} email={p.email} size={42} online={p.online} />
-              <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px] font-medium">{p.name}</b><small className="text-[#8b8b8b]">{p.designation || lastSeenText(p)}</small></span>
-              {mode === 'group' && <span className={`flex size-6 items-center justify-center rounded-full border-2 ${on ? 'border-[#0e9f6e] bg-[#0e9f6e] text-white' : 'border-[#cfcfcf]'}`}>{on && <Check size={14} />}</span>}
+              <span className="min-w-0 flex-1"><b className="block truncate text-[14.5px] font-medium">{p.name}</b><small className="text-[#5b676e]">{p.designation || lastSeenText(p)}</small></span>
+              {mode === 'group' && <span className={`flex size-6 items-center justify-center rounded-full border-2 ${on ? 'border-[#8a621c] bg-[#8a621c] text-white' : 'border-[#cfc6b4]'}`}>{on && <Check size={14} />}</span>}
             </button>
           )
         })}
@@ -594,67 +594,67 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
   return (
     <section className={`flex min-h-0 ${showInfo ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]' : ''}`}>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-[#e5e5e5] bg-white/95 px-4 py-2.5">
+        <header className="flex items-center gap-3 border-b border-[#e6e0d4] bg-white/95 px-4 py-2.5">
           <span className="md:hidden"><button type="button" className="swk-tbtn" aria-label="Back to chats" onClick={onBack}><ArrowLeft size={17} /></button></span>
           <button type="button" className="flex min-w-0 flex-1 items-center gap-3 border-0 bg-transparent p-0 text-left" onClick={() => setShowInfo(!showInfo)} aria-label="Chat info">
             <Avatar name={thread.title} email={thread.peer?.email} group={thread.kind === 'group'} size={42} online={thread.kind === 'dm' && peer?.online} />
-            <span className="min-w-0"><b className="block truncate text-[15.5px] font-medium text-[#121212]">{thread.title}</b><span className={`block truncate text-[12.5px] ${typing || (thread.kind === 'dm' && peer?.online) ? 'text-[#0e9f6e]' : 'text-[#8b8b8b]'}`}>{subtitle}</span></span>
+            <span className="min-w-0"><b className="block truncate text-[15.5px] font-medium text-[#0f2a33]">{thread.title}</b><span className={`block truncate text-[12.5px] ${typing || (thread.kind === 'dm' && peer?.online) ? 'text-[#8a621c]' : 'text-[#5b676e]'}`}>{subtitle}</span></span>
           </button>
           {thread.kind === 'group' && info?.can_report && !showInfo && <button type="button" className="web-btn light hidden sm:inline-flex" style={{ height: 36, padding: '0 14px' }} onClick={() => void report()} title="Post today's attendance in this group"><ClipboardList size={14} /> Attendance report</button>}
           <button type="button" className="swk-tbtn" aria-label="Chat info" onClick={() => setShowInfo(!showInfo)}><Info size={17} /></button>
         </header>
 
         <div ref={scroller} onScroll={e => { const el = e.currentTarget; const b = el.scrollHeight - el.scrollTop - el.clientHeight < 80; setAtBottom(b); if (b) setNewBelow(0) }}
-          className="relative min-h-0 flex-1 overflow-y-auto px-[4%] py-4" style={{ background: '#f2f5f7', backgroundImage: 'repeating-linear-gradient(to right, rgba(11,25,41,0.035) 0px, rgba(11,25,41,0.035) 1px, transparent 1px, transparent 24px)' }}>
+          className="relative min-h-0 flex-1 overflow-y-auto px-[4%] py-4" style={{ background: '#f2f5f7', backgroundImage: 'repeating-linear-gradient(to right, rgba(15,42,51,0.035) 0px, rgba(15,42,51,0.035) 1px, transparent 1px, transparent 24px)' }}>
           {hasOlder && <div className="mb-3 text-center"><button type="button" className="web-pill border-0" style={{ cursor: 'pointer' }} onClick={() => void loadOlder()}>Load earlier messages</button></div>}
-          {msgsQ.isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#8b8b8b]" /></div>}
+          {msgsQ.isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#5b676e]" /></div>}
           <div className="mx-auto mb-4 max-w-md rounded-xl bg-[#fff7d6] px-3 py-2 text-center text-[11.5px] text-[#6b5a14]">🔒 Messages in Inside stay within SWK OS. Only people in this chat can read them.</div>
           {msgs.map(m => {
             const d = dayKey(m.created_at), showDay = d !== prevDay, mine = m.user_id === me?.id, first = showDay || prevUser !== m.user_id || m.kind === 'system'
             prevDay = d; prevUser = m.kind === 'system' ? 0 : m.user_id
             const msgKey = m.client_id ?? m.id
-            if (m.kind === 'system') return <Fragment key={msgKey}>{showDay && <DayPill iso={m.created_at} />}<div className="my-2 text-center"><span className="inline-block rounded-lg bg-white/90 px-3 py-1 text-[12px] text-[#4a4a4a] shadow-sm">{m.body}</span></div></Fragment>
+            if (m.kind === 'system') return <Fragment key={msgKey}>{showDay && <DayPill iso={m.created_at} />}<div className="my-2 text-center"><span className="inline-block rounded-lg bg-white/90 px-3 py-1 text-[12px] text-[#3d4a51] shadow-sm">{m.body}</span></div></Fragment>
             return (
               <Fragment key={msgKey}>
                 {showDay && <DayPill iso={m.created_at} />}
                 <div className={`group flex ${mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
                   {thread.kind === 'group' && !mine && <span className="mr-1.5 w-8 shrink-0">{first && <Avatar name={m.name} email={people.find(p => p.id === m.user_id)?.email} size={30} />}</span>}
-                  <div className={`relative max-w-[min(560px,78%)] rounded-2xl px-2.5 pb-1.5 pt-1.5 text-[14.2px] leading-[1.42] shadow-[0_1px_0.5px_rgba(11,20,26,.13)] ${mine ? 'bg-[#dcfce9] text-[#121212]' : 'bg-white text-[#121212]'} ${first ? (mine ? 'rounded-tr-md' : 'rounded-tl-md') : ''} ${m.kind === 'report' || m.kind === 'automation' ? 'ring-1 ring-[#0e9f6e]/40' : ''} ${m.pending ? 'opacity-85' : ''}`}>
+                  <div className={`relative max-w-[min(560px,78%)] rounded-2xl px-2.5 pb-1.5 pt-1.5 text-[14.2px] leading-[1.42] shadow-[0_1px_0.5px_rgba(11,20,26,.13)] ${mine ? 'bg-[#dcfce9] text-[#0f2a33]' : 'bg-white text-[#0f2a33]'} ${first ? (mine ? 'rounded-tr-md' : 'rounded-tl-md') : ''} ${m.kind === 'report' || m.kind === 'automation' ? 'ring-1 ring-[#8a621c]/40' : ''} ${m.pending ? 'opacity-85' : ''}`}>
                     {thread.kind === 'group' && !mine && first && <div className="mb-0.5 text-[12.5px] font-semibold" style={{ color: colorFor(m.user_id) }}>{m.name}</div>}
-                    {(m.kind === 'report' || m.kind === 'automation') && <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-[#121212] px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#51fec0]"><ClipboardList size={12} />{m.kind === 'report' ? 'Attendance report' : 'Automation'}</div>}
-                    {m.forwarded && <div className="mb-0.5 flex items-center gap-1 text-[11.5px] italic text-[#8b8b8b]"><Forward size={12} />Forwarded</div>}
+                    {(m.kind === 'report' || m.kind === 'automation') && <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-[#0f2a33] px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#d4a752]"><ClipboardList size={12} />{m.kind === 'report' ? 'Attendance report' : 'Automation'}</div>}
+                    {m.forwarded && <div className="mb-0.5 flex items-center gap-1 text-[11.5px] italic text-[#5b676e]"><Forward size={12} />Forwarded</div>}
                     {m.reply && <button type="button" className="mb-1 block w-full rounded-lg border-0 border-l-4 bg-black/5 px-2.5 py-1.5 text-left" style={{ borderLeftColor: colorFor(msgs.find(x => x.id === m.reply!.id)?.user_id ?? 0) }} onClick={() => document.getElementById(`msg-${m.reply!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
-                      <span className="block text-[12px] font-semibold text-[#0e9f6e]">{m.reply.name}</span><span className="line-clamp-2 text-[12.5px] text-[#4a4a4a]">{m.reply.body.replace(/\*/g, '')}</span></button>}
+                      <span className="block text-[12px] font-semibold text-[#8a621c]">{m.reply.name}</span><span className="line-clamp-2 text-[12.5px] text-[#3d4a51]">{m.reply.body.replace(/\*/g, '')}</span></button>}
                     <div id={`msg-${m.id}`}>
-                      {m.kind === 'deleted' ? <span className="italic text-[#8b8b8b]">🚫 {mine ? 'You deleted this message' : 'This message was deleted'}</span> : m.kind === 'location' ? (
+                      {m.kind === 'deleted' ? <span className="italic text-[#5b676e]">🚫 {mine ? 'You deleted this message' : 'This message was deleted'}</span> : m.kind === 'location' ? (
                         <LocationPinCard body={m.body} />
                       ) : <>
                         {m.file && m.kind === 'image' && <a href={resolveApiUrl(m.file.url)} onClick={e => { e.preventDefault(); void openAuthFile(m.file!.url, m.file!.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-xl"><AuthImg src={m.file.url} alt={m.file.name} loading="lazy" className="max-h-[320px] w-full max-w-[320px] object-cover" /></a>}
                         {m.file && m.kind === 'video' && <AuthVideo src={m.file.url} controls className="mb-1 max-h-[320px] max-w-[320px] rounded-xl" />}
-                        {m.file && m.kind === 'voice' && <div className="flex items-center gap-2 py-1"><Mic size={16} className="text-[#0e9f6e]" /><AuthAudio src={m.file.url} controls preload="metadata" className="h-9 w-[240px] max-w-full" /></div>}
-                        {m.file && m.kind === 'file' && <a href={resolveApiUrl(`${m.file.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${m.file!.url}?download=1`, m.file!.name).catch(err => toast.error(err.message)) }} className="mb-1 flex items-center gap-3 rounded-xl bg-black/5 px-3 py-2.5 no-underline"><FileText size={26} className="text-[#dc2626]" /><span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-medium text-[#121212]">{m.file.name}</b><small className="text-[#737373]">{fmtSize(m.file.size)} · {m.file.name.split('.').pop()?.toUpperCase()}</small></span><Download size={17} className="text-[#737373]" /></a>}
+                        {m.file && m.kind === 'voice' && <div className="flex items-center gap-2 py-1"><Mic size={16} className="text-[#8a621c]" /><AuthAudio src={m.file.url} controls preload="metadata" className="h-9 w-[240px] max-w-full" /></div>}
+                        {m.file && m.kind === 'file' && <a href={resolveApiUrl(`${m.file.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${m.file!.url}?download=1`, m.file!.name).catch(err => toast.error(err.message)) }} className="mb-1 flex items-center gap-3 rounded-xl bg-black/5 px-3 py-2.5 no-underline"><FileText size={26} className="text-[#a3263a]" /><span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-medium text-[#0f2a33]">{m.file.name}</b><small className="text-[#5b676e]">{fmtSize(m.file.size)} · {m.file.name.split('.').pop()?.toUpperCase()}</small></span><Download size={17} className="text-[#5b676e]" /></a>}
                         {m.body && <span className="whitespace-pre-wrap break-words"><Rich text={m.body} /></span>}
                       </>}
-                      <span className="float-right ml-3 mt-1.5 flex translate-y-0.5 items-center gap-1 text-[11px] text-[#8b8b8b]">{m.edited && <span>Edited</span>}{timeOf(m.created_at)}{mine && m.kind !== 'deleted' && <Ticks status={m.status} pending={m.pending} failed={m.failed} />}</span>
+                      <span className="float-right ml-3 mt-1.5 flex translate-y-0.5 items-center gap-1 text-[11px] text-[#5b676e]">{m.edited && <span>Edited</span>}{timeOf(m.created_at)}{mine && m.kind !== 'deleted' && <Ticks status={m.status} pending={m.pending} failed={m.failed} />}</span>
                     </div>
                     {(m.failed || (m.pending && m.client_id)) && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-2 border-t border-black/10 pt-1 text-[11.5px]">
-                        <span className={m.failed ? 'text-[#dc2626]' : 'text-[#737373]'}>{m.failed ? (m.error || 'Not sent') : 'Queued offline'}</span>
-                        <button type="button" className="inline-flex items-center gap-1 rounded border-0 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-[#121212] hover:bg-white" onClick={() => void retryFailed(m)}><RefreshCw size={11} /> Retry</button>
+                        <span className={m.failed ? 'text-[#dc2626]' : 'text-[#5b676e]'}>{m.failed ? (m.error || 'Not sent') : 'Queued offline'}</span>
+                        <button type="button" className="inline-flex items-center gap-1 rounded border-0 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-[#0f2a33] hover:bg-white" onClick={() => void retryFailed(m)}><RefreshCw size={11} /> Retry</button>
                         <button type="button" className="rounded border-0 bg-transparent px-1.5 py-0.5 text-[11px] text-[#dc2626] hover:bg-black/5" onClick={() => void discardFailed(m)}>Remove</button>
                       </div>
                     )}
                     {m.reactions.length > 0 && (
                       <div className={`absolute -bottom-3 flex gap-0.5 rounded-full border border-black/5 bg-white px-1.5 py-0.5 text-[13px] shadow-sm ${mine ? 'right-2' : 'left-2'}`}>
-                        {m.reactions.map(r => <button key={r.emoji} type="button" title={r.names.join(', ')} onClick={() => void react(m, r.mine ? null : r.emoji)} className={`border-0 bg-transparent p-0 ${r.mine ? 'opacity-100' : 'opacity-90'}`}>{r.emoji}{r.count > 1 && <span className="ml-0.5 text-[11px] text-[#737373]">{r.count}</span>}</button>)}
+                        {m.reactions.map(r => <button key={r.emoji} type="button" title={r.names.join(', ')} onClick={() => void react(m, r.mine ? null : r.emoji)} className={`border-0 bg-transparent p-0 ${r.mine ? 'opacity-100' : 'opacity-90'}`}>{r.emoji}{r.count > 1 && <span className="ml-0.5 text-[11px] text-[#5b676e]">{r.count}</span>}</button>)}
                       </div>
                     )}
                     {m.kind !== 'deleted' && !m.pending && !m.failed && (
-                      <button type="button" aria-label="Message options" className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full border-0 bg-gradient-to-l from-white via-white to-transparent text-[#8b8b8b] opacity-0 group-hover:opacity-100 focus-visible:opacity-100" style={mine ? { background: 'linear-gradient(to left,#dcfce9,#dcfce9,transparent)' } : undefined} onClick={() => setMenu(menu === m.id ? null : m.id)}><ChevronDown size={15} /></button>
+                      <button type="button" aria-label="Message options" className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full border-0 bg-gradient-to-l from-white via-white to-transparent text-[#5b676e] opacity-0 group-hover:opacity-100 focus-visible:opacity-100" style={mine ? { background: 'linear-gradient(to left,#dcfce9,#dcfce9,transparent)' } : undefined} onClick={() => setMenu(menu === m.id ? null : m.id)}><ChevronDown size={15} /></button>
                     )}
                     {menu === m.id && !m.pending && !m.failed && (
                       <Menu onClose={() => setMenu(null)} className={`top-7 ${mine ? 'right-0' : 'left-0'}`}>
-                        <div className="mb-1 flex justify-between gap-0.5 rounded-xl bg-[#f7f7f7] p-1">{REACTIONS.map(e => <button key={e} type="button" aria-label={`React ${e}`} className="rounded-lg border-0 bg-transparent p-1 text-[19px] transition-transform hover:scale-125" onClick={() => void react(m, m.reactions.find(r => r.mine)?.emoji === e ? null : e)}>{e}</button>)}</div>
+                        <div className="mb-1 flex justify-between gap-0.5 rounded-xl bg-[#f8f5ef] p-1">{REACTIONS.map(e => <button key={e} type="button" aria-label={`React ${e}`} className="rounded-lg border-0 bg-transparent p-1 text-[19px] transition-transform hover:scale-125" onClick={() => void react(m, m.reactions.find(r => r.mine)?.emoji === e ? null : e)}>{e}</button>)}</div>
                         <MenuItem icon={CornerUpLeft} onClick={() => { setReply(m); setEditing(null); setMenu(null) }}>Reply</MenuItem>
                         {m.body && <MenuItem icon={Copy} onClick={() => { void navigator.clipboard.writeText(m.body); setMenu(null); toast.ok('Copied') }}>Copy</MenuItem>}
                         <MenuItem icon={Forward} onClick={() => { setForward(m); setMenu(null) }}>Forward</MenuItem>
@@ -670,31 +670,31 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
             )
           })}
           {!atBottom && <button type="button" aria-label="Scroll to latest" onClick={() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }); setNewBelow(0) }}
-            className="sticky bottom-2 ml-auto flex size-11 items-center justify-center rounded-full border-0 bg-white text-[#4a4a4a] shadow-lg">
-            <ChevronDown size={20} />{newBelow > 0 && <span className="absolute -top-1.5 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0e9f6e] px-1 text-[11px] font-semibold text-white">{newBelow}</span>}</button>}
+            className="sticky bottom-2 ml-auto flex size-11 items-center justify-center rounded-full border-0 bg-white text-[#3d4a51] shadow-lg">
+            <ChevronDown size={20} />{newBelow > 0 && <span className="absolute -top-1.5 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#8a621c] px-1 text-[11px] font-semibold text-white">{newBelow}</span>}</button>}
         </div>
 
         {/* composer */}
         {blocked ? (
-          <div className="border-t border-[#e5e5e5] bg-[#f7f7f7] px-4 py-4 text-center text-[13px] text-[#737373]"><Megaphone size={14} className="mr-1.5 inline" />Only admins can send messages in this group</div>
+          <div className="border-t border-[#e6e0d4] bg-[#f8f5ef] px-4 py-4 text-center text-[13px] text-[#5b676e]"><Megaphone size={14} className="mr-1.5 inline" />Only admins can send messages in this group</div>
         ) : (
-          <div className="border-t border-[#e5e5e5] bg-[#f7f7f7] px-3 py-2.5" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) void sendFiles(e.dataTransfer.files) }}>
+          <div className="border-t border-[#e6e0d4] bg-[#f8f5ef] px-3 py-2.5" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) void sendFiles(e.dataTransfer.files) }}>
             {(reply || editing) && (
-              <div className="mb-2 flex items-center gap-3 rounded-xl border border-[#0e9f6e]/30 bg-[#e8fff6] px-3 py-2">
-                <div className="min-w-0 flex-1"><b className="block text-[12.5px] text-[#0e9f6e]">{editing ? 'Edit message' : reply!.user_id === me?.id ? 'You' : reply!.name}</b><span className="line-clamp-1 text-[12.5px] text-[#4a4a4a]">{previewOf(editing ?? reply!)}</span></div>
-                <button type="button" aria-label="Cancel" className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#737373] hover:bg-[#f5f5f5]" onClick={() => { setReply(null); if (editing) { setEditing(null); setText('') } }}><X size={15} /></button>
+              <div className="mb-2 flex items-center gap-3 rounded-xl border border-[#8a621c]/30 bg-[#f7efdc] px-3 py-2">
+                <div className="min-w-0 flex-1"><b className="block text-[12.5px] text-[#8a621c]">{editing ? 'Edit message' : reply!.user_id === me?.id ? 'You' : reply!.name}</b><span className="line-clamp-1 text-[12.5px] text-[#3d4a51]">{previewOf(editing ?? reply!)}</span></div>
+                <button type="button" aria-label="Cancel" className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#5b676e] hover:bg-[#f4f0e8]" onClick={() => { setReply(null); if (editing) { setEditing(null); setText('') } }}><X size={15} /></button>
               </div>
             )}
             {rec ? (
               <div className="flex items-center gap-3 rounded-full bg-white px-3 py-2">
-                <button type="button" aria-label="Cancel recording" className="flex size-9 items-center justify-center rounded-full border-0 bg-transparent text-[#dc2626] hover:bg-[#fdeaea]" onClick={() => stopRec(false)}><Trash2 size={18} /></button>
-                <span className="size-2.5 animate-pulse rounded-full bg-[#dc2626]" /><span className="flex-1 font-mono text-[14px] tabular-nums text-[#121212]" data-tick={recTick}>{new Date(Date.now() - rec.started).toISOString().slice(14, 19)}</span>
-                <button type="button" aria-label="Send voice message" className="flex size-10 items-center justify-center rounded-full border-0 bg-[#0e9f6e] text-white" onClick={() => stopRec(true)}><Send size={17} /></button>
+                <button type="button" aria-label="Cancel recording" className="flex size-9 items-center justify-center rounded-full border-0 bg-transparent text-[#a3263a] hover:bg-[#fdeaea]" onClick={() => stopRec(false)}><Trash2 size={18} /></button>
+                <span className="size-2.5 animate-pulse rounded-full bg-[#a3263a]" /><span className="flex-1 font-mono text-[14px] tabular-nums text-[#0f2a33]" data-tick={recTick}>{new Date(Date.now() - rec.started).toISOString().slice(14, 19)}</span>
+                <button type="button" aria-label="Send voice message" className="flex size-10 items-center justify-center rounded-full border-0 bg-[#8a621c] text-white" onClick={() => stopRec(true)}><Send size={17} /></button>
               </div>
             ) : (
               <div className="relative flex items-end gap-1.5">
                 <button type="button" aria-label="Emoji" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={() => setEmojiOpen(o => !o)}><Smile size={20} /></button>
-                {emojiOpen && <Menu onClose={() => setEmojiOpen(false)} className="bottom-12 left-0 grid w-[300px] grid-cols-8 gap-0.5">{EMOJI.map(e => <button key={e} type="button" className="rounded-lg border-0 bg-transparent p-1 text-[20px] hover:bg-[#f5f5f5]" onClick={() => { setText(t => t + e); input.current?.focus() }}>{e}</button>)}</Menu>}
+                {emojiOpen && <Menu onClose={() => setEmojiOpen(false)} className="bottom-12 left-0 grid w-[300px] grid-cols-8 gap-0.5">{EMOJI.map(e => <button key={e} type="button" className="rounded-lg border-0 bg-transparent p-1 text-[20px] hover:bg-[#f4f0e8]" onClick={() => { setText(t => t + e); input.current?.focus() }}>{e}</button>)}</Menu>}
                 <button type="button" aria-label="Attach file or photo" title="Attach file or photo" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={() => fileIn.current?.click()} disabled={!!editing}><Paperclip size={19} /></button>
                 <button type="button" aria-label="Share live location" title="Share live location pin" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={openLocationModal} disabled={!!editing}><MapPin size={19} /></button>
                 <button type="button" aria-label="Share document" title="Share OS / Utility document" className="swk-tbtn hidden sm:grid" style={{ background: 'transparent', border: 0 }} onClick={() => void openDocumentModal()} disabled={!!editing}><FolderOpen size={19} /></button>
@@ -702,12 +702,12 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
                 <textarea ref={input} rows={1} value={text} onChange={e => onType(e.target.value)} placeholder="Type a message" aria-label="Message"
                   onPaste={e => { const f = Array.from(e.clipboardData.files); if (f.length) { e.preventDefault(); void sendFiles(f) } }}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } if (e.key === 'Escape') { setReply(null); setEditing(null) } }}
-                  className="max-h-36 min-h-[42px] flex-1 resize-none rounded-[22px] border-0 bg-white px-4 py-[10px] text-[14.5px] leading-[1.4] outline-none focus:ring-2 focus:ring-[#51fec0]/50 no-focus-outline"
+                  className="max-h-36 min-h-[42px] flex-1 resize-none rounded-[22px] border-0 bg-white px-4 py-[10px] text-[14.5px] leading-[1.4] outline-none focus:ring-2 focus:ring-[#d4a752]/50 no-focus-outline"
                   style={{ height: Math.min(144, 42 + Math.max(0, text.split('\n').length - 1) * 20) }} />
                 {text.trim() ? (
-                  <button type="button" aria-label={editing ? 'Save edit' : 'Send'} disabled={busy} className="flex size-[42px] shrink-0 items-center justify-center rounded-full border-0 bg-[#0e9f6e] text-white transition-transform active:scale-95" onClick={() => void send()}>{editing ? <Check size={19} /> : <Send size={18} />}</button>
+                  <button type="button" aria-label={editing ? 'Save edit' : 'Send'} disabled={busy} className="flex size-[42px] shrink-0 items-center justify-center rounded-full border-0 bg-[#8a621c] text-white transition-transform active:scale-95" onClick={() => void send()}>{editing ? <Check size={19} /> : <Send size={18} />}</button>
                 ) : (
-                  <button type="button" aria-label="Record voice message" className="flex size-[42px] shrink-0 items-center justify-center rounded-full border-0 bg-[#121212] text-[#51fec0]" onClick={() => void startRec()}><Mic size={19} /></button>
+                  <button type="button" aria-label="Record voice message" className="flex size-[42px] shrink-0 items-center justify-center rounded-full border-0 bg-[#0f2a33] text-[#d4a752]" onClick={() => void startRec()}><Mic size={19} /></button>
                 )}
               </div>
             )}
@@ -751,20 +751,20 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
       </Modal>
       <Modal open={!!forward} onClose={() => setForward(null)} title="Forward message to" width={440}>
         <div className="max-h-[50vh] overflow-y-auto">{threads.filter(t => !t.archived).map(t => (
-          <button key={t.id} type="button" className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f7f7f7]" disabled={t.announce && t.role !== 'admin'}
+          <button key={t.id} type="button" className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f8f5ef]" disabled={t.announce && t.role !== 'admin'}
             onClick={async () => { try { await post(`/api/chat/messages/${forward!.id}/forward`, { thread_ids: [t.id] }); toast.ok(`Forwarded to ${t.title}`); setForward(null); void qc.invalidateQueries({ queryKey: ['chat-threads'] }) } catch (e: any) { toast.error(e.message) } }}>
             <Avatar name={t.title} email={t.peer?.email} group={t.kind === 'group'} size={40} /><b className="truncate text-[14px] font-medium">{t.title}</b>
           </button>))}</div>
       </Modal>
       <Modal open={!!msgInfo} onClose={() => setMsgInfo(null)} title="Message info" width={400}>
         {(['read', 'delivered', 'sent'] as const).map(s => { const rows = msgInfo?.rows.filter(r => r.status === s) ?? []; return rows.length ? (
-          <div key={s} className="mb-4"><div className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#737373]"><Ticks status={s} />{s === 'read' ? 'Read by' : s === 'delivered' ? 'Delivered to' : 'Not delivered yet'}</div>{rows.map(r => <div key={r.name} className="py-1 text-[14px]">{r.name}</div>)}</div>) : null })}
+          <div key={s} className="mb-4"><div className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#5b676e]"><Ticks status={s} />{s === 'read' ? 'Read by' : s === 'delivered' ? 'Delivered to' : 'Not delivered yet'}</div>{rows.map(r => <div key={r.name} className="py-1 text-[14px]">{r.name}</div>)}</div>) : null })}
       </Modal>
     </section>
   )
 }
 
-const DayPill = ({ iso }: { iso: string }) => <div className="sticky top-1 z-10 my-3 text-center"><span className="inline-block rounded-lg bg-white px-3 py-1 text-[11.5px] font-medium uppercase tracking-[0.08em] text-[#4a4a4a] shadow-sm">{dayLabel(iso)}</span></div>
+const DayPill = ({ iso }: { iso: string }) => <div className="sticky top-1 z-10 my-3 text-center"><span className="inline-block rounded-lg bg-white px-3 py-1 text-[11.5px] font-medium uppercase tracking-[0.08em] text-[#3d4a51] shadow-sm">{dayLabel(iso)}</span></div>
 
 function InfoPanel({ info, thread, people, onClose, onReport }: { info: Info; thread: Thread; people: Person[]; onClose: () => void; onReport: () => void }) {
   const toast = useToast(), qc = useQueryClient(), dlg = useDialogs(), { me } = useMeta()
@@ -776,57 +776,57 @@ function InfoPanel({ info, thread, people, onClose, onReport }: { info: Info; th
   const peer = info.members.find(m => m.id !== me?.id)
   const notIn = people.filter(p => !info.members.some(m => m.id === p.id))
   return (
-    <aside className="absolute inset-0 z-30 flex min-h-0 flex-col overflow-y-auto border-l border-[#e5e5e5] bg-[#f7f7f7] lg:static" aria-label="Chat info">
+    <aside className="absolute inset-0 z-30 flex min-h-0 flex-col overflow-y-auto border-l border-[#e6e0d4] bg-[#f8f5ef] lg:static" aria-label="Chat info">
       <header className="flex items-center gap-3 bg-white px-4 py-3.5"><button type="button" className="swk-tbtn" aria-label="Close info" onClick={onClose}><X size={17} /></button><b className="text-[15px] font-medium">{group ? 'Group info' : 'Contact info'}</b></header>
       <div className="flex flex-col items-center gap-2 bg-white px-6 pb-6 pt-4 text-center">
         <Avatar name={group ? info.title ?? '' : peer?.name ?? ''} email={peer?.email} group={group} size={112} />
-        <h2 className="m-0 mt-2 text-[22px] font-medium tracking-[-0.03em]">{group ? info.title : peer?.name}{group && isAdmin && <button type="button" aria-label="Edit group name" className="ml-2 border-0 bg-transparent text-[#8b8b8b] hover:text-[#0e9f6e]" onClick={() => void edit('title')}><Pencil size={15} /></button>}</h2>
-        <p className="m-0 text-[13px] text-[#737373]">{group ? `Group · ${info.members.length} members` : peer?.designation || peer?.email}</p>
-        {!group && <p className="m-0 text-[12.5px] text-[#0e9f6e]">{lastSeenText(people.find(p => p.id === peer?.id) ?? peer)}</p>}
+        <h2 className="m-0 mt-2 text-[22px] font-medium tracking-[-0.03em]">{group ? info.title : peer?.name}{group && isAdmin && <button type="button" aria-label="Edit group name" className="ml-2 border-0 bg-transparent text-[#5b676e] hover:text-[#8a621c]" onClick={() => void edit('title')}><Pencil size={15} /></button>}</h2>
+        <p className="m-0 text-[13px] text-[#5b676e]">{group ? `Group · ${info.members.length} members` : peer?.designation || peer?.email}</p>
+        {!group && <p className="m-0 text-[12.5px] text-[#8a621c]">{lastSeenText(people.find(p => p.id === peer?.id) ?? peer)}</p>}
       </div>
       {group && (
         <div className="mt-2 bg-white px-6 py-4">
-          <div className="flex items-center"><span className="web-eyebrow flex-1">Description</span>{isAdmin && <button type="button" className="border-0 bg-transparent text-[#8b8b8b] hover:text-[#0e9f6e]" aria-label="Edit description" onClick={() => void edit('description')}><Pencil size={14} /></button>}</div>
-          <p className="m-0 mt-1.5 whitespace-pre-wrap text-[14px] text-[#121212]">{info.description || <span className="text-[#8b8b8b]">No description</span>}</p>
-          <p className="m-0 mt-2 text-[12px] text-[#8b8b8b]">Created by {info.created_by}, {dayLabel(info.created_at)}</p>
+          <div className="flex items-center"><span className="web-eyebrow flex-1">Description</span>{isAdmin && <button type="button" className="border-0 bg-transparent text-[#5b676e] hover:text-[#8a621c]" aria-label="Edit description" onClick={() => void edit('description')}><Pencil size={14} /></button>}</div>
+          <p className="m-0 mt-1.5 whitespace-pre-wrap text-[14px] text-[#0f2a33]">{info.description || <span className="text-[#5b676e]">No description</span>}</p>
+          <p className="m-0 mt-2 text-[12px] text-[#5b676e]">Created by {info.created_by}, {dayLabel(info.created_at)}</p>
         </div>
       )}
       <div className="mt-2 bg-white px-2 py-2">
-        <button type="button" className="flex w-full items-center gap-4 rounded-xl border-0 bg-transparent px-4 py-3 text-left text-[14px] hover:bg-[#f7f7f7]" onClick={() => void run(() => post(`/api/chat/threads/${thread.id}/prefs`, { muted: !thread.muted }))}><BellOff size={18} className="text-[#737373]" />{thread.muted ? 'Unmute notifications' : 'Mute notifications'}</button>
-        <button type="button" className="flex w-full items-center gap-4 rounded-xl border-0 bg-transparent px-4 py-3 text-left text-[14px] hover:bg-[#f7f7f7]" onClick={() => void run(() => post(`/api/chat/threads/${thread.id}/prefs`, { pinned: !thread.pinned }))}><Pin size={18} className="text-[#737373]" />{thread.pinned ? 'Unpin chat' : 'Pin chat'}</button>
-        {group && isAdmin && <label className="flex w-full cursor-pointer items-center gap-4 rounded-xl px-4 py-3 text-[14px] hover:bg-[#f7f7f7]"><Megaphone size={18} className="text-[#737373]" /><span className="flex-1">Only admins can send messages</span><input type="checkbox" checked={info.announce} onChange={e => void run(() => api('PATCH', `/api/chat/threads/${thread.id}`, { announce: e.target.checked }))} className="size-4 accent-[#0e9f6e]" /></label>}
-        {group && info.can_report && <button type="button" className="flex w-full items-center gap-4 rounded-xl border-0 bg-transparent px-4 py-3 text-left text-[14px] hover:bg-[#f7f7f7]" onClick={onReport}><ClipboardList size={18} className="text-[#0e9f6e]" />Send today's attendance report</button>}
+        <button type="button" className="flex w-full items-center gap-4 rounded-xl border-0 bg-transparent px-4 py-3 text-left text-[14px] hover:bg-[#f8f5ef]" onClick={() => void run(() => post(`/api/chat/threads/${thread.id}/prefs`, { muted: !thread.muted }))}><BellOff size={18} className="text-[#5b676e]" />{thread.muted ? 'Unmute notifications' : 'Mute notifications'}</button>
+        <button type="button" className="flex w-full items-center gap-4 rounded-xl border-0 bg-transparent px-4 py-3 text-left text-[14px] hover:bg-[#f8f5ef]" onClick={() => void run(() => post(`/api/chat/threads/${thread.id}/prefs`, { pinned: !thread.pinned }))}><Pin size={18} className="text-[#5b676e]" />{thread.pinned ? 'Unpin chat' : 'Pin chat'}</button>
+        {group && isAdmin && <label className="flex w-full cursor-pointer items-center gap-4 rounded-xl px-4 py-3 text-[14px] hover:bg-[#f8f5ef]"><Megaphone size={18} className="text-[#5b676e]" /><span className="flex-1">Only admins can send messages</span><input type="checkbox" checked={info.announce} onChange={e => void run(() => api('PATCH', `/api/chat/threads/${thread.id}`, { announce: e.target.checked }))} className="size-4 accent-[#8a621c]" /></label>}
+        {group && info.can_report && <button type="button" className="flex w-full items-center gap-4 rounded-xl border-0 bg-transparent px-4 py-3 text-left text-[14px] hover:bg-[#f8f5ef]" onClick={onReport}><ClipboardList size={18} className="text-[#8a621c]" />Send today's attendance report</button>}
       </div>
       {info.media.length > 0 && (
         <div className="mt-2 bg-white px-6 py-4">
           <div className="web-eyebrow mb-3">Media, docs & voice · {info.media.length}</div>
-          <div className="grid grid-cols-3 gap-1.5">{info.media.slice(0, 9).map(f => f.mime.startsWith('image/') ? <a key={f.id} href={resolveApiUrl(f.url)} onClick={e => { e.preventDefault(); void openAuthFile(f.url, f.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg bg-[#f5f5f5]"><AuthImg src={f.url} alt={f.name} className="size-full object-cover" loading="lazy" /></a> : <a key={f.id} href={resolveApiUrl(`${f.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${f.url}?download=1`, f.name).catch(err => toast.error(err.message)) }} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-[#f5f5f5] p-2 text-center no-underline">{f.mime.startsWith('audio/') ? <Mic size={20} className="text-[#0e9f6e]" /> : <FileText size={20} className="text-[#dc2626]" />}<span className="line-clamp-2 text-[10px] text-[#4a4a4a]">{f.name}</span></a>)}</div>
+          <div className="grid grid-cols-3 gap-1.5">{info.media.slice(0, 9).map(f => f.mime.startsWith('image/') ? <a key={f.id} href={resolveApiUrl(f.url)} onClick={e => { e.preventDefault(); void openAuthFile(f.url, f.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg bg-[#f4f0e8]"><AuthImg src={f.url} alt={f.name} className="size-full object-cover" loading="lazy" /></a> : <a key={f.id} href={resolveApiUrl(`${f.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${f.url}?download=1`, f.name).catch(err => toast.error(err.message)) }} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-[#f4f0e8] p-2 text-center no-underline">{f.mime.startsWith('audio/') ? <Mic size={20} className="text-[#8a621c]" /> : <FileText size={20} className="text-[#a3263a]" />}<span className="line-clamp-2 text-[10px] text-[#3d4a51]">{f.name}</span></a>)}</div>
         </div>
       )}
       {group && (
         <div className="mt-2 bg-white py-3">
           <div className="web-eyebrow px-6 pb-2">{info.members.length} members</div>
-          {isAdmin && <button type="button" className="flex w-full items-center gap-4 border-0 bg-transparent px-6 py-2.5 text-left text-[14px] hover:bg-[#f7f7f7]" onClick={() => { setPick([]); setAdding(true) }}><span className="flex size-10 items-center justify-center rounded-full bg-[#0e9f6e] text-white"><UserPlus size={18} /></span>Add members</button>}
+          {isAdmin && <button type="button" className="flex w-full items-center gap-4 border-0 bg-transparent px-6 py-2.5 text-left text-[14px] hover:bg-[#f8f5ef]" onClick={() => { setPick([]); setAdding(true) }}><span className="flex size-10 items-center justify-center rounded-full bg-[#8a621c] text-white"><UserPlus size={18} /></span>Add members</button>}
           {info.members.map(m => (
-            <div key={m.id} className="group relative flex items-center gap-3 px-6 py-2.5 hover:bg-[#f7f7f7]">
+            <div key={m.id} className="group relative flex items-center gap-3 px-6 py-2.5 hover:bg-[#f8f5ef]">
               <Avatar name={m.name} email={m.email} size={40} online={m.online} />
-              <span className="min-w-0 flex-1"><b className="block truncate text-[14px] font-medium">{m.id === me?.id ? 'You' : m.name}</b><small className="block truncate text-[#8b8b8b]">{m.designation || lastSeenText(m)}</small></span>
+              <span className="min-w-0 flex-1"><b className="block truncate text-[14px] font-medium">{m.id === me?.id ? 'You' : m.name}</b><small className="block truncate text-[#5b676e]">{m.designation || lastSeenText(m)}</small></span>
               {m.role === 'admin' && <span className="web-pill" style={{ height: 22, fontSize: 9.5 }}><Crown size={11} />Admin</span>}
-              {isAdmin && m.id !== me?.id && <button type="button" aria-label={`Options for ${m.name}`} className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#8b8b8b] opacity-0 group-hover:opacity-100 focus-visible:opacity-100" onClick={() => setMemberMenu(memberMenu === m.id ? null : m.id)}><MoreVertical size={15} /></button>}
+              {isAdmin && m.id !== me?.id && <button type="button" aria-label={`Options for ${m.name}`} className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#5b676e] opacity-0 group-hover:opacity-100 focus-visible:opacity-100" onClick={() => setMemberMenu(memberMenu === m.id ? null : m.id)}><MoreVertical size={15} /></button>}
               {memberMenu === m.id && <Menu onClose={() => setMemberMenu(null)} className="right-6 top-12">
                 <MenuItem icon={Crown} onClick={() => { setMemberMenu(null); void run(() => post(`/api/chat/threads/${thread.id}/members/${m.id}/role`, { admin: m.role !== 'admin' })) }}>{m.role === 'admin' ? 'Dismiss as admin' : 'Make group admin'}</MenuItem>
                 <MenuItem icon={X} danger onClick={async () => { setMemberMenu(null); if (await dlg.confirm({ title: `Remove ${m.name}?`, danger: true, ok: 'Remove' })) void run(() => del(`/api/chat/threads/${thread.id}/members/${m.id}`)) }}>Remove from group</MenuItem>
               </Menu>}
             </div>
           ))}
-          <button type="button" className="mt-2 flex w-full items-center gap-4 border-0 bg-transparent px-6 py-3 text-left text-[14px] text-[#dc2626] hover:bg-[#fdeaea]" onClick={async () => { if (await dlg.confirm({ title: `Exit "${info.title}"?`, danger: true, ok: 'Exit group' })) { await run(() => del(`/api/chat/threads/${thread.id}/members/${me!.id}`)); onClose() } }}><LogOut size={18} />Exit group</button>
+          <button type="button" className="mt-2 flex w-full items-center gap-4 border-0 bg-transparent px-6 py-3 text-left text-[14px] text-[#a3263a] hover:bg-[#fdeaea]" onClick={async () => { if (await dlg.confirm({ title: `Exit "${info.title}"?`, danger: true, ok: 'Exit group' })) { await run(() => del(`/api/chat/threads/${thread.id}/members/${me!.id}`)); onClose() } }}><LogOut size={18} />Exit group</button>
         </div>
       )}
       <Modal open={adding} onClose={() => setAdding(false)} title="Add members" width={440} footer={<button className="web-btn" disabled={!pick.length} onClick={() => void run(() => post(`/api/chat/threads/${thread.id}/members`, { user_ids: pick })).then(() => setAdding(false))}>Add {pick.length || ''}</button>}>
         <div className="max-h-[50vh] overflow-y-auto">{notIn.length ? notIn.map(p => { const on = pick.includes(p.id); return (
-          <button key={p.id} type="button" aria-pressed={on} className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f7f7f7]" onClick={() => setPick(c => on ? c.filter(x => x !== p.id) : [...c, p.id])}>
-            <Avatar name={p.name} email={p.email} size={40} /><b className="flex-1 truncate text-[14px] font-medium">{p.name}</b><span className={`flex size-6 items-center justify-center rounded-full border-2 ${on ? 'border-[#0e9f6e] bg-[#0e9f6e] text-white' : 'border-[#cfcfcf]'}`}>{on && <Check size={14} />}</span>
-          </button>) }) : <p className="text-[13px] text-[#737373]">Everyone is already in this group.</p>}</div>
+          <button key={p.id} type="button" aria-pressed={on} className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f8f5ef]" onClick={() => setPick(c => on ? c.filter(x => x !== p.id) : [...c, p.id])}>
+            <Avatar name={p.name} email={p.email} size={40} /><b className="flex-1 truncate text-[14px] font-medium">{p.name}</b><span className={`flex size-6 items-center justify-center rounded-full border-2 ${on ? 'border-[#8a621c] bg-[#8a621c] text-white' : 'border-[#cfc6b4]'}`}>{on && <Check size={14} />}</span>
+          </button>) }) : <p className="text-[13px] text-[#5b676e]">Everyone is already in this group.</p>}</div>
       </Modal>
     </aside>
   )
