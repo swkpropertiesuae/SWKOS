@@ -41,5 +41,8 @@ try {
   assert.equal(three.model, '@cf/meta/llama-3.3-70b-instruct-fp8-fast')
   assert.equal(requests.at(-1)!.url, 'https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1/chat/completions')
   assert.equal(requests.at(-1)!.authorization, 'Bearer cf-token')
+  // A tool-call turn with no text goes out as "" (Workers AI returns HTTP 400 for null).
+  await chat([{ role: 'user', content: 'x' }, { role: 'assistant', content: null, tool_calls: [{ id: 't', type: 'function', function: { name: 'business_snapshot', arguments: '{}' } }] }, { role: 'tool', tool_call_id: 't', content: '{}' }])
+  assert.ok(requests.at(-1)!.body.messages.every((m: any) => typeof m.content === 'string'))
   console.log('AI connection checks passed: free presets, tool requests, whitespace, 404 guidance, fallback, second fallback (Workers AI) and combined errors. No external API called.')
 } finally { globalThis.fetch = original }

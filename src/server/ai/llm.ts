@@ -62,7 +62,9 @@ async function callOne(e: Endpoint, messages: ChatMsg[], tools: ToolDef[] | unde
       return { content: text, tool_calls: [], tokens: Number(nr.data?.eval_count ?? 0), model: e.model }
     }
   }
-  const body: any = { model: e.model, messages, temperature: opts.temperature ?? 0.2, max_tokens: opts.maxTokens ?? 1500 }
+  // Workers AI (and other strict servers) reject content: null on tool-call turns; OpenAI accepts "" just the same.
+  const wire = messages.map(m => (m.content == null ? { ...m, content: '' } : m))
+  const body: any = { model: e.model, messages: wire, temperature: opts.temperature ?? 0.2, max_tokens: opts.maxTokens ?? 1500 }
   if (tools?.length) { body.tools = tools.map(t => ({ type: 'function', function: t })); body.tool_choice = 'auto' }
   const r = await http(`${e.base}/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(e.key ? { Authorization: `Bearer ${e.key}` } : {}) }, body: JSON.stringify(body), timeoutMs: 90000 })
   if (!r.ok) {
