@@ -9,7 +9,7 @@ export const PRESETS: Preset[] = [
   { key: 'opencode', label: 'OpenCode Zen', base: 'https://opencode.ai/zen/v1', model: '', keyRequired: true, free: 'Free tier', notes: 'OpenCode Zen dashboard.' },
   { key: 'xai', label: 'xAI Grok', base: 'https://api.x.ai/v1', model: 'grok-3-mini', keyRequired: true, free: 'Paid / promotional credits', notes: 'console.x.ai' },
   { key: 'gemini', label: 'Google Gemini (free tier)', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash', keyRequired: true, free: 'Free tier with limits', notes: 'aistudio.google.com/apikey' },
-  { key: 'cloudflare', label: 'Cloudflare Workers AI', base: 'https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', keyRequired: true, free: 'Daily free allowance', notes: 'Replace ACCOUNT_ID in the base URL; the key is a Workers AI API token.' },
+  { key: 'cloudflare', label: 'Cloudflare Workers AI', base: 'https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', keyRequired: true, free: 'Daily free allowance', notes: 'Enter your Cloudflare account ID below; the key is an API token with Workers AI permission.' },
   { key: 'openai', label: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-4o-mini', keyRequired: true, free: 'Paid', notes: '' },
   { key: 'custom', label: 'Custom OpenAI-compatible', base: '', model: '', keyRequired: false, free: '', notes: 'Any server exposing /chat/completions.' },
 ]
@@ -17,16 +17,18 @@ export interface Endpoint { base: string; key: string; model: string; label: str
 
 export function endpoints(modelOverride?: string): Endpoint[] {
   const out: Endpoint[] = []
+  // Setting prefixes: ai_ (primary), ai_fallback_, ai_fallback2_. Each is tried in turn, e.g. Workers AI, then Groq, then OpenRouter.
   const mk = (pre: string, label: string) => {
-    const provider = String(getSetting(pre ? 'ai_fallback_provider' : 'ai_provider') || '')
+    const provider = String(getSetting(pre + 'provider') || '')
     if (!provider) return
     const p = PRESETS.find(x => x.key === provider)
-    const base = String(getSetting(pre ? 'ai_fallback_base_url' : 'ai_base_url') || p?.base || '').trim().replace(/\/+$/, '')
-    const model = String((!pre && modelOverride) || getSetting(pre ? 'ai_fallback_model' : 'ai_model') || p?.model || '').trim()
-    const key = String(getSetting(pre ? 'ai_fallback_api_key' : 'ai_api_key') || '').trim()
+    const base = String(getSetting(pre + 'base_url') || p?.base || '').trim().replace(/\/+$/, '')
+      .replace('ACCOUNT_ID', String(getSetting('ai_cloudflare_account_id') || '').trim() || 'ACCOUNT_ID')
+    const model = String((pre === 'ai_' && modelOverride) || getSetting(pre + 'model') || p?.model || '').trim()
+    const key = String(getSetting(pre + 'api_key') || '').trim()
     if (base && model) out.push({ base, key, model, label })
   }
-  mk('', 'primary'); mk('f', 'fallback')
+  mk('ai_', 'primary'); mk('ai_fallback_', 'fallback'); mk('ai_fallback2_', 'second fallback')
   return out
 }
 export const aiConfigured = () => inDemo() || (!!getSetting('ai_enabled') && endpoints().length > 0)
@@ -81,7 +83,6 @@ async function callOne(e: Endpoint, messages: ChatMsg[], tools: ToolDef[] | unde
   return { content: content.replace(/<think>[\s\S]*?<\/think>/g, '').trim(), tool_calls: calls, tokens: r.data?.usage?.total_tokens ?? 0, model: e.model }
 }
 
-/** Try the primary provider, then the fallback (e.g. when a free tier is rate limited). */
 /** Demo workspace only: a scripted assistant that really calls the read tools and writes a briefing from their output. */
 function demoChat(messages: ChatMsg[], tools?: ToolDef[]): ChatResult {
   const lastUser = [...messages].map((m, i) => ({ m, i })).filter(x => x.m.role === 'user').pop()?.i ?? 0
