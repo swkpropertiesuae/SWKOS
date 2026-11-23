@@ -21,7 +21,7 @@ export function AiPage() {
   return (
     <div className="fade-in">
       <PageHeader icon={<Bot size={20} />} title="AI Assistant & Digital Employees" subtitle="Jarvis and your automated AI employees for daily business briefings, approvals, and receptionist tasks." actions={<Link className="btn outline" to="/admin/integrations"><Settings2 /> AI settings</Link>} />
-      {!d.configured && <div className="mb-4 p-4 rounded-xl border border-[#f2efe8] bg-[#f2efe8] text-[14px]"><b>AI is not connected yet.</b> Configure your AI connection in <Link to="/admin/integrations" className="underline">Integrations → AI employees</Link>.</div>}
+      {!d.configured && <div className="mb-4 p-4 rounded-xl border border-[#f7f7f7] bg-[#f7f7f7] text-[14px]"><b>AI is not connected yet.</b> Configure your AI connection in <Link to="/admin/integrations" className="underline">Integrations → AI employees</Link>.</div>}
       <div className="card overflow-hidden">
         <Tabs tabs={[{ key: 'chat', label: 'Chat with Jarvis' }, { key: 'team', label: 'Employees', count: d.agents.length }, { key: 'approvals', label: 'Approvals', count: d.pending || undefined }, { key: 'voice', label: 'Voice' }, { key: 'activity', label: 'Activity' }]} value={tab} onChange={k => setSp({ tab: k })} />
         <div className="p-4 md:p-5">
@@ -79,7 +79,7 @@ function Team({ status, reload }: { status: Status; reload: () => void }) {
       <div className="flex items-center"><div className="text-sm text-muted flex-1">Switch an employee on and choose how much freedom they have. They report in the Activity tab, by notification, and optionally on WhatsApp.</div><button className="btn green" onClick={() => setHire(true)}><Plus /> Hire an AI employee</button></div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {status.agents.map(a => (
-          <div key={a.id} className={cls('rounded-2xl border p-4 grid gap-2 content-start', a.active ? 'border-[#e9e3d7] bg-card' : 'border-line bg-soft')}>
+          <div key={a.id} className={cls('rounded-2xl border p-4 grid gap-2 content-start', a.active ? 'border-[#e5e5e5] bg-card' : 'border-line bg-soft')}>
             <div className="flex items-start gap-3"><div className="text-[30px] leading-none">{a.avatar}</div><div className="flex-1 min-w-0"><div className="font-display font-extrabold text-ink truncate">{a.name}</div><div className="text-[13px] text-muted">{a.title}</div></div>
               <label className="relative inline-flex items-center cursor-pointer" title={a.active ? 'On duty' : 'Paused'}><input type="checkbox" className="sr-only peer" checked={a.active} onChange={() => void toggle(a)} /><div className="w-10 h-6 bg-[#c9d3cc] peer-checked:bg-fold rounded-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" /></label></div>
             <div className="text-[12.5px] text-muted flex gap-1.5 flex-wrap"><Badge value={a.schedule === 'Manual only' ? 'Manual' : a.schedule === 'Daily' ? `Daily ${String(a.run_hour).padStart(2, '0')}:00` : a.schedule} tone="blue" /><Badge value={level(a.autonomy)} tone={a.autonomy.startsWith('Auto') && !a.autonomy.includes('approve') ? 'amber' : 'grey'} />{a.last_status && <Badge value={a.last_status} tone={a.last_status === 'ok' ? 'green' : 'red'} />}</div>

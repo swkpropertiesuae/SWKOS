@@ -4,7 +4,8 @@ import { PdfDownload,DocumentPrinter,SealChoice } from '../components/ui/documen
 import { useEffect,useState } from 'react'
 import { Link,useNavigate,useParams,useSearchParams } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft,Pencil,Trash2,Printer,MoreHorizontal,Plus,Mail as MailIcon } from 'lucide-react'
+import { ArrowLeft,Pencil,Trash2,Printer,MoreHorizontal,Plus,Mail as MailIcon,Share2 } from 'lucide-react'
+import { ShareWithClient,SHAREABLE_ENTITIES } from '../components/ShareWithClient'
 import { del,get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { EntityList,recordPath } from '../components/EntityList'
@@ -55,6 +56,7 @@ export function EntityRecordPage() {
   const q = useQuery({ queryKey: ['rec', entity, rid], queryFn: () => get<any>(`/api/e/${entity}/${rid}`), enabled: !!known })
   const [tab, setTab] = useState('details')
   const [editing, setEditing] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
   const [dialog, setDialog] = useState<{ name: string; props: any } | null>(null)
@@ -112,10 +114,12 @@ export function EntityRecordPage() {
           {PRINTABLE.has(entity) && <Link className="btn outline" to={`/print/${entity}/${rid}`}><Printer /> Print</Link>}
           {PRINTABLE.has(entity) && <PdfDownload entity={entity} id={rid} />}
           {PRINTABLE.has(entity) && can(def.module, 'edit') && entity !== 'payslips' && <button className="btn outline" onClick={() => setDialog({ name: 'emailPdf', props: {} })}><MailIcon /> E-mail</button>}
+          {SHAREABLE_ENTITIES.has(entity) && <button className="btn outline" onClick={() => setSharing(true)}><Share2 /> Share with client</button>}
           {canDelete && <button className="btn red" onClick={() => void del_()}><Trash2 /> Delete</button>}
           {canEdit && <button className="btn green" onClick={() => setEditing(true)}><Pencil /> Edit</button>}
           {(more.length > 0 || canDelete) && <Dropdown className="btn outline" label={<MoreHorizontal size={16} />} items={[...more.map(a => ({ label: a.label, onClick: () => void a.run(helpers), danger: a.tone === 'red' })), ...(canDelete ? [{ label: <><Trash2 size={14} /> Delete</>, onClick: () => void del_(), danger: true, divider: false }] : [])]} />}
         </>} />
+      {sharing && <ShareWithClient entity={entity} ids={[rid]} label={String(rec._title ?? '')} onClose={() => setSharing(false)} />}
       {facts.length > 0 && <div className="grid gap-3 mb-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">{facts.map(f => <div key={f.name} className="card px-4 py-3"><div className="text-[11.5px] font-semibold text-muted">{f.label}</div><div className="font-display font-extrabold text-[17px] text-ink mt-0.5 break-words"><CellValue f={f} rec={rec} statusField={def.statusField} /></div></div>)}</div>}
       <div className="record-workspace flex gap-4 items-start flex-col lg:flex-row">
         <div className="flex-1 min-w-0 w-full card overflow-hidden">

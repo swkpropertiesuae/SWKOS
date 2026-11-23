@@ -5,9 +5,11 @@ import { HttpError,fromCents,nowIso,nowLocal,toCents,todayStr } from '../util'
 import { notify,notifyLeadership } from '../notify'
 import { sendWhatsApp,ownerNumbers } from '../integrations/whatsapp'
 import { getSetting,setSettings } from '../settings'
-import { attemptLogin,destroyUserSessions,hashPassword } from '../auth'
+import { attemptLogin,createSession,destroyUserSessions,hashPassword } from '../auth'
+import { COOKIE } from '../app'
 import { currentQrToken,qrTokenValid,regenerateFixedQr,setQrMode,checkPasswordForCheckin,deviceGate,newChallenge,verifyDeviceProof } from '../domain/attendance-security'
 import { config } from '../config'
+import { need } from './helpers'
 import { canAccessSwkAdminLogic,canPrintReceptionQr,isAdminSwkUser,isOwnerSwkUser } from '../../shared/swk-staff-access'
 import { checkEmployeeAndDocumentExpiries,computeMonthlyTargetSummaries,notifyEmployeeTargets } from '../domain/compliance'
 
@@ -1163,7 +1165,8 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   // ------------------------------------------------------------------ 4. Bayut & Dubizzle Portal Syndication + 3rd-Party A2A Match
   // No Bayut/Dubizzle/Property Finder API or XML feed is wired up yet: say so instead of showing a fake "Live" status.
   const NO_FEED = 'No live feed connected: publish manually on the portal, then record it here'
-  app.get('/api/swk-ops/portals/status', async () => {
+  app.get('/api/swk-ops/portals/status', async (req) => {
+    need(req, 'properties', 'view')
     const props = q.all(`
       SELECT id, property_no as prop_code, title, department_division, COALESCE(sub_community, building_name, address, '') as community,
              CASE WHEN department_division = 'Leasing' THEN 'Rent' ELSE 'Sale' END as purpose,
@@ -1194,6 +1197,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
 
   // Records a publish REQUEST for every listing flagged for a portal. Nothing is sent: a person publishes on the portal and then enters the real ad reference.
   app.post('/api/swk-ops/portals/sync', async (req) => {
+    need(req, 'properties', 'edit')
     const body = (req.body ?? {}) as { portal?: string; department_division?: string }
     const portalName = body.portal || 'Bayut & Dubizzle'
     const publishable = q.all(`SELECT id, department_division, syndicate_bayut, syndicate_dubizzle, syndicate_pf FROM properties WHERE deleted_at IS NULL AND status IN ('Available','Off-Plan','Under Offer') AND (syndicate_bayut = 1 OR syndicate_dubizzle = 1 OR syndicate_pf = 1)`)
@@ -1210,6 +1214,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
 
   app.get('/api/swk-ops/a2a-match', async (req) => {
+    need(req, 'properties', 'view')
     const qParams = (req.query ?? {}) as { department_division?: string; community?: string; bedrooms?: string; max_budget?: string; only_a2a?: string }
     const allProps = q.all(`
       SELECT *, property_no as prop_code, COALESCE(sub_community, building_name, address, '') as community,
@@ -1259,7 +1264,8 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
 
   // ------------------------------------------------------------------ 5. Market Pulse, Daily DLD Sync, News & Site-Visit Area Companion
-  app.get('/api/swk-ops/market-pulse', async () => {
+  app.get('/api/swk-ops/market-pulse', async (req) => {
+    if (!req.user || req.user.party_id) throw new HttpError(403, 'Staff only')
     const dldRows = q.all(`SELECT * FROM dld_market_transactions WHERE deleted_at IS NULL ORDER BY txn_date DESC, id DESC LIMIT 60`).map((r: any) => ({
       ...r,
       trans_date: r.txn_date,
@@ -1287,11 +1293,13 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
 
   app.post('/api/swk-ops/dld-sync', async (req) => {
+    requireAdminOrHaseeb(req)
     const res = syncDailyDldTransactionsAndNews(req.ctx)
     return res
   })
 
   app.get('/api/swk-ops/area-companion/:code', async (req) => {
+    if (!req.user || req.user.party_id) throw new HttpError(403, 'Staff only')
     const { code } = req.params as { code: string }
     const qKey = String(code || '').toUpperCase().trim()
     const area = DUBAI_AREAS_24.find(
@@ -1503,7 +1511,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
    *  5. a device checks in only one person per day.
    * No location or file path exists: only the office network can check in.
    */
-  const handlePublicQrCheckIn = async (req: any) => {
+  const handlePublicQrCheckIn = async (req: any, reply: any) => {
     const b = (req.body ?? {}) as Record<string, any>
     const clientIp = resolveClientIp(req)
     const ua = String(req.headers?.['user-agent'] || '').slice(0, 160)
@@ -1513,6 +1521,9 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     if (!qrTokenValid(b.qr_payload)) throw new HttpError(400, 'Scan the code on the reception screen with the camera in this page. The code must be the current one from the reception screen.')
     const deviceId = verifyDeviceProof({ challenge: String(b.challenge || ''), payload: String(b.qr_payload), pub: b.device_pub, sig: String(b.device_sig || '') }, clientIp)
 
+    // Already signed in on this phone: check in with the session, no password needed.
+    const sessionUser = req.sessionUserForCheckin as any
+    if (sessionUser) return finishCheckIn(sessionUser, b, clientIp, ua, wifiConfig, deviceId)
     const loginEmail = String(b.email || '').trim().toLowerCase()
     const loginPassword = String(b.password || '')
     if (!loginEmail || !loginPassword) throw new HttpError(400, 'Enter your company email and password.')
@@ -1521,7 +1532,15 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const loginRes = attemptLogin(loginEmail, loginPassword, b.totp, clientIp, ua)
     if ('needsTotp' in loginRes && loginRes.needsTotp) return { needsTotp: true }
     const authUser = (loginRes as any).user
+    const out = await finishCheckIn(authUser, b, clientIp, ua, wifiConfig, deviceId)
+    // Scanning signs the person in as well, so they continue straight into SWK OS on this phone.
+    const sess = createSession(authUser.id, clientIp, ua)
+    const secure = config.cookieSecure ?? (config.isProd && (req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https'))
+    reply.setCookie(COOKIE, sess.token, { httpOnly: true, sameSite: 'lax', secure: !!secure, path: '/', expires: sess.expires })
+    return { ...out, signed_in: true }
+  }
 
+  const finishCheckIn = async (authUser: any, b: Record<string, any>, clientIp: string, ua: string, wifiConfig: any, deviceId: string) => {
     const device = deviceGate(authUser.id, deviceId, String(b.device_name || ua), canPrintReceptionQr(authUser))
     if (device === 'Pending') {
       for (const em of ['shabib@swk.properties', 'haseeb@swk.properties']) { const u = q.get<any>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, em); if (u) notify(u.id, `New device waiting: ${authUser.name}`, 'Approve it on the reception check-in page under Attendance control', '/reception-qr', 'approval', `dev-${authUser.id}-${deviceId.slice(0, 12)}`) }
@@ -1587,6 +1606,12 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   app.post('/api/public/reception-qr/check-in', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, handlePublicQrCheckIn)
   app.post('/api/public/reception-qr/scan-login-checkin', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, handlePublicQrCheckIn)
   app.post('/api/public/qr-checkin', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, handlePublicQrCheckIn)
+  // Signed-in phones: same office-network, live-code and device-key checks, without typing the password again.
+  app.post('/api/attendance/qr-checkin', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req: any, reply) => {
+    if (!req.user || req.user.party_id) throw new HttpError(401, 'Sign in first')
+    req.sessionUserForCheckin = req.user
+    return handlePublicQrCheckIn(req, reply)
+  })
 
   // ------------------------------------------------------------------ 8. Owner (shabib@swk.properties) Direct Control Over Admin (admin@swk.properties)
   app.get('/api/swk-ops/owner-admin-control', async (req) => {
@@ -1688,12 +1713,12 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
 
   // ------------------------------------------------------------------ 9. Automated Employee Targets (1st & 15th) & Document Expiry Notifications
   app.get('/api/swk-ops/targets/summary', async (req) => {
-    if (!req.user) throw new HttpError(401, 'Sign in required')
+    need(req, 'hr', 'approve')
     return computeMonthlyTargetSummaries()
   })
 
   app.post('/api/swk-ops/targets/notify', async (req) => {
-    if (!req.user) throw new HttpError(401, 'Sign in required')
+    requireAdminOrHaseeb(req)
     const body = (req.body ?? {}) as { mode?: 'start' | 'mid' | 'auto' }
     const mode = body.mode === 'start' || body.mode === 'mid' ? body.mode : 'auto'
     const res = notifyEmployeeTargets(mode, true)
@@ -1701,7 +1726,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
 
   app.post('/api/swk-ops/compliance/check-expiries', async (req) => {
-    if (!req.user) throw new HttpError(401, 'Sign in required')
+    requireAdminOrHaseeb(req)
     const res = checkEmployeeAndDocumentExpiries(true)
     return { ok: true, ...res }
   })

@@ -1,8 +1,9 @@
 import { useEffect,useState } from 'react'
 import QRCode from 'qrcode'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { KeyRound,ShieldCheck,Smartphone,MonitorSmartphone } from 'lucide-react'
-import { api,del,get,post } from '../lib/api'
+import { KeyRound,ShieldCheck,Smartphone,MonitorSmartphone,Camera,Trash2 } from 'lucide-react'
+import { api,del,get,post,upload } from '../lib/api'
+import { teamProfileByEmail } from '@shared/swk-team-profiles'
 import { useMeta } from '../lib/meta'
 import { Badge,PageHeader,Spinner } from '../ui/kit'
 import { useToast } from '../lib/toast'
@@ -20,7 +21,8 @@ export function ProfilePage() {
   return (
     <div className="fade-in max-w-5xl">
       <PageHeader icon={<KeyRound size={20} />} title="Profile & security" subtitle={`${me?.name} · ${me?.email} · ${me?.role}`} />
-      {me?.mustChangePassword && <div className="mb-4 p-4 rounded-xl border border-[#f2efe8] bg-[#f2efe8] text-[14px]"><b>Set your own password to continue.</b> The account was created with a temporary password. Choose a new one (at least 10 characters with upper-case, lower-case and a digit) – the rest of the application unlocks right after.</div>}
+      {me?.mustChangePassword && <div className="mb-4 p-4 rounded-xl border border-[#f7f7f7] bg-[#f7f7f7] text-[14px]"><b>Set your own password to continue.</b> The account was created with a temporary password. Choose a new one (at least 10 characters with upper-case, lower-case and a digit) – the rest of the application unlocks right after.</div>}
+      <MyProfileCard />
       <div className="grid gap-4 lg:grid-cols-2">
         <form onSubmit={changePw} className="card p-5 grid gap-3 content-start"><h3 className="m-0 text-[16px]">Change password</h3>
           {me?.defaultPassword && <div className="text-sm bg-gold text-[#4a1f4d] rounded-lg px-3 py-2 font-semibold">You are still using the default password — please change it.</div>}
@@ -42,3 +44,39 @@ export function ProfilePage() {
   )
 }
 void api
+
+type Profile = { name: string; email: string; designation: string | null; work_phone: string; about: string; languages: string; has_photo: boolean; photo_url: string | null }
+/** Own profile for internal use: photo, internal phone, languages and a short about line. Name, e-mail, role and designation are managed by HR / Admin. */
+function MyProfileCard() {
+  const toast = useToast(), qc = useQueryClient()
+  const prof = useQuery({ queryKey: ['my-profile'], queryFn: () => get<Profile>('/api/auth/profile') })
+  const [form, setForm] = useState<{ work_phone: string; languages: string; about: string } | null>(null)
+  const [stamp, setStamp] = useState(Date.now()), [busy, setBusy] = useState(false)
+  useEffect(() => { if (prof.data && !form) setForm({ work_phone: prof.data.work_phone, languages: prof.data.languages, about: prof.data.about }) }, [prof.data, form])
+  const p = prof.data, web = teamProfileByEmail(p?.email)
+  const photo = p?.has_photo ? `${p.photo_url}?v=${stamp}` : web?.photo
+  const refresh = () => { setStamp(Date.now()); void qc.invalidateQueries({ queryKey: ['my-profile'] }) }
+  const choose = async (f?: File) => { if (!f) return; setBusy(true); try { await upload([f], {}, '/api/auth/profile/photo'); toast.ok('Photo updated'); refresh() } catch (e: any) { toast.error(e.message) } finally { setBusy(false) } }
+  const save = async (e: React.FormEvent) => { e.preventDefault(); setBusy(true); try { await api('PATCH', '/api/auth/profile', form); toast.ok('Profile saved'); refresh() } catch (er: any) { toast.error(er.message) } finally { setBusy(false) } }
+  if (!p || !form) return <div className="card p-5 mb-4"><Spinner /></div>
+  return (
+    <form onSubmit={save} className="web-card mb-4 grid gap-6 p-6 md:grid-cols-[180px_1fr]">
+      <div className="flex flex-col items-center gap-3">
+        <span className="flex size-36 items-center justify-center overflow-hidden rounded-full bg-[#121212] text-3xl font-semibold text-[#51fec0] ring-4 ring-white shadow-[0_10px_28px_rgba(12,56,96,0.14)]">
+          {photo ? <img src={photo} alt="Your profile photo" className="size-full object-cover object-top" /> : p.name.split(' ').map(x => x[0]).slice(0, 2).join('')}
+        </span>
+        <label className="web-btn light cursor-pointer" style={{ height: 38 }}><Camera size={14} /> {p.has_photo ? 'Change photo' : 'Upload photo'}<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={busy} onChange={e => { void choose(e.target.files?.[0]); e.target.value = '' }} /></label>
+        {p.has_photo && <button type="button" className="btn ghost sm" onClick={async () => { await del('/api/auth/profile/photo'); refresh() }}><Trash2 size={14} /> Remove</button>}
+        <p className="m-0 text-center text-[11px] text-[#8b8b8b]">JPG, PNG or WebP, up to 5 MB. Seen by colleagues inside SWK OS only.</p>
+      </div>
+      <div className="grid content-start gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><div className="web-eyebrow">My profile · internal</div><h3 className="m-0 mt-1 text-[22px] font-medium tracking-[-0.03em]">{p.name}</h3><p className="m-0 text-[13px] text-[#737373]">{p.designation || 'SWK Properties'} · {p.email}</p></div>
+        <label><span className="label">Internal phone / extension</span><input className="input" value={form.work_phone} maxLength={40} onChange={e => setForm({ ...form, work_phone: e.target.value })} placeholder="+971 …" /></label>
+        <label><span className="label">Languages</span><input className="input" value={form.languages} maxLength={120} onChange={e => setForm({ ...form, languages: e.target.value })} placeholder={web?.languages.join(', ') || 'English, Arabic'} /></label>
+        <label className="sm:col-span-2"><span className="label">About me (shown to colleagues)</span><textarea className="textarea" value={form.about} maxLength={280} onChange={e => setForm({ ...form, about: e.target.value })} placeholder="What you handle, how to reach you" /><span className="help">{form.about.length}/280</span></label>
+        <p className="m-0 text-[12px] text-[#8b8b8b] sm:col-span-2">Name, e-mail, role and designation are set by HR and the Admin.</p>
+        <div className="sm:col-span-2"><button className="web-btn" disabled={busy}>Save profile</button></div>
+      </div>
+    </form>
+  )
+}

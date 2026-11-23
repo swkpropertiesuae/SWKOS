@@ -5,7 +5,7 @@ export const MODULE_DEFS = [
   ['dashboard', 'Dashboard'], ['crm', 'CRM'], ['sales', 'Sales & Listings'], ['properties', 'Properties & Units'],
   ['mandates', 'Mandates & Viewings'], ['transactions', 'Transactions'], ['leases', 'Leases & Property Mgmt'], ['finance', 'Accounts & Finance'], ['assets', 'Assets & Procurement'],
   ['hr', 'HR & Payroll'], ['support', 'Support & Claims'], ['projects', 'Projects & Tasks'], ['documents', 'Documents'],
-  ['compliance', 'Compliance & Legal'], ['ai', 'AI Team & Automation'], ['reports', 'Reports & KPI'], ['masters', 'Master Data'], ['admin', 'Administration'],
+  ['compliance', 'Compliance & Legal'], ['ai', 'AI Team & Automation'], ['reports', 'Reports & KPI'], ['masters', 'Master Data'], ['admin', 'Administration'], ['website', 'Website & Promotions'],
 ] as const
 
 export const platform: EntityDef[] = [
@@ -53,6 +53,10 @@ export const platform: EntityDef[] = [
       I('failed_logins', 'Failed logins', { readonly: true, hidden: true }),
       DT('locked_until', 'Locked until', { readonly: true, hidden: true }),
       T('signature', 'E-mail signature', { span: 3, hidden: true }),
+      T('photo_stored', 'Profile photo', { secret: true, hidden: true }),
+      PH('work_phone', 'Internal phone / extension', { hidden: true }),
+      T('about', 'About me (internal)', { hidden: true }),
+      T('languages', 'Languages', { hidden: true }),
     ],
   },
   {
@@ -102,8 +106,8 @@ export const platform: EntityDef[] = [
       T('name', 'Rule name', { required: true, list: true, search: true, span: 2, section: 'Trigger' }), T('entity', 'Record type (entity key)', { required: true, list: true, help: 'e.g. jobs, invoices, quotations, tickets' }),
       S('trigger', 'When', ['Record created', 'Record updated', 'Status / stage changed to'], { required: true, list: true }), T('field', 'Field to check', { help: 'Optional field name, e.g. job_status' }),
       S('operator', 'Condition', ['equals', 'not equals', 'contains', 'greater than', 'less than', 'is empty', 'is not empty'], { default: 'equals' }), T('value', 'Value', { list: true }),
-      S('action', 'Then', ['Create follow-up task', 'Notify user', 'Queue e-mail to customer contact', 'Queue e-mail to address', 'Send WhatsApp to customer contact', 'Send WhatsApp to number', 'Ask an AI employee to review', 'Set field value'], { required: true, list: true, section: 'Action' }),
-      R('assignee_id', 'Assign / notify user', 'users'), T('target', 'E-mail address / field=value', { help: 'For "Queue e-mail to address": address. For "Set field value": field=value' }),
+      S('action', 'Then', ['Create follow-up task', 'Notify user', 'Queue e-mail to customer contact', 'Queue e-mail to address', 'Send WhatsApp to customer contact', 'Send WhatsApp to number', 'Ask an AI employee to review', 'Set field value', 'Post to Inside group'], { required: true, list: true, section: 'Action' }),
+      R('assignee_id', 'Assign / notify user', 'users'), T('target', 'E-mail address / field=value / group', { help: 'For "Queue e-mail to address": address. For "Set field value": field=value. For "Post to Inside group": the group id (from the Automations page picker)' }),
       T('message', 'Title / subject template', { span: 3, placeholder: 'Follow up job {job_no} – {job_status}' }), TA('body', 'Body template'), I('due_days', 'Task due in (days)', { default: 1 }), I('delay_minutes','Delay (minutes)',{default:0}), I('max_attempts','Max attempts (internal actions)',{default:3}), B('active', 'Active', { default: true, list: true }),
     ],
   },

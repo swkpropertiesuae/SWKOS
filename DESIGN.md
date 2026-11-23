@@ -1,72 +1,60 @@
 ---
 name: SWK OS
-description: A calm wallet-inspired operating workspace in the existing SWK OS identity.
+description: SWK OS in the exact swkpropertiesuae.com design system (obsidian, mint, Switzer, sky canvas). Tokens live in src/web/website-theme.css and mirror the website repo src/app/globals.css.
 colors:
-  emerald: "#007b52"
-  fold: "#025e3d"
-  signal: "#c32135"
-  graphite: "#161d1a"
-  bg: "#f1f6f3"
-  card: "#ffffff"
-  ink: "#161d1a"
-  body: "#3f4f47"
-  muted: "#53655b"
-  line: "#e6ebe7"
-  line-strong: "#cbd6ce"
-  soft: "#edf2ee"
-  hover: "#f0f5f1"
-  focus: "#1fa06b"
-  green-tint: "#edf5f0"
-  champagne-tint: "#f5f1e9"
-  reverse-muted: "#d3eee0"
-  ocean: "#15526b"
-  teal: "#0f7f8c"
-  aviation: "#344d77"
-  copper: "#8c4329"
-  violet: "#493d72"
-  champagne: "#e5d1a4"
-  mint: "#dcf1e6"
-  sky: "#dfecfa"
-  sand: "#f7ead8"
-  lilac: "#e8e3f7"
-  blush: "#fbe1e4"
-  gold: "#f6e9c3"
+  obsidian: "#121212"
+  obsidian-card: "#1e1e1e"
+  white: "#ffffff"
+  offwhite: "#f7f7f7"
+  cta-light: "#f5f5f5"
+  subtle: "#ececec"
+  ink: "#121212"
+  body: "#4a4a4a"
+  muted: "#737373"
+  grey: "#8b8b8b"
+  grey-subtle: "#a7a7a7"
+  line: "#e5e5e5"
+  line-strong: "#cfcfcf"
+  mint: "#51fec0"
+  emerald: "#0e9f6e"
+  mint-tint: "#e8fff6"
+  status-sale: "#62c584"
+  status-offer: "#a5ce3a"
+  signal: "#dc2626"
+  sky-start: "#eef8fd"
+  sky-mid: "#d4effc"
+  sky-end: "#f5fbff"
 typography:
   display:
-    fontFamily: "Plus Jakarta Sans, Instrument Sans, system-ui, sans-serif"
-    fontSize: "clamp(26px, 2.5vw, 36px)"
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "-.03em"
+    fontFamily: "Switzer, Inter, system-ui, sans-serif"
+    fontSize: "clamp(28px, 3.2vw, 44px)"
+    fontWeight: 500
+    lineHeight: 1.05
+    letterSpacing: "-.035em"
   headline:
-    fontFamily: "Plus Jakarta Sans, Instrument Sans, system-ui, sans-serif"
-    fontSize: "clamp(25px, 2.4vw, 34px)"
-    fontWeight: 700
-    lineHeight: 1.3
-    letterSpacing: "-.03em"
-  title:
-    fontFamily: "Plus Jakarta Sans, Instrument Sans, system-ui, sans-serif"
-    fontSize: "23px"
-    fontWeight: 650
+    fontFamily: "Switzer, Inter, system-ui, sans-serif"
+    fontSize: "22px"
+    fontWeight: 500
     lineHeight: 1.2
-    letterSpacing: "-.025em"
+    letterSpacing: "-.035em"
   body:
-    fontFamily: "Instrument Sans, system-ui, Arial, sans-serif"
+    fontFamily: "Switzer, Inter, system-ui, sans-serif"
     fontSize: "15px"
-    lineHeight: 1.5
-  label:
-    fontFamily: "Instrument Sans, system-ui, Arial, sans-serif"
-    fontSize: "12px"
+    lineHeight: 1.55
+    letterSpacing: "-.015em"
+  eyebrow:
+    fontFamily: "Switzer, Inter, system-ui, sans-serif"
+    fontSize: "10px"
+    fontWeight: 500
+    letterSpacing: ".22em"
+  button:
+    fontFamily: "Switzer, Inter, system-ui, sans-serif"
+    fontSize: "11.5px"
     fontWeight: 600
-    letterSpacing: ".01em"
-  navigation:
-    fontFamily: "Instrument Sans, system-ui, Arial, sans-serif"
-    fontSize: "12px"
-    fontWeight: 650
+    letterSpacing: ".14em"
 rounded:
   surface: "16px"
   field: "12px"
-  record: "20px"
   pill: "999px"
   circle: "50%"
 spacing:

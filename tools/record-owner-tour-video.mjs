@@ -28,7 +28,7 @@ const CHAPTERS = [
   { num: '15', title: 'Accounting — P&L, Balance Sheet, 50/50 Split & UAE 5% VAT', dept: 'Dept 7 · Accounting', route: '/finance/statements', auth: true },
   { num: '16', title: 'Compliance — RERA Centre, Trakheesi Permits & KYC/AML', dept: 'Dept 8 · Compliance', route: '/rera', auth: true },
   { num: '17', title: 'Employees — Broker Leaderboard, Visas & WPS Payroll', dept: 'Dept 9 · Employees', route: '/agents', auth: true },
-  { num: '18', title: 'Field Service — SWK ONE Mobile App, QR & GPS Visits', dept: 'Dept 10 · Field Service', route: '/swk-one', auth: true },
+  { num: '18', title: 'Field Service — Reception QR Check-In & Field Visits', dept: 'Dept 10 · Field Service', route: '/reception-qr', auth: true },
   { num: '19', title: 'Documents — Instant 4% DLD, Mortgage, Yield & Split Calculators', dept: 'Dept 11 · Documents', route: '/toolkit', auth: true },
   { num: '20', title: 'Settings — Company Profile, Roles, Backups & Audit Trail', dept: 'Dept 12 · Settings', route: '/admin/settings', auth: true },
 ]

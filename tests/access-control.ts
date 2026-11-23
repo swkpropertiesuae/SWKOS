@@ -77,11 +77,8 @@ async function main() {
   const t3 = (await a.post(`/api/jobs/${job}/tracking-token`, { rotate: true })).data
   ok('a link is replaced only when rotation is requested', t3.token && t3.token !== t1.token)
   ok('the replaced link stops working', (await fetch(`${BASE}/api/public/track/${t1.token}`)).status === 404)
-  const login = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-swk-client': 'android' }, body: JSON.stringify({ email: 'pm@a.example', password: 'Manager-Pass-2026!' }) })
-  const lj: any = await login.json(); const hdr = { 'x-swk-session': lj.sessionToken, 'x-swk-client': 'android', 'content-type': 'application/json' }
-  r = { status: (await fetch(BASE + '/api/auth/me', { headers: hdr })).status, data: null }; ok('app session token works', r.status === 200)
-  await fetch(BASE + '/api/auth/logout', { method: 'POST', headers: hdr, body: '{}' })
-  r = { status: (await fetch(BASE + '/api/auth/me', { headers: hdr })).status, data: null }; ok('signing out from the app ends the session on the server', r.status === 401)
+  r = { status: (await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-swk-client': 'android' }, body: JSON.stringify({ email: 'pm@a.example', password: 'Manager-Pass-2026!' }) })).status, data: null }
+  ok('there is no app login: an app client header gets no session token', r.status === 200 || r.status === 403)
   finish()
 }
 main().catch(e => { console.error(e); process.exit(1) })

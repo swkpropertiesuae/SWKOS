@@ -2,6 +2,7 @@ import type { EntityDef } from '../types'
 import { T,TA,B,S,R,DT,D } from '../dsl'
 
 export const STUDIO_CATEGORIES = [
+  'Corporate Governance', 'Policies', 'Sales (Secondary)', 'Off-Plan', 'Leasing', 'Property Management',
   'Corporate', 'Sales & Customers', 'Finance & Procurement', 'Compliance & Permits', 'HR & Administration', 'Control & Guidance',
   'Legal & Contracts', 'Letters & Notices', 'Marketing & Brochures', 'E-mail templates', 'Other',
 ]

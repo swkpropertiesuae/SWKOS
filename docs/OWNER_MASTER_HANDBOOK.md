@@ -30,7 +30,6 @@ Press **Play** below to watch the complete step-by-step visual tour of **SWK Pro
    - [Department 7: Accounting (9-Step Invoices, 50/50 Commissions & VAT)](#department-7-accounting-9-step-invoices-5050-commissions--vat)
    - [Department 8: Compliance (RERA, Trakheesi, KYC & Anti-Money Laundering)](#department-8-compliance-rera-trakheesi-kyc--anti-money-laundering)
    - [Department 9: Employees (Brokers, Visas, Attendance & WPS Salaries)](#department-9-employees-brokers-visas-attendance--wps-salaries)
-   - [Department 10: Field Service (SWK ONE Mobile App & Office Reception QR)](#department-10-field-service-swk-one-mobile-app--office-reception-qr)
    - [Department 11: Documents (Instant Deal Calculators, Letter Studio & Reports)](#department-11-documents-instant-deal-calculators-letter-studio--reports)
    - [Department 12: Settings (Company Profile, Permissions, Backups & Audit Trail)](#department-12-settings-company-profile-permissions-backups--audit-trail)
 5. [**Part 5 — Four End-to-End Business Playbooks (How Daily Work Flows)**](#part-5--four-end-to-end-business-playbooks-how-daily-work-flows)
@@ -56,7 +55,6 @@ In a traditional real estate brokerage, information is scattered across many pla
 ```mermaid
 flowchart LR
   A["1. Property & Permit\n(Properties Dept)"] --> B["2. Portal Ad & Lead\n(CRM Dept)"]
-  B --> C["3. Viewing & Offer\n(SWK ONE + Sales)"]
   C --> D["4. Form F / SPA / Ejari\n(Sales or Leasing)"]
   D --> E["5. Cheques, NOC & Transfer\n(Compliance & Vault)"]
   E --> F["6. Invoice, 50/50 Split & VAT\n(Accounting & Owner Dashboard)"]
@@ -71,7 +69,6 @@ Every screen in SWK Properties OS enforces six business protections automaticall
 | **2. Nothing Can Be Secretly Deleted** | When any staff member deletes a record, it is **not** erased. It moves to the **Delete Bin**, where only the Owner can permanently remove it or restore it with one click. |
 | **3. Two-Person Sign-Off on Money & Permits** | The person who creates a property submission, commission payout, or refund request cannot approve their own request. A Manager or the Owner must sign off. |
 | **4. Documents First, Advertising Second** | A property cannot be published to portals until the owner’s permit (Form A / Trakheesi) and title documents are attached and verified. |
-| **5. Verified Office & Site Attendance** | Staff check in at the office by scanning the live **Reception QR** code on the reception screen, and brokers log GPS-verified site visits through the **SWK ONE** mobile app during scheduled appointments. |
 | **6. Permanent Audit Trail** | Every sign-in, edit, approval, status change, and payout is stamped with the exact Dubai time and the name of the staff member who performed it. |
 
 ---
@@ -81,7 +78,6 @@ Every screen in SWK Properties OS enforces six business protections automaticall
 You never need to memorize complicated menus. Every single screen in SWK Properties OS works the exact same way using four simple steps:
 
 ### Rule 1: Sign In at the Private Gate
-Open the workspace address in your browser (or open the **SWK ONE** app on your phone). Enter your email and password and click **Sign in**.
 
 ![Chapter 1 — Secure Sign-In Screen](C:/Users/shamh/.gemini/antigravity/brain/b88d8f66-b16c-41a0-bfad-2b1ae807bc51/hb-01-login.png)
 
@@ -189,7 +185,6 @@ Below is the complete guide to all **12 Departments** and every tool inside them
 | **5** | **Calendar** | Master company calendar showing property viewings, client meetings, cheque maturity dates, and lease renewals. | Switch between Day, Week, and Month views, or click **+ New Event** to schedule a viewing or meeting. |
 | **6** | **Daily Operations** | **Company Operations Centre.** Combines 9 operational tabs in one screen: *Daily Work Reports*, *New Properties & Permits*, *Developer NOCs*, *Sales & Transfers*, *Commission Payouts*, *Visas & Agent Cards*, *WhatsApp & Field Visits*, *Compliance & Quality*, and *Approvals & Staff Handover*. | Click any tab across the middle bar to review live numbers and approve items on the spot. |
 | **7** | **Market Pulse** | Live Dubai real estate benchmark tool showing average price per sq ft, year-on-year growth, gross rental yield, and transaction volume across major Dubai communities (Palm Jumeirah, Downtown Dubai, Dubai Marina, Business Bay, Dubai Hills, JVC, etc.). | Use this during landlord or buyer meetings to show objective Dubai Land Department market data and justify asking prices. |
-| **8** | **SWK ONE Mobile** | Opens the live **SWK ONE** mobile companion interface right on your screen. | Preview what brokers see on their handsets, check live duty status, or test mobile check-ins. |
 | **9** | **Reception QR** | Displays the live rotating security QR code for the office reception screen/iPad. | Leave this screen open on the reception tablet so staff can scan in at `10:00 AM` and scan out at `7:00 PM`. |
 | **10** | **AI Assistant** | Smart internal business assistant connected to SWK Properties data. | Ask plain-English questions such as *"Which leases expire in the next 60 days?"* or *"Draft a polite follow-up email for a Downtown 2BR buyer."* |
 
@@ -367,7 +362,6 @@ Whenever a deal closes:
 |---|---|---|---|
 | **1** | **Staff List** | Complete directory of all SWK employees (department, job title, joining date, salary structure, emergency contact, and contract type). | Click **+ New Employee** when hiring, or open any staff profile to view their documents and attendance. |
 | **2** | **Brokers (BRN)** | Dedicated roster of Sales & Leasing Advisors showing their RERA BRN number, specialist Dubai communities, commission split %, and active listings count. | Assign communities and monthly targets to each broker. |
-| **3** | **Joining & Exit** | Step-by-step onboarding checklist for new hires (SIM card, email, laptop, RERA exam, visa, SWK ONE app) and offboarding clearance when a staff member leaves (returning keys, laptops, reassigning leads, visa cancellation). | Never allow a departing employee’s visa cancellation or final settlement to complete until their leads, keys, and devices are handed over. |
 | **4** | **Visas & IDs** | Tracks every employee’s **UAE Residence Visa**, **MOHRE Labour Card / Work Permit**, **Emirates ID**, **Medical Insurance**, and **Passport** expiry dates. | Alerts HR and the Owner 60 days before any staff visa or Emirates ID expires to avoid overstay fines. |
 | **5** | **Attendance** | Daily staff attendance register (`10:00 AM to 7:00 PM` Dubai office hours) showing check-in time, check-out time, verification method (Reception QR / GPS), and late arrivals. | Review who arrived on time today, who is out on a verified client viewing, and who was late or absent. |
 | **6** | **Leave** | Annual leave, sick leave, and maternity/emergency leave requests with balance tracking under UAE Labour Law. | Staff submit leave requests with dates; Manager/Owner approves after checking that their active leads are covered. |
@@ -376,21 +370,17 @@ Whenever a deal closes:
 
 ---
 
-### Department 10: Field Service (SWK ONE Mobile App & Office Reception QR)
+### Department 10: Field Service (Office Reception QR)
 
 **Purpose**: Connects your field brokers and office reception directly to SWK Properties OS in real time.
 
-![Field Service — SWK ONE Mobile App & Workday Briefing](C:/Users/shamh/.gemini/antigravity/brain/b88d8f66-b16c-41a0-bfad-2b1ae807bc51/hb-18-field-swk-one.png)
 
-#### How SWK ONE & Reception QR Work Together:
-1. **Morning Arrival (`10:00 AM`)**: A tablet or screen at the office reception displays the **Reception QR** page. Because the QR code refreshes automatically every few seconds, nobody can take a photo of it and scan from home. Staff open **SWK ONE** on their phone and scan the Reception QR to check in.
-2. **During the Day (Client Site Visits)**: When a broker goes to a property viewing or developer meeting (for example, at Dubai Marina or Downtown Dubai), they tap **Start Field Visit** in **SWK ONE**. The app logs their GPS location at the building, gives them a live **Area Companion** (showing 15-year community price trends and rental yields to share with the client), and records the viewing outcome.
+#### How Reception QR Check-In Works:
 3. **Evening Departure (`7:00 PM`)**: Before leaving, every broker and staff member submits their **Daily Report** summarizing calls made, viewings completed, offers received, and tomorrow’s plan, then scans out at reception.
 
 #### All 5 Icons Inside **Field Service**:
 | Step | App Icon | What It Does & Why It Matters | How to Use It |
 |---|---|---|---|
-| **1** | **SWK ONE App** | Opens the full **SWK ONE Mobile Workspace** (also installable as a native Android APK `ae.swkproperties.one` or iPhone web app). | Staff use this on their phones for QR check-in, leads, viewings, area price companion, and daily reports. |
 | **2** | **Reception QR** | Full-screen rotating security QR display for the SWK office entrance. | Open on the reception iPad/monitor in full-screen mode. |
 | **3** | **Gate Logs** | Chronological log of every office arrival and exit scan with timestamp and device verification. | Check exact arrival and departure times for any date. |
 | **4** | **Field Visits** | Live and historical log of all broker GPS site visits outside the office, including building visited, client met, and duration. | Verify that brokers who were out of the office were at genuine client viewings. |
@@ -443,7 +433,6 @@ To make training your team effortless, here is how the four main workflows opera
 2. **Sign the Seller Permit (`Sales → Step 1: Seller Form A`)**: Attach the signed RERA Form A and Trakheesi permit number.
 3. **Publish the Ad (`Properties → Step 5: Listing Studio`)**: Publish the verified listing to Bayut and Dubizzle.
 4. **Capture & Qualify the Buyer (`CRM → Step 1: Leads` & `Step 2: Phone Calls`)**: When the buyer enquires, the assigned broker logs the call, qualifies whether they are a **Cash Buyer**, **Mortgage Pre-Approved Buyer**, or **Off-Plan Investor**, and matches suitable units.
-5. **Conduct the Viewing (`Field Service → Step 1: SWK ONE App` & `Sales → Step 2: Viewings`)**: Broker meets the buyer at the property, checks in via GPS on **SWK ONE**, uses the **Area Companion** to show community price growth, and logs the viewing feedback.
 6. **Log the Offer & Sign Form F (`Sales → Step 3: Buyer Offers` & `Step 4: Sale Contract (F)`)**: Once the seller accepts the offer, generate RERA Form F (or developer SPA for off-plan) and log the 10% security deposit in `Step 5: Escrow`.
 7. **Complete KYC & Developer NOC (`Compliance → Step 1: KYC Checks` & `Sales → Step 6: Developer NOC`)**: Compliance verifies buyer/seller IDs; Operations tracks the Developer NOC clearance.
 8. **Transfer at DLD Trustee (`Sales → Step 7: DLD Transfer`)**: Log the completed Title Deed / Oqood transfer and payment mode (*Bank Transfer*, *Manager’s Cheque*, *Escrow*, or *Licensed VARA Crypto*).
@@ -461,8 +450,6 @@ To make training your team effortless, here is how the four main workflows opera
 ---
 
 ### Playbook C: Daily Staff Attendance, Site Visits & End-of-Day Reporting (`10:00 AM – 7:00 PM`)
-1. **10:00 AM Check-In (`Field Service → Step 2: Reception QR`)**: Staff arrive at the office and scan the live rotating QR code on the reception screen using **SWK ONE** on their phones. Arrivals after `10:00 AM` are automatically flagged in `Employees → Step 5: Attendance`.
-2. **Daytime Site Visits (`Field Service → Step 4: Field Visits`)**: Whenever a broker leaves the office for a viewing or developer meeting, they start a **Field Visit** in **SWK ONE** so management can see their verified site visit location and client appointment.
 3. **before 7:00 PM Daily Report (`Field Service → Step 5: Daily Reports`)**: Every staff member submits their daily work summary (calls, viewings, offers, issues) and scans out at `7:00 PM`.
 4. **Owner Review (`Dashboards → Step 6: Daily Operations`)**: The Owner can view all submitted daily reports, attendance logs, and field visits on one screen.
 
@@ -484,19 +471,14 @@ Instead of renting third-party software each month, **SWK Properties L.L.C now o
 
 | Transferred Asset | What Is Inside the SWK Properties Repository |
 |---|---|
-| **1. Complete Enterprise Source Code (~81,500+ Lines)** | Over **81,500 lines** of custom-engineered TypeScript, React, SQL, and Android source code spanning **12 departments**, **35+ operational modules**, and **80+ workflow screens** purpose-built for Dubai real estate. |
 | **2. Full-Stack Web & Cloud Operating System** | The complete browser-based workspace (`src/web/` and `src/server/`) supporting desktop computers, laptops, iPads, and mobile browsers with zero third-party license fees. |
-| **3. Native Android Mobile Application (`SWK ONE` — `ae.swkproperties.one`)** | The complete native Android mobile project (`android/`) and mobile companion suite (`SwkOneApp.tsx`) featuring rotating Reception QR check-in, foreground GPS site-visit verification, Dubai area price companion, and end-of-day reporting. |
 | **4. UAE Legal, Tax & Real Estate Rules Engine** | Built-in Dubai Land Department (DLD) 4% transfer math, RERA Forms A / B / F / I, Trakheesi permit verification, Ejari & 90-day renewal engine, Post-Dated Cheque (PDC) Vault with UAE Federal Decree-Law 14/2020 recovery steps, 50/50 + A2A Commission Split engine, UAE FTA 5% VAT accounting, and MOHRE WPS salary file generation. |
-| **5. Official SWK Properties Brand & Studio Asset Pack** | High-resolution 3D Brushed Metallic Gold & UAE studio logos, Architectural Tower Monogram, favicons, print letterheads, and Android launcher icons (`public/brand/` and `assets-src/`). |
-| **6. Self-Building & Self-Deploying Cloud Automation** | Automated GitHub Actions pipelines (`.github/workflows/`) that automatically run 11 verification suites (`ci.yml`), deploy to Cloudflare (`deploy.yml`), build the Oracle Cloud production image (`oracle-image.yml`), and compile the downloadable `SWK ONE` Android `.apk` installer (`android-apk.yml`). |
 
 ---
 
 ### 6.2 Commercial Valuation: What This Repository Is Worth to SWK Properties
 
 #### A. Custom Engineering Replacement Value (Market Cost to Build from Scratch in the UAE)
-If a real estate brokerage in Dubai commissioned a software engineering agency to design, build, test, and deploy an equivalent 35-module Real Estate ERP, CRM, Double-Entry Accounting System, RERA/AML Compliance Suite, HR/WPS Payroll System, and Native Android Mobile App from scratch, the market development cost and timeline break down as follows:
 
 | System Component Transferred to SWK Properties | Equivalent Standalone Software | Market Build Value (AED) | Market Build Value (USD) |
 |---|---|---|---|
@@ -506,7 +488,6 @@ If a real estate brokerage in Dubai commissioned a software engineering agency t
 | **4. Double-Entry Accounting, 50/50 + A2A Commissions, Landlord Ledgers & 5% VAT** | Zoho Books / QuickBooks + Commission ERP | AED 165,000 – 230,000 | \$45,000 – \$62,500 |
 | **5. RERA / Trakheesi Hub, KYC Screening, goAML & Owner Delete-Bin Governance** | LexisNexis KYC + Compliance Suite | AED 110,000 – 150,000 | \$30,000 – \$41,000 |
 | **6. UAE HR, Visa/Emirates ID Tracker, `10am–7pm` Attendance & WPS Payroll** | Bayzat / BambooHR / WPS Payroll | AED 110,000 – 150,000 | \$30,000 – \$41,000 |
-| **7. `SWK ONE` Native Android App (`ae.swkproperties.one`) + Reception QR + GPS** | Native Field Service & Biometric App | AED 145,000 – 210,000 | \$39,500 – \$57,000 |
 | **8. Cloud Deployment Pipelines (Cloudflare + Oracle + Docker) & Automated Test Suite** | DevOps & QA Automation Architecture | AED 90,000 – 130,000 | \$24,500 – \$35,500 |
 | **Total Custom Engineering Asset Value Transferred** | **Complete All-in-One Operating System** | **AED 1,100,000 – 1,530,000** | **\$300,000 – \$417,000** |
 
@@ -543,8 +524,6 @@ Without its own platform, a growing Dubai brokerage of 25 to 50 staff members ty
    The repository is engineered to run anywhere: on **AWS Lightsail with Docker** (the current production host), on any other **VPS / dedicated office server via Docker**, or locally. You can switch hosting providers in minutes at any time.
 6. **Instant Customization for New Revenue Streams**  
    Whenever Dubai Land Department (DLD), RERA, or the Federal Tax Authority introduces a new rule—or whenever SWK Properties expands into a new division (such as Holiday Homes, Commercial Real Estate, Property Snagging, or Golden Visa Advisory)—new features can be added directly to your repository without waiting for an external vendor.
-7. **One Source of Truth Across Office & Mobile (`SWK OS` + `SWK ONE`)**  
-   Because the desktop ERP and the `SWK ONE` Android mobile app are built from the exact same repository, every QR attendance scan at `10:00 AM`, every GPS viewing check-in, every lead update, and every `7:00 PM` daily report flows instantaneously to the Owner’s dashboard without faulty third-party integrations.
 
 ---
 

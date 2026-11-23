@@ -22,13 +22,13 @@ sec('Daily report strictness + alerts')
 let emp = (await a.get('/api/e/employees?pageSize=100')).data.rows.find((e: any) => e.user_id === me.id)
 if (!emp) emp = (await a.post('/api/e/employees', { name: me.name, user_id: me.id, email: me.email, designation: 'Staff', status: 'Active' })).data
 ok('employee linked', !!emp?.id, emp)
-const short = await a.post('/api/mobile/daily-report', { outcomes_narrative: 'too short', next_day_priorities: 'short' })
+const short = await a.post('/api/daily/report', { outcomes_narrative: 'too short', next_day_priorities: 'short' })
 ok('short report/plan rejected', short.status >= 400, short.data)
-const noPlan = await a.post('/api/mobile/daily-report', { outcomes_narrative: 'Closed two viewings and followed up with five hot leads today.', next_day_priorities: '' })
+const noPlan = await a.post('/api/daily/report', { outcomes_narrative: 'Closed two viewings and followed up with five hot leads today.', next_day_priorities: '' })
 ok('missing next-day plan rejected', noPlan.status >= 400)
 const owner = new Api(), mgr = new Api()
 ok('owner + manager login', await owner.login('shabib@swk.properties', 'Shabib@swk.properties') && await mgr.login('haseeb@swk.properties', 'SWK@Manager2026'))
-const good = await a.post('/api/mobile/daily-report', { outcomes_narrative: 'Closed two viewings and followed up with five hot leads today.', blockers_narrative: '', next_day_priorities: 'Call the three offer clients first, then send two property shortlists.' })
+const good = await a.post('/api/daily/report', { outcomes_narrative: 'Closed two viewings and followed up with five hot leads today.', blockers_narrative: '', next_day_priorities: 'Call the three offer clients first, then send two property shortlists.' })
 ok('valid report submitted', good.status === 200 && good.data.status === 'Submitted (Frozen)', good.data)
 for (const [who, c] of [['Owner', owner], ['Haseeb', mgr]] as const) {
   const n = (await c.get('/api/notifications')).data
@@ -37,7 +37,7 @@ for (const [who, c] of [['Owner', owner], ['Haseeb', mgr]] as const) {
 }
 const st = (await a.get('/api/daily/status')).data
 ok('status endpoint', st.submitted === true)
-const again = await a.post('/api/mobile/daily-report', { outcomes_narrative: 'Another try with enough characters to pass the minimum.', next_day_priorities: 'Plan with enough characters to pass the minimum check ok.' })
+const again = await a.post('/api/daily/report', { outcomes_narrative: 'Another try with enough characters to pass the minimum.', next_day_priorities: 'Plan with enough characters to pass the minimum check ok.' })
 ok('frozen report cannot be resubmitted', again.status >= 400)
 
 sec('Live roster')

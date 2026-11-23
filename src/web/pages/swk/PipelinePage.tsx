@@ -251,10 +251,10 @@ export default function PipelinePage() {
               key={tab.key}
               type="button"
               onClick={() => switchDept(tab.key)}
-              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#123025] text-white border-[#0a4a3b] shadow-lg' : 'bg-white text-ink border-[#ecebe4] hover:border-[#0a4a3b]'}`}
+              className={`text-left p-4 rounded-2xl border transition-all ${active ? 'bg-[#121212] text-white border-[#1e1e1e] shadow-lg' : 'bg-white text-ink border-[#f5f5f5] hover:border-[#1e1e1e]'}`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#0a4a3b] text-white' : 'bg-[#fdfdfc] text-muted'}`}>
+                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded ${active ? 'bg-[#1e1e1e] text-white' : 'bg-[#ffffff] text-muted'}`}>
                   {tab.badge}
                 </span>
                 <span className="font-mono font-extrabold text-lg">{tab.count} deals</span>
@@ -285,11 +285,11 @@ export default function PipelinePage() {
             <Link
               key={s.step}
               to={s.to}
-              className="p-2.5 rounded-xl border border-[#ecebe4] bg-[#fdfdfc] hover:bg-white hover:border-[#0a4a3b] transition flex flex-col justify-between"
+              className="p-2.5 rounded-xl border border-[#f5f5f5] bg-[#ffffff] hover:bg-white hover:border-[#1e1e1e] transition flex flex-col justify-between"
             >
               <div className="flex items-center justify-between text-xs font-extrabold text-ink">
                 <span>{s.step}</span>
-                {idx < 7 && <ArrowRight size={12} className="text-[#0a4a3b]" />}
+                {idx < 7 && <ArrowRight size={12} className="text-[#1e1e1e]" />}
               </div>
               <div className="text-[11px] text-muted mt-1">{s.desc}</div>
             </Link>
@@ -329,7 +329,7 @@ export default function PipelinePage() {
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOverCol(null) }}
                 onDrop={e => onDrop(e, s.key)}
                 className="snap-start flex-none flex flex-col rounded-[20px] transition-colors"
-                style={{ width: 288, minHeight: 420, background: overCol === s.key ? '#e9f4ef' : '#ecebe4', border: `1px ${overCol === s.key ? 'dashed' : 'solid'} ${overCol === s.key ? SWK.champ : '#e7e8e6'}` }}>
+                style={{ width: 288, minHeight: 420, background: overCol === s.key ? '#e8fff6' : '#f5f5f5', border: `1px ${overCol === s.key ? 'dashed' : 'solid'} ${overCol === s.key ? SWK.champ : '#e5e5e5'}` }}>
                 <header className="px-3.5 pt-3.5 pb-2.5">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
@@ -370,7 +370,7 @@ export default function PipelinePage() {
           >
             <div className="space-y-2.5">
               {(portalQ.data?.portals ?? []).map((p: any) => (
-                <div key={p.key} className="p-3 rounded-xl border border-[#ecebe4] bg-[#fdfdfc] flex items-center justify-between">
+                <div key={p.key} className="p-3 rounded-xl border border-[#f5f5f5] bg-[#ffffff] flex items-center justify-between">
                   <div>
                     <div className="font-bold text-sm text-ink">{p.name}</div>
                     <div className="text-xs text-muted">{p.account}</div>
@@ -423,8 +423,8 @@ export default function PipelinePage() {
                         </td>
                         <td className="num font-mono text-xs">{aed(item.commissionPreview?.grossCommissionAed)}</td>
                         <td className="num font-mono text-xs text-[#7E3039]">-{aed(item.commissionPreview?.thirdPartyAgentPayoutAed)} ({item.commissionPreview?.a2aPartnerSharePct}%)</td>
-                        <td className="num font-mono font-bold text-xs text-[#123025]">{aed(item.commissionPreview?.swkCompany50PctAed)}</td>
-                        <td className="num font-mono font-bold text-xs text-[#174B3B]">{aed(item.commissionPreview?.salesAdvisor50PctAed)}</td>
+                        <td className="num font-mono font-bold text-xs text-[#121212]">{aed(item.commissionPreview?.swkCompany50PctAed)}</td>
+                        <td className="num font-mono font-bold text-xs text-[#1e1e1e]">{aed(item.commissionPreview?.salesAdvisor50PctAed)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -464,7 +464,7 @@ function DealCard({ d, onOpen, onMove }: { d: Deal; onOpen: () => void; onMove: 
       <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', d.id); e.dataTransfer.effectAllowed = 'move'; setDragging(true) }} onDragEnd={() => setDragging(false)}
         role="button" tabIndex={0} aria-label={`${d.name}, ${aed(d.value)}. Press Enter for transfer checklist`} onClick={onOpen} onKeyDown={onKey}
         className="group relative rounded-2xl bg-white p-3 cursor-grab active:cursor-grabbing outline-none focus-visible:ring-2"
-        style={{ border: '1px solid #e7e8e6', boxShadow: '0 10px 24px -20px rgba(18,48,37,.5)' }}>
+        style={{ border: '1px solid #e5e5e5', boxShadow: '0 10px 24px -20px rgba(18,18,18,.5)' }}>
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap mb-1">
@@ -486,7 +486,7 @@ function DealCard({ d, onOpen, onMove }: { d: Deal; onOpen: () => void; onMove: 
           </div>
           <Avatar name={d.agent} size={28} />
         </div>
-        <div className="flex items-center justify-between mt-2.5 pt-2 text-[11px]" style={{ borderTop: '1px dashed #ecebe4', color: MUTED }}>
+        <div className="flex items-center justify-between mt-2.5 pt-2 text-[11px]" style={{ borderTop: '1px dashed #f5f5f5', color: MUTED }}>
           <span className="flex items-center gap-1"><Clock size={11} />{inStage}d in stage</span>
           {d.stage === 'Closed' ? <span className="flex items-center gap-1" style={{ color: SWK.oasis }}><CheckCircle2 size={11} />Closed</span> :
             due === null ? <span>{d.buyerFinance}</span> :
@@ -510,7 +510,7 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
       title={deal?.name ?? ''} subtitle={deal && <>{deptLabel(deal.type)} · {deal.client} · {deal.property}</>}>
       {deal && sp && (
         <div className="flex flex-col gap-5">
-          <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: 'linear-gradient(150deg,#123025,#123025)', color: '#ece6db' }}>
+          <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: 'linear-gradient(150deg,#121212,#121212)', color: '#ece6db' }}>
             <ProgressRing value={progress} size={86} color={SWK.champ} track="rgba(255,255,255,.12)" label={<span style={{ color: '#fff' }}>{Math.round(progress)}%</span>} />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-[.18em]" style={{ color: SWK.champ }}>{deptLabel(deal.type)}</div>
@@ -519,9 +519,9 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#ecebe4] bg-[#fdfdfc] p-3.5 text-xs space-y-1.5">
+          <div className="rounded-2xl border border-[#f5f5f5] bg-[#ffffff] p-3.5 text-xs space-y-1.5">
             <div className="font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
-              <ShieldCheck size={14} className="text-[#174B3B]" /> Legal Payment & 50–50% Commission Waterfall
+              <ShieldCheck size={14} className="text-[#1e1e1e]" /> Legal Payment & 50–50% Commission Waterfall
             </div>
             <div className="flex justify-between"><span>Buyer Finance Status:</span><strong>{deal.buyerFinance}</strong></div>
             <div className="flex justify-between"><span>Legal UAE Payment Channel:</span><strong>{deal.paymentMode}</strong></div>
@@ -532,11 +532,11 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
                 <strong>-{aed(sp.a2aAmount)}</strong>
               </div>
             )}
-            <div className="flex justify-between pt-1 border-t border-[#ecebe4] font-bold text-[#123025]">
+            <div className="flex justify-between pt-1 border-t border-[#f5f5f5] font-bold text-[#121212]">
               <span>SWK Company Share (50% of Net Pool):</span>
               <span>{aed(sp.company50)}</span>
             </div>
-            <div className="flex justify-between font-bold text-[#174B3B]">
+            <div className="flex justify-between font-bold text-[#1e1e1e]">
               <span>Sales Advisor Share (50% — Company Visa / Zero Basic):</span>
               <span>{aed(sp.advisor50)}</span>
             </div>
@@ -549,7 +549,7 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
 
           <div>
             <div className="text-[12px] font-semibold mb-2" style={{ color: MUTED }}>RERA forms timeline</div>
-            <ol className="relative flex flex-col gap-0 pl-5" style={{ borderLeft: '2px solid #e7e8e6', marginLeft: 6 }}>
+            <ol className="relative flex flex-col gap-0 pl-5" style={{ borderLeft: '2px solid #e5e5e5', marginLeft: 6 }}>
               {RERA_FORMS.map((f, i) => {
                 const reached = (formStage[f.code] ?? 9) <= cur
                 return (
@@ -569,7 +569,7 @@ function TransferDrawer({ deal, onClose, onMove }: { deal: Deal | null; onClose:
               {items.map(i => (
                 <li key={i.key}>
                   <button onClick={() => toggle(i.key)} aria-pressed={!!state[i.key]} className="w-full flex items-center gap-2.5 text-left rounded-xl px-3 py-2.5 transition-colors"
-                    style={{ background: state[i.key] ? '#e8f3f1' : '#fff', border: `1px solid ${state[i.key] ? '#bfe0db' : '#ecebe4'}` }}>
+                    style={{ background: state[i.key] ? '#e8f3f1' : '#fff', border: `1px solid ${state[i.key] ? '#bfe0db' : '#f5f5f5'}` }}>
                     <motion.span key={String(!!state[i.key])} initial={{ scale: 0.6 }} animate={{ scale: 1 }}>{state[i.key] ? <CheckCircle2 size={17} color={SWK.oasis} /> : <Circle size={17} color="#c9bfa9" />}</motion.span>
                     <span className="text-[13px] flex-1" style={{ color: INK, textDecoration: state[i.key] ? 'line-through' : undefined, textDecorationColor: '#9bb' }}>{i.label}</span>
                     {i.form && <Pill tone="champ">{i.form}</Pill>}

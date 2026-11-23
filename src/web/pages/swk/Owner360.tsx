@@ -270,13 +270,13 @@ export default function Owner360() {
                     onClick={() => setSelectedId(p.id)}
                     className="text-start p-4 rounded-2xl border transition-all cursor-pointer"
                     style={{
-                      background: active ? 'linear-gradient(145deg,#123025,#123025)' : '#fff',
-                      borderColor: active ? '#245f49' : 'var(--line)',
+                      background: active ? 'linear-gradient(145deg,#121212,#121212)' : '#fff',
+                      borderColor: active ? '#0e9f6e' : 'var(--line)',
                       color: active ? '#fff' : 'var(--ink)',
                     }}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] uppercase tracking-wider" style={{ color: active ? '#f2efe8' : 'var(--muted)' }}>{p.nationality} · {p.units.length} units</span>
+                      <span className="text-[11px] uppercase tracking-wider" style={{ color: active ? '#f7f7f7' : 'var(--muted)' }}>{p.nationality} · {p.units.length} units</span>
                       <Pill tone={active ? 'champ' : 'navy'}>{aed(val, { compact: true })}</Pill>
                     </div>
                     <div className="font-display text-[17px] font-semibold mt-1">{p.name}</div>
@@ -329,7 +329,7 @@ export default function Owner360() {
                             </td>
                             <td className="num font-semibold">{aed(u.value, { compact: true })}</td>
                             <td className="num">{u.status === 'Occupied' ? aed(u.annualRent) : <Pill tone="dune">Vacant</Pill>}</td>
-                            <td className="num font-semibold text-[#215844]">{pct(uy.net, 2)}</td>
+                            <td className="num font-semibold text-[#2b2b2b]">{pct(uy.net, 2)}</td>
                             <td>
                               {rera.maxIncreasePct > 0 ? (
                                 <Pill tone="champ">+{rera.maxIncreasePct}% ({aed(rera.maxRent)})</Pill>
@@ -361,7 +361,7 @@ export default function Owner360() {
                 ) : (
                   <div className="grid gap-2.5">
                     {owner.pendingMaintenance.map(m => (
-                      <div key={m.id} className="p-3.5 rounded-xl bg-white border border-[#e7e8e6]">
+                      <div key={m.id} className="p-3.5 rounded-xl bg-white border border-[#e5e5e5]">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-[13.5px] text-ink">{m.unit}</span>
                           <b className="text-ink">{aed(m.quoteAed)}</b>

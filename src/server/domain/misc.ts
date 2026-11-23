@@ -8,7 +8,7 @@ import { notify,notifyLeadership,notifyRole } from '../notify'
 import { checkEmployeeAndDocumentExpiries } from './compliance'
 import { MODULE_DEFS } from '../../shared/entities'
 import { ACTIONS } from '../../shared/types'
-import { isOwnerSwkUser } from '../../shared/swk-staff-access'
+import { isOwnerSwkUser,hardcodedAccountFor } from '../../shared/swk-staff-access'
 
 // ---------------------------------------------------------------- users & roles
 /** True when everything in `target` is already held by `actor`: nobody can hand out rights they do not have themselves. */
@@ -30,6 +30,8 @@ export const userHooks: Hooks = {
     else if (isNew) throw bad('Set an initial password for the new user')
     delete rec.password
     if (rec.party_id) { const role = q.get(`SELECT name FROM roles WHERE id = ?`, rec.role_id); if (role?.name !== 'Customer Portal') throw bad('Portal company can only be set for users with the "Customer Portal" role') }
+    // SWK staff roles are fixed in code (swk-staff-access.ts); a role change here would be ignored, so refuse it plainly.
+    if (!ctx.system && old && rec.role_id !== old.role_id && hardcodedAccountFor(old.email ?? rec.email)) throw bad('The role of this SWK staff account is fixed by company policy and cannot be changed here.')
     if (!ctx.system && ctx.user) {
       const oldRoleName = old ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, old.role_id) : null
       const newRoleName = rec.role_id ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, rec.role_id) : null

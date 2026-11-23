@@ -8,7 +8,7 @@ import { seedCompanyDocuments } from './company-documents'
 import { seedCompliance } from './compliance'
 import { syncStudioLibrary } from '../studio/library'
 import { hashPassword,verifyPassword } from '../auth'
-import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF_PERMISSIONS,swkPatternPassword,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
+import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
 import crypto from 'node:crypto'
 
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
@@ -316,7 +316,7 @@ export function applyPasswordReset() {
     return n
   }
   const mgr = set(['haseeb@swk.properties'], process.env.MANAGER_PASSWORD)
-  const staff = set(SWK_STAFF_ACCOUNTS.filter(a => a.roleName === 'Staff (Attendance & General)').map(a => a.email), process.env.BDM_PASSWORD)
+  const staff = set(SWK_STAFF_ACCOUNTS.filter(a => !a.fullAccess && a.roleName !== 'Manager').map(a => a.email), process.env.BDM_PASSWORD)
   q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?)`, key, JSON.stringify(true), nowIso())
   console.log(`Password reset ${id}: manager ${mgr}, staff ${staff} account(s). Each person must choose a new password at next sign-in.`)
 }
@@ -341,10 +341,11 @@ export function syncSwkStaffRoster() {
         continue
       }
     }
-    if (userId || acc.fullAccess || !staffRoleId) continue
+    const roleId = acc.roleName === 'HR' || acc.roleName === 'Office Admin' ? idOf('roles', 'name', acc.roleName) ?? staffRoleId : staffRoleId
+    if (userId || acc.fullAccess || !roleId) continue
     const pw = resolveStaffAccountPassword(acc)
     userId = createRecord(getDef('users'), {
-      name: acc.name, email: acc.displayEmail, password: pw, role_id: staffRoleId, branch_id: dxb,
+      name: acc.name, email: acc.displayEmail, password: pw, role_id: roleId, branch_id: dxb,
       department_id: dept(acc.departmentCode), designation: acc.designation, active: true, must_change_password: true,
     }, SYSTEM_CTX).id
     const empId = q.val<number>(`SELECT id FROM employees WHERE (emp_no = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`, acc.empNo, acc.email.toLowerCase())
@@ -411,6 +412,17 @@ export function ensureHardcodedSwkStaffAccounts() {
 
   const managerRoleId = idOf('roles', 'name', 'Manager') ?? adminRoleId
 
+  // HR (Rahaba Azeez) and Office Admin (Meenakshi) get their own roles; permissions are kept in sync on every start.
+  const upsertRole = (name: string, description: string, permissions: Record<string, string[]>) => {
+    const id = idOf('roles', 'name', name)
+    if (!id) return mk('roles', { name, description, is_system: true, permissions }).id as number
+    q.run(`UPDATE roles SET description = ?, permissions = ?, is_system = 1, updated_at = ? WHERE id = ?`, description, JSON.stringify(permissions), nowIso(), id)
+    return id
+  }
+  const hrRoleId = upsertRole('HR', 'HR (Rahaba Azeez) – Employees, leave, attendance, payroll and HR documents with approvals', HR_ROLE_PERMISSIONS)
+  const officeAdminRoleId = upsertRole('Office Admin', 'Office Admin (Meenakshi) – Reception, documents, calendar, support tickets and walk-in enquiries', OFFICE_ADMIN_PERMISSIONS)
+  const officeRoleDone = Boolean(q.val(`SELECT 1 FROM settings WHERE key = 'seed:swk_hr_office_admin_roles_v1'`))
+
   // Convert legacy Shabib@swk.property Admin account into admin@swk.properties (if admin@swk.properties does not exist yet)
   const legacyShabibAdminId = q.val<number>(`SELECT id FROM users WHERE lower(email) = 'shabib@swk.property' AND deleted_at IS NULL LIMIT 1`)
   const existingAdminPropsId = q.val<number>(`SELECT id FROM users WHERE lower(email) = 'admin@swk.properties' AND deleted_at IS NULL LIMIT 1`)
@@ -452,7 +464,11 @@ export function ensureHardcodedSwkStaffAccounts() {
           ? adminRoleId
           : acc.roleName === 'Manager'
             ? managerRoleId
-            : staffRoleId
+            : acc.roleName === 'HR'
+              ? hrRoleId
+              : acc.roleName === 'Office Admin'
+                ? officeAdminRoleId
+                : staffRoleId
 
     const initialRoleSeedDone = Boolean(q.val(`SELECT 1 FROM settings WHERE key = 'seed:swk_staff_roles_v3'`))
     let userId = q.val<number>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1`, acc.email.toLowerCase())
@@ -505,8 +521,14 @@ export function ensureHardcodedSwkStaffAccounts() {
       )
     }
 
+    // One-time move of HR / Office Admin accounts off the restricted staff role (they keep their password).
+    if (!officeRoleDone && (acc.roleName === 'HR' || acc.roleName === 'Office Admin')) {
+      q.run(`UPDATE users SET role_id = ?, department_id = ?, designation = ?, updated_at = ? WHERE id = ?`, targetRoleId, dept(acc.departmentCode), acc.designation, nowIso(), userId)
+      for (const alias of acc.aliases) q.run(`UPDATE users SET role_id = ? WHERE lower(email) = ? AND deleted_at IS NULL`, targetRoleId, alias.toLowerCase())
+    }
+
     // If this staff account is restricted (e.g., Talha), also restrict any legacy alias account (talha@swkpropertiesuae.com) on initial seed
-    if (!acc.fullAccess) {
+    if (!acc.fullAccess && acc.roleName === 'Staff (Attendance & General)') {
       for (const alias of acc.aliases) {
         if (!initialRoleSeedDone) {
           q.run(
@@ -549,7 +571,7 @@ export function ensureHardcodedSwkStaffAccounts() {
         contract_type: 'Unlimited',
         phone: acc.phone,
         email: acc.displayEmail,
-        compensation_model: acc.fullAccess ? 'Salaried Management / Operations' : 'Commission Only (50/50 Company Visa – 0 Basic)',
+        compensation_model: acc.fullAccess || acc.roleName === 'HR' || acc.roleName === 'Office Admin' ? 'Salaried Management / Operations' : 'Commission Only (50/50 Company Visa – 0 Basic)',
         company_visa_sponsored: true,
         commission_split_company_pct: 50,
         commission_split_agent_pct: 50,
@@ -580,6 +602,7 @@ export function ensureHardcodedSwkStaffAccounts() {
       shabibEmpId,
     )
   }
+  q.run(`INSERT INTO settings(key, value, updated_at) VALUES ('seed:swk_hr_office_admin_roles_v1', '1', ?) ON CONFLICT(key) DO UPDATE SET value = '1', updated_at = excluded.updated_at`, nowIso())
   q.run(
     `INSERT INTO settings(key, value, updated_at) VALUES ('seed:swk_staff_roles_v3', '1', ?) ON CONFLICT(key) DO UPDATE SET value = '1', updated_at = excluded.updated_at`,
     nowIso(),

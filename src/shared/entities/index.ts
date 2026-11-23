@@ -19,6 +19,7 @@ import { growth,growth2 } from './growth'
 import { jobs } from './jobs'
 import { job_charges } from './job_charges'
 import { job_events } from './job_events'
+import { website } from './website'
 
 export { MODULE_DEFS } from './platform'
 export * from './ops'
@@ -45,6 +46,7 @@ export const ENTITY_LIST: EntityDef[] = [
   ...work,
   ...enterprise,
   ...studio,
+  ...website,
 ]
 
 export const ENTITIES: Record<string, EntityDef> = Object.fromEntries(ENTITY_LIST.map(e => [e.key, e]))
