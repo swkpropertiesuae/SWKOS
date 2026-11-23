@@ -43,6 +43,8 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
     private var currentNetworkType = "Online"
 
     private var pendingFixCall: CAPPluginCall?
+    private var pendingDutyStart: (call: CAPPluginCall, sid: Int, serverUrl: String, token: String, devId: String)?
+    private var isFlushing = false
     private var dutyActive = false
     private var dutySessionId = -1
     private var dutyServerUrl = ""
@@ -321,6 +323,34 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         }
     }
 
+    private func activateDutyTracking(
+        sid: Int,
+        serverUrl: String,
+        token: String,
+        devId: String,
+        status: CLAuthorizationStatus
+    ) {
+        dutySessionId = sid
+        dutyServerUrl = serverUrl
+        dutyToken = token
+        dutyDeviceId = devId
+        dutyActive = true
+        locationManager.distanceFilter = 15
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.allowsBackgroundLocationUpdates = (status == .authorizedAlways || status == .authorizedWhenInUse)
+        locationManager.startUpdatingLocation()
+    }
+
+    private func stopDutyInternal() {
+        dutyActive = false
+        dutySessionId = -1
+        dutyToken = ""
+        isFlushing = false
+        pendingPoints.removeAll()
+        locationManager.allowsBackgroundLocationUpdates = false
+        locationManager.stopUpdatingLocation()
+    }
+
     @objc func startDuty(_ call: CAPPluginCall) {
         let sid = call.getInt("sessionId") ?? -1
         let serverUrl = (call.getString("serverUrl") ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
@@ -343,47 +373,63 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         DispatchQueue.main.async {
             let status = self.locationManager.authorizationStatus
             if status == .notDetermined {
+                if let prev = self.pendingDutyStart {
+                    prev.call.resolve(["started": false, "reason": "cancelled"])
+                }
+                self.pendingDutyStart = (call, sid, serverUrl, token, devId)
                 self.locationManager.requestAlwaysAuthorization()
-                call.resolve(["started": false, "reason": "location_permission_required"])
                 return
             }
             guard status == .authorizedWhenInUse || status == .authorizedAlways else {
                 call.resolve(["started": false, "reason": "location_permission_required"])
                 return
             }
-            self.dutySessionId = sid
-            self.dutyServerUrl = serverUrl
-            self.dutyToken = token
-            self.dutyDeviceId = devId
-            self.dutyActive = true
-            self.locationManager.distanceFilter = 15
-            self.locationManager.pausesLocationUpdatesAutomatically = false
-            self.locationManager.allowsBackgroundLocationUpdates = (status == .authorizedAlways)
-            self.locationManager.startUpdatingLocation()
+            if status == .authorizedWhenInUse {
+                // Request upgrade from WhenInUse (e.g. from prior getFix) to Always for locked-screen duty.
+                self.locationManager.requestAlwaysAuthorization()
+            }
+            self.activateDutyTracking(sid: sid, serverUrl: serverUrl, token: token, devId: devId, status: status)
             call.resolve(["started": true])
         }
     }
 
     @objc func stopDuty(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            self.dutyActive = false
-            self.dutySessionId = -1
-            self.dutyToken = ""
-            self.pendingPoints.removeAll()
-            self.locationManager.allowsBackgroundLocationUpdates = false
-            self.locationManager.stopUpdatingLocation()
+            self.stopDutyInternal()
             call.resolve()
         }
     }
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        guard let pending = pendingFixCall else { return }
         let st = manager.authorizationStatus
-        if st == .authorizedWhenInUse || st == .authorizedAlways {
-            manager.requestLocation()
-        } else if st != .notDetermined {
-            pendingFixCall = nil
-            pending.reject("location_permission_required")
+        if let pending = pendingFixCall {
+            if st == .authorizedWhenInUse || st == .authorizedAlways {
+                manager.requestLocation()
+            } else if st != .notDetermined {
+                pendingFixCall = nil
+                pending.reject("location_permission_required")
+            }
+        }
+        if let queuedDuty = pendingDutyStart, st != .notDetermined {
+            pendingDutyStart = nil
+            if st == .authorizedAlways || st == .authorizedWhenInUse {
+                if st == .authorizedWhenInUse {
+                    manager.requestAlwaysAuthorization()
+                }
+                activateDutyTracking(
+                    sid: queuedDuty.sid,
+                    serverUrl: queuedDuty.serverUrl,
+                    token: queuedDuty.token,
+                    devId: queuedDuty.devId,
+                    status: st
+                )
+                queuedDuty.call.resolve(["started": true])
+            } else {
+                queuedDuty.call.resolve(["started": false, "reason": "location_permission_required"])
+            }
+        }
+        if dutyActive && (st == .authorizedAlways || st == .authorizedWhenInUse) {
+            manager.allowsBackgroundLocationUpdates = true
         }
     }
 
@@ -407,6 +453,8 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         }
 
         if dutyActive && dutySessionId > 0 && !dutyToken.isEmpty {
+            // Skip coarse GPS fixes > 150m client-side so server validation does not reject or stall batches.
+            guard loc.horizontalAccuracy <= 150.0 else { return }
             pointSeq += 1
             let level = UIDevice.current.batteryLevel
             let batteryPct = level >= 0 ? Int((level * 100.0).rounded()) : nil
@@ -423,8 +471,8 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
             if let b = batteryPct { pt["battery_pct"] = b }
 
             pendingPoints.append(pt)
-            if pendingPoints.count > 200 {
-                pendingPoints.removeFirst(pendingPoints.count - 200)
+            if pendingPoints.count > 500 {
+                pendingPoints.removeFirst(pendingPoints.count - 500)
             }
             flushDutyPoints()
         }
@@ -438,15 +486,35 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
     }
 
     private func flushDutyPoints() {
-        guard dutyActive, !pendingPoints.isEmpty, isAllowedServer(dutyServerUrl), !dutyToken.isEmpty else { return }
-        let batch = Array(pendingPoints.prefix(50))
+        guard !isFlushing, dutyActive, !pendingPoints.isEmpty, isAllowedServer(dutyServerUrl), !dutyToken.isEmpty else {
+            return
+        }
         guard let url = URL(string: dutyServerUrl + "/api/field-gps/pings") else { return }
+
+        let nowMs = Date().timeIntervalSince1970
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        var anyReplay = false
+        let rawSlice = Array(pendingPoints.prefix(50))
+        let batchKeys = Set(rawSlice.compactMap { $0["idempotency_key"] as? String })
+        let preparedBatch: [[String: Any]] = rawSlice.map { pt in
+            var copy = pt
+            if let recStr = pt["recorded_at"] as? String,
+               let recDate = iso.date(from: recStr),
+               (nowMs - recDate.timeIntervalSince1970) > 240.0 {
+                copy["offline_replay"] = true
+                anyReplay = true
+            }
+            return copy
+        }
 
         var payload: [String: Any] = [
             "field_session_id": dutySessionId,
             "network_type": currentNetworkType,
-            "points": batch,
+            "points": preparedBatch,
         ]
+        if anyReplay { payload["offline_replay"] = true }
         if !dutyDeviceId.isEmpty { payload["device_id"] = dutyDeviceId }
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
@@ -458,15 +526,37 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         req.setValue(dutyToken, forHTTPHeaderField: "x-swk-session")
         req.httpBody = body
 
-        URLSession.shared.dataTask(with: req) { [weak self] _, response, _ in
-            guard let self = self, let http = response as? HTTPURLResponse else { return }
+        isFlushing = true
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.isFlushing = false
+                guard let http = response as? HTTPURLResponse else { return }
+
                 if (200..<300).contains(http.statusCode) {
-                    let rm = min(batch.count, self.pendingPoints.count)
-                    if rm > 0 { self.pendingPoints.removeFirst(rm) }
-                } else if http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 404 {
-                    self.dutyActive = false
-                    self.locationManager.stopUpdatingLocation()
+                    self.pendingPoints.removeAll { pt in
+                        guard let k = pt["idempotency_key"] as? String else { return false }
+                        return batchKeys.contains(k)
+                    }
+                    if !self.pendingPoints.isEmpty && self.dutyActive {
+                        self.flushDutyPoints()
+                    }
+                } else if http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 404 || http.statusCode == 422 {
+                    self.stopDutyInternal()
+                } else if http.statusCode == 400 {
+                    let errMsg = data.flatMap { String(data: $0, encoding: .utf8) }?.lowercased() ?? ""
+                    if errMsg.contains("no active field duty") || errMsg.contains("ended") || errMsg.contains("expired") {
+                        self.stopDutyInternal()
+                    } else {
+                        // Drop non-retryable payload errors (e.g. coarse accuracy or timestamp skew) so new fixes flush.
+                        self.pendingPoints.removeAll { pt in
+                            guard let k = pt["idempotency_key"] as? String else { return false }
+                            return batchKeys.contains(k)
+                        }
+                        if !self.pendingPoints.isEmpty && self.dutyActive {
+                            self.flushDutyPoints()
+                        }
+                    }
                 }
             }
         }.resume()

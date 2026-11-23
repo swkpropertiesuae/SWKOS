@@ -2,7 +2,7 @@ import { useEffect,useMemo,useState,type ReactNode } from 'react'
 import { Link,NavLink,Outlet,useLocation,useNavigate } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence,motion } from 'motion/react'
-import { Bell,Search,Plus,Check,ChevronDown,ChevronRight,LogOut,UserRound,LifeBuoy,LayoutGrid,Languages,ArrowLeft,PanelLeftClose,PanelLeftOpen,QrCode,Sparkles,Camera,Menu,MessagesSquare,Wrench,PhoneCall,MapPinned,Navigation,Lock,X } from 'lucide-react'
+import { Bell,Search,Plus,Check,ChevronDown,ChevronRight,LogOut,UserRound,LifeBuoy,LayoutGrid,Languages,ArrowLeft,PanelLeftClose,PanelLeftOpen,QrCode,Sparkles,Camera,Menu,MessagesSquare,Wrench,PhoneCall,MapPinned,Navigation,Lock,ShieldCheck,X } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get,post } from '../lib/api'
 import { cls,fmtIsoStamp } from '../lib/format'
@@ -14,7 +14,7 @@ import { ChatNotifier } from './ChatNotifier'
 import { SipSoftphoneDock } from './SipSoftphoneDock'
 import { BiometricLockOverlay } from './BiometricLockOverlay'
 import { StaffPhoto } from './ui/staff-photo'
-import { clearMobileSession,lockScreenNow,registerNativePush,stopNativeFieldDuty,unregisterNativePush } from '../lib/mobileBridge'
+import { clearMobileSession,lockScreenNow,openManageLockPin,registerNativePush,stopNativeFieldDuty,unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient,useSipClient } from '../lib/sipClient'
 import { APP_META,QUICK_CREATE,findNav,isNavItemVisible,launcherApps,rememberVisit } from '../swk/nav'
 import { canAccessSwkAdminLogic,canAccessFieldLiveMap,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
@@ -163,11 +163,16 @@ export function Shell() {
     const onSipWake = () => {
       void sipClient.init(true)
     }
+    const onSipCallEnded = () => {
+      void sipClient.hangup()
+    }
     window.addEventListener('swk:navigate', onNavigate)
     window.addEventListener('swk:sip-wake', onSipWake)
+    window.addEventListener('swk:sip-call-ended', onSipCallEnded)
     return () => {
       window.removeEventListener('swk:navigate', onNavigate)
       window.removeEventListener('swk:sip-wake', onSipWake)
+      window.removeEventListener('swk:sip-call-ended', onSipCallEnded)
       disposePush?.()
     }
   }, [isStaff, nav, me?.id])
@@ -217,7 +222,10 @@ export function Shell() {
                   <Link to="/reception-qr" onClick={() => setUserMenu(false)}><span className="ic"><Camera size={16} /></span>Scan &amp; Check-In Attendance</Link>
                 ) : null}
                 {isStaff && (
-                  <button className="item" onClick={() => { setUserMenu(false); lockScreenNow('manual') }}><span className="ic"><Lock size={16} /></span>Lock screen</button>
+                  <>
+                    <button className="item" onClick={() => { setUserMenu(false); lockScreenNow('manual') }}><span className="ic"><Lock size={16} /></span>Lock screen</button>
+                    <button className="item" onClick={() => { setUserMenu(false); openManageLockPin() }}><span className="ic"><ShieldCheck size={16} /></span>Local lock PIN</button>
+                  </>
                 )}
                 <Link to="/profile" onClick={() => setUserMenu(false)}><span className="ic"><UserRound size={16} /></span>My profile & password</Link>
                 <Link to="/workspace-tools" onClick={() => setUserMenu(false)}><span className="ic"><Languages size={16} /></span>Language & preferences</Link>

@@ -25,7 +25,6 @@ public class SwkCallForegroundService extends Service {
     public static final int NOTIFICATION_ID = 4402;
     public static final String ACTION_START_CALL = "ae.swkproperties.os.ACTION_START_CALL";
     public static final String ACTION_STOP_CALL = "ae.swkproperties.os.ACTION_STOP_CALL";
-    public static final String ACTION_DISMISS_INCOMING = "ae.swkproperties.os.ACTION_DISMISS_INCOMING";
     public static final String EXTRA_LABEL = "callLabel";
 
     public static void ensureChannel(Context context) {
@@ -47,12 +46,7 @@ public class SwkCallForegroundService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent == null || ACTION_DISMISS_INCOMING.equals(intent.getAction())) {
-            SwkIncomingCallService.dismissIncomingCallWake(this);
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-        if (ACTION_STOP_CALL.equals(intent.getAction())) {
+        if (intent == null || ACTION_STOP_CALL.equals(intent.getAction())) {
             stopForeground(STOP_FOREGROUND_REMOVE);
             stopSelf();
             return START_NOT_STICKY;
@@ -101,6 +95,12 @@ public class SwkCallForegroundService extends Service {
             stopSelf();
         }
         return START_NOT_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        super.onDestroy();
     }
 
     @Nullable

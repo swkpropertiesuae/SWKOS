@@ -78,9 +78,10 @@ public class SwkIncomingCallService extends ConnectionService {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        Intent declineIntent = new Intent(context, SwkCallForegroundService.class)
-            .setAction(SwkCallForegroundService.ACTION_DISMISS_INCOMING);
-        PendingIntent declinePi = PendingIntent.getService(
+        Intent declineIntent = new Intent(context, SwkCallActionReceiver.class)
+            .setAction(SwkCallActionReceiver.ACTION_DECLINE_INCOMING_CALL)
+            .putExtra(SwkCallActionReceiver.EXTRA_CALL_ID, callId == null ? "" : callId);
+        PendingIntent declinePi = PendingIntent.getBroadcast(
             context,
             4404,
             declineIntent,

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { deriveDeviceIdFromJwk, getDevicePublicKeyJwk, signProof, type EcP256Jwk } from './deviceKey'
+import { deriveDeviceIdFromJwk, getDevicePublicKeyJwk, sha256Hex, signProof, type EcP256Jwk } from './deviceKey'
 
 export const LOCK_BACKGROUND_MS = 45_000
 export const LOCK_IDLE_MS = 10 * 60 * 1000
@@ -321,14 +321,36 @@ export function hasLocalUnlockPin(): boolean {
 
 async function hashPin(pin: string): Promise<string> {
   const clean = pin.trim()
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`swk-pin-v1:${clean}`))
-  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
+  return sha256Hex(`swk-pin-v1:${clean}`)
 }
 
-export async function setLocalUnlockPin(pin: string): Promise<void> {
+export async function verifyLocalUnlockPin(pin: string): Promise<boolean> {
+  const clean = pin.trim()
+  if (!/^\d{4,6}$/.test(clean)) return false
+  const expected = localStorage.getItem(LOCK_PIN_KEY) || (isNativeMobile() ? await secureGet('lock_pin_hash') : null)
+  if (!expected) return false
+  const actual = await hashPin(clean)
+  return actual === expected
+}
+
+/**
+ * Configures or updates the local 4–6 digit device PIN.
+ * Security invariant: NEVER permits setting or overwriting a PIN while the screen is locked.
+ * Changing an existing PIN requires verifying the current PIN first.
+ */
+export async function setLocalUnlockPin(pin: string, opts?: { currentPin?: string }): Promise<void> {
+  if (lockSnapshot.locked) {
+    throw new Error('Unlock the screen before configuring or changing your local PIN.')
+  }
   const clean = pin.trim()
   if (!/^\d{4,6}$/.test(clean)) {
     throw new Error('PIN must be 4 to 6 digits.')
+  }
+  if (hasLocalUnlockPin()) {
+    const ok = await verifyLocalUnlockPin(opts?.currentPin || '')
+    if (!ok) {
+      throw new Error('Current PIN is incorrect.')
+    }
   }
   const hashed = await hashPin(clean)
   try {
@@ -339,7 +361,7 @@ export async function setLocalUnlockPin(pin: string): Promise<void> {
   if (isNativeMobile()) {
     await secureSet('lock_pin_hash', hashed)
   }
-  setLockState({ hasPin: true, lastError: null })
+  setLockState({ hasPin: true, armed: isLockAutoArmed(), lastError: null })
 }
 
 export async function clearLocalUnlockPin(): Promise<void> {
@@ -351,7 +373,12 @@ export async function clearLocalUnlockPin(): Promise<void> {
   if (isNativeMobile()) {
     await secureRemove('lock_pin_hash')
   }
-  setLockState({ hasPin: false })
+  setLockState({ hasPin: false, armed: isLockAutoArmed() })
+}
+
+export function openManageLockPin(): void {
+  if (typeof window === 'undefined' || lockSnapshot.locked) return
+  window.dispatchEvent(new CustomEvent('swk:manage-pin'))
 }
 
 export async function unlockWithLocalPin(pin: string): Promise<boolean> {
@@ -365,8 +392,7 @@ export async function unlockWithLocalPin(pin: string): Promise<boolean> {
     setLockState({ lastError: 'No local PIN is configured on this device.' })
     return false
   }
-  const actual = await hashPin(clean)
-  if (actual === expected) {
+  if (await verifyLocalUnlockPin(clean)) {
     markScreenUnlocked()
     return true
   }
@@ -669,7 +695,7 @@ function dispatchSafeNavigate(rawUrl: unknown) {
 }
 
 let pushInitialized = false
-let registeredNativeToken: string | null = null
+const registeredNativeTokens = new Set<string>()
 let pushListeners: Array<{ remove?: () => Promise<void> | void }> = []
 
 function mobileFetchHeaders(): Record<string, string> {
@@ -681,10 +707,31 @@ function mobileFetchHeaders(): Record<string, string> {
   }
 }
 
+async function subscribeNativePushToken(channel: 'fcm' | 'apns', rawToken: unknown): Promise<void> {
+  const value = String(rawToken || '').trim()
+  if (!value) return
+  registeredNativeTokens.add(value)
+  try {
+    await fetch(resolveApiUrl('/api/push/subscribe'), {
+      method: 'POST',
+      credentials: getApiBaseUrl() ? 'omit' : 'same-origin',
+      headers: mobileFetchHeaders(),
+      body: JSON.stringify({
+        channel,
+        token: value,
+        device_id: getMobileDeviceId() || undefined,
+      }),
+    })
+  } catch {
+    /* retry next mount */
+  }
+}
+
 export async function registerNativePush(): Promise<() => void> {
   if (typeof window === 'undefined' || !isNativeMobile()) return () => {}
   const push = plugin('PushNotifications')
   const swk = plugin('SwkSecure')
+  const callBridge = plugin('SwkCallPushBridge')
   const appPlugin = plugin('App')
   const platform = getNativePlatform()
 
@@ -706,23 +753,7 @@ export async function registerNativePush(): Promise<() => void> {
     if (push && typeof push.addListener === 'function') {
       try {
         const regH = await push.addListener('registration', async (tok: { value?: string }) => {
-          const value = String(tok?.value || '').trim()
-          if (!value) return
-          registeredNativeToken = value
-          try {
-            await fetch(resolveApiUrl('/api/push/subscribe'), {
-              method: 'POST',
-              credentials: getApiBaseUrl() ? 'omit' : 'same-origin',
-              headers: mobileFetchHeaders(),
-              body: JSON.stringify({
-                channel: platform === 'ios' ? 'apns' : 'fcm',
-                token: value,
-                device_id: getMobileDeviceId() || undefined,
-              }),
-            })
-          } catch {
-            /* retry next mount */
-          }
+          await subscribeNativePushToken(platform === 'ios' ? 'apns' : 'fcm', tok?.value)
         })
         const actH = await push.addListener('pushNotificationActionPerformed', (ev: any) => {
           const data = ev?.notification?.data || {}
@@ -749,7 +780,28 @@ export async function registerNativePush(): Promise<() => void> {
         const navH = await swk.addListener('swkNavigate', (data: any) => {
           if (data?.route) dispatchSafeNavigate(data.route)
         })
-        pushListeners.push(callH, navH)
+        const endH = await swk.addListener('swkCallEnded', (data: any) => {
+          window.dispatchEvent(new CustomEvent('swk:sip-call-ended', { detail: data }))
+        })
+        pushListeners.push(callH, navH, endH)
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (platform === 'ios' && callBridge && typeof callBridge.addListener === 'function') {
+      try {
+        const voipTokH = await callBridge.addListener('voipToken', async (tok: { token?: string }) => {
+          await subscribeNativePushToken('apns', tok?.token)
+        })
+        const iosCallH = await callBridge.addListener('swkIncomingCall', (data: any) => {
+          window.dispatchEvent(new CustomEvent('swk:sip-wake', { detail: data }))
+          dispatchSafeNavigate('/phone?incoming=1')
+        })
+        const iosEndH = await callBridge.addListener('swkCallEnded', (data: any) => {
+          window.dispatchEvent(new CustomEvent('swk:sip-call-ended', { detail: data }))
+        })
+        pushListeners.push(voipTokH, iosCallH, iosEndH)
       } catch {
         /* ignore */
       }
@@ -783,6 +835,17 @@ export async function registerNativePush(): Promise<() => void> {
     }
   }
 
+  if (platform === 'ios' && callBridge && typeof callBridge.registerVoip === 'function') {
+    try {
+      const voipRes = await callBridge.registerVoip()
+      if (voipRes?.token) {
+        await subscribeNativePushToken('apns', voipRes.token)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   return () => {
     pushInitialized = false
     const handles = pushListeners
@@ -794,19 +857,19 @@ export async function registerNativePush(): Promise<() => void> {
 }
 
 export async function unregisterNativePush(): Promise<void> {
-  if (!isNativeMobile() || !registeredNativeToken) return
-  const tok = registeredNativeToken
-  registeredNativeToken = null
-  try {
-    await fetch(resolveApiUrl('/api/push/unsubscribe'), {
-      method: 'DELETE',
-      credentials: getApiBaseUrl() ? 'omit' : 'same-origin',
-      headers: mobileFetchHeaders(),
-      body: JSON.stringify({ token: tok }),
-    })
-  } catch {
-    /* ignore */
-  }
+  if (!isNativeMobile() || registeredNativeTokens.size === 0) return
+  const tokens = [...registeredNativeTokens]
+  registeredNativeTokens.clear()
+  await Promise.allSettled(
+    tokens.map(tok =>
+      fetch(resolveApiUrl('/api/push/unsubscribe'), {
+        method: 'DELETE',
+        credentials: getApiBaseUrl() ? 'omit' : 'same-origin',
+        headers: mobileFetchHeaders(),
+        body: JSON.stringify({ token: tok }),
+      }),
+    ),
+  )
 }
 
 export async function triggerIncomingCallWake(args: {

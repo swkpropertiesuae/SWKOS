@@ -27,6 +27,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationTokenSource;
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
@@ -55,8 +56,33 @@ public class SwkSecurePlugin extends Plugin {
     private static final String DEVICE_EC_ALIAS = "swk_device_ec_p256_v1";
 
     private static volatile String pendingLaunchRoute = null;
+    private static volatile WeakReference<SwkSecurePlugin> activePluginRef = new WeakReference<>(null);
 
     private SharedPreferences prefs;
+
+    @Override
+    public void load() {
+        activePluginRef = new WeakReference<>(this);
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        SwkSecurePlugin current = activePluginRef.get();
+        if (current == this) {
+            activePluginRef = new WeakReference<>(null);
+        }
+        super.handleOnDestroy();
+    }
+
+    static void emitIncomingCallDeclined(String callId) {
+        SwkSecurePlugin plugin = activePluginRef.get();
+        if (plugin != null) {
+            JSObject payload = new JSObject();
+            payload.put("callId", callId == null ? "" : callId);
+            payload.put("ended", true);
+            plugin.emitBridgeEvent("swkCallEnded", payload);
+        }
+    }
 
     static void setPendingLaunchRoute(String route) {
         pendingLaunchRoute = route;
@@ -365,9 +391,7 @@ public class SwkSecurePlugin extends Plugin {
 
     @PluginMethod
     public void stopDuty(PluginCall call) {
-        getContext().startService(
-            new Intent(getContext(), SwkFieldLocationService.class).setAction(SwkFieldLocationService.ACTION_STOP_DUTY)
-        );
+        getContext().stopService(new Intent(getContext(), SwkFieldLocationService.class));
         call.resolve();
     }
 
@@ -461,9 +485,7 @@ public class SwkSecurePlugin extends Plugin {
 
     @PluginMethod
     public void stopCallAudioService(PluginCall call) {
-        getContext().startService(
-            new Intent(getContext(), SwkCallForegroundService.class).setAction(SwkCallForegroundService.ACTION_STOP_CALL)
-        );
+        getContext().stopService(new Intent(getContext(), SwkCallForegroundService.class));
         call.resolve();
     }
 }

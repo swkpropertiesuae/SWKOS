@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import androidx.annotation.Nullable;
@@ -45,17 +46,17 @@ import org.json.JSONObject;
  *
  * - Runs strictly between an explicit "Start Field Duty" action and "End Field Duty" (or server stop/expiry).
  * - Requests zero ACCESS_BACKGROUND_LOCATION permission.
- * - Batches points with idempotency keys & offline_replay markers to POST /api/field-gps/pings
- *   authenticated with x-swk-client: mobile and x-swk-session headers.
+ * - Filters coarse fixes (> 150m), quarantines non-retryable 400 validation errors so valid fixes
+ *   continue flushing, and waits for /api/field-gps/sessions/stop before tearing down foreground state.
  */
 public class SwkFieldLocationService extends Service {
     public static final String CHANNEL_ID = "swk_field_duty";
     public static final int NOTIFICATION_ID = 4401;
 
     public static final String ACTION_START_DUTY = "ae.swkproperties.os.ACTION_START_DUTY";
-    /** Stop sharing locally (web UI has already ended or will end the session). */
+    /** Stop sharing locally (web UI already ended or will end the session). */
     public static final String ACTION_STOP_DUTY = "ae.swkproperties.os.ACTION_STOP_DUTY";
-    /** Notification action button: stop sharing and notify POST /api/field-gps/sessions/stop. */
+    /** Notification action button: flush buffered points, POST /api/field-gps/sessions/stop, then tear down. */
     public static final String ACTION_END_DUTY = "ae.swkproperties.os.ACTION_END_DUTY";
     public static final String ACTION_DUTY_ENDED = "ae.swkproperties.os.ACTION_DUTY_ENDED";
 
@@ -69,6 +70,7 @@ public class SwkFieldLocationService extends Service {
     private static final long FASTEST_INTERVAL_MS = 10_000L;
     private static final long MAX_BATCH_DELAY_MS = 45_000L;
     private static final long REPLAY_AGE_MS = 4 * 60_000L;
+    private static final float MAX_CLIENT_ACCURACY_M = 150.0f;
     private static final int MAX_BUFFERED_POINTS = 500;
     private static final int BATCH_LIMIT = 50;
 
@@ -85,11 +87,13 @@ public class SwkFieldLocationService extends Service {
     private static volatile boolean dutyActive = false;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final List<BufferedPoint> pending = new ArrayList<>();
     private final AtomicLong seq = new AtomicLong(0);
 
     private FusedLocationProviderClient fused;
     private LocationCallback callback;
+    private volatile boolean stopping = false;
     private int sessionId = -1;
     private String assignedLocation = "Dubai Field Duty";
     private String serverUrl = "";
@@ -130,10 +134,23 @@ public class SwkFieldLocationService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_END_DUTY.equals(action)) {
+            if (!dutyActive && hasFineLocation()) {
+                // Ensure foreground contract holds if Android invokes via getForegroundService()
+                try {
+                    Notification notification = buildNotification();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification);
+                    }
+                } catch (RuntimeException ignored) {
+                }
+            }
             finishDuty(true);
             return START_NOT_STICKY;
         }
 
+        stopping = false;
         sessionId = intent.getIntExtra(EXTRA_SESSION_ID, -1);
         String loc = intent.getStringExtra(EXTRA_LOCATION);
         assignedLocation = (loc == null || loc.trim().isEmpty()) ? "Dubai Field Duty" : loc.trim();
@@ -174,8 +191,12 @@ public class SwkFieldLocationService extends Service {
         callback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult result) {
+                if (stopping) return;
+                boolean added = false;
                 for (Location l : result.getLocations()) {
-                    if (l == null) continue;
+                    if (l == null || !Double.isFinite(l.getLatitude()) || !Double.isFinite(l.getLongitude())) continue;
+                    // Drop overly coarse points client-side (> 150m) so they never get rejected or stall the queue.
+                    if (!l.hasAccuracy() || l.getAccuracy() < 0f || l.getAccuracy() > MAX_CLIENT_ACCURACY_M) continue;
                     BufferedPoint bp = toPoint(l);
                     synchronized (pending) {
                         pending.add(bp);
@@ -183,8 +204,11 @@ public class SwkFieldLocationService extends Service {
                             pending.remove(0);
                         }
                     }
+                    added = true;
                 }
-                io.execute(SwkFieldLocationService.this::flush);
+                if (added && !io.isShutdown()) {
+                    io.execute(SwkFieldLocationService.this::flush);
+                }
             }
         };
         LocationRequest request = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
@@ -268,8 +292,22 @@ public class SwkFieldLocationService extends Service {
                 }
             } else if (status == 401 || status == 403 || status == 404 || status == 422) {
                 finishDuty(false);
-            } else if (status == 400 && (lastError.contains("no active field duty") || lastError.contains("ended") || lastError.contains("expired"))) {
-                finishDuty(false);
+            } else if (status == 400) {
+                if (lastError.contains("no active field duty") || lastError.contains("ended") || lastError.contains("expired")) {
+                    finishDuty(false);
+                } else {
+                    // Non-retryable payload error (e.g. coarse accuracy / skew): drop rejected slice so valid fixes flush.
+                    synchronized (pending) {
+                        pending.removeAll(batch);
+                    }
+                    boolean more;
+                    synchronized (pending) {
+                        more = !pending.isEmpty();
+                    }
+                    if (more) {
+                        flush();
+                    }
+                }
             }
         } catch (Exception ignored) {
             // Network unavailable: retain points in pending for the next scheduled batch flush.
@@ -308,32 +346,48 @@ public class SwkFieldLocationService extends Service {
     }
 
     private void finishDuty(boolean notifyServer) {
-        if (!dutyActive && callback == null) {
-            stopSelf();
-            return;
-        }
+        if (stopping) return;
+        stopping = true;
         dutyActive = false;
+
         if (fused != null && callback != null) {
             fused.removeLocationUpdates(callback);
             callback = null;
         }
+
         final int endedSession = sessionId;
         final boolean canNotify = notifyServer && endedSession > 0 && isAllowedServer(serverUrl) && !sessionToken.isEmpty();
+
+        if (io.isShutdown()) {
+            stopForeground(STOP_FOREGROUND_REMOVE);
+            sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
+            stopSelf();
+            return;
+        }
+
         io.execute(() -> {
-            if (canNotify) {
-                try {
-                    flush();
-                    post("/api/field-gps/sessions/stop", new JSONObject());
-                } catch (Exception ignored) {
+            try {
+                if (canNotify) {
+                    try {
+                        flush();
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        post("/api/field-gps/sessions/stop", new JSONObject());
+                    } catch (Exception ignored) {
+                    }
                 }
-            }
-            synchronized (pending) {
-                pending.clear();
+                synchronized (pending) {
+                    pending.clear();
+                }
+            } finally {
+                mainHandler.post(() -> {
+                    sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
+                    stopForeground(STOP_FOREGROUND_REMOVE);
+                    stopSelf();
+                });
             }
         });
-        stopForeground(STOP_FOREGROUND_REMOVE);
-        sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
-        stopSelf();
     }
 
     private Notification buildNotification() {
@@ -347,12 +401,9 @@ public class SwkFieldLocationService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         Intent endIntent = new Intent(this, SwkFieldLocationService.class).setAction(ACTION_END_DUTY);
-        PendingIntent end = PendingIntent.getService(
-            this,
-            1,
-            endIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+        PendingIntent end = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? PendingIntent.getForegroundService(this, 1, endIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
+            : PendingIntent.getService(this, 1, endIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.duty_notification_title))
@@ -372,7 +423,15 @@ public class SwkFieldLocationService extends Service {
     @Override
     public void onDestroy() {
         dutyActive = false;
-        if (fused != null && callback != null) fused.removeLocationUpdates(callback);
+        if (fused != null && callback != null) {
+            fused.removeLocationUpdates(callback);
+            callback = null;
+        }
+        synchronized (pending) {
+            pending.clear();
+        }
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
         io.shutdown();
         super.onDestroy();
     }
