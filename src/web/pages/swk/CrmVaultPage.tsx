@@ -278,16 +278,16 @@ export default function CrmVaultPage() {
           { label: 'Est. Commission Pool', value: AED(totals.total_commission_pool_aed), sub: 'Agency Fee Potential' },
           { label: 'Daily Routes / Masked Calls', value: `${summary?.route_tracker_count || 0} / ${summary?.masked_calls_count || 0}`, sub: 'Audit Trackers & Bridge Logs' },
         ].map((k, i) => (
-          <div key={i} className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{k.label}</div>
-            <div className="text-lg font-extrabold text-slate-900 mt-1 truncate">{k.value}</div>
-            <div className="text-[11px] text-slate-500 mt-0.5 truncate">{k.sub}</div>
+          <div key={i} className="rounded-xl border border-line bg-card p-3.5 shadow-xs">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">{k.label}</div>
+            <div className="text-lg font-extrabold text-ink mt-1 truncate">{k.value}</div>
+            <div className="text-[11px] text-muted mt-0.5 truncate">{k.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-line pb-2">
         {[
           { id: 'custody', label: 'Custody & Handover', icon: ShieldCheck },
           { id: 'vault', label: `Master Vault (${totals.total_properties || 0})`, icon: Building2 },
@@ -301,7 +301,7 @@ export default function CrmVaultPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${active ? 'bg-[#12303a] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${active ? 'bg-primary text-primary-foreground' : 'bg-soft text-body hover:bg-hover'}`}
             >
               <Icon className="w-3.5 h-3.5" /> {t.label}
             </button>
@@ -315,55 +315,55 @@ export default function CrmVaultPage() {
       {tab === 'vault' && (
         <div className="space-y-3">
           {/* Filters */}
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 flex flex-wrap items-center gap-2.5">
+          <div className="rounded-xl border border-line bg-card p-3.5 flex flex-wrap items-center gap-2.5">
             <div className="relative flex-1 min-w-[220px]">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-muted absolute left-3 top-2.5" />
               <input
                 value={q}
                 onChange={e => { setQ(e.target.value); setPage(1) }}
                 placeholder="Search building, unit, community, owner, deal ID..."
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-[#8a621c]"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-line bg-soft text-ink focus:outline-none focus:border-[#8a621c]"
               />
             </div>
-            <select value={dataset} onChange={e => { setDataset(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
+            <select value={dataset} onChange={e => { setDataset(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-line bg-soft text-ink">
               <option value="all">All Datasets</option>
               <option value="cluster_1920">Cluster 1,920 (Direct Phone)</option>
               <option value="territory_nov2026">Territories 1,680 (DLD Clean-Room)</option>
               <option value="ejari_dialer_2026">Ejari 0–60D Dialer 2026 (7 Desks)</option>
             </select>
-            <select value={suggestedAgent} onChange={e => { setSuggestedAgent(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
+            <select value={suggestedAgent} onChange={e => { setSuggestedAgent(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-line bg-soft text-ink">
               <option value="all">All Excel Territories</option>
               {filters.suggested_agents.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select value={assignedFilter} onChange={e => { setAssignedFilter(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
+            <select value={assignedFilter} onChange={e => { setAssignedFilter(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-line bg-soft text-ink">
               <option value="all">All Dispatch States</option>
               <option value="unassigned">In Vault (Unassigned)</option>
               <option value="assigned">Dispatched to Agents</option>
               {agents.map(a => <option key={a.id} value={String(a.id)}>Assigned: {a.name}</option>)}
             </select>
-            <select value={division} onChange={e => { setDivision(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
+            <select value={division} onChange={e => { setDivision(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-line bg-soft text-ink">
               <option value="all">All Divisions</option>
               {filters.divisions.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
-            <select value={hasPhone} onChange={e => { setHasPhone(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
+            <select value={hasPhone} onChange={e => { setHasPhone(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-line bg-soft text-ink">
               <option value="all">Phone: Any</option>
               <option value="yes">With Direct Phone</option>
               <option value="no">No Phone (DLD Ref)</option>
             </select>
-            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-slate-200">
+            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} className="px-2.5 py-2 text-xs rounded-lg border border-line bg-soft text-ink">
               <option value="all">All Statuses</option>
               {['In Vault', 'Assigned', 'In Progress', 'Viewing Scheduled', 'Offer / MOU', 'Closed Won', 'Closed Lost', 'On Hold'].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
           {/* Bulk Action Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-soft border border-line rounded-xl px-3.5 py-2.5">
             <div className="flex items-center gap-3 text-xs">
-              <button onClick={toggleSelectPage} className="font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5">
+              <button onClick={toggleSelectPage} className="font-semibold text-ink hover:opacity-80 flex items-center gap-1.5">
                 {rows.length > 0 && rows.every(r => selected.has(r.id)) ? <CheckSquare className="w-4 h-4 text-[#8a621c]" /> : <Square className="w-4 h-4" />}
                 Select Page ({rows.length})
               </button>
-              <span className="text-slate-500">Showing <b>{rows.length}</b> of <b>{total.toLocaleString()}</b> properties · Selected: <b>{selected.size}</b></span>
+              <span className="text-muted">Showing <b>{rows.length}</b> of <b>{total.toLocaleString()}</b> properties · Selected: <b>{selected.size}</b></span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -376,7 +376,7 @@ export default function CrmVaultPage() {
               <button
                 disabled={!selected.size || busy}
                 onClick={handleUnassign}
-                className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-800 text-xs font-bold disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg bg-card border border-line text-ink text-xs font-bold disabled:opacity-40"
               >
                 Return to Vault
               </button>
@@ -384,10 +384,10 @@ export default function CrmVaultPage() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-xs">
+          <div className="rounded-xl border border-line bg-card overflow-x-auto shadow-xs">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+                <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                   <th className="p-2.5 w-8"></th>
                   <th className="p-2.5">Deal / Territory</th>
                   <th className="p-2.5">Property &amp; Unit</th>
@@ -397,48 +397,48 @@ export default function CrmVaultPage() {
                   <th className="p-2.5">Dispatch &amp; Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {loading && (
-                  <tr><td colSpan={7} className="p-8 text-center text-slate-500">Loading CRM Vault properties…</td></tr>
+                  <tr><td colSpan={7} className="p-8 text-center text-muted">Loading CRM Vault properties…</td></tr>
                 )}
                 {!loading && rows.length === 0 && (
-                  <tr><td colSpan={7} className="p-8 text-center text-slate-500">No properties match your filters. Use the <b>Import Excel &amp; Masked Bridge Setup</b> tab to upload Excel/CSV files.</td></tr>
+                  <tr><td colSpan={7} className="p-8 text-center text-muted">No properties match your filters. Use the <b>Import Excel &amp; Masked Bridge Setup</b> tab to upload Excel/CSV files.</td></tr>
                 )}
                 {!loading && rows.map(r => (
-                  <tr key={r.id} className={`hover:bg-slate-50/80 ${selected.has(r.id) ? 'bg-emerald-50/50' : ''}`}>
+                  <tr key={r.id} className={`hover:bg-hover ${selected.has(r.id) ? 'bg-emerald-500/10' : ''}`}>
                     <td className="p-2.5 align-top">
                       <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded" />
                     </td>
                     <td className="p-2.5 align-top">
-                      <div className="font-mono text-[11px] font-bold text-slate-800">{r.external_deal_id}</div>
-                      <div className="text-[11px] text-slate-500">{r.suggested_agent || '—'} · #{r.agent_deal_rank ?? '—'}</div>
-                      <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-semibold text-slate-700">{r.deal_division}</span>
+                      <div className="font-mono text-[11px] font-bold text-ink">{r.external_deal_id}</div>
+                      <div className="text-[11px] text-muted">{r.suggested_agent || '—'} · #{r.agent_deal_rank ?? '—'}</div>
+                      <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-soft text-[10px] font-semibold text-body">{r.deal_division}</span>
                     </td>
                     <td className="p-2.5 align-top max-w-[260px]">
-                      <div className="font-bold text-slate-900">{r.building_or_project || '—'}</div>
-                      <div className="text-slate-600">{r.dubai_area_community || r.primary_area_dld || '—'}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
+                      <div className="font-bold text-ink">{r.building_or_project || '—'}</div>
+                      <div className="text-body">{r.dubai_area_community || r.primary_area_dld || '—'}</div>
+                      <div className="text-[11px] text-muted mt-0.5">
                         Unit: <b>{r.exact_unit_door_no || '—'}</b> {r.floor_or_zone ? `· Fl ${r.floor_or_zone}` : ''} · {r.property_layout_type || '—'} {r.size_sqft ? `· ${Math.round(r.size_sqft)} sqft` : ''}
                       </div>
                     </td>
                     <td className="p-2.5 align-top max-w-[220px]">
-                      <div className="font-semibold text-amber-800">{r.urgency_or_deal_window || '—'}</div>
-                      {r.event_or_expiry_date && <div className="text-[11px] text-slate-500">Event: {r.event_or_expiry_date} ({r.days_to_event ?? '—'}d)</div>}
-                      {r.portal_or_source_status && <div className="text-[10px] text-slate-500 truncate">{r.portal_or_source_status}</div>}
+                      <div className="font-semibold text-amber-700 dark:text-amber-300">{r.urgency_or_deal_window || '—'}</div>
+                      {r.event_or_expiry_date && <div className="text-[11px] text-muted">Event: {r.event_or_expiry_date} ({r.days_to_event ?? '—'}d)</div>}
+                      {r.portal_or_source_status && <div className="text-[10px] text-muted truncate">{r.portal_or_source_status}</div>}
                     </td>
                     <td className="p-2.5 align-top whitespace-nowrap">
-                      <div className="font-bold text-slate-900">{AED(r.target_deal_value_aed)}</div>
-                      <div className="text-[11px] text-emerald-700 font-semibold">Fee: {AED(r.est_agency_commission_aed)}</div>
+                      <div className="font-bold text-ink">{AED(r.target_deal_value_aed)}</div>
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">Fee: {AED(r.est_agency_commission_aed)}</div>
                     </td>
                     <td className="p-2.5 align-top max-w-[240px]">
-                      <div className="font-semibold text-slate-900">{r.owner_name || r.owner_entity_type || '—'}</div>
+                      <div className="font-semibold text-ink">{r.owner_name || r.owner_entity_type || '—'}</div>
                       {r.direct_mobile ? (
-                        <div className="font-mono text-[11px] font-bold text-[#8a621c] mt-0.5">{r.direct_mobile}</div>
+                        <div className="font-mono text-[11px] font-bold text-[#8a621c] dark:text-[#d4a752] mt-0.5">{r.direct_mobile}</div>
                       ) : (
-                        <div className="text-[11px] text-slate-400">No direct mobile</div>
+                        <div className="text-[11px] text-muted">No direct mobile</div>
                       )}
-                      {r.secondary_phone && <div className="font-mono text-[10px] text-slate-500">{r.secondary_phone}</div>}
-                      {r.email_address && <div className="text-[10px] text-slate-500 truncate">{r.email_address}</div>}
+                      {r.secondary_phone && <div className="font-mono text-[10px] text-muted">{r.secondary_phone}</div>}
+                      {r.email_address && <div className="text-[10px] text-muted truncate">{r.email_address}</div>}
                     </td>
                     <td className="p-2.5 align-top">
                       {r.assigned_user_name ? (
@@ -446,11 +446,11 @@ export default function CrmVaultPage() {
                           <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[11px]">
                             {r.assigned_user_name}
                           </span>
-                          <div className="text-[11px] text-slate-600 mt-0.5">{r.vault_status}</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">Phone: HARD-MASKED</div>
+                          <div className="text-[11px] text-body mt-0.5">{r.vault_status}</div>
+                          <div className="text-[10px] text-muted mt-0.5">Phone: HARD-MASKED</div>
                         </div>
                       ) : (
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold text-[11px]">
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-soft text-body font-semibold text-[11px]">
                           In Vault
                         </span>
                       )}
@@ -462,11 +462,11 @@ export default function CrmVaultPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center justify-between text-xs text-muted">
             <div>Page <b>{page}</b> of <b>{totalPages}</b></div>
             <div className="flex gap-2">
-              <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-40">Previous</button>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-40">Next</button>
+              <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1.5 rounded-lg border border-line bg-card text-ink disabled:opacity-40">Previous</button>
+              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 rounded-lg border border-line bg-card text-ink disabled:opacity-40">Next</button>
             </div>
           </div>
         </div>
@@ -476,16 +476,16 @@ export default function CrmVaultPage() {
       {tab === 'routes' && (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <select value={routeCaptain} onChange={e => setRouteCaptain(e.target.value)} className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white">
+            <select value={routeCaptain} onChange={e => setRouteCaptain(e.target.value)} className="px-3 py-2 text-xs rounded-lg border border-line bg-card text-ink">
               <option value="all">All Territory Captains</option>
               {['Saifullah', 'Talha Shabbir', 'Shahid', 'Fareed', 'Umar', 'Sanketh'].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <span className="text-xs text-slate-500">{routes.length} scheduled daily routes</span>
+            <span className="text-xs text-muted">{routes.length} scheduled daily routes</span>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+          <div className="rounded-xl border border-line bg-card overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+                <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                   <th className="p-2.5">Date</th>
                   <th className="p-2.5">Cluster &amp; Captain</th>
                   <th className="p-2.5">Corridor &amp; Morning Towers</th>
@@ -494,17 +494,17 @@ export default function CrmVaultPage() {
                   <th className="p-2.5">Haseeb 5:30 PM Sign-Off</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {routes.map(r => (
-                  <tr key={r.id} className="hover:bg-slate-50">
-                    <td className="p-2.5 font-mono font-semibold">{r.route_date}</td>
-                    <td className="p-2.5"><b>{r.cluster_id}</b> · {r.territory_captain}</td>
+                  <tr key={r.id} className="hover:bg-hover">
+                    <td className="p-2.5 font-mono font-semibold text-ink">{r.route_date}</td>
+                    <td className="p-2.5 text-ink"><b>{r.cluster_id}</b> · {r.territory_captain}</td>
                     <td className="p-2.5">
-                      <div className="font-semibold text-slate-800">{r.assigned_corridor}</div>
-                      <div className="text-[11px] text-slate-500">{r.morning_towers_scheduled}</div>
+                      <div className="font-semibold text-ink">{r.assigned_corridor}</div>
+                      <div className="text-[11px] text-muted">{r.morning_towers_scheduled}</div>
                     </td>
-                    <td className="p-2.5 font-mono text-[11px]">{r.qr_serials_issued}</td>
-                    <td className="p-2.5 font-bold">{r.target_doors_swept}</td>
+                    <td className="p-2.5 font-mono text-[11px] text-body">{r.qr_serials_issued}</td>
+                    <td className="p-2.5 font-bold text-ink">{r.target_doors_swept}</td>
                     <td className="p-2.5">
                       <button
                         onClick={() => signOffRoute(r.id, r.manager_haseeb_signoff)}
@@ -523,10 +523,10 @@ export default function CrmVaultPage() {
 
       {/* TAB 3: MASKED CALL & WHATSAPP LOGS */}
       {tab === 'calls' && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+        <div className="rounded-xl border border-line bg-card overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+              <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                 <th className="p-2.5">Time</th>
                 <th className="p-2.5">Agent</th>
                 <th className="p-2.5">Property</th>
@@ -535,18 +535,18 @@ export default function CrmVaultPage() {
                 <th className="p-2.5">Notes / Call SID</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {callLogs.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No masked calls or WhatsApp relays logged yet.</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-muted">No masked calls or WhatsApp relays logged yet.</td></tr>
               )}
               {callLogs.map(l => (
-                <tr key={l.id} className="hover:bg-slate-50">
-                  <td className="p-2.5 font-mono text-[11px]">{String(l.created_at || '').slice(0, 19).replace('T', ' ')}</td>
-                  <td className="p-2.5 font-bold">{l.agent_name}</td>
-                  <td className="p-2.5">{l.external_deal_id} · {l.building_or_project}</td>
-                  <td className="p-2.5">{l.channel} ({l.provider})</td>
-                  <td className="p-2.5 font-semibold">{l.status}</td>
-                  <td className="p-2.5 text-slate-600">{l.notes} {l.provider_call_sid ? `· ${l.provider_call_sid}` : ''}</td>
+                <tr key={l.id} className="hover:bg-hover">
+                  <td className="p-2.5 font-mono text-[11px] text-muted">{String(l.created_at || '').slice(0, 19).replace('T', ' ')}</td>
+                  <td className="p-2.5 font-bold text-ink">{l.agent_name}</td>
+                  <td className="p-2.5 text-body">{l.external_deal_id} · {l.building_or_project}</td>
+                  <td className="p-2.5 text-body">{l.channel} ({l.provider})</td>
+                  <td className="p-2.5 font-semibold text-ink">{l.status}</td>
+                  <td className="p-2.5 text-muted">{l.notes} {l.provider_call_sid ? `· ${l.provider_call_sid}` : ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -558,14 +558,14 @@ export default function CrmVaultPage() {
       {tab === 'setup' && (
         <div className="grid md:grid-cols-2 gap-5">
           {/* Import Excel / CSV */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
-            <div className="flex items-center gap-2 font-bold text-slate-900">
-              <Upload className="w-4 h-4 text-[#8a621c]" /> Import CRM Excel / CSV Workbooks
+          <div className="rounded-2xl border border-line bg-card p-5 space-y-4">
+            <div className="flex items-center gap-2 font-bold text-ink">
+              <Upload className="w-4 h-4 text-[#8a621c] dark:text-[#d4a752]" /> Import CRM Excel / CSV Workbooks
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-muted leading-relaxed">
               Upload <code>SWK_6_Agents_1920_Cluster_Closing_Deals_Master.xlsx</code>, <code>SWK_6_Agents_Master_Closing_Territories_Nov2026.xlsx</code>, individual <code>Agent_*_320_Closing_Deals.xlsx</code> workbooks, or <code>swk_6agent_daily_route_and_audit_tracker.csv</code>. Existing deal IDs are updated idempotently, and all phone numbers &amp; emails are AES-256-GCM encrypted in the database.
             </p>
-            <label className="block border-2 border-dashed border-slate-300 hover:border-[#8a621c] rounded-xl p-6 text-center cursor-pointer transition">
+            <label className="block border-2 border-dashed border-line hover:border-[#8a621c] rounded-xl p-6 text-center cursor-pointer transition">
               <input
                 type="file"
                 multiple
@@ -574,27 +574,27 @@ export default function CrmVaultPage() {
                 onChange={e => handleUploadFiles(e.target.files)}
                 className="hidden"
               />
-              <Upload className="w-6 h-6 text-[#8a621c] mx-auto mb-2" />
-              <div className="text-xs font-bold text-slate-800">{uploading ? 'Importing & Encrypting…' : 'Click to Select .xlsx / .csv Files'}</div>
-              <div className="text-[11px] text-slate-500 mt-1">Supports multi-file upload · Max 12 MB per upload</div>
+              <Upload className="w-6 h-6 text-[#8a621c] dark:text-[#d4a752] mx-auto mb-2" />
+              <div className="text-xs font-bold text-ink">{uploading ? 'Importing & Encrypting…' : 'Click to Select .xlsx / .csv Files'}</div>
+              <div className="text-[11px] text-muted mt-1">Supports multi-file upload · Max 12 MB per upload</div>
             </label>
           </div>
 
           {/* Hard-Masked Bridge Calling Configuration */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
-            <div className="flex items-center gap-2 font-bold text-slate-900">
-              <PhoneCall className="w-4 h-4 text-[#8a621c]" /> Hard-Masked Bridge Calling (Zero Phone History Leak)
+          <div className="rounded-2xl border border-line bg-card p-5 space-y-3.5">
+            <div className="flex items-center gap-2 font-bold text-ink">
+              <PhoneCall className="w-4 h-4 text-[#8a621c] dark:text-[#d4a752]" /> Hard-Masked Bridge Calling (Zero Phone History Leak)
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-muted leading-relaxed">
               When an agent clicks <b>Call Owner (Masked)</b>, SWKOS initiates a two-leg bridge call from SWK&apos;s official company number to the agent, then connects to the owner server-side. <b>The owner&apos;s real phone number never reaches the agent&apos;s screen, browser, app, SIM, or native call history.</b>
             </p>
             <div className="space-y-2.5 text-xs">
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Bridge Provider</label>
+                <label className="font-semibold text-body block mb-1">Bridge Provider</label>
                 <select
                   value={bridge.masked_call_provider}
                   onChange={e => setBridge({ ...bridge, masked_call_provider: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200"
+                  className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink"
                 >
                   <option value="none">Disabled (Strict Fail-Closed — Number Stays Hidden)</option>
                   <option value="twilio">Twilio Voice Two-Leg Masked Bridge</option>
@@ -602,39 +602,39 @@ export default function CrmVaultPage() {
                 </select>
               </div>
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">SWK Company Caller ID (Shown on Agent &amp; Owner Phones)</label>
+                <label className="font-semibold text-body block mb-1">SWK Company Caller ID (Shown on Agent &amp; Owner Phones)</label>
                 <input
                   value={bridge.masked_call_caller_id}
                   onChange={e => setBridge({ ...bridge, masked_call_caller_id: e.target.value })}
                   placeholder="+9714XXXXXXX"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200"
+                  className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink"
                 />
               </div>
               {bridge.masked_call_provider === 'twilio' && (
                 <>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Twilio Account SID</label>
-                    <input value={bridge.masked_call_twilio_sid} onChange={e => setBridge({ ...bridge, masked_call_twilio_sid: e.target.value })} placeholder="ACxxxxxxxxxxxxxxxx" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
+                    <label className="font-semibold text-body block mb-1">Twilio Account SID</label>
+                    <input value={bridge.masked_call_twilio_sid} onChange={e => setBridge({ ...bridge, masked_call_twilio_sid: e.target.value })} placeholder="ACxxxxxxxxxxxxxxxx" className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink" />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Twilio Auth Token {bridge.masked_call_twilio_token_set ? '(Saved — leave blank to keep)' : ''}</label>
-                    <input type="password" value={bridge.masked_call_twilio_token} onChange={e => setBridge({ ...bridge, masked_call_twilio_token: e.target.value })} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
+                    <label className="font-semibold text-body block mb-1">Twilio Auth Token {bridge.masked_call_twilio_token_set ? '(Saved — leave blank to keep)' : ''}</label>
+                    <input type="password" value={bridge.masked_call_twilio_token} onChange={e => setBridge({ ...bridge, masked_call_twilio_token: e.target.value })} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink" />
                   </div>
                 </>
               )}
               {bridge.masked_call_provider === 'webhook' && (
                 <>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">SIP / PBX Bridge Webhook URL</label>
-                    <input value={bridge.masked_call_webhook_url} onChange={e => setBridge({ ...bridge, masked_call_webhook_url: e.target.value })} placeholder="https://pbx.swk.properties/api/masked-bridge" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
+                    <label className="font-semibold text-body block mb-1">SIP / PBX Bridge Webhook URL</label>
+                    <input value={bridge.masked_call_webhook_url} onChange={e => setBridge({ ...bridge, masked_call_webhook_url: e.target.value })} placeholder="https://pbx.swk.properties/api/masked-bridge" className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink" />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-700 block mb-1">HMAC Signing Secret {bridge.masked_call_webhook_secret_set ? '(Saved — leave blank to keep)' : ''}</label>
-                    <input type="password" value={bridge.masked_call_webhook_secret} onChange={e => setBridge({ ...bridge, masked_call_webhook_secret: e.target.value })} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg border border-slate-200" />
+                    <label className="font-semibold text-body block mb-1">HMAC Signing Secret {bridge.masked_call_webhook_secret_set ? '(Saved — leave blank to keep)' : ''}</label>
+                    <input type="password" value={bridge.masked_call_webhook_secret} onChange={e => setBridge({ ...bridge, masked_call_webhook_secret: e.target.value })} placeholder="••••••••" className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink" />
                   </div>
                 </>
               )}
-              <label className="flex items-center gap-2 pt-1">
+              <label className="flex items-center gap-2 pt-1 text-body">
                 <input type="checkbox" checked={!!bridge.masked_call_record} onChange={e => setBridge({ ...bridge, masked_call_record: e.target.checked })} />
                 <span>Record bridged calls for leadership QA compliance</span>
               </label>
@@ -649,14 +649,14 @@ export default function CrmVaultPage() {
       {/* ASSIGN MODAL */}
       {assignOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
+          <div className="bg-card border border-line text-ink rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">Dispatch {selected.size} Property Deal(s) to Agent</h3>
-              <button onClick={() => setAssignOpen(false)} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
+              <h3 className="text-base font-bold text-ink">Dispatch {selected.size} Property Deal(s) to Agent</h3>
+              <button onClick={() => setAssignOpen(false)} className="p-1 rounded-lg hover:bg-hover text-ink"><X className="w-4 h-4" /></button>
             </div>
             <div className="text-xs">
-              <label className="font-bold text-slate-700 block mb-1">Select Sales / Leasing Agent</label>
-              <select value={targetAgentId} onChange={e => setTargetAgentId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-300">
+              <label className="font-bold text-body block mb-1">Select Sales / Leasing Agent</label>
+              <select value={targetAgentId} onChange={e => setTargetAgentId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-line bg-soft text-ink">
                 <option value="">-- Choose Agent --</option>
                 {agents.map(a => (
                   <option key={a.id} value={String(a.id)}>{a.name} ({a.email})</option>
@@ -670,7 +670,7 @@ export default function CrmVaultPage() {
               </div>
             </div>
             <div className="space-y-2 text-xs">
-              <div className="font-bold text-slate-700">Choose Exactly Which Details the Agent Can See:</div>
+              <div className="font-bold text-body">Choose Exactly Which Details the Agent Can See:</div>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   ['show_exact_unit', 'Exact Unit / Door No'],
@@ -683,7 +683,7 @@ export default function CrmVaultPage() {
                   ['allow_masked_call', 'Allow Masked Bridge Call'],
                   ['allow_masked_whatsapp', 'Allow Masked WhatsApp Relay'],
                 ].map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer">
+                  <label key={key} className="flex items-center gap-2 p-2 rounded-lg border border-line bg-soft text-ink cursor-pointer">
                     <input
                       type="checkbox"
                       checked={(policy as any)[key]}

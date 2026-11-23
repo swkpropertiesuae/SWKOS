@@ -582,7 +582,7 @@
     border-radius: 999px;
     font-size: 10px;
     font-weight: 700;
-    background: #ffffff;
+    background: var(--card);
     color: var(--ink);
   }
   .swk-wf-pill.active .swk-wf-num {

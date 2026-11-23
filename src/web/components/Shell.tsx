@@ -542,7 +542,7 @@ export function Shell() {
             </Link>
             <div className="flex items-center gap-1.5 shrink-0">
               {activeCall.state === 'ringing_in' ? (
-                <button type="button" onClick={() => void sipClient.answer()} className="rounded-full bg-[#0e9f6e] px-3 py-1 text-[11px] font-bold text-white border-0 cursor-pointer inline-flex items-center gap-1">
+                <button type="button" onClick={() => void sipClient.answer()} className="rounded-full bg-[#047857] px-3 py-1 text-[11px] font-bold text-white border-0 cursor-pointer inline-flex items-center gap-1">
                   <Phone size={12} /> Answer
                 </button>
               ) : (
@@ -564,7 +564,7 @@ export function Shell() {
             </span>
             <details>
               <summary>Details</summary>
-              <p className="mt-2 mb-3 text-xs text-muted">Safe practice environment. Resets every night. External email and WhatsApp messages are disabled.</p>
+              <p className="mt-2 mb-3 text-xs text-body">Safe practice environment. Resets every night. External email and WhatsApp messages are disabled.</p>
               <button
                 type="button"
                 className="btn outline sm"

@@ -472,15 +472,15 @@ export function SipSoftphoneDock({ docked = false }: { docked?: boolean } = {}) 
         onClick={() => setOpen((o) => !o)}
         className={`h-11 px-4 rounded-full border shadow-[0_12px_30px_rgba(11,31,42,0.24)] flex items-center gap-2 text-xs font-semibold cursor-pointer transition-all hover:-translate-y-0.5 active:scale-95 ${
           call?.state === 'ringing_in'
-            ? 'bg-[#0e9f6e] border-white/30 text-white animate-pulse'
+            ? 'bg-[#047857] border-white/30 text-white animate-pulse'
             : call
-              ? 'bg-[#0b1f2a] border-[#0e9f6e] text-white'
-              : 'bg-white border-[#cbd5e1] text-[#0b1f2a] hover:border-[#0b1f2a]'
+              ? 'bg-[#0b1f2a] border-[#047857] text-white'
+              : 'bg-card border-line text-ink hover:border-ink'
         }`}
         aria-label="Toggle SWK Softphone"
       >
         <span className={`size-2 rounded-full ${statusColor}`} />
-        <Phone size={14} className={call ? 'text-[#d4a752]' : 'text-[#0b1f2a]'} />
+        <Phone size={14} className={call ? 'text-[#d4a752]' : 'text-ink'} />
         {call ? (
           <span className="font-mono">
             {call.isMaskedVault ? 'Vault Call' : call.remoteDisplay} · {call.state === 'connected' ? fmtDuration(call.durationSec) : 'Ringing'}

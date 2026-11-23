@@ -1053,6 +1053,15 @@
     border: 1px solid var(--line);
     box-shadow: var(--surface-floating);
   }
+  :root[data-theme='dark'] .demo-notice {
+    background: rgba(183, 131, 40, 0.16);
+    border-bottom-color: rgba(212, 167, 82, 0.3);
+    color: #fde68a;
+  }
+  :root[data-theme='dark'] .demo-notice strong,
+  :root[data-theme='dark'] .demo-notice summary {
+    color: #ffffff;
+  }
   .toast-stack {
     position: fixed;
     right: 16px;

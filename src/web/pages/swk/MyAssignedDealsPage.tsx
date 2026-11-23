@@ -133,10 +133,10 @@ export default function MyAssignedDealsPage() {
       </div>
 
       <div className="flex gap-2">
-        <button onClick={() => setTab('deals')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'deals' ? 'bg-[#12303a] text-white' : 'bg-slate-100 text-slate-700'}`}>
+        <button onClick={() => setTab('deals')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'deals' ? 'bg-primary text-primary-foreground' : 'bg-soft text-body hover:bg-hover'}`}>
           <Building2 className="w-3.5 h-3.5" /> Assigned Deals ({rows.length})
         </button>
-        <button onClick={() => setTab('routes')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'routes' ? 'bg-[#12303a] text-white' : 'bg-slate-100 text-slate-700'}`}>
+        <button onClick={() => setTab('routes')} className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${tab === 'routes' ? 'bg-primary text-primary-foreground' : 'bg-soft text-body hover:bg-hover'}`}>
           <MapPinned className="w-3.5 h-3.5" /> My Daily Routes ({routes.length})
         </button>
       </div>
@@ -148,39 +148,39 @@ export default function MyAssignedDealsPage() {
               value={q}
               onChange={e => setQ(e.target.value)}
               placeholder="Search building, community, deal ID..."
-              className="flex-1 min-w-[220px] px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+              className="flex-1 min-w-[220px] px-3 py-2 text-xs rounded-xl border border-line bg-card text-ink"
             />
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white">
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 text-xs rounded-xl border border-line bg-card text-ink">
               <option value="all">All Statuses</option>
               {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
-          {loading && <div className="p-8 text-center text-xs text-slate-500">Loading your assigned deals…</div>}
+          {loading && <div className="p-8 text-center text-xs text-muted">Loading your assigned deals…</div>}
           {!loading && rows.length === 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-xs text-slate-500">
+            <div className="rounded-2xl border border-line bg-card p-10 text-center text-xs text-muted">
               No properties have been dispatched to you yet. Once Admin, Shabib, or Haseeb assigns deals to your queue, they will appear here automatically.
             </div>
           )}
 
           <div className="grid gap-3">
             {rows.map(r => (
-              <div key={r.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+              <div key={r.id} className="rounded-2xl border border-line bg-card p-4 shadow-xs space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">{r.external_deal_id}</span>
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-soft text-body">{r.external_deal_id}</span>
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800">{r.deal_division}</span>
-                      <span className="text-[11px] font-semibold text-amber-800">{r.urgency_or_deal_window}</span>
+                      <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">{r.urgency_or_deal_window}</span>
                     </div>
-                    <h3 className="text-base font-bold text-slate-900 mt-1">{r.building_or_project || 'Property'} · {r.dubai_area_community}</h3>
-                    <div className="text-xs text-slate-600 mt-0.5">
+                    <h3 className="text-base font-bold text-ink mt-1">{r.building_or_project || 'Property'} · {r.dubai_area_community}</h3>
+                    <div className="text-xs text-body mt-0.5">
                       Unit: <b>{r.exact_unit_door_no}</b>
                       {r.floor_or_zone ? ` · Floor ${r.floor_or_zone}` : ''}
                       {r.property_layout_type ? ` · ${r.property_layout_type}` : ''}
                       {r.size_sqft ? ` · ${Math.round(r.size_sqft)} sqft` : ''}
                     </div>
-                    <div className="text-xs text-slate-600 mt-0.5">
+                    <div className="text-xs text-body mt-0.5">
                       Owner: <b>{r.owner_name}</b>
                       {AED(r.target_deal_value_aed) ? ` · Target: ${AED(r.target_deal_value_aed)}` : ''}
                       {AED(r.est_agency_commission_aed) ? ` · Est. Fee: ${AED(r.est_agency_commission_aed)}` : ''}
@@ -230,21 +230,21 @@ export default function MyAssignedDealsPage() {
                       onChange={e => setWaText(e.target.value)}
                       rows={2}
                       placeholder="Hello, I am calling from SWK Properties regarding your unit..."
-                      className="w-full p-2 text-xs rounded-lg border border-emerald-300 bg-white"
+                      className="w-full p-2 text-xs rounded-lg border border-emerald-300 bg-card text-ink"
                     />
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => setWaOpenId(null)} className="px-3 py-1.5 rounded-lg text-xs border border-slate-200 bg-white">Cancel</button>
+                      <button onClick={() => setWaOpenId(null)} className="px-3 py-1.5 rounded-lg text-xs border border-line bg-card text-ink">Cancel</button>
                       <button disabled={busyId === r.id} onClick={() => sendMaskedWa(r.id)} className="px-3 py-1.5 rounded-lg bg-[#8a621c] text-white text-xs font-bold">Send Masked WhatsApp</button>
                     </div>
                   </div>
                 )}
 
                 {/* Agent Status & Notes */}
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line">
                   <select
                     value={statusDraft[r.id] ?? r.vault_status}
                     onChange={e => setStatusDraft(s => ({ ...s, [r.id]: e.target.value }))}
-                    className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 font-semibold"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-line bg-soft text-ink font-semibold"
                   >
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -252,12 +252,12 @@ export default function MyAssignedDealsPage() {
                     value={notesDraft[r.id] ?? r.agent_notes ?? ''}
                     onChange={e => setNotesDraft(n => ({ ...n, [r.id]: e.target.value }))}
                     placeholder="Add call outcome, viewing date, landlord feedback..."
-                    className="flex-1 min-w-[200px] px-3 py-1.5 text-xs rounded-lg border border-slate-200"
+                    className="flex-1 min-w-[200px] px-3 py-1.5 text-xs rounded-lg border border-line bg-soft text-ink"
                   />
                   <button
                     disabled={busyId === r.id}
                     onClick={() => saveUpdate(r)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1"
                   >
                     <Save className="w-3.5 h-3.5" /> Save
                   </button>
@@ -269,10 +269,10 @@ export default function MyAssignedDealsPage() {
       )}
 
       {tab === 'routes' && (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+        <div className="rounded-xl border border-line bg-card overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+              <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                 <th className="p-2.5">Date</th>
                 <th className="p-2.5">Cluster</th>
                 <th className="p-2.5">Corridor &amp; Morning Towers</th>
@@ -281,18 +281,18 @@ export default function MyAssignedDealsPage() {
                 <th className="p-2.5">Haseeb Sign-Off</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {routes.map(r => (
                 <tr key={r.id}>
-                  <td className="p-2.5 font-mono font-semibold">{r.route_date}</td>
-                  <td className="p-2.5 font-bold">{r.cluster_id}</td>
+                  <td className="p-2.5 font-mono font-semibold text-ink">{r.route_date}</td>
+                  <td className="p-2.5 font-bold text-ink">{r.cluster_id}</td>
                   <td className="p-2.5">
-                    <div className="font-semibold">{r.assigned_corridor}</div>
-                    <div className="text-[11px] text-slate-500">{r.morning_towers_scheduled}</div>
+                    <div className="font-semibold text-ink">{r.assigned_corridor}</div>
+                    <div className="text-[11px] text-muted">{r.morning_towers_scheduled}</div>
                   </td>
-                  <td className="p-2.5 font-mono text-[11px]">{r.qr_serials_issued}</td>
-                  <td className="p-2.5 font-bold">{r.target_doors_swept}</td>
-                  <td className="p-2.5">{r.manager_haseeb_signoff}</td>
+                  <td className="p-2.5 font-mono text-[11px] text-body">{r.qr_serials_issued}</td>
+                  <td className="p-2.5 font-bold text-ink">{r.target_doors_swept}</td>
+                  <td className="p-2.5 text-body">{r.manager_haseeb_signoff}</td>
                 </tr>
               ))}
             </tbody>

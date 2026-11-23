@@ -302,7 +302,7 @@ export function JourneyWorkflowCanvas({
   return (
     <section
       aria-label="Deal and Brokerage Journeys"
-      className="relative overflow-hidden rounded-[30px] border border-[#e5e8f2] bg-white/88 backdrop-blur-xl p-5 sm:p-6 shadow-[0_18px_48px_-26px_rgba(15,23,42,0.14)]"
+      className="relative overflow-hidden rounded-[30px] border border-line bg-card/90 backdrop-blur-xl p-5 sm:p-6 shadow-[0_18px_48px_-26px_rgba(15,23,42,0.14)]"
       style={{
         backgroundImage: 'radial-gradient(circle, rgba(148,163,184,0.22) 1px, transparent 1px)',
         backgroundSize: '20px 20px',
@@ -311,17 +311,17 @@ export function JourneyWorkflowCanvas({
       {/* Top Bar: Title + Floating Team Avatar Strip + Quick Circle Actions */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="min-w-0">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#6d28d9]">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[var(--eyebrow)]">
             Connected Real Estate Workflow
           </div>
-          <h2 className="m-0 mt-0.5 text-[20px] font-bold tracking-[-0.025em] text-[#0f172a]">
+          <h2 className="m-0 mt-0.5 text-[20px] font-bold tracking-[-0.025em] text-ink">
             Deal &amp; Customer Journeys
           </h2>
         </div>
 
         {/* Center Floating Team Avatars (SugarCRM Customer Journeys signature element) */}
         <div
-          className="hidden lg:flex items-center gap-1.5 rounded-full border border-[#e5e8f2] bg-white/95 px-3 py-1.5 shadow-[0_8px_22px_-12px_rgba(15,23,42,0.14)]"
+          className="hidden lg:flex items-center gap-1.5 rounded-full border border-line bg-card/95 px-3 py-1.5 shadow-[0_8px_22px_-12px_rgba(15,23,42,0.14)]"
           aria-label="Active SWK advisory team"
         >
           {TEAM_RIBBON.map(m => (
@@ -332,7 +332,7 @@ export function JourneyWorkflowCanvas({
               className="group relative flex flex-col items-center no-underline"
             >
               <span
-                className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold ring-2 ring-white transition-transform group-hover:-translate-y-0.5"
+                className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold ring-2 ring-card transition-transform group-hover:-translate-y-0.5"
                 style={{ background: m.bg, color: m.fg }}
               >
                 {m.initials}
@@ -350,7 +350,7 @@ export function JourneyWorkflowCanvas({
         {/* Right Filter Pills + Circular Utility Icons */}
         <div className="flex flex-wrap items-center gap-2">
           {!restricted && (
-            <div className="inline-flex items-center rounded-full border border-[#e5e8f2] bg-white p-1 shadow-2xs">
+            <div className="inline-flex items-center rounded-full border border-line bg-card p-1 shadow-2xs">
               {(
                 [
                   { id: 'all', label: 'All' },
@@ -364,7 +364,7 @@ export function JourneyWorkflowCanvas({
                   type="button"
                   onClick={() => setDept(tab.id)}
                   className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border-0 transition-colors cursor-pointer ${
-                    dept === tab.id ? 'bg-[#0f172a] text-white' : 'bg-transparent text-[#475569] hover:text-[#0f172a]'
+                    dept === tab.id ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted hover:text-ink'
                   }`}
                 >
                   {tab.label}
@@ -375,21 +375,21 @@ export function JourneyWorkflowCanvas({
           <Link
             to="/e/leads?new=1"
             aria-label="Create new lead"
-            className="flex size-9 items-center justify-center rounded-full border border-[#e5e8f2] bg-white text-[#0f172a] no-underline shadow-2xs hover:bg-[#0f172a] hover:text-white transition-colors"
+            className="flex size-9 items-center justify-center rounded-full border border-line bg-card text-ink no-underline shadow-2xs hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             <Plus size={16} />
           </Link>
           <Link
             to="/pipeline"
             aria-label="Open deal pipeline"
-            className="flex size-9 items-center justify-center rounded-full border border-[#e5e8f2] bg-white text-[#0f172a] no-underline shadow-2xs hover:bg-[#0f172a] hover:text-white transition-colors"
+            className="flex size-9 items-center justify-center rounded-full border border-line bg-card text-ink no-underline shadow-2xs hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             <Rocket size={15} />
           </Link>
           <Link
             to="/calendar"
             aria-label="Open calendar"
-            className="flex size-9 items-center justify-center rounded-full border border-[#e5e8f2] bg-white text-[#0f172a] no-underline shadow-2xs hover:bg-[#0f172a] hover:text-white transition-colors"
+            className="flex size-9 items-center justify-center rounded-full border border-line bg-card text-ink no-underline shadow-2xs hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             <CalendarDays size={15} />
           </Link>
@@ -400,7 +400,7 @@ export function JourneyWorkflowCanvas({
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.04fr_20px_1.04fr_20px_1.04fr_20px_1.08fr] items-stretch">
         {stages.map((stage, sIdx) => (
           <div key={stage.key} className="contents">
-            <div className="flex flex-col justify-between rounded-[24px] border border-[#e8ecf4] bg-[#f4f6fb]/92 p-3">
+            <div className="flex flex-col justify-between rounded-[24px] border border-line bg-soft/92 p-3">
               <div className="grid gap-2.5 flex-1">
                 {stage.nodes.map(node => {
                   const isSel = activeNode?.id === node.id
@@ -408,10 +408,10 @@ export function JourneyWorkflowCanvas({
                     <div
                       key={node.id}
                       onClick={() => setSelectedId(node.id)}
-                      className={`group flex items-center gap-2.5 rounded-[18px] border bg-white px-2.5 py-2.5 transition-all cursor-pointer ${
+                      className={`group flex items-center gap-2.5 rounded-[18px] border bg-card px-2.5 py-2.5 transition-all cursor-pointer ${
                         isSel
-                          ? 'border-[#0f172a] shadow-[0_10px_24px_-14px_rgba(15,23,42,0.28)] ring-1 ring-[#0f172a]/10'
-                          : 'border-[#eef1f7] hover:border-[#cbd5e1] hover:shadow-xs'
+                          ? 'border-ink shadow-[0_10px_24px_-14px_rgba(15,23,42,0.28)] ring-1 ring-ink/15'
+                          : 'border-line hover:border-ink/35 hover:shadow-xs'
                       }`}
                     >
                       <span
@@ -422,14 +422,14 @@ export function JourneyWorkflowCanvas({
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1">
-                          <span className="text-[12.5px] font-bold text-[#0f172a] leading-tight">{node.title}</span>
+                          <span className="text-[12.5px] font-bold text-ink leading-tight">{node.title}</span>
                           {node.done ? (
-                            <Check size={12} className="text-[#047857] shrink-0" />
+                            <Check size={12} className="text-[#047857] dark:text-[#34d399] shrink-0" />
                           ) : (
-                            <Clock3 size={11} className="text-[#b78328] shrink-0" />
+                            <Clock3 size={11} className="text-[#b78328] dark:text-[#fbbf24] shrink-0" />
                           )}
                         </div>
-                        <div className="mt-0.5 text-[10.5px] text-[#526273] leading-tight">
+                        <div className="mt-0.5 text-[10.5px] text-muted leading-tight">
                           {node.count !== undefined ? `${node.count} · ` : ''}
                           {node.sub}
                         </div>
@@ -438,7 +438,7 @@ export function JourneyWorkflowCanvas({
                         to={node.to}
                         onClick={e => e.stopPropagation()}
                         aria-label={`Open ${node.title}`}
-                        className="flex size-6.5 shrink-0 items-center justify-center rounded-full border border-[#e5e8f2] bg-[#f8fafc] text-[#475569] no-underline transition-colors group-hover:bg-[#0f172a] group-hover:text-white group-hover:border-[#0f172a]"
+                        className="flex size-6.5 shrink-0 items-center justify-center rounded-full border border-line bg-soft text-body no-underline transition-colors group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary"
                       >
                         <ArrowUpRight size={12} />
                       </Link>
@@ -446,7 +446,7 @@ export function JourneyWorkflowCanvas({
                   )
                 })}
               </div>
-              <div className="mt-3 pt-2 border-t border-[#e5e9f2] text-center text-[11.5px] font-semibold text-[#475569]">
+              <div className="mt-3 pt-2 border-t border-line text-center text-[11.5px] font-semibold text-body">
                 {stage.label}
               </div>
             </div>
@@ -463,7 +463,7 @@ export function JourneyWorkflowCanvas({
         ))}
 
         {/* Stage 4: Signature 2x3 Square Quick Action Grid with Obsidian Active Card (Image 2 "New Tasks") */}
-        <div className="flex flex-col justify-between rounded-[24px] border border-[#e8ecf4] bg-[#f4f6fb]/92 p-3.5">
+        <div className="flex flex-col justify-between rounded-[24px] border border-line bg-soft/92 p-3.5">
           <div className="grid grid-cols-2 gap-2.5 flex-1">
             {quickTiles.map(tile => (
               <Link
@@ -471,35 +471,35 @@ export function JourneyWorkflowCanvas({
                 to={tile.to}
                 className={`group flex flex-col justify-between rounded-[18px] p-3 no-underline transition-all hover:-translate-y-0.5 ${
                   tile.featured
-                    ? 'bg-[#0f172a] text-white shadow-[0_14px_28px_-14px_rgba(15,23,42,0.55)] hover:bg-[#1e293b]'
-                    : 'border border-[#eef1f7] bg-white text-[#0f172a] hover:border-[#0f172a] hover:shadow-sm'
+                    ? 'bg-[#0f172a] border border-transparent dark:border-[#c5e86c]/35 dark:bg-[#142a38] text-white shadow-[0_14px_28px_-14px_rgba(15,23,42,0.55)] hover:bg-[#1e293b]'
+                    : 'border border-line bg-card text-ink hover:border-ink hover:shadow-sm'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className={`flex size-7 items-center justify-center rounded-xl ${
-                      tile.featured ? 'bg-white/15 text-[#c5e86c]' : 'bg-[#f1f5f9] text-[#0f172a]'
+                      tile.featured ? 'bg-white/15 text-[#c5e86c]' : 'bg-soft text-ink'
                     }`}
                   >
                     <tile.icon size={14} />
                   </span>
                   <ArrowUpRight
                     size={13}
-                    className={tile.featured ? 'text-white/70 group-hover:text-white' : 'text-[#94a3b8] group-hover:text-[#0f172a]'}
+                    className={tile.featured ? 'text-white/70 group-hover:text-white' : 'text-muted group-hover:text-ink'}
                   />
                 </div>
                 <div className="mt-2.5">
-                  <div className={`text-[12.5px] font-bold leading-tight ${tile.featured ? 'text-white' : 'text-[#0f172a]'}`}>
+                  <div className={`text-[12.5px] font-bold leading-tight ${tile.featured ? 'text-white' : 'text-ink'}`}>
                     {tile.title}
                   </div>
-                  <div className={`mt-0.5 text-[10.5px] leading-tight ${tile.featured ? 'text-white/75' : 'text-[#526273]'}`}>
+                  <div className={`mt-0.5 text-[10.5px] leading-tight ${tile.featured ? 'text-white/75' : 'text-muted'}`}>
                     {tile.sub}
                   </div>
                 </div>
               </Link>
             ))}
           </div>
-          <div className="mt-3 pt-2 border-t border-[#e5e9f2] text-center text-[11.5px] font-semibold text-[#475569]">
+          <div className="mt-3 pt-2 border-t border-line text-center text-[11.5px] font-semibold text-body">
             Actions &amp; Settlement
           </div>
         </div>
@@ -507,13 +507,13 @@ export function JourneyWorkflowCanvas({
 
       {/* Interactive Node Inspector Strip (Image 3 & Image 4 bottom bar) */}
       {activeNode && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e5e8f2] bg-white/95 px-4 py-2.5 shadow-2xs">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-card/95 px-4 py-2.5 shadow-2xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="rounded-full bg-[#0f172a] px-2.5 py-0.5 font-mono text-[10.5px] font-bold text-[#c5e86c]">
+            <span className="rounded-full bg-[#0f172a] dark:bg-[#c5e86c] px-2.5 py-0.5 font-mono text-[10.5px] font-bold text-[#c5e86c] dark:text-[#0b1f2a]">
               STEP {activeNode.step}
             </span>
-            <span className="truncate text-[13px] font-bold text-[#0f172a]">{activeNode.title}</span>
-            <span className="hidden sm:inline text-[12px] text-[#526273]">· {activeNode.sub}</span>
+            <span className="truncate text-[13px] font-bold text-ink">{activeNode.title}</span>
+            <span className="hidden sm:inline text-[12px] text-muted">· {activeNode.sub}</span>
           </div>
           <div className="flex items-center gap-2">
             {activeNode.newTo && (

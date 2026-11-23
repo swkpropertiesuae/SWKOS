@@ -435,9 +435,9 @@ export default function PhonePage() {
       )}
 
       {snap.lastWake && !call && (
-        <div className="rounded-2xl border border-[#0e9f6e]/40 bg-[#e8fff6] px-4 py-3 text-xs text-[#0a4638] flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-[#047857]/40 bg-[#e8fff6] px-4 py-3 text-xs text-[#0a4638] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <PhoneIncoming size={16} className="text-[#0e9f6e]" />
+            <PhoneIncoming size={16} className="text-[#047857]" />
             <span>
               <b>Incoming PBX Wake Alert:</b> {snap.lastWake.caller_name || snap.lastWake.caller_id || 'Caller'} on Ext{' '}
               <b>{snap.lastWake.extension_no}</b>
@@ -446,7 +446,7 @@ export default function PhonePage() {
           <button
             type="button"
             onClick={() => void sipClient.init(true)}
-            className="px-3 py-1.5 rounded-lg bg-[#0e9f6e] text-white font-bold border-0 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-[#047857] text-white font-bold border-0 cursor-pointer"
           >
             Sync SIP Line
           </button>
@@ -466,7 +466,7 @@ export default function PhonePage() {
       {tab === 'dialer' && (
         <div className="grid gap-5 lg:grid-cols-[380px_1fr] items-start">
           {/* Dialpad Card */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-4">
             {call ? (
               <div className="space-y-4">
                 <div className="rounded-2xl bg-[#121212] text-white p-4 text-center space-y-1.5">
@@ -489,7 +489,7 @@ export default function PhonePage() {
                   <div className="text-xs font-mono text-white/60">
                     {call.isMaskedVault ? 'MASKED •••• (Zero Phone Exposure)' : call.remoteTarget}
                   </div>
-                  <div className="text-2xl font-mono font-bold text-[#0e9f6e] pt-1">
+                  <div className="text-2xl font-mono font-bold text-[#047857] pt-1">
                     {call.state === 'ringing_in'
                       ? 'Ringing…'
                       : call.state === 'dialing' || call.state === 'connecting'
@@ -505,7 +505,7 @@ export default function PhonePage() {
                     <button
                       type="button"
                       onClick={() => void sipClient.answer().catch((e: any) => toast.error(e?.message || 'Answer failed'))}
-                      className="py-3 rounded-xl bg-[#0e9f6e] hover:bg-[#0a4638] text-white text-xs font-bold flex items-center justify-center gap-1.5 border-0 cursor-pointer"
+                      className="py-3 rounded-xl bg-[#047857] hover:bg-[#0a4638] text-white text-xs font-bold flex items-center justify-center gap-1.5 border-0 cursor-pointer"
                     >
                       <Phone size={15} /> Answer
                     </button>
@@ -603,7 +603,7 @@ export default function PhonePage() {
                             <span className="font-semibold text-slate-800 truncate">
                               Consult: {consult.remoteDisplay}
                             </span>
-                            <span className="font-mono font-bold text-[#0e9f6e]">
+                            <span className="font-mono font-bold text-[#047857]">
                               {consult.state === 'connected' ? fmtDuration(consult.durationSec) : 'Ringing…'}
                             </span>
                           </div>
@@ -612,7 +612,7 @@ export default function PhonePage() {
                               type="button"
                               disabled={busy || consult.state !== 'connected'}
                               onClick={() => void handleCompleteAttended()}
-                              className="py-2 rounded-xl bg-[#0e9f6e] hover:bg-[#0a4638] text-white text-xs font-bold border-0 cursor-pointer disabled:opacity-40"
+                              className="py-2 rounded-xl bg-[#047857] hover:bg-[#0a4638] text-white text-xs font-bold border-0 cursor-pointer disabled:opacity-40"
                             >
                               Complete Transfer
                             </button>
@@ -675,21 +675,21 @@ export default function PhonePage() {
                         if (e.key === 'Enter') void dialTarget(dialInput)
                       }}
                       placeholder={snap.allowDirectDial ? '102 or +97150...' : 'Colleague Ext (e.g. 102)'}
-                      className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-slate-200 font-mono text-base"
+                      className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-line bg-soft text-ink font-mono text-base"
                     />
                     {dialInput && (
                       <button
                         type="button"
                         aria-label="Backspace"
                         onClick={() => setDialInput((s) => s.slice(0, -1))}
-                        className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer"
+                        className="p-2.5 rounded-xl border border-line bg-soft text-ink hover:bg-hover cursor-pointer"
                       >
                         <Delete size={16} />
                       </button>
                     )}
                   </div>
                   {snap.configured && !snap.allowDirectDial && (
-                    <p className="text-[11px] text-slate-500 mt-1 mb-0">
+                    <p className="text-[11px] text-muted mt-1 mb-0">
                       Direct external dialing is restricted; use internal extensions or <b>My Assigned Deals</b> for Masked Vault calls.
                     </p>
                   )}
@@ -704,7 +704,7 @@ export default function PhonePage() {
                         setDialInput((s) => s + k)
                         void sipClient.sendDtmf(k)
                       }}
-                      className="h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-mono text-base font-bold border-0 cursor-pointer transition-colors"
+                      className="h-12 rounded-xl bg-soft hover:bg-hover text-ink font-mono text-base font-bold border border-line cursor-pointer transition-colors"
                     >
                       {k}
                     </button>
@@ -715,7 +715,7 @@ export default function PhonePage() {
                   type="button"
                   disabled={busy || !snap.configured || !dialInput.trim()}
                   onClick={() => void dialTarget(dialInput)}
-                  className="w-full py-3 rounded-xl bg-[#0e9f6e] hover:bg-[#0a4638] text-white text-sm font-bold flex items-center justify-center gap-2 border-0 cursor-pointer disabled:opacity-40"
+                  className="w-full py-3 rounded-xl bg-[#047857] hover:bg-[#0a4638] text-white text-sm font-bold flex items-center justify-center gap-2 border-0 cursor-pointer disabled:opacity-40"
                 >
                   <Phone size={16} /> Place SIP Call
                 </button>
@@ -725,11 +725,11 @@ export default function PhonePage() {
 
           {/* Right Column: Audio Devices + Quick Team Extensions */}
           <div className="space-y-5">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Volume2 size={18} className="text-[#0e9f6e]" />
-                  <h2 className="text-sm font-bold m-0">Audio Hardware &amp; Ringtone</h2>
+                  <Volume2 size={18} className="text-[#047857] dark:text-[#34d399]" />
+                  <h2 className="text-sm font-bold text-ink m-0">Audio Hardware &amp; Ringtone</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -789,22 +789,22 @@ export default function PhonePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+            <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Users size={18} className="text-[#0e9f6e]" />
-                  <h2 className="text-sm font-bold m-0">Internal Colleague Quick-Dial</h2>
+                  <Users size={18} className="text-[#047857] dark:text-[#34d399]" />
+                  <h2 className="text-sm font-bold text-ink m-0">Internal Colleague Quick-Dial</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setTab('directory')}
-                  className="text-xs font-bold text-[#0e9f6e] bg-transparent border-0 cursor-pointer"
+                  className="text-xs font-bold text-[#047857] dark:text-[#34d399] bg-transparent border-0 cursor-pointer"
                 >
                   View all →
                 </button>
               </div>
               {directory.length === 0 ? (
-                <div className="text-xs text-slate-500 py-4 text-center">
+                <div className="text-xs text-muted py-4 text-center">
                   No active SIP extensions provisioned yet.
                 </div>
               ) : (
@@ -812,12 +812,12 @@ export default function PhonePage() {
                   {directory.slice(0, 8).map((d) => (
                     <div
                       key={d.user_id}
-                      className="flex items-center justify-between gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50/70"
+                      className="flex items-center justify-between gap-2 p-3 rounded-xl border border-line bg-soft"
                     >
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 truncate">{d.display_name || d.name}</div>
-                        <div className="text-[11px] text-slate-500 truncate">
-                          Ext <span className="font-mono font-bold text-slate-800">{d.extension_no}</span>
+                        <div className="text-xs font-bold text-ink truncate">{d.display_name || d.name}</div>
+                        <div className="text-[11px] text-muted truncate">
+                          Ext <span className="font-mono font-bold text-ink">{d.extension_no}</span>
                           {d.designation ? ` · ${d.designation}` : ''}
                         </div>
                       </div>
@@ -844,7 +844,7 @@ export default function PhonePage() {
                             type="button"
                             disabled={!snap.configured || d.extension_no === snap.extensionNo}
                             onClick={() => void dialTarget(d.extension_no, d.display_name || d.name)}
-                            className="px-2.5 py-1.5 rounded-lg bg-[#0e9f6e] hover:bg-[#0a4638] text-white text-[11px] font-bold flex items-center gap-1 border-0 cursor-pointer disabled:opacity-40"
+                            className="px-2.5 py-1.5 rounded-lg bg-[#047857] hover:bg-[#0a4638] text-white text-[11px] font-bold flex items-center gap-1 border-0 cursor-pointer disabled:opacity-40"
                           >
                             <Phone size={12} /> Call
                           </button>
@@ -863,49 +863,49 @@ export default function PhonePage() {
           TAB 2: Internal Extension Directory
          =================================================================== */}
       {tab === 'directory' && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <input
               value={dirSearch}
               onChange={(e) => setDirSearch(e.target.value)}
               placeholder="Search colleague name, extension, or role..."
-              className="flex-1 min-w-[220px] px-3 py-2 text-xs rounded-xl border border-slate-200"
+              className="flex-1 min-w-[220px] px-3 py-2 text-xs rounded-xl border border-line bg-soft text-ink"
             />
             <button type="button" onClick={() => void loadDirectory()} className="btn outline sm">
               <RefreshCw size={13} /> Refresh
             </button>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <div className="overflow-x-auto border border-line rounded-xl">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+                <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                   <th className="p-3">Ext</th>
                   <th className="p-3">Staff Member</th>
                   <th className="p-3">Designation</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {filteredDirectory.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-500">
+                    <td colSpan={4} className="p-8 text-center text-muted">
                       No matching extensions found.
                     </td>
                   </tr>
                 ) : (
                   filteredDirectory.map((d) => (
-                    <tr key={d.user_id} className="hover:bg-slate-50/70">
-                      <td className="p-3 font-mono font-bold text-[#0e9f6e]">{d.extension_no}</td>
-                      <td className="p-3 font-semibold text-slate-900">{d.display_name || d.name}</td>
-                      <td className="p-3 text-slate-600">{d.designation || '—'}</td>
+                    <tr key={d.user_id} className="hover:bg-hover">
+                      <td className="p-3 font-mono font-bold text-[#047857] dark:text-[#34d399]">{d.extension_no}</td>
+                      <td className="p-3 font-semibold text-ink">{d.display_name || d.name}</td>
+                      <td className="p-3 text-muted">{d.designation || '—'}</td>
                       <td className="p-3 text-right">
                         <div className="inline-flex gap-1.5">
                           <button
                             type="button"
                             disabled={!snap.configured || !!call || d.extension_no === snap.extensionNo}
                             onClick={() => void dialTarget(d.extension_no, d.display_name || d.name)}
-                            className="px-3 py-1.5 rounded-lg bg-[#0e9f6e] text-white font-bold flex items-center gap-1 border-0 cursor-pointer disabled:opacity-40"
+                            className="px-3 py-1.5 rounded-lg bg-[#047857] text-white font-bold flex items-center gap-1 border-0 cursor-pointer disabled:opacity-40"
                           >
                             <Phone size={12} /> Call
                           </button>
@@ -942,10 +942,10 @@ export default function PhonePage() {
           TAB 3: Role-Scoped Call History (Masked Vault numbers never shown)
          =================================================================== */}
       {tab === 'history' && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-              <History size={16} className="text-[#0e9f6e]" />
+            <div className="flex items-center gap-2 text-xs font-bold text-ink">
+              <History size={16} className="text-[#047857] dark:text-[#34d399]" />
               SIP Call History (Vault numbers remain strictly masked)
             </div>
             <button type="button" onClick={() => void loadHistory()} className="btn outline sm">
@@ -953,10 +953,10 @@ export default function PhonePage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <div className="overflow-x-auto border border-line rounded-xl">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+                <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                   <th className="p-3">Started</th>
                   <th className="p-3">Agent</th>
                   <th className="p-3">Dir</th>
@@ -966,22 +966,22 @@ export default function PhonePage() {
                   <th className="p-3">Summary</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {calls.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <td colSpan={7} className="p-8 text-center text-muted">
                       No SIP calls recorded yet.
                     </td>
                   </tr>
                 ) : (
                   calls.map((c) => (
                     <tr key={c.id}>
-                      <td className="p-3 font-mono text-[11px] text-slate-600">{c.started_at}</td>
-                      <td className="p-3 font-semibold text-slate-900">
+                      <td className="p-3 font-mono text-[11px] text-muted">{c.started_at}</td>
+                      <td className="p-3 font-semibold text-ink">
                         {c.user_name || (c.extension_no ? `Ext ${c.extension_no}` : '—')}
                       </td>
-                      <td className="p-3 uppercase font-bold text-[11px]">{c.direction}</td>
-                      <td className="p-3 font-medium">
+                      <td className="p-3 uppercase font-bold text-[11px] text-body">{c.direction}</td>
+                      <td className="p-3 font-medium text-ink">
                         {c.is_vault_masked ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900 text-[#d4b672] font-mono text-[11px] font-bold">
                             <Lock size={10} /> Masked Vault Owner
@@ -990,7 +990,7 @@ export default function PhonePage() {
                           <span>{c.direction === 'out' ? c.to_number : c.from_number}</span>
                         )}
                       </td>
-                      <td className="p-3 font-mono">{fmtDuration(c.duration_sec)}</td>
+                      <td className="p-3 font-mono text-ink">{fmtDuration(c.duration_sec)}</td>
                       <td className="p-3">
                         <span
                           className={`px-2 py-0.5 rounded text-[11px] font-bold ${
@@ -1004,7 +1004,7 @@ export default function PhonePage() {
                           {c.status}
                         </span>
                       </td>
-                      <td className="p-3 text-slate-600 max-w-xs truncate">{c.summary}</td>
+                      <td className="p-3 text-muted max-w-xs truncate">{c.summary}</td>
                     </tr>
                   ))
                 )}
@@ -1020,20 +1020,20 @@ export default function PhonePage() {
       {tab === 'admin' && isSipAdmin && (
         <div className="space-y-5">
           {/* Trunk & Dual Masked-Vault Protocol Setup */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                  <Settings2 size={17} className="text-[#0e9f6e]" /> Company SIP Trunk &amp; Dual Masked-Vault Config
+                <div className="flex items-center gap-2 text-sm font-bold text-ink">
+                  <Settings2 size={17} className="text-[#047857] dark:text-[#34d399]" /> Company SIP Trunk &amp; Dual Masked-Vault Config
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5 mb-0">
+                <p className="text-xs text-muted mt-0.5 mb-0">
                   Configure your WebRTC WSS gateway (Asterisk, FreeSWITCH, 3CX, or Yealink/Yeastar) and Vault dial prefix.
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-900 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs font-bold text-ink cursor-pointer">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 accent-[#0e9f6e]"
+                  className="w-4 h-4 accent-[#047857]"
                   checked={cfgForm.sip_enabled}
                   onChange={(e) => setCfgForm((f) => ({ ...f, sip_enabled: e.target.checked }))}
                 />
@@ -1128,7 +1128,7 @@ export default function PhonePage() {
             {generatedSecret && (
               <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-950 space-y-2">
                 <div className="font-bold flex items-center gap-1.5">
-                  <ShieldCheck size={15} className="text-[#0e9f6e]" /> Copy New PBX Webhook Secret (Shown Once):
+                  <ShieldCheck size={15} className="text-[#047857]" /> Copy New PBX Webhook Secret (Shown Once):
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 px-2.5 py-1.5 rounded bg-white border border-emerald-200 font-mono break-all">
@@ -1158,10 +1158,10 @@ export default function PhonePage() {
           </div>
 
           {/* Staff Extensions Provisioning */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-            <div className="text-sm font-bold text-slate-900">Staff SIP Extensions</div>
+          <div className="rounded-2xl border border-line bg-card p-5 shadow-xs space-y-4">
+            <div className="text-sm font-bold text-ink">Staff SIP Extensions</div>
 
-            <div className="grid gap-3 md:grid-cols-4 items-end bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div className="grid gap-3 md:grid-cols-4 items-end bg-soft p-3.5 rounded-xl border border-line">
               <div className="md:col-span-2">
                 <label className="label">Staff User</label>
                 <select
@@ -1232,7 +1232,7 @@ export default function PhonePage() {
                 <label className="flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer">
                   <input
                     type="checkbox"
-                    className="accent-[#0e9f6e]"
+                    className="accent-[#047857]"
                     checked={extForm.allow_direct_dial}
                     onChange={(e) => setExtForm((f) => ({ ...f, allow_direct_dial: e.target.checked }))}
                   />
@@ -1241,7 +1241,7 @@ export default function PhonePage() {
                 <label className="flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer">
                   <input
                     type="checkbox"
-                    className="accent-[#0e9f6e]"
+                    className="accent-[#047857]"
                     checked={extForm.active}
                     onChange={(e) => setExtForm((f) => ({ ...f, active: e.target.checked }))}
                   />
@@ -1260,10 +1260,10 @@ export default function PhonePage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <div className="overflow-x-auto border border-line rounded-xl">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500">
+                  <tr className="bg-soft border-b border-line text-[11px] uppercase text-muted">
                     <th className="p-3">Ext</th>
                     <th className="p-3">Staff Member</th>
                     <th className="p-3">SIP Username</th>
@@ -1273,24 +1273,24 @@ export default function PhonePage() {
                     <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-line">
                   {extRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-500">
+                      <td colSpan={7} className="p-8 text-center text-muted">
                         No SIP extensions provisioned yet.
                       </td>
                     </tr>
                   ) : (
                     extRows.map((r) => (
                       <tr key={r.user_id}>
-                        <td className="p-3 font-mono font-bold text-[#0e9f6e]">{r.extension_no}</td>
+                        <td className="p-3 font-mono font-bold text-[#047857] dark:text-[#34d399]">{r.extension_no}</td>
                         <td className="p-3">
-                          <div className="font-semibold text-slate-900">{r.user_name}</div>
-                          <div className="text-[11px] text-slate-500">{r.user_email}</div>
+                          <div className="font-semibold text-ink">{r.user_name}</div>
+                          <div className="text-[11px] text-muted">{r.user_email}</div>
                         </td>
-                        <td className="p-3 font-mono">{r.sip_username}</td>
-                        <td className="p-3 font-mono text-slate-500">{r.sip_password || '—'}</td>
-                        <td className="p-3">{r.allow_direct_dial ? 'Enabled' : 'Restricted'}</td>
+                        <td className="p-3 font-mono text-body">{r.sip_username}</td>
+                        <td className="p-3 font-mono text-muted">{r.sip_password || '—'}</td>
+                        <td className="p-3 text-body">{r.allow_direct_dial ? 'Enabled' : 'Restricted'}</td>
                         <td className="p-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[11px] font-bold ${

@@ -80,7 +80,7 @@ function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
       to={app.landing}
       onPointerMove={onMove}
       title={app.blurb}
-      className="group relative flex h-full items-center gap-3.5 overflow-hidden rounded-[26px] border border-[#e5e8f2] bg-white/95 p-4 no-underline shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0f172a]/35 hover:shadow-[0_18px_40px_-20px_rgba(15,23,42,0.18)]"
+      className="group relative flex h-full items-center gap-3.5 overflow-hidden rounded-[26px] border border-line bg-card/95 p-4 no-underline shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-ink/35 hover:shadow-[0_18px_40px_-20px_rgba(15,23,42,0.18)]"
     >
       <span
         aria-hidden
@@ -105,12 +105,12 @@ function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
       </div>
       <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-2">
-          <span className="truncate text-[15px] font-semibold tracking-[-0.02em] text-[#0b1f2a] transition-colors group-hover:text-[#2563eb]">
+          <span className="truncate text-[15px] font-semibold tracking-[-0.02em] text-ink transition-colors group-hover:text-[#2563eb] dark:group-hover:text-[#93c5fd]">
             {app.label}
           </span>
           {badge}
         </span>
-        <span className="line-clamp-1 text-[12.5px] text-[#526273]">{app.blurb}</span>
+        <span className="line-clamp-1 text-[12.5px] text-muted">{app.blurb}</span>
         {app.items.length > 1 && (
           <span className="mt-1 inline-flex items-center gap-1.5">
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${accent.pill}`}>
@@ -122,7 +122,7 @@ function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
       <ArrowUpRight
         size={16}
         aria-hidden
-        className="relative z-10 shrink-0 text-[#94a3b8] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#0b1f2a]"
+        className="relative z-10 shrink-0 text-muted transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink"
       />
     </Link>
   )
@@ -207,20 +207,20 @@ export function Launcher() {
       >
         <div className="lg:col-span-8 flex flex-col justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#e5e8f2] bg-white/92 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#6d28d9] shadow-2xs max-w-full">
-              <span className="size-1.5 rounded-full bg-[#047857] shrink-0" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-card/95 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--eyebrow)] shadow-2xs max-w-full">
+              <span className="size-1.5 rounded-full bg-[#047857] dark:bg-[#34d399] shrink-0" />
               <span className="truncate">SWK Properties · ORN 51517 · {todayLabel()}</span>
             </div>
-            <h1 className="mt-2.5 text-[28px] sm:text-[38px] font-bold tracking-[-0.035em] text-[#0f172a] leading-[1.08]">
+            <h1 className="mt-2.5 text-[28px] sm:text-[38px] font-bold tracking-[-0.035em] text-ink leading-[1.08]">
               {greeting()}
               {firstName ? `, ${firstName}` : ''}.
             </h1>
-            <p className="mt-1.5 mb-0 text-[14.5px] text-[#526273]">
+            <p className="mt-1.5 mb-0 text-[14.5px] text-muted">
               Let&apos;s make today productive — search any page, continue your last workflow, or launch an app below.
             </p>
           </div>
 
-          {/* Dual-Layer Command Card (Obsidian Top Strip + Crisp White Search & Quick Chips Inside) */}
+          {/* Dual-Layer Command Card (Obsidian Top Strip + Crisp Search & Quick Chips Inside) */}
           <div className="rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-2.5 shadow-[0_20px_48px_-18px_rgba(15,23,42,0.38)]">
             <div className="flex items-center justify-between gap-3 px-3 pt-1.5 pb-3 text-white">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -245,10 +245,10 @@ export function Launcher() {
               </Link>
             </div>
 
-            <div className="rounded-[20px] bg-white p-3.5 shadow-inner">
+            <div className="rounded-[20px] bg-card p-3.5 shadow-inner">
               <form className="relative flex items-center gap-2" role="search" onSubmit={e => { e.preventDefault(); openFirst() }}>
                 <div className="relative flex-1 min-w-0">
-                  <Search size={17} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748b]" />
+                  <Search size={17} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
                   <input
                     type="text"
                     inputMode="search"
@@ -259,14 +259,14 @@ export function Launcher() {
                     placeholder="Ask anything or search apps & pages…"
                     aria-label="Search apps and features"
                     autoComplete="off"
-                    className="h-11 w-full rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] pl-10 pr-10 text-[14.5px] text-[#0b1f2a] outline-none no-focus-outline transition-all placeholder:text-[#64748b] focus:border-[#0b1f2a] focus:bg-white focus:ring-4 focus:ring-[#2563eb]/12"
+                    className="h-11 w-full rounded-2xl border border-line bg-soft pl-10 pr-10 text-[14.5px] text-ink outline-none no-focus-outline transition-all placeholder:text-muted focus:border-ink focus:bg-card focus:ring-4 focus:ring-[#2563eb]/12"
                   />
                   {query && (
                     <button
                       type="button"
                       onClick={() => setQuery('')}
                       aria-label="Clear search"
-                      className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-[#e2e8f0] text-[#334155] hover:bg-[#0b1f2a] hover:text-white cursor-pointer"
+                      className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-soft text-body hover:bg-primary hover:text-primary-foreground cursor-pointer"
                     >
                       <X size={14} />
                     </button>
@@ -275,13 +275,13 @@ export function Launcher() {
                 <Link
                   to="/utilities/search"
                   title="Advanced Unified Search"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb] no-underline transition-colors hover:bg-[#2563eb] hover:text-white"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb] dark:bg-soft dark:text-[#93c5fd] no-underline transition-colors hover:bg-[#2563eb] hover:text-white"
                 >
                   <SlidersHorizontal size={17} />
                 </Link>
               </form>
 
-              {/* Category quick-filter pills right inside the white command deck */}
+              {/* Category quick-filter pills right inside the command deck */}
               <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
                 {CATEGORY_FILTERS.map(c => {
                   const active = cat === c.id && !needle
@@ -292,8 +292,8 @@ export function Launcher() {
                       onClick={() => { setQuery(''); setCat(c.id) }}
                       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold border transition-colors cursor-pointer ${
                         active
-                          ? 'bg-[#0b1f2a] border-[#0b1f2a] text-white'
-                          : 'bg-[#f8fafc] border-[#e2e8f0] text-[#334155] hover:border-[#cbd5e1] hover:bg-[#f1f5f9]'
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'bg-soft border-line text-body hover:border-ink/30 hover:bg-hover'
                       }`}
                     >
                       {c.label}
@@ -375,25 +375,25 @@ export function Launcher() {
 
       {/* Search Matching Pages */}
       {features.length > 0 && (
-        <section aria-label="Matching pages" className="rounded-[22px] border border-[#e2e8f0] bg-white p-3 shadow-[0_8px_28px_-14px_rgba(11,31,42,0.12)]">
-          <div className="px-3 pt-1 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a5f14]">
+        <section aria-label="Matching pages" className="rounded-[22px] border border-line bg-card p-3 shadow-[0_8px_28px_-14px_rgba(11,31,42,0.12)]">
+          <div className="px-3 pt-1 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--eyebrow)]">
             Matching Workflow Pages ({features.length})
           </div>
           <ul className="m-0 list-none p-0 grid gap-1 sm:grid-cols-2">
             {features.map(f => (
               <li key={f.to}>
-                <Link to={f.to} className="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 no-underline hover:bg-[#f1f5f9] transition-colors">
+                <Link to={f.to} className="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 no-underline hover:bg-hover transition-colors">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0b1f2a] text-[#d4a752]">
                     <f.icon size={17} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <b className="block text-[14px] font-semibold text-[#0b1f2a] truncate">{f.label}</b>
-                    <small className="block text-[12px] text-[#526273] truncate">{f.desc ?? f.app}</small>
+                    <b className="block text-[14px] font-semibold text-ink truncate">{f.label}</b>
+                    <small className="block text-[12px] text-muted truncate">{f.desc ?? f.app}</small>
                   </span>
                   <span className="rounded-full bg-[#eff6ff] px-2.5 py-0.5 text-[10.5px] font-semibold text-[#1d4ed8] shrink-0">
                     {f.app}
                   </span>
-                  <ArrowUpRight size={15} className="text-[#94a3b8] group-hover:text-[#0b1f2a] shrink-0" />
+                  <ArrowUpRight size={15} className="text-muted group-hover:text-ink shrink-0" />
                 </Link>
               </li>
             ))}
@@ -406,12 +406,12 @@ export function Launcher() {
         <section aria-label="Featured inventory">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
-              <h2 className="m-0 text-[18px] font-bold text-[#0b1f2a]">Featured Inventory</h2>
+              <h2 className="m-0 text-[18px] font-bold text-ink">Featured Inventory</h2>
               <span className="rounded-full bg-[#dc2626] px-2 py-0.5 text-[11px] font-bold text-white">
                 {listings.length}
               </span>
             </div>
-            <Link to="/e/properties" className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#2563eb] no-underline hover:underline">
+            <Link to="/e/properties" className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#2563eb] dark:text-[#93c5fd] no-underline hover:underline">
               See all <ArrowRight size={14} />
             </Link>
           </div>
@@ -462,14 +462,14 @@ export function Launcher() {
         <div>
           <div className="flex items-center justify-between gap-2 mb-3">
             <div>
-              <h2 className="m-0 text-[18px] font-bold text-[#0b1f2a]">
+              <h2 className="m-0 text-[18px] font-bold text-ink">
                 {cat === 'all' || needle ? 'SWK Workspace Apps' : activeCat.label}
               </h2>
-              <p className="m-0 text-[12.5px] text-[#526273]">
+              <p className="m-0 text-[12.5px] text-muted">
                 Every app opens with a step-by-step workflow bar so you never hunt through sidebars.
               </p>
             </div>
-            <span className="rounded-full bg-white border border-[#e2e8f0] px-3 py-1 text-[11.5px] font-semibold text-[#334155]">
+            <span className="rounded-full bg-card border border-line px-3 py-1 text-[11.5px] font-semibold text-body">
               {shownApps.length} apps
             </span>
           </div>
@@ -521,12 +521,12 @@ export function Launcher() {
       )}
 
       {needle && !shownApps.length && !features.length && (
-        <div className="rounded-[24px] border border-[#e2e8f0] bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#f1f5f9] text-[#526273]">
+        <div className="rounded-[24px] border border-line bg-card p-10 text-center shadow-sm">
+          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-soft text-muted">
             <Building2 size={22} />
           </div>
-          <b className="text-[16px] text-[#0b1f2a]">No app or page matches “{query.trim()}”</b>
-          <p className="mt-1 text-[13.5px] text-[#526273]">Try a simpler word, or press Ctrl + K to search properties, leads, and deals.</p>
+          <b className="text-[16px] text-ink">No app or page matches “{query.trim()}”</b>
+          <p className="mt-1 text-[13.5px] text-muted">Try a simpler word, or press Ctrl + K to search properties, leads, and deals.</p>
           <button type="button" className="btn outline mt-3" onClick={() => setQuery('')}>
             Clear search
           </button>

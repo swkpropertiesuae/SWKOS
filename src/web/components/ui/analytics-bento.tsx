@@ -79,10 +79,12 @@ function useSize() {
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => {
-      const w = Math.round(e.contentRect.width), h = Math.round(e.contentRect.height);
+    const measure = () => {
+      const w = el.clientWidth, h = el.clientHeight;
       setSize((p) => (p.w === w && p.h === h ? p : { w, h }));
-    });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -251,10 +253,10 @@ function RevenueChart({ series, caption, prefix, colors, mono, tip }: { series: 
   };
 
   return (
-    <div ref={ref} className="relative min-h-[130px] flex-1 overflow-hidden rounded-[18px] border border-border bg-muted/40 dark:bg-muted/30">
-      {caption && <div className="pointer-events-none absolute left-3 top-2.5 text-[11px] tracking-[-0.01em] text-muted-foreground">{caption}</div>}
-      {W > 80 && (
-        <svg width={W} height={H} className="block" role="img" aria-label={`${caption ?? "Revenue"}: from ${prefix}${fmt(vals[0])} to ${prefix}${fmt(vals[vals.length - 1])}`}>
+    <div ref={ref} className="relative h-[168px] w-full shrink-0 overflow-hidden rounded-[18px] border border-border bg-muted/40 dark:bg-muted/30">
+      {caption && <div className="pointer-events-none absolute left-3 top-2.5 z-10 text-[11px] tracking-[-0.01em] text-muted-foreground">{caption}</div>}
+      {W > 80 && H > 40 && (
+        <svg width={W} height={H} className="absolute inset-0 block h-full w-full" role="img" aria-label={`${caption ?? "Revenue"}: from ${prefix}${fmt(vals[0])} to ${prefix}${fmt(vals[vals.length - 1])}`}>
           <defs>
             <linearGradient id={`${id}l`} x1="0" x2="1" y1="0" y2="0">
               <stop offset="0" style={{ stopColor: colors[0] }} />
@@ -307,40 +309,61 @@ function SessionsChart({ desktop, mobile, labels, colors, tip }: { desktop: numb
   const reduce = useReducedMotion();
   const id = React.useId().replace(/:/g, "");
   const paths = React.useRef([] as (SVGPathElement | null)[]);
+  const startRef = React.useRef<number | null>(null);
   const [hover, setHover] = React.useState(null as number | null);
   const n = desktop[0]?.length ?? 0;
   const max = Math.max(1, ...desktop.flat(), ...mobile.flat());
-  const pad = 18, mid = H / 2, amp = H / 2 - 14;
-  const X = (i: number) => pad + 6 + (i / (n - 1)) * (W - 2 * pad - 12);
+  const pad = 18, mid = H / 2, amp = Math.max(16, H / 2 - 14);
+  const X = (i: number) => pad + 6 + (i / (Math.max(1, n - 1))) * Math.max(20, W - 2 * pad - 12);
+  const dataKey = React.useMemo(
+    () => `${desktop.map((r) => r.join(",")).join(";")}|${mobile.map((r) => r.join(",")).join(";")}`,
+    [desktop, mobile],
+  );
   const sets = React.useMemo(
     () => [
       ...desktop.map((a, k) => ({ a, dir: -1, k, g: "d" })),
       ...mobile.map((a, k) => ({ a, dir: 1, k, g: "m" })),
     ],
-    [desktop, mobile],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dataKey],
   );
 
+  // Compute full-amplitude initial paths synchronously so curves never render flat
+  const basePaths = React.useMemo(() => {
+    if (W <= 40 || H <= 40 || n < 2) return sets.map(() => "");
+    return sets.map((s) => {
+      const P = s.a.map((v, i) => [X(i), mid + s.dir * (3 + (v / max) * amp)] as [number, number]);
+      return smooth(P);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [W, H, sets, max, n]);
+
   React.useEffect(() => {
-    if (!W || !H) return;
+    if (W <= 40 || H <= 40 || n < 2) return;
+    if (reduce) {
+      basePaths.forEach((d, j) => paths.current[j]?.setAttribute("d", d));
+      return;
+    }
+    if (startRef.current === null) startRef.current = performance.now();
     let raf = 0;
-    const t0 = performance.now();
     const frame = (now: number) => {
-      const t = (now - t0) / 1000, grow = reduce ? 1 : ease(Math.min(1, t / 1.3));
+      const t = (now - (startRef.current ?? now)) / 1000;
+      const grow = ease(Math.min(1, 0.35 + t / 1.1));
       sets.forEach((s, j) => {
-        const breathe = reduce ? 1 : 1 + Math.sin(t * 1.2 + s.k * 0.9) * 0.035;
+        const breathe = 1 + Math.sin(t * 1.15 + s.k * 0.9) * 0.032;
         const P = s.a.map((v, i) => [X(i), mid + s.dir * (3 + (v / max) * amp * grow * breathe)] as [number, number]);
         paths.current[j]?.setAttribute("d", smooth(P));
       });
-      if (!reduce) raf = requestAnimationFrame(frame);
+      raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [W, H, sets, reduce, max]);
+  }, [W, H, sets, reduce, max, n]);
 
   const move = (e: React.PointerEvent) => {
     const r = (e.currentTarget as SVGRectElement).ownerSVGElement!.getBoundingClientRect();
-    const i = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left - pad - 6) / (W - 2 * pad - 12)) * (n - 1))));
+    const i = Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left - pad - 6) / Math.max(20, W - 2 * pad - 12)) * (n - 1))));
     setHover(i);
     tip.current?.show(r.left + X(i), r.top + 12, {
       title: `${String(i % 24).padStart(2, "0")}:00 · ${labels.current}`,
@@ -352,9 +375,9 @@ function SessionsChart({ desktop, mobile, labels, colors, tip }: { desktop: numb
   };
 
   return (
-    <div ref={ref} className="relative min-h-[140px] flex-1 overflow-hidden rounded-[18px] border border-border bg-muted/40 dark:bg-muted/30">
-      {W > 0 && (
-        <svg width={W} height={H} className="block" role="img" aria-label={`${labels.desktop} and ${labels.mobile} by hour`}>
+    <div ref={ref} className="relative h-[168px] sm:h-[208px] w-full flex-1 overflow-hidden rounded-[18px] border border-border bg-muted/40 dark:bg-muted/30">
+      {W > 40 && H > 40 && (
+        <svg width={W} height={H} className="absolute inset-0 block h-full w-full" role="img" aria-label={`${labels.desktop} and ${labels.mobile} by hour`}>
           <defs>
             <linearGradient id={`${id}d`} x1="0" x2="1" y1="0" y2="0">
               <stop offset=".1" style={{ stopColor: colors.desktop[0] }} />
@@ -376,6 +399,7 @@ function SessionsChart({ desktop, mobile, labels, colors, tip }: { desktop: numb
             <path
               key={`${s.g}${s.k}`}
               ref={(el) => { paths.current[j] = el; }}
+              d={basePaths[j]}
               fill="none"
               stroke={`url(#${id}${s.g})`}
               strokeWidth={s.k === 0 ? 2.5 : 1.6}
@@ -500,6 +524,7 @@ function Radar({ values, axis, year, color, prefix, mono, tip }: { values: numbe
   const shape = (v: number[]) => { const f = fit(norm(v)); let d = ""; for (let j = 0; j <= 180; j++) { const p = at(f, (j / 180) * Math.PI * 2); d += (j ? "L" : "M") + p[0].toFixed(2) + "," + p[1].toFixed(2); } return d + "Z"; };
   const point = (v: number[], i: number) => at(fit(norm(v)), (i / N) * Math.PI * 2);
 
+  const valKey = values.join(",");
   React.useEffect(() => {
     if (!S) return;
     const from = cur.current ?? values.map(() => 1), to = values, t0 = performance.now();
@@ -513,7 +538,7 @@ function Radar({ values, axis, year, color, prefix, mono, tip }: { values: numbe
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, S, reduce]);
+  }, [valKey, S, reduce]);
 
   const move = (e: React.PointerEvent) => {
     const r = (e.currentTarget as SVGRectElement).ownerSVGElement!.getBoundingClientRect(), x = e.clientX - r.left - C, y = e.clientY - r.top - C;
