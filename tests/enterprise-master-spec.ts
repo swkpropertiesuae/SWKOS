@@ -4,7 +4,7 @@ import { seedReference } from '../src/server/seed'
 import { validateMeta, ENTITY_LIST } from '../src/shared/entities'
 import { q } from '../src/server/db'
 import { createRecord, deleteRecord, getDef, listRecords, patchRecord, updateRecord, SYSTEM_CTX, type Ctx } from '../src/server/engine'
-import { createSession, loadUser, userFromToken } from '../src/server/auth'
+import { createSession, loadUser, signRoleGrant, userFromToken } from '../src/server/auth'
 import { todayStr, addDays } from '../src/server/util'
 import {
   ENTERPRISE_MODULE_CATALOGUE,
@@ -64,27 +64,45 @@ async function run() {
   const legalId = q.val<number>(`SELECT id FROM legal_entities WHERE code = 'SWK'`)!
   const deptSal = q.val<number>(`SELECT id FROM departments WHERE code = 'SAL'`)!
   const deptHr = q.val<number>(`SELECT id FROM departments WHERE code = 'HR'`)!
-  const adminRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Admin'`)!
-  const mgrRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Manager'`)!
+  const hrRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'HR'`)!
   const salesRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Sales'`)!
   const portalRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Customer Portal'`)!
 
-  const mkUser = (name: string, email: string, roleId: number, partyId: number | null = null): Ctx => {
+  const loadCanonical = (email: string): Ctx => {
+    const id = q.val<number>(`SELECT id FROM users WHERE lower(email) = lower(?) AND deleted_at IS NULL`, email)!
+    assert.ok(id, `Seeded canonical user ${email} must exist`)
+    return { user: loadUser(id)! }
+  }
+
+  const mkUser = (name: string, email: string, roleId: number, partyId: number | null = null, signHr = false): Ctx => {
     const u = createRecord(getDef('users'), {
       name, email, password: 'TestPassword123!', role_id: roleId, branch_id: dxb, department_id: deptSal, party_id: partyId, active: true,
     }, SYSTEM_CTX)
+    if (signHr) {
+      q.run(`UPDATE users SET role_grant_sig = ?, role_granted_by = ? WHERE id = ?`, signRoleGrant(u.id, email, 'HR'), 1, u.id)
+    }
     return { user: loadUser(u.id)! }
   }
 
-  const ceoCtx = mkUser('Tariq CEO', 'ceo@test.swk.ae', adminRoleId)
-  const mgrCtx = mkUser('Layla Sales Director', 'layla@test.swk.ae', mgrRoleId)
-  const hrCtx = mkUser('Rashid HR Head', 'rashid@test.swk.ae', mgrRoleId)
-  const compCtx = mkUser('Nadia Compliance Officer', 'nadia@test.swk.ae', mgrRoleId)
-  const finInitCtx = mkUser('Finance Initiator', 'fin1@test.swk.ae', mgrRoleId)
-  const finApproveCtx = mkUser('Finance Approver', 'fin2@test.swk.ae', mgrRoleId)
-  const finTreasuryCtx = mkUser('Treasury Executor', 'fin3@test.swk.ae', mgrRoleId)
+  const finOpRole = createRecord(getDef('roles'), {
+    name: 'Finance Operator Test',
+    permissions: {
+      dashboard: ['view'],
+      finance: ['view', 'create', 'edit', 'approve'],
+      compliance: ['view', 'create', 'edit', 'approve'],
+      projects: ['view', 'create', 'edit', 'approve'],
+    },
+  }, SYSTEM_CTX)
+
+  const ceoCtx = loadCanonical('shabib@swk.properties')
+  const mgrCtx = loadCanonical('haseeb@swk.properties')
+  const compCtx = loadCanonical('admin@swk.properties')
+  const hrCtx = mkUser('Rashid HR Head', 'rashid@test.swk.ae', hrRoleId, null, true)
+  const finInitCtx = mkUser('Finance Initiator', 'fin1@test.swk.ae', finOpRole.id)
+  const finApproveCtx = compCtx
+  const finTreasuryCtx = ceoCtx
   const broker1Ctx = mkUser('Broker Karim', 'karim@test.swk.ae', salesRoleId)
-  const broker2Ctx = mkUser('Broker Zainab', 'zainab@test.swk.ae', mgrRoleId)
+  const broker2Ctx = mkUser('Broker Zainab', 'zainab@test.swk.ae', salesRoleId)
 
   const empKarim = createRecord(getDef('employees'), {
     name: 'Broker Karim', user_id: broker1Ctx.user!.id, branch_id: dxb, department_id: deptSal,
@@ -368,12 +386,12 @@ async function run() {
     dld_exam_passed: true,
     aml_training_completed: true,
     conduct_policy_acknowledged: true,
-  }, hrCtx)
+  }, mgrCtx)
 
   assert.throws(() => activateAgentAuthorisation(authRec.id, 'compliance', compCtx), /HR must independently verify/i)
-  activateAgentAuthorisation(authRec.id, 'hr', hrCtx)
+  activateAgentAuthorisation(authRec.id, 'hr', mgrCtx)
   // HR verifier cannot also perform Compliance sign-off
-  assert.throws(() => activateAgentAuthorisation(authRec.id, 'compliance', hrCtx), /Segregation of Duties/i)
+  assert.throws(() => activateAgentAuthorisation(authRec.id, 'compliance', mgrCtx), /Segregation of Duties/i)
   const activeAuth = activateAgentAuthorisation(authRec.id, 'compliance', compCtx)
   assert.equal(activeAuth.status, 'Authorised')
 
@@ -456,9 +474,9 @@ async function run() {
 
   // Payee cannot verify their own IBAN change
   assert.throws(() => verifyCommissionIban(cen.id, 'CALLBACK-SELF', { user: broker1Ctx.user }), /access|permission|never verify/i)
-  verifyCommissionIban(cen.id, 'CALLBACK-HR-001', hrCtx)
+  verifyCommissionIban(cen.id, 'CALLBACK-HR-001', ceoCtx)
   // First verifier cannot also be second verifier
-  assert.throws(() => verifyCommissionIban(cen.id, 'CALLBACK-HR-002', hrCtx), /different authorised user/i)
+  assert.throws(() => verifyCommissionIban(cen.id, 'CALLBACK-HR-002', ceoCtx), /different authorised user/i)
   const unfrozenCen = verifyCommissionIban(cen.id, 'CALLBACK-COMP-002', compCtx)
   assert.equal(unfrozenCen.iban_changed_before_payout, false)
 
@@ -595,16 +613,16 @@ async function run() {
     risk_level: 'High – Four-Eyes Required',
     approval_mode: 'Four-Eyes Sequential',
     requester_id: mgrCtx.user!.id,
-    step1_approver_id: hrCtx.user!.id,
+    step1_approver_id: compCtx.user!.id,
     step2_approver_id: ceoCtx.user!.id,
     supporting_evidence: 'Signed contract and invoice attached.',
   }, mgrCtx)
   // Requester cannot self-approve
   assert.throws(() => decideUniversalApproval(uApr.id, 'approve', 'Self approve', mgrCtx), /Maker-Checker Control/i)
-  const step1Apr = decideUniversalApproval(uApr.id, 'approve', 'Step 1 verified.', hrCtx)
+  const step1Apr = decideUniversalApproval(uApr.id, 'approve', 'Step 1 verified.', compCtx)
   assert.equal(step1Apr.status, 'Pending Step 2 (Four-Eyes)')
   // Step 1 approver cannot also approve Step 2
-  assert.throws(() => decideUniversalApproval(uApr.id, 'approve', 'Step 2 by same user', hrCtx), /Four-Eyes Control/i)
+  assert.throws(() => decideUniversalApproval(uApr.id, 'approve', 'Step 2 by same user', compCtx), /Four-Eyes Control/i)
   const step2Apr = decideUniversalApproval(uApr.id, 'approve', 'Step 2 executive sign-off.', ceoCtx)
   assert.equal(step2Apr.status, 'Approved')
 
