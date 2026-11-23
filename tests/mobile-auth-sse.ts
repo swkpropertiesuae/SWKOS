@@ -583,12 +583,36 @@ async function run() {
     const okVerifyRes = await app.inject({
       method: 'POST',
       url: '/api/auth/verify-password',
-      headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+      headers: {
+        'content-type': 'application/json',
+        'x-swk-client': 'mobile',
+        'x-swk-session': flowTok,
+        origin: 'capacitor://localhost',
+      },
       payload: { password: staffPw },
     })
     assert.equal(okVerifyRes.statusCode, 200, `Valid password verify failed: ${okVerifyRes.body}`)
     assert.equal((okVerifyRes.json() as any).ok, true)
     assert.equal((okVerifyRes.json() as any).session_token, undefined, 'verify-password must not issue/rotate a session token')
+    assert.match(
+      String(okVerifyRes.headers['access-control-expose-headers'] || ''),
+      /Content-Disposition/i,
+      'Capacitor CORS must expose Content-Disposition so cross-origin downloads preserve filenames',
+    )
+
+    // verify-password must also work when user has must_change_password = 1 (PASSWORD_SETUP allowlist)
+    mainDb.prepare('UPDATE users SET must_change_password = 1 WHERE id = ?').run(staffId)
+    try {
+      const mcpVerifyRes = await app.inject({
+        method: 'POST',
+        url: '/api/auth/verify-password',
+        headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+        payload: { password: staffPw },
+      })
+      assert.equal(mcpVerifyRes.statusCode, 200, `verify-password under must_change_password=1 must return 200, got ${mcpVerifyRes.statusCode}`)
+    } finally {
+      mainDb.prepare('UPDATE users SET must_change_password = 0 WHERE id = ?').run(staffId)
+    }
 
     // Session remains usable, issue two SSE tickets before logout
     const preLogoutTicketRes1 = await app.inject({

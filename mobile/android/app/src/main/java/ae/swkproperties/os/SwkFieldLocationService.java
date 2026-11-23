@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -47,7 +48,10 @@ import org.json.JSONObject;
  * - Runs strictly between an explicit "Start Field Duty" action and "End Field Duty" (or server stop/expiry).
  * - Requests zero ACCESS_BACKGROUND_LOCATION permission.
  * - Filters coarse fixes (> 150m), quarantines non-retryable 400 validation errors so valid fixes
- *   continue flushing, and waits for /api/field-gps/sessions/stop before tearing down foreground state.
+ *   continue flushing, and snapshots immutable per-generation session credentials so rapid stop/restart
+ *   never interferes with a newly started session.
+ * - Uses in-process requestStop() and a non-exported BroadcastReceiver (SwkFieldActionReceiver) so
+ *   stopping duty from JS or the notification never calls startService()/getForegroundService() in background.
  */
 public class SwkFieldLocationService extends Service {
     public static final String CHANNEL_ID = "swk_field_duty";
@@ -74,17 +78,55 @@ public class SwkFieldLocationService extends Service {
     private static final int MAX_BUFFERED_POINTS = 500;
     private static final int BATCH_LIMIT = 50;
 
+    private static final class SessionSnapshot {
+        final long generation;
+        final int sessionId;
+        final String assignedLocation;
+        final String serverUrl;
+        final String sessionToken;
+        final String deviceId;
+
+        SessionSnapshot(
+            long generation,
+            int sessionId,
+            String assignedLocation,
+            String serverUrl,
+            String sessionToken,
+            String deviceId
+        ) {
+            this.generation = generation;
+            this.sessionId = sessionId;
+            this.assignedLocation = assignedLocation;
+            this.serverUrl = serverUrl;
+            this.sessionToken = sessionToken;
+            this.deviceId = deviceId;
+        }
+    }
+
     private static final class BufferedPoint {
+        final long generation;
         final JSONObject payload;
         final long recordedMs;
 
-        BufferedPoint(JSONObject payload, long recordedMs) {
+        BufferedPoint(long generation, JSONObject payload, long recordedMs) {
+            this.generation = generation;
             this.payload = payload;
             this.recordedMs = recordedMs;
         }
     }
 
+    private static final class PostResult {
+        final int status;
+        final String errorBody;
+
+        PostResult(int status, String errorBody) {
+            this.status = status;
+            this.errorBody = errorBody;
+        }
+    }
+
     private static volatile boolean dutyActive = false;
+    private static volatile SwkFieldLocationService activeInstance = null;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -95,15 +137,36 @@ public class SwkFieldLocationService extends Service {
     private FusedLocationProviderClient fused;
     private LocationCallback callback;
     private volatile boolean stopping = false;
-    private int sessionId = -1;
-    private String assignedLocation = "Dubai Field Duty";
-    private String serverUrl = "";
-    private String sessionToken = "";
-    private String deviceId = "";
-    private volatile String lastError = "";
+    private volatile SessionSnapshot currentSession = null;
+    private volatile long endedBroadcastGeneration = -1L;
 
     public static boolean isRunning() {
         return dutyActive;
+    }
+
+    /**
+     * Background-safe stop helper for Android 8–15+:
+     * signals the live in-process service instance directly without calling Context.startService(),
+     * or cleans up any stale notification/service cleanly if the service is already down.
+     */
+    public static void requestStop(Context context, boolean notifyServer) {
+        if (context == null) return;
+        Context appCtx = context.getApplicationContext();
+        SwkFieldLocationService inst = activeInstance;
+        if (inst != null) {
+            inst.mainHandler.post(() -> inst.finishDuty(notifyServer));
+            return;
+        }
+        dutyActive = false;
+        NotificationManager nm = appCtx.getSystemService(NotificationManager.class);
+        if (nm != null) {
+            nm.cancel(NOTIFICATION_ID);
+        }
+        appCtx.sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(appCtx.getPackageName()));
+        try {
+            appCtx.stopService(new Intent(appCtx, SwkFieldLocationService.class));
+        } catch (RuntimeException ignored) {
+        }
     }
 
     public static void ensureChannel(Context context) {
@@ -120,6 +183,7 @@ public class SwkFieldLocationService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        activeInstance = this;
         ensureChannel(this);
     }
 
@@ -135,52 +199,47 @@ public class SwkFieldLocationService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_END_DUTY.equals(action)) {
-            if (!dutyActive) {
-                if (hasFineLocation()) {
-                    // Ensure foreground contract holds if Android invokes via getForegroundService()
-                    try {
-                        Notification notification = buildNotification();
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-                        } else {
-                            startForeground(NOTIFICATION_ID, notification);
-                        }
-                    } catch (RuntimeException ignored) {
-                    }
-                }
-                sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
-                stopForeground(STOP_FOREGROUND_REMOVE);
-                stopSelf();
-                return START_NOT_STICKY;
-            }
             finishDuty(true);
             return START_NOT_STICKY;
         }
 
-        dutyGeneration.incrementAndGet();
-        stopping = false;
-        sessionId = intent.getIntExtra(EXTRA_SESSION_ID, -1);
-        String loc = intent.getStringExtra(EXTRA_LOCATION);
-        assignedLocation = (loc == null || loc.trim().isEmpty()) ? "Dubai Field Duty" : loc.trim();
-        serverUrl = trimTrailingSlash(intent.getStringExtra(EXTRA_SERVER_URL));
-        sessionToken = orEmpty(intent.getStringExtra(EXTRA_TOKEN));
-        deviceId = orEmpty(intent.getStringExtra(EXTRA_DEVICE_ID));
+        int sid = intent.getIntExtra(EXTRA_SESSION_ID, -1);
+        String locRaw = intent.getStringExtra(EXTRA_LOCATION);
+        String loc = (locRaw == null || locRaw.trim().isEmpty()) ? "Dubai Field Duty" : locRaw.trim();
+        String url = trimTrailingSlash(intent.getStringExtra(EXTRA_SERVER_URL));
+        String token = orEmpty(intent.getStringExtra(EXTRA_TOKEN));
+        String devId = orEmpty(intent.getStringExtra(EXTRA_DEVICE_ID));
 
-        if (sessionId <= 0 || sessionToken.isEmpty() || !isAllowedServer(serverUrl) || !hasFineLocation()) {
+        if (sid <= 0 || token.isEmpty() || !isAllowedServer(url) || !hasFineLocation()) {
             stopSelf();
             return START_NOT_STICKY;
         }
 
+        long gen = dutyGeneration.incrementAndGet();
+        SessionSnapshot snap = new SessionSnapshot(gen, sid, loc, url, token, devId);
+        currentSession = snap;
+        stopping = false;
+
         try {
-            Notification notification = buildNotification();
+            Notification notification = buildNotification(snap.assignedLocation);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
             } else {
                 startForeground(NOTIFICATION_ID, notification);
             }
         } catch (RuntimeException e) {
+            currentSession = null;
             stopSelf();
             return START_NOT_STICKY;
+        }
+
+        synchronized (pending) {
+            Iterator<BufferedPoint> it = pending.iterator();
+            while (it.hasNext()) {
+                if (it.next().generation != gen) {
+                    it.remove();
+                }
+            }
         }
 
         dutyActive = true;
@@ -199,13 +258,14 @@ public class SwkFieldLocationService extends Service {
         callback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult result) {
-                if (stopping) return;
+                SessionSnapshot snap = currentSession;
+                if (stopping || snap == null || dutyGeneration.get() != snap.generation) return;
                 boolean added = false;
                 for (Location l : result.getLocations()) {
                     if (l == null || !Double.isFinite(l.getLatitude()) || !Double.isFinite(l.getLongitude())) continue;
                     // Drop overly coarse points client-side (> 150m) so they never get rejected or stall the queue.
                     if (!l.hasAccuracy() || l.getAccuracy() < 0f || l.getAccuracy() > MAX_CLIENT_ACCURACY_M) continue;
-                    BufferedPoint bp = toPoint(l);
+                    BufferedPoint bp = toPoint(l, snap);
                     synchronized (pending) {
                         pending.add(bp);
                         while (pending.size() > MAX_BUFFERED_POINTS) {
@@ -215,7 +275,7 @@ public class SwkFieldLocationService extends Service {
                     added = true;
                 }
                 if (added && !io.isShutdown()) {
-                    io.execute(SwkFieldLocationService.this::flush);
+                    io.execute(() -> flushLive(snap));
                 }
             }
         };
@@ -226,7 +286,7 @@ public class SwkFieldLocationService extends Service {
         fused.requestLocationUpdates(request, callback, Looper.getMainLooper());
     }
 
-    private BufferedPoint toPoint(Location l) {
+    private BufferedPoint toPoint(Location l, SessionSnapshot snap) {
         JSONObject p = new JSONObject();
         long recMs = l.getTime() > 0 ? l.getTime() : System.currentTimeMillis();
         try {
@@ -246,22 +306,89 @@ public class SwkFieldLocationService extends Service {
             boolean mock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? l.isMock() : l.isFromMockProvider();
             p.put("is_mock", mock);
             p.put("recorded_at", iso(recMs));
-            p.put("idempotency_key", "fgps-and-" + sessionId + "-" + seq.incrementAndGet() + "-" + recMs);
+            p.put("idempotency_key", "fgps-and-" + snap.sessionId + "-" + seq.incrementAndGet() + "-" + recMs);
         } catch (Exception ignored) {
         }
-        return new BufferedPoint(p, recMs);
+        return new BufferedPoint(snap.generation, p, recMs);
     }
 
-    /** Flushes up to 50 buffered fixes in chronological order to POST /api/field-gps/pings. */
-    private void flush() {
-        List<BufferedPoint> batch;
-        synchronized (pending) {
-            if (pending.isEmpty()) return;
-            int count = Math.min(BATCH_LIMIT, pending.size());
-            batch = new ArrayList<>(pending.subList(0, count));
-        }
-        if (!isAllowedServer(serverUrl) || sessionToken.isEmpty()) return;
+    /** Flushes up to 50 buffered fixes for the active generation in chronological order. */
+    private void flushLive(SessionSnapshot snap) {
+        if (snap == null || dutyGeneration.get() != snap.generation) return;
+        if (!isAllowedServer(snap.serverUrl) || snap.sessionToken.isEmpty()) return;
 
+        while (dutyGeneration.get() == snap.generation) {
+            List<BufferedPoint> batch = new ArrayList<>();
+            synchronized (pending) {
+                for (BufferedPoint bp : pending) {
+                    if (bp.generation == snap.generation) {
+                        batch.add(bp);
+                        if (batch.size() >= BATCH_LIMIT) break;
+                    }
+                }
+            }
+            if (batch.isEmpty()) return;
+
+            PostResult res = sendBatch(snap, batch);
+            if (res == null) {
+                // Network unavailable: retain points for next retry.
+                return;
+            }
+            if (res.status >= 200 && res.status < 300) {
+                synchronized (pending) {
+                    pending.removeAll(batch);
+                }
+            } else if (res.status == 401 || res.status == 403 || res.status == 404 || res.status == 422) {
+                mainHandler.post(() -> {
+                    if (dutyGeneration.get() == snap.generation) {
+                        finishDuty(false);
+                    }
+                });
+                return;
+            } else if (res.status == 400) {
+                if (res.errorBody.contains("no active field duty") || res.errorBody.contains("ended") || res.errorBody.contains("expired")) {
+                    mainHandler.post(() -> {
+                        if (dutyGeneration.get() == snap.generation) {
+                            finishDuty(false);
+                        }
+                    });
+                    return;
+                }
+                // Non-retryable payload error (e.g. coarse accuracy / skew): drop rejected slice so valid fixes flush.
+                synchronized (pending) {
+                    pending.removeAll(batch);
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    /** Flushes an already-drained local snapshot of buffered points during shutdown without touching new generations. */
+    private void flushDrained(SessionSnapshot snap, List<BufferedPoint> drained) {
+        if (snap == null || drained == null || drained.isEmpty()) return;
+        if (!isAllowedServer(snap.serverUrl) || snap.sessionToken.isEmpty()) return;
+
+        int idx = 0;
+        while (idx < drained.size()) {
+            int end = Math.min(idx + BATCH_LIMIT, drained.size());
+            List<BufferedPoint> slice = drained.subList(idx, end);
+            PostResult res = sendBatch(snap, slice);
+            if (res == null) return;
+            if (res.status == 401 || res.status == 403 || res.status == 404 || res.status == 422) return;
+            if (res.status == 400 && (res.errorBody.contains("no active field duty") || res.errorBody.contains("ended") || res.errorBody.contains("expired"))) {
+                return;
+            }
+            if ((res.status >= 200 && res.status < 300) || res.status == 400) {
+                idx = end;
+            } else {
+                return;
+            }
+        }
+    }
+
+    @Nullable
+    private PostResult sendBatch(SessionSnapshot snap, List<BufferedPoint> batch) {
         try {
             long nowMs = System.currentTimeMillis();
             boolean anyReplay = false;
@@ -276,9 +403,9 @@ public class SwkFieldLocationService extends Service {
             }
 
             JSONObject body = new JSONObject();
-            body.put("field_session_id", sessionId);
-            if (!deviceId.isEmpty()) {
-                body.put("device_id", deviceId);
+            body.put("field_session_id", snap.sessionId);
+            if (!snap.deviceId.isEmpty()) {
+                body.put("device_id", snap.deviceId);
             }
             body.put("network_type", DeviceTelemetry.networkType(this));
             if (anyReplay) {
@@ -286,44 +413,14 @@ public class SwkFieldLocationService extends Service {
             }
             body.put("points", pts);
 
-            int status = post("/api/field-gps/pings", body);
-            if (status >= 200 && status < 300) {
-                synchronized (pending) {
-                    pending.removeAll(batch);
-                }
-                boolean more;
-                synchronized (pending) {
-                    more = !pending.isEmpty();
-                }
-                if (more) {
-                    flush();
-                }
-            } else if (status == 401 || status == 403 || status == 404 || status == 422) {
-                finishDuty(false);
-            } else if (status == 400) {
-                if (lastError.contains("no active field duty") || lastError.contains("ended") || lastError.contains("expired")) {
-                    finishDuty(false);
-                } else {
-                    // Non-retryable payload error (e.g. coarse accuracy / skew): drop rejected slice so valid fixes flush.
-                    synchronized (pending) {
-                        pending.removeAll(batch);
-                    }
-                    boolean more;
-                    synchronized (pending) {
-                        more = !pending.isEmpty();
-                    }
-                    if (more) {
-                        flush();
-                    }
-                }
-            }
+            return post(snap, "/api/field-gps/pings", body);
         } catch (Exception ignored) {
-            // Network unavailable: retain points in pending for the next scheduled batch flush.
+            return null;
         }
     }
 
-    private int post(String path, JSONObject body) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(serverUrl + path).openConnection();
+    private PostResult post(SessionSnapshot snap, String path, JSONObject body) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(snap.serverUrl + path).openConnection();
         try {
             c.setRequestMethod("POST");
             c.setConnectTimeout(15_000);
@@ -332,29 +429,48 @@ public class SwkFieldLocationService extends Service {
             c.setRequestProperty("Content-Type", "application/json");
             c.setRequestProperty("Accept", "application/json");
             c.setRequestProperty("x-swk-client", "mobile");
-            c.setRequestProperty("x-swk-session", sessionToken);
+            c.setRequestProperty("x-swk-session", snap.sessionToken);
             byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
             try (OutputStream out = c.getOutputStream()) {
                 out.write(bytes);
             }
             int code = c.getResponseCode();
-            lastError = "";
+            String errBody = "";
             if (code >= 400) {
                 try (InputStream es = c.getErrorStream()) {
                     if (es != null) {
-                        lastError = new String(es.readAllBytes(), StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
+                        errBody = new String(es.readAllBytes(), StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
                     }
                 } catch (Exception ignored) {
                 }
             }
-            return code;
+            return new PostResult(code, errBody);
         } finally {
             c.disconnect();
         }
     }
 
+    private void emitDutyEndedOnce(long gen) {
+        if (endedBroadcastGeneration == gen) return;
+        endedBroadcastGeneration = gen;
+        sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
+    }
+
     private void finishDuty(boolean notifyServer) {
-        if (stopping) return;
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(() -> finishDuty(notifyServer));
+            return;
+        }
+        final SessionSnapshot snap = currentSession;
+        final long gen = snap != null ? snap.generation : dutyGeneration.get();
+
+        if (!dutyActive && stopping) {
+            emitDutyEndedOnce(gen);
+            stopForeground(STOP_FOREGROUND_REMOVE);
+            stopSelf();
+            return;
+        }
+
         stopping = true;
         dutyActive = false;
 
@@ -363,39 +479,45 @@ public class SwkFieldLocationService extends Service {
             callback = null;
         }
 
-        final long gen = dutyGeneration.get();
-        final int endedSession = sessionId;
-        final boolean canFlush = endedSession > 0 && isAllowedServer(serverUrl) && !sessionToken.isEmpty();
+        final List<BufferedPoint> drained = new ArrayList<>();
+        synchronized (pending) {
+            Iterator<BufferedPoint> it = pending.iterator();
+            while (it.hasNext()) {
+                BufferedPoint bp = it.next();
+                if (snap == null || bp.generation == snap.generation) {
+                    drained.add(bp);
+                    it.remove();
+                }
+            }
+        }
+
+        final boolean canFlush = snap != null && snap.sessionId > 0 && isAllowedServer(snap.serverUrl) && !snap.sessionToken.isEmpty();
         final boolean canNotify = notifyServer && canFlush;
 
-        if (io.isShutdown()) {
+        if (io.isShutdown() || !canFlush) {
+            emitDutyEndedOnce(gen);
             stopForeground(STOP_FOREGROUND_REMOVE);
-            sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
             stopSelf();
             return;
         }
 
         io.execute(() -> {
             try {
-                if (canFlush) {
+                try {
+                    flushDrained(snap, drained);
+                } catch (Exception ignored) {
+                }
+                // Only tell server to end the session if no newer duty session restarted in the meantime.
+                if (canNotify && dutyGeneration.get() == snap.generation) {
                     try {
-                        flush();
+                        post(snap, "/api/field-gps/sessions/stop", new JSONObject());
                     } catch (Exception ignored) {
                     }
-                }
-                if (canNotify) {
-                    try {
-                        post("/api/field-gps/sessions/stop", new JSONObject());
-                    } catch (Exception ignored) {
-                    }
-                }
-                synchronized (pending) {
-                    pending.clear();
                 }
             } finally {
                 mainHandler.post(() -> {
-                    if (dutyGeneration.get() != gen) return;
-                    sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
+                    if (dutyGeneration.get() != snap.generation) return;
+                    emitDutyEndedOnce(snap.generation);
                     stopForeground(STOP_FOREGROUND_REMOVE);
                     stopSelf();
                 });
@@ -403,7 +525,7 @@ public class SwkFieldLocationService extends Service {
         });
     }
 
-    private Notification buildNotification() {
+    private Notification buildNotification(String locationLabel) {
         Intent openIntent = new Intent(this, MainActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra(MainActivity.EXTRA_LAUNCH_ROUTE, "/field-duty");
@@ -413,14 +535,17 @@ public class SwkFieldLocationService extends Service {
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-        Intent endIntent = new Intent(this, SwkFieldLocationService.class).setAction(ACTION_END_DUTY);
-        PendingIntent end = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-            ? PendingIntent.getForegroundService(this, 1, endIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
-            : PendingIntent.getService(this, 1, endIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent endIntent = new Intent(this, SwkFieldActionReceiver.class).setAction(ACTION_END_DUTY);
+        PendingIntent end = PendingIntent.getBroadcast(
+            this,
+            1,
+            endIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.duty_notification_title))
-            .setContentText(assignedLocation)
+            .setContentText(locationLabel)
             .setSmallIcon(R.drawable.ic_stat_swk)
             .setColor(ContextCompat.getColor(this, R.color.swk_mint))
             .setOngoing(true)
@@ -435,6 +560,9 @@ public class SwkFieldLocationService extends Service {
 
     @Override
     public void onDestroy() {
+        if (activeInstance == this) {
+            activeInstance = null;
+        }
         dutyActive = false;
         if (fused != null && callback != null) {
             fused.removeLocationUpdates(callback);
@@ -444,7 +572,7 @@ public class SwkFieldLocationService extends Service {
             pending.clear();
         }
         stopForeground(STOP_FOREGROUND_REMOVE);
-        sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
+        emitDutyEndedOnce(dutyGeneration.get());
         io.shutdown();
         super.onDestroy();
     }

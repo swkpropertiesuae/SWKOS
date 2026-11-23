@@ -424,15 +424,7 @@ public class SwkSecurePlugin extends Plugin {
 
     @PluginMethod
     public void stopDuty(PluginCall call) {
-        Context ctx = getContext();
-        if (SwkFieldLocationService.isRunning()) {
-            ctx.startService(
-                new Intent(ctx, SwkFieldLocationService.class)
-                    .setAction(SwkFieldLocationService.ACTION_STOP_DUTY)
-            );
-        } else {
-            ctx.stopService(new Intent(ctx, SwkFieldLocationService.class));
-        }
+        SwkFieldLocationService.requestStop(getContext(), false);
         call.resolve();
     }
 

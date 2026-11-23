@@ -39,7 +39,9 @@ async function rawApi<T = any>(method: string, path: string, body?: unknown, sig
   let data: any = null
   if (text) { try { data = JSON.parse(text) } catch { data = text } }
   if (!res.ok) {
-    if (res.status === 401 && !path.startsWith('/api/auth/login')) window.dispatchEvent(new Event('swk:unauthorized'))
+    if (res.status === 401 && !path.startsWith('/api/auth/login') && !path.startsWith('/api/auth/verify-password')) {
+      window.dispatchEvent(new Event('swk:unauthorized'))
+    }
     throw new ApiError(res.status, (data && data.error) || res.statusText || 'Request failed', data?.details)
   }
   return data as T
@@ -92,7 +94,7 @@ export function needsAuthMediaFetch(): boolean {
   return Boolean(getApiBaseUrl() || getMobileSessionToken() || isNativeMobile())
 }
 
-function filenameFromDisposition(res: Response, fallback?: string): string {
+function filenameFromDisposition(res: Response): string | null {
   const cd = res.headers.get('content-disposition') || ''
   const utf8 = cd.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)?.[1]
   if (utf8) {
@@ -103,12 +105,13 @@ function filenameFromDisposition(res: Response, fallback?: string): string {
     }
   }
   const plain = cd.match(/filename="?([^";]+)"?/i)?.[1]
-  return plain || fallback || 'download'
+  return plain || null
 }
 
 export async function fetchAuthBlob(
   path: string,
   signal?: AbortSignal,
+  fallbackFilename?: string,
 ): Promise<{ blob: Blob; filename: string; contentType: string }> {
   const res = await fetch(resolveApiUrl(path), {
     signal,
@@ -116,7 +119,7 @@ export async function fetchAuthBlob(
     headers: buildClientHeaders(),
   })
   if (!res.ok) {
-    if (res.status === 401 && !path.startsWith('/api/auth/login')) {
+    if (res.status === 401 && !path.startsWith('/api/auth/login') && !path.startsWith('/api/auth/verify-password')) {
       window.dispatchEvent(new Event('swk:unauthorized'))
     }
     const text = await res.text().catch(() => '')
@@ -133,7 +136,7 @@ export async function fetchAuthBlob(
   const blob = await res.blob()
   return {
     blob,
-    filename: filenameFromDisposition(res),
+    filename: filenameFromDisposition(res) || fallbackFilename || 'download',
     contentType: res.headers.get('content-type') || blob.type || 'application/octet-stream',
   }
 }
@@ -150,8 +153,8 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
 }
 
 export async function downloadAuthFile(path: string, fallbackFilename?: string): Promise<void> {
-  const { blob, filename } = await fetchAuthBlob(path)
-  triggerBlobDownload(blob, filename || fallbackFilename || 'download')
+  const { blob, filename } = await fetchAuthBlob(path, undefined, fallbackFilename)
+  triggerBlobDownload(blob, filename)
 }
 
 export async function openAuthFile(path: string, fallbackFilename?: string): Promise<void> {
@@ -159,11 +162,12 @@ export async function openAuthFile(path: string, fallbackFilename?: string): Pro
     window.open(resolveApiUrl(path), '_blank', 'noopener,noreferrer')
     return
   }
-  const { blob, filename } = await fetchAuthBlob(path)
+  const { blob, filename } = await fetchAuthBlob(path, undefined, fallbackFilename || 'document')
   const url = URL.createObjectURL(blob)
   const win = window.open(url, '_blank', 'noopener,noreferrer')
   if (!win) {
-    triggerBlobDownload(blob, filename || fallbackFilename || 'document')
+    URL.revokeObjectURL(url)
+    triggerBlobDownload(blob, filename)
   } else {
     window.setTimeout(() => URL.revokeObjectURL(url), 120_000)
   }

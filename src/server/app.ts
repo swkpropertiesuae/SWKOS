@@ -37,7 +37,7 @@ const PORTAL_OK = [
   /^\/api\/e\/[a-z_]+(\/\d+|\/lookup)?$/, /^\/api\/print\/[a-z_]+\/\d+\/parties$/, /^\/api\/pdf\/(status|[a-z_]+\/\d+)$/, /^\/api\/files\/\d+\/download$/, /^\/api\/finance\/statement\/\d+$/, /^\/api\/jobs\/\d+\/tracking-token$/,
   /^\/api\/portal\/maintenance(\/\d+\/(vendor-update|landlord-decision|feedback))?$/,
 ]
-const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-password', '/api/auth/logout', '/api/auth/sessions', '/api/auth/login-history'])
+const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-password', '/api/auth/verify-password', '/api/auth/logout', '/api/auth/sessions', '/api/auth/login-history'])
 
 // Webhook secrets, tracking tokens, and one-time SSE tickets travel in URLs; keep them out of the request log.
 export const redactUrl = (u: string) =>
@@ -77,6 +77,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       reply.header('Access-Control-Allow-Credentials', 'true')
       reply.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS')
       reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-SWK-Client, X-SWK-Session, X-SWK-Audit-Reason, X-SWK-Recycle')
+      reply.header('Access-Control-Expose-Headers', 'Content-Disposition')
       reply.header('Vary', 'Origin')
       if (req.method === 'OPTIONS') {
         reply.status(204).send()
