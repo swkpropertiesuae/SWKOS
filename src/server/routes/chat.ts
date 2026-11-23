@@ -4,12 +4,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { pipeline } from 'node:stream/promises'
-import { q,tx } from '../db'
+import { q,tx,currentDb,runInDb } from '../db'
 import { bad,forbidden,nowIso } from '../util'
 import { liveBus } from '../notify'
 import { idOf } from './helpers'
 import { dirs,config } from '../config'
 import { openStored,persistUpload } from '../integrations/storage'
+import { dispatchPushToUser, setActiveChatThread } from '../integrations/push'
 import { canAccessSwkAdminLogic,SWK_OWNER_ACCOUNT } from '../../shared/swk-staff-access'
 
 /**
@@ -49,6 +50,26 @@ export function attendanceReportText(day = new Intl.DateTimeFormat('en-CA', { ti
   return [`*Attendance report · ${pretty}*`, `${present} of ${staff.length} staff in today`, '', ...Object.entries(groups).filter(([, v]) => v.length).flatMap(([k, v]) => [`*${k} (${v.length})*`, ...v.map(x => `• ${x}`), ''])].join('\n').trim()
 }
 
+function pushBodyForChat(kind: string | undefined, body: string, sender: string, isGroup: boolean, fileName?: string | null): string {
+  let text = ''
+  if (kind === 'location') {
+    try {
+      const loc = JSON.parse(body) as { label?: string }
+      text = `📍 ${loc?.label ? String(loc.label) : 'Shared a live location'}`
+    } catch {
+      text = '📍 Shared a live location'
+    }
+  } else if (kind === 'image') text = `📷 ${body || 'Photo'}`
+  else if (kind === 'voice') text = '🎤 Voice message'
+  else if (kind === 'video') text = `🎬 ${body || 'Video'}`
+  else if (kind === 'file') text = `📄 ${fileName || 'Document'}`
+  else if (kind === 'report') text = '📋 Attendance report'
+  else if (kind === 'automation') text = `⚙️ ${body.split('\n')[0]?.replace(/\*/g, '') || 'Automation alert'}`
+  else text = body.replace(/\*/g, '')
+  const trimmed = text.slice(0, 240)
+  return isGroup && kind !== 'automation' ? `${sender}: ${trimmed}` : trimmed
+}
+
 /** Automation recipes post into a group as the rule's author (or the group's creator). Members get the normal live alert. */
 export function postAutomationMessage(tid: number, authorId: number | null, body: string) {
   const t = q.get<{ kind: string; created_by: number; title: string | null }>(`SELECT kind, created_by, title FROM chat_threads WHERE id = ?`, tid)
@@ -56,8 +77,21 @@ export function postAutomationMessage(tid: number, authorId: number | null, body
   const uid = authorId && q.get(`SELECT 1 AS x FROM users WHERE id = ? AND active = 1 AND deleted_at IS NULL`, authorId) ? authorId : t.created_by
   const id = lastId(q.run(`INSERT INTO chat_messages (thread_id, user_id, body, kind, created_at) VALUES (?,?,?,?,?)`, tid, uid, body.slice(0, 4000), 'automation', nowIso()), 'chat_messages')
   const name = q.val<string>(`SELECT name FROM users WHERE id = ?`, uid) ?? 'SWK OS'
-  for (const m of q.all<{ user_id: number; muted: number }>(`SELECT user_id, muted FROM chat_members WHERE thread_id = ?`, tid))
-    emit(m.user_id, { type: 'message', thread_id: tid, thread_title: t.title, group: true, muted: !!m.muted, message: { id, user_id: uid, name, kind: 'automation', body, created_at: nowIso(), edited: false, forwarded: false, file: null, reply: null, reactions: [], status: null } })
+  const createdAt = nowIso()
+  for (const m of q.all<{ user_id: number; muted: number }>(`SELECT user_id, muted FROM chat_members WHERE thread_id = ?`, tid)) {
+    emit(m.user_id, { type: 'message', thread_id: tid, thread_title: t.title, group: true, muted: !!m.muted, message: { id, user_id: uid, name, kind: 'automation', body, created_at: createdAt, edited: false, forwarded: false, file: null, reply: null, reactions: [], status: null } })
+    if (m.user_id !== uid && !m.muted) {
+      void dispatchPushToUser(m.user_id, {
+        title: t.title || 'SWK Inside',
+        body: pushBodyForChat('automation', body, name, true),
+        url: `/chat?t=${tid}`,
+        tag: `swk-chat-${tid}`,
+        channel: 'swk_messages',
+        threadId: tid,
+        silent: !!m.muted,
+      })
+    }
+  }
   return { id }
 }
 
@@ -77,7 +111,7 @@ export function ensureTeamGroup() {
 }
 
 export default async function (app: FastifyInstance) {
-  const me = (req: FastifyRequest) => { if (!req.user || req.user.party_id) throw bad('Staff only'); return req.user.id as number }
+  const me = (req: FastifyRequest) => { if (!req.user || req.user.party_id) throw forbidden('Staff only'); return req.user.id as number }
   const membership = (tid: number, uid: number) => {
     const m = q.get<{ role: string }>(`SELECT role FROM chat_members WHERE thread_id = ? AND user_id = ?`, tid, uid)
     if (!m) throw bad('Conversation not found')
@@ -133,9 +167,23 @@ export default async function (app: FastifyInstance) {
     for (const u of memberIds(tid)) if (u !== uid && online.get(u)) q.run(`UPDATE chat_members SET last_delivered_id = ? WHERE thread_id = ? AND user_id = ? AND last_delivered_id < ?`, id, tid, u, id)
     const row = q.get(`SELECT ${MSG_COLS} FROM chat_messages m JOIN users u ON u.id = m.user_id WHERE m.id = ?`, id)
     const sender = nameOf(uid)
+    const isGroup = t.kind === 'group'
+    const pushTitle = isGroup ? (t.title || 'SWK Inside') : sender
+    const pushBody = pushBodyForChat(v.kind, v.body, sender, isGroup, v.file?.name)
     for (const u of memberIds(tid)) {
       const prefs = q.get<{ muted: number }>(`SELECT muted FROM chat_members WHERE thread_id = ? AND user_id = ?`, tid, u)
-      emit(u, { type: 'message', thread_id: tid, thread_title: t.kind === 'group' ? t.title : sender, group: t.kind === 'group', muted: !!prefs?.muted, message: shapeMessages(tid, u, [row])[0] })
+      emit(u, { type: 'message', thread_id: tid, thread_title: isGroup ? t.title : sender, group: isGroup, muted: !!prefs?.muted, message: shapeMessages(tid, u, [row])[0] })
+      if (u !== uid && !prefs?.muted) {
+        void dispatchPushToUser(u, {
+          title: pushTitle,
+          body: pushBody,
+          url: `/chat?t=${tid}`,
+          tag: `swk-chat-${tid}`,
+          channel: 'swk_messages',
+          threadId: tid,
+          silent: !!prefs?.muted,
+        })
+      }
     }
     return { id }
   }
@@ -143,6 +191,9 @@ export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------------ live stream
   app.get('/api/chat/stream', async (req, reply) => {
     const uid = me(req)
+    const streamDb = currentDb()
+    const rawSince = (req.query as any)?.since_id ?? req.headers['last-event-id']
+    const sinceId = rawSince !== undefined && rawSince !== '' ? Number(rawSince) : 0
     reply.hijack()
     const res = reply.raw
     const baseHeaders = reply.getHeaders() as Record<string, string | string[] | number | undefined>
@@ -154,7 +205,50 @@ export default async function (app: FastifyInstance) {
       'x-accel-buffering': 'no',
     })
     res.write('retry: 3000\n\n')
-    const send = (e: Evt) => { try { res.write(`event: chat\ndata: ${JSON.stringify(e)}\n\n`) } catch { /* closed */ } }
+    const send = (e: Evt) => {
+      try {
+        const msgId = (e as any)?.message?.id
+        res.write(`${msgId ? `id: ${msgId}\n` : ''}event: chat\ndata: ${JSON.stringify(e)}\n\n`)
+      } catch { /* closed */ }
+    }
+    if (Number.isInteger(sinceId) && sinceId > 0) {
+      const missed = q.all<any>(
+        `SELECT ${MSG_COLS}, m.thread_id, t.kind AS thread_kind, t.title AS thread_title, cm.muted AS member_muted
+         FROM chat_messages m
+         JOIN chat_members cm ON cm.thread_id = m.thread_id AND cm.user_id = ?
+         JOIN chat_threads t ON t.id = m.thread_id
+         JOIN users u ON u.id = m.user_id
+         WHERE m.id > ?
+         ORDER BY m.id ASC
+         LIMIT 200`,
+        uid,
+        sinceId,
+      )
+      const dmTitles = new Map<number, string>()
+      for (const r of missed) {
+        let threadTitle = r.thread_title as string | null
+        if (r.thread_kind !== 'group') {
+          if (!dmTitles.has(r.thread_id)) {
+            const peerName = q.val<string>(
+              `SELECT u2.name FROM chat_members c2 JOIN users u2 ON u2.id = c2.user_id WHERE c2.thread_id = ? AND c2.user_id <> ? LIMIT 1`,
+              r.thread_id,
+              uid,
+            )
+            dmTitles.set(r.thread_id, peerName ?? r.name)
+          }
+          threadTitle = dmTitles.get(r.thread_id) ?? r.name
+        }
+        send({
+          type: 'message',
+          thread_id: r.thread_id,
+          thread_title: threadTitle ?? 'Inside',
+          group: r.thread_kind === 'group',
+          muted: !!r.member_muted,
+          replay: true,
+          message: shapeMessages(r.thread_id, uid, [r])[0],
+        })
+      }
+    }
     liveBus.on('chat:' + uid, send)
     const wasOnline = !!online.get(uid)
     online.set(uid, (online.get(uid) ?? 0) + 1)
@@ -169,7 +263,15 @@ export default async function (app: FastifyInstance) {
       const n = (online.get(uid) ?? 1) - 1
       if (n > 0) { online.set(uid, n); return }
       online.delete(uid); lastSeen.set(uid, nowIso())
-      for (const u of q.all<{ user_id: number }>(`SELECT DISTINCT b.user_id FROM chat_members a JOIN chat_members b ON b.thread_id = a.thread_id WHERE a.user_id = ? AND b.user_id <> ?`, uid, uid)) emit(u.user_id, { type: 'presence', user_id: uid, online: false, last_seen: lastSeen.get(uid) })
+      try {
+        runInDb(streamDb, () => {
+          for (const u of q.all<{ user_id: number }>(`SELECT DISTINCT b.user_id FROM chat_members a JOIN chat_members b ON b.thread_id = a.thread_id WHERE a.user_id = ? AND b.user_id <> ?`, uid, uid)) {
+            emit(u.user_id, { type: 'presence', user_id: uid, online: false, last_seen: lastSeen.get(uid) })
+          }
+        })
+      } catch {
+        /* ignore if database is already closed during shutdown */
+      }
     }
     req.raw.on('close', cleanup)
     res.on('close', cleanup)
@@ -319,9 +421,47 @@ export default async function (app: FastifyInstance) {
     return { ok: true }
   })
 
+  const locationSchema = z.object({
+    lat: z.number().finite().min(-90).max(90),
+    lng: z.number().finite().min(-180).max(180),
+    label: z.string().trim().max(160).optional(),
+  })
+
+  app.post('/api/chat/active-thread', async (req) => {
+    const uid = me(req)
+    const b = z.object({ thread_id: z.number().int().positive().nullable() }).parse(req.body ?? {})
+    if (b.thread_id !== null) membership(b.thread_id, uid)
+    setActiveChatThread(uid, b.thread_id)
+    return { ok: true, thread_id: b.thread_id }
+  })
+
   app.post('/api/chat/threads/:id/messages', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req) => {
     const uid = me(req), tid = idOf((req.params as any).id)
-    const b = z.object({ body: z.string().trim().min(1).max(4000), reply_to_id: z.number().int().positive().optional() }).parse(req.body ?? {})
+    const raw = (req.body ?? {}) as Record<string, unknown>
+    if (raw.kind === 'location') {
+      const b = z.object({
+        kind: z.literal('location'),
+        location: locationSchema.optional(),
+        body: z.string().trim().max(1000).optional(),
+        reply_to_id: z.number().int().positive().optional(),
+      }).parse(raw)
+      let loc = b.location
+      if (!loc && b.body) {
+        try {
+          loc = locationSchema.parse(JSON.parse(b.body))
+        } catch {
+          throw bad('Invalid location coordinates')
+        }
+      }
+      if (!loc) throw bad('Location coordinates are required')
+      const canonical = JSON.stringify({
+        lat: Number(loc.lat),
+        lng: Number(loc.lng),
+        ...(loc.label ? { label: loc.label } : {}),
+      })
+      return insertMessage(tid, uid, { body: canonical, kind: 'location', reply_to_id: b.reply_to_id ?? null })
+    }
+    const b = z.object({ body: z.string().trim().min(1).max(4000), reply_to_id: z.number().int().positive().optional() }).parse(raw)
     return insertMessage(tid, uid, { body: b.body, reply_to_id: b.reply_to_id ?? null })
   })
 

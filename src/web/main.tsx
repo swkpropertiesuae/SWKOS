@@ -17,6 +17,9 @@ import { startOfflineSync } from './lib/offlineQueue';
 
 applyLangToDocument()
 startOfflineSync()
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && !(window as any).Capacitor?.isNativePlatform?.()) {
+  void navigator.serviceWorker.register('/sw.js').catch(() => {})
+}
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: 1 } } })
 createRoot(document.getElementById('root')!).render(
