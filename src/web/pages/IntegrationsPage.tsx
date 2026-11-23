@@ -1,17 +1,22 @@
-import { useEffect,useState } from 'react'
-import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { Plug,Save,CheckCircle2,XCircle,Copy,RefreshCw,Download,ChevronDown,ChevronRight,KeyRound,Cloud } from 'lucide-react'
-import { get,post,put,downloadUrl } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { Plug, Save, CheckCircle2, XCircle, Copy, RefreshCw, Download, ChevronDown, ChevronRight, KeyRound, Cloud, Layers, ArrowUpRight } from 'lucide-react'
+import { canOpenEmployeeRecords } from '@shared/swk-staff-access'
+import { get, post, put, downloadUrl } from '../lib/api'
 import { useToast } from '../lib/toast'
-import { PageHeader,Loading,ErrorBox } from '../ui/kit'
+import { PageHeader, Loading, ErrorBox } from '../ui/kit'
 import { iconByName } from '../lib/icons'
 import { cls } from '../lib/format'
 import { useMeta } from '../lib/meta'
+import { OmniRouteAdminPanel } from './swk/OmniRouteAdminPanel'
 
 interface Field { key: string; label: string; type: 'text' | 'password' | 'select' | 'bool' | 'number' | 'textarea'; options?: { value: string; label: string }[]; help?: string; placeholder?: string }
 interface Section { key: string; title: string; icon: string; summary: string; setup?: string; fields: Field[]; test?: boolean; values: Record<string, any>; webhooks?: { key: string; label: string; path: string; secret?: boolean; url: string | null }[] }
 
 export function IntegrationsPage() {
+  const { me } = useMeta()
+  const isOmniAdmin = canOpenEmployeeRecords(me)
   const q = useQuery({ queryKey: ['integrations'], queryFn: () => get<{ sections: Section[]; status: Record<string, any>; presets: any[] }>('/api/integrations') })
   const [open, setOpen] = useState<string | null>(null)
   if (q.error) return <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
@@ -20,17 +25,68 @@ export function IntegrationsPage() {
   const ready = (k: string) => k === 'mail' ? st.mail !== 'none' : k === 'storage' ? st.r2 : k === 'supabase' ? st.supabase : k === 'whatsapp' ? st.whatsapp : k === 'ai' ? st.ai : null
   return (
     <div className="fade-in">
-      <PageHeader icon={<Plug size={20} />} title="Integrations" subtitle="Connect e-mail, file storage, WhatsApp, AI, e-invoicing, portals and banks. Secrets are encrypted at rest in your database and never shown again." />
-      <div className="grid gap-3 max-w-4xl">
+      <PageHeader
+        icon={<Plug size={20} />}
+        title="Integrations"
+        subtitle="Connect e-mail, file storage, WhatsApp, AI, e-invoicing, portals and banks. Secrets are encrypted at rest in your database and never shown again."
+        actions={isOmniAdmin ? <Link className="btn outline" to="/ai?tab=omni-route"><Layers size={15} /> Open Omni-Route Console</Link> : undefined}
+      />
+      <div className="grid gap-3 max-w-5xl">
+        {isOmniAdmin && (
+          <div className="card overflow-hidden border border-[#0e9f6e]/35">
+            <button
+              className="w-full flex items-center gap-3 p-4 text-start bg-transparent border-0 cursor-pointer"
+              onClick={() => setOpen(open === 'omni-route' ? null : 'omni-route')}
+              aria-expanded={open === 'omni-route'}
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center flex-none">
+                <Layers size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-display font-extrabold text-ink flex items-center gap-2 flex-wrap">
+                  <span>Omni-Route AI Pool &amp; Failover</span>
+                  <span className="badge green">15 Presets · Multi-Key</span>
+                </div>
+                <div className="text-[13px] text-muted">
+                  Manage free-tier keys, Tier-1 paid &amp; local Ollama routes, live green/amber/red health, PII Shield &amp; staff fair-share quotas.
+                </div>
+              </div>
+              <Link
+                to="/ai?tab=omni-route"
+                onClick={e => e.stopPropagation()}
+                className="btn outline sm"
+              >
+                Full Console <ArrowUpRight size={13} />
+              </Link>
+              {open === 'omni-route' ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+            {open === 'omni-route' && (
+              <div className="border-t border-line p-4 md:p-5">
+                <OmniRouteAdminPanel compact />
+              </div>
+            )}
+          </div>
+        )}
         {q.data.sections.map(s => (
-          <SectionCard key={s.key} s={s} open={open === s.key} onToggle={() => setOpen(open === s.key ? null : s.key)} ready={ready(s.key)} presets={q.data.presets} pdf={s.key === 'storage' ? st.pdf : undefined} onSaved={() => void q.refetch()} />
+          <SectionCard
+            key={s.key}
+            s={s}
+            open={open === s.key}
+            onToggle={() => setOpen(open === s.key ? null : s.key)}
+            ready={ready(s.key)}
+            presets={q.data.presets}
+            pdf={s.key === 'storage' ? st.pdf : undefined}
+            isOmniAdmin={isOmniAdmin}
+            onOpenOmni={() => setOpen('omni-route')}
+            onSaved={() => void q.refetch()}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function SectionCard({ s, open, onToggle, ready, presets, pdf, onSaved }: { s: Section; open: boolean; onToggle: () => void; ready: boolean | null; presets: any[]; pdf?: boolean; onSaved: () => void }) {
+function SectionCard({ s, open, onToggle, ready, presets, pdf, isOmniAdmin, onOpenOmni, onSaved }: { s: Section; open: boolean; onToggle: () => void; ready: boolean | null; presets: any[]; pdf?: boolean; isOmniAdmin: boolean; onOpenOmni: () => void; onSaved: () => void }) {
   const toast = useToast(); const qc = useQueryClient(); const { reload } = useMeta()
   const Icon = iconByName(s.icon)
   const [v, setV] = useState<Record<string, any>>(s.values); const [busy, setBusy] = useState<string | null>(null); const [res, setRes] = useState<{ ok: boolean; text: string } | null>(null)
@@ -53,6 +109,16 @@ function SectionCard({ s, open, onToggle, ready, presets, pdf, onSaved }: { s: S
       {open && (
         <div className="border-t border-line p-4 md:p-5 grid gap-4">
           {s.setup && <div className="text-[13px] bg-soft border border-line rounded-xl p-3 leading-relaxed"><b>Setup:</b> {s.setup}</div>}
+          {s.key === 'ai' && isOmniAdmin && (
+            <div className="text-[13px] bg-[#e8fff6] border border-[#0e9f6e]/35 rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap text-[#121212]">
+              <span>
+                <b>Multi-Key Failover &amp; 15 Provider Presets:</b> Manage multiple API keys, lane routing, and staff fair-share quotas in the Omni-Route Pool panel above.
+              </span>
+              <button type="button" className="btn green sm" onClick={onOpenOmni}>
+                <Layers size={13} /> Manage Omni-Route Pool
+              </button>
+            </div>
+          )}
           {preset && <div className="text-[13px] text-muted"><b>{preset.label}</b> · {preset.free}. {preset.notes} {preset.base && <span>Default URL <code>{preset.base}</code>{preset.model && <> · model <code>{preset.model}</code></>}.</span>}</div>}
           {s.webhooks?.map(w => (
             <div key={w.key} className="rounded-xl border border-line p-3 grid gap-2">
