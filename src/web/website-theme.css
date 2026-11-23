@@ -186,7 +186,7 @@ table.grid tbody tr:hover td { background: #f8f5ef; }
 .corporate-footer::before { content: ''; position: absolute; left: 0; top: -3px; width: 64px; height: 2px; background: #d4a752; }
 .corporate-footer-identity strong { color: #0f2a33 !important; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 8.8px; }
 .corporate-footer-contact strong { color: #0f2a33 !important; font-weight: 600; }
-.studio-content .cover { background: #0f2a33; color: #ffffff; padding: 26px 26px 22px; border-radius: 12px; border-bottom: 3px solid #d4a752; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.studio-content .cover { background: #0f2a33; color: #ffffff; padding: 26px 26px 22px; border-radius: 12px 12px 0 0; border-bottom: 3px solid #d4a752; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .studio-content .cover .kicker { color: #d4a752; }
 .studio-content .cover-sub { color: #d9d2c4; }
 .studio-content .band-light { background: #f8f5ef; border: 1px solid #e6e0d4; border-radius: 10px; }
