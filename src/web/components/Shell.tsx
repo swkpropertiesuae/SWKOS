@@ -11,6 +11,7 @@ import { useToast } from '../lib/toast'
 import { CommandPalette } from './CommandPalette'
 import { LiveNotifications } from './LiveNotifications'
 import { ChatNotifier } from './ChatNotifier'
+import { ChatDock } from './ChatDock'
 import { StaffPhoto } from './ui/staff-photo'
 import { APP_META,QUICK_CREATE,findNav,rememberVisit } from '../swk/nav'
 import { canAccessSwkAdminLogic,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
@@ -203,6 +204,7 @@ export function Shell() {
         </nav>
       </div>
       <LiveNotifications />
+      <ChatDock />
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>
         <div className="grid gap-4 text-sm">
