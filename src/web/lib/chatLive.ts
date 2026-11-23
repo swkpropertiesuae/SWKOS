@@ -54,8 +54,17 @@ let onlineBound = false
 let connecting = false
 let backoffMs = 1000
 let lastSeenMessageId = 0
+let activeOutboxUserId: number | null = null
 
 export const chatState = { activeChat: null as number | null }
+
+export function setActiveOutboxUser(userId: number | null) {
+  const next = typeof userId === 'number' && userId > 0 ? userId : null
+  if (activeOutboxUserId !== next) {
+    lastSeenMessageId = 0
+    activeOutboxUserId = next
+  }
+}
 
 export function noteSeenMessageId(id: number | null | undefined) {
   if (typeof id === 'number' && Number.isFinite(id) && id > lastSeenMessageId) {
@@ -171,7 +180,9 @@ export function subscribeChat(fn: Fn) {
         backoffMs = 1000
         void openChatStream()
       }
-      void flushChatOutbox()
+      if (activeOutboxUserId) {
+        void flushChatOutbox(activeOutboxUserId)
+      }
     })
   }
   if (!es) void openChatStream()
@@ -179,6 +190,8 @@ export function subscribeChat(fn: Fn) {
     subs.delete(fn)
     if (!subs.size) {
       clearReconnectTimer()
+      lastSeenMessageId = 0
+      backoffMs = 1000
       if (es) {
         es.close()
         es = null
@@ -373,7 +386,8 @@ function notifyOutboxChanged() {
   }
 }
 
-export async function listQueuedChatMessages(threadId?: number): Promise<QueuedChatMessage[]> {
+export async function listQueuedChatMessages(userId: number, threadId?: number): Promise<QueuedChatMessage[]> {
+  if (!userId || userId <= 0) return []
   let all: QueuedChatMessage[] = []
   try {
     const db = await openOutboxDb()
@@ -386,7 +400,7 @@ export async function listQueuedChatMessages(threadId?: number): Promise<QueuedC
   } catch {
     all = readLsOutbox()
   }
-  const filtered = threadId ? all.filter(x => x.threadId === threadId) : all
+  const filtered = all.filter(x => x.userId === userId && (!threadId || x.threadId === threadId))
   return filtered.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
@@ -422,13 +436,13 @@ export async function removeChatOutboxItem(clientId: string): Promise<void> {
 }
 
 let flushingOutbox = false
-export async function flushChatOutbox(onSent?: (threadId: number) => void): Promise<void> {
-  if (flushingOutbox || (typeof navigator !== 'undefined' && !navigator.onLine)) return
+export async function flushChatOutbox(userId: number, onSent?: (threadId: number) => void): Promise<void> {
+  if (!userId || userId <= 0 || flushingOutbox || (typeof navigator !== 'undefined' && !navigator.onLine)) return
   flushingOutbox = true
   try {
-    const items = await listQueuedChatMessages()
+    const items = await listQueuedChatMessages(userId)
     for (const item of items) {
-      if (item.status === 'failed') continue
+      if (item.userId !== userId || item.status === 'failed') continue
       if (typeof navigator !== 'undefined' && !navigator.onLine) break
       try {
         if (item.kind === 'location' && item.location) {

@@ -36,7 +36,7 @@ self.addEventListener('fetch', event => {
       if (hit) return hit
       const res = await fetch(req)
       if (res.ok && res.type === 'basic') {
-        void cache.put(req, res.clone())
+        cache.put(req, res.clone()).catch(() => {})
       }
       return res
     })())
@@ -68,10 +68,22 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close()
-  const rawUrl = (event.notification.data && event.notification.data.url) || '/home'
-  const safePath = typeof rawUrl === 'string' && rawUrl.startsWith('/') ? rawUrl : '/home'
+  const rawUrl = event.notification.data && event.notification.data.url
+  let target
+  try {
+    const safeCandidate =
+      typeof rawUrl === 'string' && rawUrl.startsWith('/') && !rawUrl.startsWith('//')
+        ? rawUrl
+        : '/home'
+    target = new URL(safeCandidate, self.location.origin)
+    if (target.origin !== self.location.origin) {
+      target = new URL('/home', self.location.origin)
+    }
+  } catch {
+    target = new URL('/home', self.location.origin)
+  }
+  const targetUrl = target.href
   event.waitUntil((async () => {
-    const targetUrl = new URL(safePath, self.location.origin).href
     const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const client of windowClients) {
       if (new URL(client.url).origin === self.location.origin) {

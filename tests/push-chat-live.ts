@@ -507,9 +507,61 @@ async function run() {
     const emptyCatchup = await collectSseChunks(`${baseUrl}/api/chat/stream?ticket=${encodeURIComponent(t2)}&since_id=${latestId}`, 10, 400)
     assert.equal(parseSseEvents(emptyCatchup.text).filter(e => e.event === 'chat' && e.data?.type === 'message').length, 0, 'since_id at tip must not replay duplicate messages')
 
-    // Verify public/sw.js never caches /api/
+    // Verify public/sw.js never caches /api/ and guards protocol-relative URLs
     const swSrc = fs.readFileSync(path.resolve('public/sw.js'), 'utf8')
     assert.ok(swSrc.includes("startsWith('/api/')"), 'public/sw.js must explicitly bypass /api/*')
+    assert.ok(swSrc.includes("!rawUrl.startsWith('//')"), 'public/sw.js must reject protocol-relative // URLs')
+    assert.ok(swSrc.includes('target.origin !== self.location.origin'), 'public/sw.js must enforce same-origin navigation')
+
+    // Fix Round 1 regressions: SSRF endpoint validation & mobile sessionDeviceId precedence
+    const badEndpoints = [
+      'http://127.0.0.1/hook',
+      'https://127.0.0.1/hook',
+      'http://push.example.test/wp/plain-http',
+      'https://localhost/wp/1',
+      'https://10.0.0.5/wp/1',
+      'https://192.168.1.2/wp/1',
+      'https://172.16.0.1/wp/1',
+      'https://169.254.169.254/latest/meta-data',
+      'https://0.0.0.0/wp/1',
+      'https://[::1]/wp/1',
+      'https://[::ffff:127.0.0.1]/wp/1',
+      'https://[fe80::1]/wp/1',
+      'https://[fd12:3456::1]/wp/1',
+      'https://service.internal/wp/1',
+      'https://printer.local/wp/1',
+    ]
+    for (const badEp of badEndpoints) {
+      const badRes: { statusCode: number; body: string } = await app.inject({
+        method: 'POST',
+        url: '/api/push/subscribe',
+        headers: hB,
+        payload: {
+          channel: 'web_push',
+          endpoint: badEp,
+          keys: { p256dh: 'BOr6x7h2V2xH7kH8Y9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3', auth: 'authSecret123456' },
+        },
+      })
+      assert.equal(badRes.statusCode, 400, `Unsafe push endpoint ${badEp} must be rejected with 400, got ${badRes.statusCode}: ${badRes.body}`)
+    }
+
+    // Mobile session's bound sessionDeviceId must override arbitrary body device_id
+    const spoofSubRes = await app.inject({
+      method: 'POST',
+      url: '/api/push/subscribe',
+      headers: hB,
+      payload: {
+        channel: 'fcm',
+        token: 'fcm-bravo-device-spoof-check',
+        device_id: 'attacker-arbitrary-device-999',
+      },
+    })
+    assert.equal(spoofSubRes.statusCode, 200, `FCM subscribe failed: ${spoofSubRes.body}`)
+    assert.equal(
+      q.val<string>(`SELECT device_id FROM push_subscriptions WHERE endpoint_or_token = 'fcm-bravo-device-spoof-check'`),
+      'bravo-dev-01',
+      'Mobile sessionDeviceId must take precedence over body device_id',
+    )
 
     console.log('Push & Inside live messaging tests passed.')
   } finally {

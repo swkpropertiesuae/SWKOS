@@ -6,7 +6,7 @@ import { get,post,del,api,upload } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { useMeta } from '../lib/meta'
 import { Modal,useDialogs,useClickOutside } from '../ui/kit'
-import { chatState,enqueueChatOutbox,flushChatOutbox,listQueuedChatMessages,noteSeenMessageId,parseLocationPayload,previewOf,registerWebPush,removeChatOutboxItem,subscribeChat,syncActiveThread,type ChatMessage,type QueuedChatMessage } from '../lib/chatLive'
+import { chatState,enqueueChatOutbox,flushChatOutbox,listQueuedChatMessages,noteSeenMessageId,parseLocationPayload,previewOf,registerWebPush,removeChatOutboxItem,setActiveOutboxUser,subscribeChat,syncActiveThread,type ChatMessage,type QueuedChatMessage } from '../lib/chatLive'
 import { StaffPhoto } from '../components/ui/staff-photo'
 
 type Thread = { id: number; kind: 'dm' | 'group'; title: string; peer: { id: number; email: string; online: boolean; last_seen: string | null } | null; members: number; role: string; pinned: boolean; muted: boolean; archived: boolean; announce: boolean; system: boolean; last: ChatMessage | null; unread: number }
@@ -155,11 +155,16 @@ export function ChatPage() {
     if ('thread_id' in e && e.thread_id) { void qc.invalidateQueries({ queryKey: ['chat-msgs', e.thread_id] }); if (e.type === 'thread') void qc.invalidateQueries({ queryKey: ['chat-info', e.thread_id] }) }
   }), [qc])
   useEffect(() => {
-    void flushChatOutbox(() => {
-      void qc.invalidateQueries({ queryKey: ['chat-threads'] })
-      void qc.invalidateQueries({ queryKey: ['chat-msgs'] })
-    })
-  }, [qc])
+    const uid = me?.id ?? null
+    setActiveOutboxUser(uid)
+    if (uid) {
+      void flushChatOutbox(uid, () => {
+        void qc.invalidateQueries({ queryKey: ['chat-threads'] })
+        void qc.invalidateQueries({ queryKey: ['chat-msgs'] })
+      })
+    }
+    return () => setActiveOutboxUser(null)
+  }, [me?.id, qc])
   useEffect(() => { const i = window.setInterval(() => setTyping(t => Object.fromEntries(Object.entries(t).filter(([, v]) => v.until > Date.now()))), 1500); return () => clearInterval(i) }, [])
 
   const shown = useMemo(() => {
@@ -317,11 +322,13 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
   const infoQ = useQuery({ queryKey: ['chat-info', thread.id], queryFn: () => get<Info>(`/api/chat/threads/${thread.id}`) })
 
   useEffect(() => {
-    const syncQ = () => { void listQueuedChatMessages(thread.id).then(setQueued).catch(() => {}) }
+    const uid = me?.id
+    if (!uid) { setQueued([]); return }
+    const syncQ = () => { void listQueuedChatMessages(uid, thread.id).then(setQueued).catch(() => {}) }
     syncQ()
     window.addEventListener('swk:chat-outbox', syncQ)
     return () => window.removeEventListener('swk:chat-outbox', syncQ)
-  }, [thread.id])
+  }, [thread.id, me?.id])
 
   const msgs = useMemo(() => {
     const latest = msgsQ.data?.messages ?? []
@@ -469,9 +476,9 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
   const retryFailed = async (m: ChatMessage) => {
     if (!m.client_id) return
     const qMatch = queued.find(x => x.clientId === m.client_id)
-    if (qMatch) {
+    if (qMatch && me?.id) {
       await enqueueChatOutbox({ ...qMatch, status: 'pending', error: undefined })
-      await flushChatOutbox(() => refresh())
+      await flushChatOutbox(me.id, () => refresh())
       return
     }
     setOptimistic(o => o.filter(x => x.client_id !== m.client_id))
@@ -529,12 +536,19 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
       const [studioRes, attRes, utilRes] = await Promise.allSettled([
         get<{ rows: any[] }>('/api/e/studio_documents', { pageSize: 20 }),
         get<{ rows: any[] }>('/api/e/attachments', { pageSize: 20 }),
-        get<{ docs?: any[] }>('/api/utilities/docs'),
+        get<any>('/api/utilities/word'),
       ])
       const items: { key: string; title: string; subtitle: string; url: string }[] = []
-      if (utilRes.status === 'fulfilled' && Array.isArray(utilRes.value?.docs)) {
-        for (const d of utilRes.value.docs) {
-          items.push({ key: `util-${d.id}`, title: d.title || `Utility Doc #${d.id}`, subtitle: 'Word Studio / Utilities', url: `/utilities/docs/${d.id}` })
+      if (utilRes.status === 'fulfilled') {
+        const wordList = Array.isArray(utilRes.value)
+          ? utilRes.value
+          : Array.isArray(utilRes.value?.rows)
+            ? utilRes.value.rows
+            : Array.isArray(utilRes.value?.docs)
+              ? utilRes.value.docs
+              : []
+        for (const d of wordList) {
+          items.push({ key: `util-${d.id}`, title: d.title || `Word Doc #${d.id}`, subtitle: 'Word Studio / Utilities', url: `/utilities/word?id=${d.id}` })
         }
       }
       if (studioRes.status === 'fulfilled' && Array.isArray(studioRes.value?.rows)) {

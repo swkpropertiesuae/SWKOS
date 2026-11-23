@@ -12,6 +12,7 @@ import {
   desktopAlert,
   previewOf,
   registerWebPush,
+  setActiveOutboxUser,
   subscribeChat,
   syncAppBadge,
   vibrateAlert,
@@ -41,12 +42,12 @@ export function ChatNotifier() {
   const toast = useToast()
   const [banners, setBanners] = useState<Banner[]>([])
   const [drafts, setDrafts] = useState<Record<number, string>>({})
-  const [focusedKey, setFocusedKey] = useState<number | null>(null)
-  const [sendingKey, setSendingKey] = useState<number | null>(null)
+  const [focusedThreadId, setFocusedThreadId] = useState<number | null>(null)
+  const [sendingThreadId, setSendingThreadId] = useState<number | null>(null)
   const draftsRef = useRef(drafts)
   draftsRef.current = drafts
-  const focusedRef = useRef(focusedKey)
-  focusedRef.current = focusedKey
+  const focusedRef = useRef(focusedThreadId)
+  focusedRef.current = focusedThreadId
 
   const { me } = useMeta()
   const meId = useRef(me?.id)
@@ -67,10 +68,16 @@ export function ChatNotifier() {
     staleTime: 300000,
   }).data
 
+  useEffect(() => () => syncAppBadge(0), [])
+
   useEffect(() => {
-    if (!isStaff) return
-    syncAppBadge(unread)
+    syncAppBadge(isStaff ? unread : 0)
   }, [unread, loc.pathname, isStaff])
+
+  useEffect(() => {
+    setActiveOutboxUser(isStaff ? me?.id ?? null : null)
+    return () => setActiveOutboxUser(null)
+  }, [isStaff, me?.id])
 
   useEffect(() => {
     if (isStaff && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
@@ -108,7 +115,7 @@ export function ChatNotifier() {
         setBanners(a => [b, ...a.filter(x => x.thread_id !== b.thread_id)].slice(0, 3))
         const scheduleDismiss = () => {
           window.setTimeout(() => {
-            if (focusedRef.current === b.key || (draftsRef.current[b.key] ?? '').trim()) {
+            if (focusedRef.current === b.thread_id || (draftsRef.current[b.thread_id] ?? '').trim()) {
               scheduleDismiss()
               return
             }
@@ -130,18 +137,18 @@ export function ChatNotifier() {
   if (!isStaff) return null
 
   const sendQuickReply = async (b: Banner) => {
-    const body = (drafts[b.key] ?? '').trim()
-    if (!body || sendingKey === b.key) return
-    setSendingKey(b.key)
+    const body = (drafts[b.thread_id] ?? '').trim()
+    if (!body || sendingThreadId === b.thread_id) return
+    setSendingThreadId(b.thread_id)
     try {
       await post(`/api/chat/threads/${b.thread_id}/messages`, { body })
       void post(`/api/chat/threads/${b.thread_id}/read`).catch(() => {})
       setDrafts(d => {
         const next = { ...d }
-        delete next[b.key]
+        delete next[b.thread_id]
         return next
       })
-      setBanners(a => a.filter(x => x.key !== b.key))
+      setBanners(a => a.filter(x => x.thread_id !== b.thread_id))
       void qc.invalidateQueries({ queryKey: ['chat-unread'] })
       void qc.invalidateQueries({ queryKey: ['chat-threads'] })
       void qc.invalidateQueries({ queryKey: ['chat-msgs', b.thread_id] })
@@ -149,7 +156,7 @@ export function ChatNotifier() {
     } catch (err: any) {
       toast.error(err?.message || 'Could not send reply')
     } finally {
-      setSendingKey(null)
+      setSendingThreadId(null)
     }
   }
 
@@ -167,7 +174,7 @@ export function ChatNotifier() {
         <AnimatePresence initial={false}>
           {banners.map(b => (
             <motion.div
-              key={b.key}
+              key={b.thread_id}
               layout
               initial={{ opacity: 0, y: -16, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -181,7 +188,7 @@ export function ChatNotifier() {
                   type="button"
                   className="flex min-w-0 flex-1 items-start gap-3 border-0 bg-transparent p-0 text-left"
                   onClick={() => {
-                    setBanners(a => a.filter(x => x.key !== b.key))
+                    setBanners(a => a.filter(x => x.thread_id !== b.thread_id))
                     nav(`/chat?t=${b.thread_id}`)
                   }}
                 >
@@ -214,7 +221,7 @@ export function ChatNotifier() {
                   type="button"
                   aria-label="Dismiss"
                   className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#8b8b8b] hover:bg-[#f5f5f5]"
-                  onClick={() => setBanners(a => a.filter(x => x.key !== b.key))}
+                  onClick={() => setBanners(a => a.filter(x => x.thread_id !== b.thread_id))}
                 >
                   <X size={14} />
                 </button>
@@ -228,17 +235,17 @@ export function ChatNotifier() {
               >
                 <input
                   type="text"
-                  value={drafts[b.key] ?? ''}
-                  onChange={e => setDrafts(d => ({ ...d, [b.key]: e.target.value }))}
-                  onFocus={() => setFocusedKey(b.key)}
-                  onBlur={() => setFocusedKey(k => (k === b.key ? null : k))}
+                  value={drafts[b.thread_id] ?? ''}
+                  onChange={e => setDrafts(d => ({ ...d, [b.thread_id]: e.target.value }))}
+                  onFocus={() => setFocusedThreadId(b.thread_id)}
+                  onBlur={() => setFocusedThreadId(k => (k === b.thread_id ? null : k))}
                   placeholder="Quick reply…"
                   aria-label={`Quick reply to ${b.group ? b.title : b.sender}`}
                   className="h-8 min-w-0 flex-1 rounded-full border border-black/10 bg-[#f5f5f5] px-3 text-[12.5px] text-[#121212] outline-none focus:border-[#0e9f6e] focus:bg-white"
                 />
                 <button
                   type="submit"
-                  disabled={!(drafts[b.key] ?? '').trim() || sendingKey === b.key}
+                  disabled={!(drafts[b.thread_id] ?? '').trim() || sendingThreadId === b.thread_id}
                   aria-label="Send quick reply"
                   className="flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-[#0e9f6e] text-white transition-transform active:scale-95 disabled:opacity-40"
                 >
