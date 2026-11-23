@@ -6,7 +6,7 @@ import { get,post,del,api,upload } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { useMeta } from '../lib/meta'
 import { Modal,useDialogs,useClickOutside } from '../ui/kit'
-import { chatState,enqueueChatOutbox,flushChatOutbox,listQueuedChatMessages,noteSeenMessageId,parseLocationPayload,previewOf,registerWebPush,removeChatOutboxItem,setActiveOutboxUser,subscribeChat,syncActiveThread,type ChatMessage,type QueuedChatMessage } from '../lib/chatLive'
+import { chatState,enqueueChatOutbox,flushChatOutbox,listQueuedChatMessages,noteSeenMessageId,parseLocationPayload,previewOf,registerWebPush,removeChatOutboxItem,subscribeChat,syncActiveThread,type ChatMessage,type QueuedChatMessage } from '../lib/chatLive'
 import { StaffPhoto } from '../components/ui/staff-photo'
 
 type Thread = { id: number; kind: 'dm' | 'group'; title: string; peer: { id: number; email: string; online: boolean; last_seen: string | null } | null; members: number; role: string; pinned: boolean; muted: boolean; archived: boolean; announce: boolean; system: boolean; last: ChatMessage | null; unread: number }
@@ -155,15 +155,11 @@ export function ChatPage() {
     if ('thread_id' in e && e.thread_id) { void qc.invalidateQueries({ queryKey: ['chat-msgs', e.thread_id] }); if (e.type === 'thread') void qc.invalidateQueries({ queryKey: ['chat-info', e.thread_id] }) }
   }), [qc])
   useEffect(() => {
-    const uid = me?.id ?? null
-    setActiveOutboxUser(uid)
-    if (uid) {
-      void flushChatOutbox(uid, () => {
-        void qc.invalidateQueries({ queryKey: ['chat-threads'] })
-        void qc.invalidateQueries({ queryKey: ['chat-msgs'] })
-      })
-    }
-    return () => setActiveOutboxUser(null)
+    if (!me?.id) return
+    void flushChatOutbox(me.id, () => {
+      void qc.invalidateQueries({ queryKey: ['chat-threads'] })
+      void qc.invalidateQueries({ queryKey: ['chat-msgs'] })
+    })
   }, [me?.id, qc])
   useEffect(() => { const i = window.setInterval(() => setTyping(t => Object.fromEntries(Object.entries(t).filter(([, v]) => v.until > Date.now()))), 1500); return () => clearInterval(i) }, [])
 
