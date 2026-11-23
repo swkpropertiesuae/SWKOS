@@ -28,8 +28,14 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         // Prevent screenshots, screen capture & OS Recents thumbnail leaks of CRM/PII data.
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
-        ensureAllNotificationChannels(this);
-        handleLaunchIntent(getIntent(), false);
+        try {
+            ensureAllNotificationChannels(this);
+        } catch (Throwable ignored) {
+        }
+        try {
+            handleLaunchIntent(getIntent(), false);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
@@ -72,28 +78,42 @@ public class MainActivity extends BridgeActivity {
     }
 
     static void ensureAllNotificationChannels(android.content.Context context) {
-        SwkFieldLocationService.ensureChannel(context);
-        SwkCallForegroundService.ensureChannel(context);
-        SwkIncomingCallService.ensureChannel(context);
+        if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+
+        try {
+            SwkFieldLocationService.ensureChannel(context);
+        } catch (Throwable ignored) {
+        }
+        try {
+            SwkCallForegroundService.ensureChannel(context);
+        } catch (Throwable ignored) {
+        }
+        try {
+            SwkIncomingCallService.ensureChannel(context);
+        } catch (Throwable ignored) {
+        }
 
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
 
-        NotificationChannel messages = new NotificationChannel(
-            "swk_messages",
-            context.getString(R.string.messages_channel_name),
-            NotificationManager.IMPORTANCE_HIGH
-        );
-        messages.setDescription(context.getString(R.string.messages_channel_description));
-        messages.enableVibration(true);
-        nm.createNotificationChannel(messages);
+        try {
+            NotificationChannel messages = new NotificationChannel(
+                "swk_messages",
+                context.getString(R.string.messages_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            messages.setDescription(context.getString(R.string.messages_channel_description));
+            messages.enableVibration(true);
+            nm.createNotificationChannel(messages);
 
-        NotificationChannel ops = new NotificationChannel(
-            "swk_ops_alerts",
-            context.getString(R.string.ops_channel_name),
-            NotificationManager.IMPORTANCE_DEFAULT
-        );
-        ops.setDescription(context.getString(R.string.ops_channel_description));
-        nm.createNotificationChannel(ops);
+            NotificationChannel ops = new NotificationChannel(
+                "swk_ops_alerts",
+                context.getString(R.string.ops_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            ops.setDescription(context.getString(R.string.ops_channel_description));
+            nm.createNotificationChannel(ops);
+        } catch (Throwable ignored) {
+        }
     }
 }

@@ -226,7 +226,7 @@ export async function getMobileDeviceAuthPayload(): Promise<{
 }> {
   const platform = getNativePlatform()
   let deviceName = typeof navigator !== 'undefined' ? navigator.platform || 'SWK Mobile' : 'SWK Mobile'
-  let appVersion = '3.1.0'
+  let appVersion = '3.1.1'
   let fallbackId = ''
   const swk = plugin('SwkSecure')
   if (isNativeMobile() && swk && typeof swk.deviceInfo === 'function') {
@@ -845,7 +845,21 @@ export async function registerNativePush(): Promise<() => void> {
     }
   }
 
-  if (push && typeof push.requestPermissions === 'function') {
+  let allowNativePushRegister = platform === 'ios'
+  if (platform === 'android') {
+    if (swk && typeof swk.isPushConfigured === 'function') {
+      try {
+        const res = await swk.isPushConfigured()
+        allowNativePushRegister = Boolean(res?.configured)
+      } catch {
+        allowNativePushRegister = false
+      }
+    } else {
+      allowNativePushRegister = false
+    }
+  }
+
+  if (allowNativePushRegister && push && typeof push.requestPermissions === 'function') {
     try {
       const perm = await push.requestPermissions()
       if (perm?.receive === 'granted' && typeof push.register === 'function') {

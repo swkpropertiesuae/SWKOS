@@ -170,6 +170,7 @@ public class SwkFieldLocationService extends Service {
     }
 
     public static void ensureChannel(Context context) {
+        if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationChannel channel = new NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.duty_channel_name),

@@ -643,6 +643,34 @@ async function run() {
     assert.equal(postLogoutSse.status, 401, `Pre-logout SSE ticket must return 401 after logout, got ${postLogoutSse.status}`)
     assert.equal(consumeStreamTicket(preLogoutTicket2), null, 'consumeStreamTicket must reject ticket after session logout')
 
+    // -----------------------------------------------------------------------
+    // 6. Android APK crash-prevention invariants (Firebase guard, API 26 channels, SplashScreen, Biometrics, ErrorBoundary)
+    // -----------------------------------------------------------------------
+    const repoRoot = path.resolve(process.cwd())
+    const swkSecureJava = fs.readFileSync(path.join(repoRoot, 'mobile/android/app/src/main/java/ae/swkproperties/os/SwkSecurePlugin.java'), 'utf8')
+    const mainActivityJava = fs.readFileSync(path.join(repoRoot, 'mobile/android/app/src/main/java/ae/swkproperties/os/MainActivity.java'), 'utf8')
+    const fieldSvcJava = fs.readFileSync(path.join(repoRoot, 'mobile/android/app/src/main/java/ae/swkproperties/os/SwkFieldLocationService.java'), 'utf8')
+    const callSvcJava = fs.readFileSync(path.join(repoRoot, 'mobile/android/app/src/main/java/ae/swkproperties/os/SwkCallForegroundService.java'), 'utf8')
+    const incomingSvcJava = fs.readFileSync(path.join(repoRoot, 'mobile/android/app/src/main/java/ae/swkproperties/os/SwkIncomingCallService.java'), 'utf8')
+    const stylesXml = fs.readFileSync(path.join(repoRoot, 'mobile/android/app/src/main/res/values/styles.xml'), 'utf8')
+    const capConfigTs = fs.readFileSync(path.join(repoRoot, 'mobile/capacitor.config.ts'), 'utf8')
+    const mobileBridgeTs = fs.readFileSync(path.join(repoRoot, 'src/web/lib/mobileBridge.ts'), 'utf8')
+    const mainTsx = fs.readFileSync(path.join(repoRoot, 'src/web/main.tsx'), 'utf8')
+
+    assert.match(swkSecureJava, /public void isPushConfigured\(PluginCall call\)/, 'SwkSecurePlugin must expose isPushConfigured()')
+    assert.match(swkSecureJava, /com\.google\.firebase\.FirebaseApp/, 'isPushConfigured() must check FirebaseApp initialization safely')
+    assert.match(swkSecureJava, /allowedAuthenticators\(\)/, 'SwkSecurePlugin must use API-safe biometric authenticators for API 24-29')
+    assert.match(swkSecureJava, /deleteSharedPreferences\("swk_secure"\)/, 'SwkSecurePlugin must recover from corrupted EncryptedSharedPreferences')
+    assert.match(mobileBridgeTs, /isPushConfigured/, 'mobileBridge.registerNativePush must gate Android PushNotifications.register() on SwkSecure.isPushConfigured()')
+    assert.match(mainActivityJava, /Build\.VERSION\.SDK_INT\s*<\s*Build\.VERSION_CODES\.O/, 'MainActivity must guard NotificationChannel creation on API 26+')
+    assert.match(fieldSvcJava, /Build\.VERSION\.SDK_INT\s*<\s*Build\.VERSION_CODES\.O/, 'SwkFieldLocationService must guard NotificationChannel creation on API 26+')
+    assert.match(callSvcJava, /Build\.VERSION\.SDK_INT\s*<\s*Build\.VERSION_CODES\.O/, 'SwkCallForegroundService must guard NotificationChannel creation on API 26+')
+    assert.match(incomingSvcJava, /Build\.VERSION\.SDK_INT\s*<\s*Build\.VERSION_CODES\.O/, 'SwkIncomingCallService must guard NotificationChannel creation on API 26+')
+    assert.match(stylesXml, /postSplashScreenTheme/, 'styles.xml Theme.SplashScreen must set postSplashScreenTheme')
+    assert.match(stylesXml, /windowSplashScreenAnimatedIcon/, 'styles.xml Theme.SplashScreen must set windowSplashScreenAnimatedIcon')
+    assert.match(capConfigTs, /launchShowDuration:\s*0/, 'capacitor.config.ts must set SplashScreen.launchShowDuration: 0 to avoid post-onCreate installSplashScreen crashes')
+    assert.match(mainTsx, /class AppErrorBoundary/, 'main.tsx must wrap the app in AppErrorBoundary')
+
     console.log('Mobile auth, unified device binding & SSE ticket tests passed.')
   } finally {
     if (app) {

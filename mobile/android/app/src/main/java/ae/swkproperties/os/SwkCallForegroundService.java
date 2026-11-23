@@ -28,6 +28,7 @@ public class SwkCallForegroundService extends Service {
     public static final String EXTRA_LABEL = "callLabel";
 
     public static void ensureChannel(Context context) {
+        if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationChannel ch = new NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.call_audio_channel_name),

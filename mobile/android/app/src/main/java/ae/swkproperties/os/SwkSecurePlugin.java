@@ -53,8 +53,12 @@ import java.util.concurrent.Executor;
  */
 @CapacitorPlugin(name = "SwkSecure")
 public class SwkSecurePlugin extends Plugin {
-    private static final int AUTH =
-        BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+    private static int allowedAuthenticators() {
+        // Android 9-10 (API 28-29) throws IllegalArgumentException for BIOMETRIC_STRONG | DEVICE_CREDENTIAL.
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+            ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+    }
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String DEVICE_EC_ALIAS = "swk_device_ec_p256_v1";
 
@@ -127,18 +131,31 @@ public class SwkSecurePlugin extends Plugin {
 
     private synchronized SharedPreferences store() throws Exception {
         if (prefs == null) {
-            MasterKey key = new MasterKey.Builder(getContext())
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build();
-            prefs = EncryptedSharedPreferences.create(
-                getContext(),
-                "swk_secure",
-                key,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
+            try {
+                prefs = openEncryptedStore();
+            } catch (java.security.GeneralSecurityException corrupted) {
+                // Recover cleanly if a previous install or OS keystore rotation invalidated swk_secure.
+                try {
+                    getContext().deleteSharedPreferences("swk_secure");
+                } catch (Throwable ignored) {
+                }
+                prefs = openEncryptedStore();
+            }
         }
         return prefs;
+    }
+
+    private SharedPreferences openEncryptedStore() throws Exception {
+        MasterKey key = new MasterKey.Builder(getContext())
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build();
+        return EncryptedSharedPreferences.create(
+            getContext(),
+            "swk_secure",
+            key,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        );
     }
 
     @PluginMethod
@@ -339,40 +356,61 @@ public class SwkSecurePlugin extends Plugin {
 
     @PluginMethod
     public void biometricAvailable(PluginCall call) {
+        boolean available = false;
+        try {
+            int auth = allowedAuthenticators();
+            available = BiometricManager.from(getContext()).canAuthenticate(auth) == BiometricManager.BIOMETRIC_SUCCESS;
+        } catch (Throwable ignored) {
+            available = false;
+        }
         JSObject r = new JSObject();
-        r.put("available", BiometricManager.from(getContext()).canAuthenticate(AUTH) == BiometricManager.BIOMETRIC_SUCCESS);
+        r.put("available", available);
         call.resolve(r);
     }
 
     @PluginMethod
     public void biometricAuth(PluginCall call) {
-        if (BiometricManager.from(getContext()).canAuthenticate(AUTH) != BiometricManager.BIOMETRIC_SUCCESS) {
+        final int auth = allowedAuthenticators();
+        try {
+            if (BiometricManager.from(getContext()).canAuthenticate(auth) != BiometricManager.BIOMETRIC_SUCCESS) {
+                call.reject("biometric_unavailable");
+                return;
+            }
+        } catch (Throwable e) {
             call.reject("biometric_unavailable");
             return;
         }
         FragmentActivity a = getActivity();
+        if (a == null || a.isFinishing()) {
+            call.reject("biometric_unavailable");
+            return;
+        }
         Executor ex = ContextCompat.getMainExecutor(getContext());
         a.runOnUiThread(() -> {
-            BiometricPrompt bp = new BiometricPrompt(a, ex, new BiometricPrompt.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult res) {
-                    JSObject r = new JSObject();
-                    r.put("verified", true);
-                    call.resolve(r);
-                }
+            try {
+                BiometricPrompt bp = new BiometricPrompt(a, ex, new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult res) {
+                        JSObject r = new JSObject();
+                        r.put("verified", true);
+                        call.resolve(r);
+                    }
 
-                @Override
-                public void onAuthenticationError(int code, CharSequence msg) {
-                    call.reject("auth_error:" + code);
-                }
-            });
-            bp.authenticate(
-                new BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(getContext().getString(R.string.biometric_title))
-                    .setSubtitle(call.getString("reason", "Unlock SWK Properties OS"))
-                    .setAllowedAuthenticators(AUTH)
-                    .build()
-            );
+                    @Override
+                    public void onAuthenticationError(int code, CharSequence msg) {
+                        call.reject("auth_error:" + code);
+                    }
+                });
+                bp.authenticate(
+                    new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle(getContext().getString(R.string.biometric_title))
+                        .setSubtitle(call.getString("reason", "Unlock SWK Properties OS"))
+                        .setAllowedAuthenticators(auth)
+                        .build()
+                );
+            } catch (Throwable e) {
+                call.reject("biometric_unavailable");
+            }
         });
     }
 
@@ -404,7 +442,10 @@ public class SwkSecurePlugin extends Plugin {
             String[] perms = Build.VERSION.SDK_INT >= 33
                 ? new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.POST_NOTIFICATIONS}
                 : new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
-            getActivity().runOnUiThread(() -> ActivityCompat.requestPermissions(getActivity(), perms, 7301));
+            FragmentActivity act = getActivity();
+            if (act != null && !act.isFinishing()) {
+                act.runOnUiThread(() -> ActivityCompat.requestPermissions(act, perms, 7301));
+            }
             r.put("started", false);
             r.put("reason", "location_permission_required");
             call.resolve(r);
@@ -417,8 +458,13 @@ public class SwkSecurePlugin extends Plugin {
             .putExtra(SwkFieldLocationService.EXTRA_SERVER_URL, serverUrl)
             .putExtra(SwkFieldLocationService.EXTRA_TOKEN, token)
             .putExtra(SwkFieldLocationService.EXTRA_DEVICE_ID, call.getString("deviceId", ""));
-        ContextCompat.startForegroundService(getContext(), i);
-        r.put("started", true);
+        try {
+            ContextCompat.startForegroundService(getContext(), i);
+            r.put("started", true);
+        } catch (RuntimeException e) {
+            r.put("started", false);
+            r.put("reason", "foreground_service_blocked");
+        }
         call.resolve(r);
     }
 
@@ -445,7 +491,10 @@ public class SwkSecurePlugin extends Plugin {
             String[] perms = Build.VERSION.SDK_INT >= 33
                 ? new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.POST_NOTIFICATIONS}
                 : new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
-            getActivity().runOnUiThread(() -> ActivityCompat.requestPermissions(getActivity(), perms, 7301));
+            FragmentActivity act = getActivity();
+            if (act != null && !act.isFinishing()) {
+                act.runOnUiThread(() -> ActivityCompat.requestPermissions(act, perms, 7301));
+            }
             call.reject("location_permission_required");
             return;
         }
@@ -475,9 +524,35 @@ public class SwkSecurePlugin extends Plugin {
         }
     }
 
+    /**
+     * Checks whether FirebaseApp is initialized in this APK (requires google-services.json).
+     * Prevents @capacitor/push-notifications PushNotifications.register() from throwing an uncaught
+     * IllegalStateException ("Default FirebaseApp is not initialized") that crashes the Android process.
+     */
+    @PluginMethod
+    public void isPushConfigured(PluginCall call) {
+        boolean configured = false;
+        try {
+            Class<?> firebaseApp = Class.forName("com.google.firebase.FirebaseApp");
+            java.lang.reflect.Method getApps = firebaseApp.getMethod("getApps", Context.class);
+            Object apps = getApps.invoke(null, getContext());
+            if (apps instanceof java.util.List && !((java.util.List<?>) apps).isEmpty()) {
+                configured = true;
+            }
+        } catch (Throwable ignored) {
+            configured = false;
+        }
+        JSObject r = new JSObject();
+        r.put("configured", configured);
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void ensureNotificationChannels(PluginCall call) {
-        MainActivity.ensureAllNotificationChannels(getContext());
+        try {
+            MainActivity.ensureAllNotificationChannels(getContext());
+        } catch (Throwable ignored) {
+        }
         call.resolve();
     }
 
@@ -496,13 +571,19 @@ public class SwkSecurePlugin extends Plugin {
         String callerName = call.getString("callerName", "");
         String ext = call.getString("extensionNo", "");
         boolean isMasked = Boolean.TRUE.equals(call.getBoolean("isMaskedVault", false));
-        SwkIncomingCallService.showIncomingCallWake(getContext(), callId, callerName, ext, isMasked);
+        try {
+            SwkIncomingCallService.showIncomingCallWake(getContext(), callId, callerName, ext, isMasked);
+        } catch (Throwable ignored) {
+        }
         call.resolve();
     }
 
     @PluginMethod
     public void endIncomingCall(PluginCall call) {
-        SwkIncomingCallService.dismissIncomingCallWake(getContext());
+        try {
+            SwkIncomingCallService.dismissIncomingCallWake(getContext());
+        } catch (Throwable ignored) {
+        }
         call.resolve();
     }
 
@@ -512,13 +593,19 @@ public class SwkSecurePlugin extends Plugin {
         Intent i = new Intent(getContext(), SwkCallForegroundService.class)
             .setAction(SwkCallForegroundService.ACTION_START_CALL)
             .putExtra(SwkCallForegroundService.EXTRA_LABEL, label);
-        ContextCompat.startForegroundService(getContext(), i);
+        try {
+            ContextCompat.startForegroundService(getContext(), i);
+        } catch (RuntimeException ignored) {
+        }
         call.resolve();
     }
 
     @PluginMethod
     public void stopCallAudioService(PluginCall call) {
-        getContext().stopService(new Intent(getContext(), SwkCallForegroundService.class));
+        try {
+            getContext().stopService(new Intent(getContext(), SwkCallForegroundService.class));
+        } catch (RuntimeException ignored) {
+        }
         call.resolve();
     }
 }

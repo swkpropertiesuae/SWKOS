@@ -27,6 +27,7 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         CAPPluginMethod(name: "getFix", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startDuty", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopDuty", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isPushConfigured", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "ensureNotificationChannels", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "consumeLaunchRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startCallAudioService", returnType: CAPPluginReturnPromise),
@@ -655,6 +656,10 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         #else
         return false
         #endif
+    }
+
+    @objc func isPushConfigured(_ call: CAPPluginCall) {
+        call.resolve(["configured": true])
     }
 
     @objc func ensureNotificationChannels(_ call: CAPPluginCall) {

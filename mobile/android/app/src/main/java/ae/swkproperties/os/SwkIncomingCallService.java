@@ -29,22 +29,29 @@ public class SwkIncomingCallService extends ConnectionService {
     public static final int INCOMING_NOTIFICATION_ID = 4403;
 
     public static void ensureChannel(Context context) {
+        if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm == null) return;
-        NotificationChannel ch = new NotificationChannel(
-            CHANNEL_ID,
-            context.getString(R.string.call_channel_name),
-            NotificationManager.IMPORTANCE_HIGH
-        );
-        ch.setDescription(context.getString(R.string.call_channel_description));
-        ch.enableVibration(true);
-        ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        AudioAttributes attrs = new AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build();
-        ch.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), attrs);
-        nm.createNotificationChannel(ch);
+        try {
+            NotificationChannel ch = new NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.call_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            ch.setDescription(context.getString(R.string.call_channel_description));
+            ch.enableVibration(true);
+            ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            android.net.Uri ringtone = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+            if (ringtone != null) {
+                AudioAttributes attrs = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+                ch.setSound(ringtone, attrs);
+            }
+            nm.createNotificationChannel(ch);
+        } catch (Throwable ignored) {
+        }
     }
 
     public static void showIncomingCallWake(

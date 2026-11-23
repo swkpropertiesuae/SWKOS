@@ -33,6 +33,7 @@ const config: CapacitorConfig = {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
     SplashScreen: {
+      launchShowDuration: 0,
       launchAutoHide: true,
       backgroundColor: '#121212',
       showSpinner: false,
