@@ -13,8 +13,8 @@ import {
   CalendarCheck,
   CalendarDays,
   Clock,
+  FileBarChart,
   FileSignature,
-  Gauge,
   HandCoins,
   KeyRound,
   MapPin,
@@ -381,12 +381,12 @@ export function Dashboard() {
           <div className="rounded-[26px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-5 text-white shadow-[0_18px_40px_-20px_rgba(11,31,42,0.48)]">
             <div className="flex items-center justify-between gap-2 mb-3.5">
               <span className="text-[13px] font-semibold text-white/90">Today&apos;s Progress</span>
-              {can('reports', 'view') && !restricted && (
+              {!restricted && (
                 <Link
-                  to="/kpi"
+                  to="/pipeline"
                   className="inline-flex items-center gap-1 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-[#c5e86c] no-underline hover:bg-white/20 transition-colors"
                 >
-                  <Gauge size={12} /> Treasury &amp; KPIs
+                  Pipeline <ArrowUpRight size={12} />
                 </Link>
               )}
             </div>
@@ -518,8 +518,8 @@ export function Dashboard() {
             <h2 className="m-0 text-[20px] font-bold text-ink">Live Brokerage Revenue, Divisions &amp; Seasonality</h2>
           </div>
           {can('reports', 'view') && !restricted && (
-            <Link to="/kpi" className="btn navy sm">
-              <Gauge size={14} /> Executive KPIs &amp; Treasury
+            <Link to="/reports" className="btn navy sm">
+              <FileBarChart size={14} /> Reports &amp; Statements
             </Link>
           )}
         </div>

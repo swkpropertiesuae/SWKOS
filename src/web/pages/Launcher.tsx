@@ -80,7 +80,7 @@ function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
       to={app.landing}
       onPointerMove={onMove}
       title={app.blurb}
-      className="group relative flex h-full items-center gap-3.5 overflow-hidden rounded-[22px] border border-[#e2e8f0] bg-white p-4 no-underline shadow-[0_2px_8px_rgba(11,31,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#cbd5e1] hover:shadow-[0_14px_32px_-12px_rgba(11,31,42,0.14)]"
+      className="group relative flex h-full items-center gap-3.5 overflow-hidden rounded-[26px] border border-[#e5e8f2] bg-white/95 p-4 no-underline shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0f172a]/35 hover:shadow-[0_18px_40px_-20px_rgba(15,23,42,0.18)]"
     >
       <span
         aria-hidden
@@ -207,11 +207,11 @@ export function Launcher() {
       >
         <div className="lg:col-span-8 flex flex-col justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white/90 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#8a5f14] shadow-2xs max-w-full">
-              <span className="size-1.5 rounded-full bg-[#0e9f6e] shrink-0" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#e5e8f2] bg-white/92 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#6d28d9] shadow-2xs max-w-full">
+              <span className="size-1.5 rounded-full bg-[#047857] shrink-0" />
               <span className="truncate">SWK Properties · ORN 51517 · {todayLabel()}</span>
             </div>
-            <h1 className="mt-2.5 text-[28px] sm:text-[38px] font-bold tracking-[-0.035em] text-[#0b1f2a] leading-[1.08]">
+            <h1 className="mt-2.5 text-[28px] sm:text-[38px] font-bold tracking-[-0.035em] text-[#0f172a] leading-[1.08]">
               {greeting()}
               {firstName ? `, ${firstName}` : ''}.
             </h1>
@@ -220,11 +220,11 @@ export function Launcher() {
             </p>
           </div>
 
-          {/* Dual-Layer Command Card (Dark Navy Top Strip + Crisp White Search & Quick Chips Inside) */}
-          <div className="rounded-[26px] bg-gradient-to-br from-[#0b1f2a] via-[#102b3a] to-[#0b1f2a] p-2.5 shadow-[0_20px_48px_-18px_rgba(11,31,42,0.34)]">
+          {/* Dual-Layer Command Card (Obsidian Top Strip + Crisp White Search & Quick Chips Inside) */}
+          <div className="rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-2.5 shadow-[0_20px_48px_-18px_rgba(15,23,42,0.38)]">
             <div className="flex items-center justify-between gap-3 px-3 pt-1.5 pb-3 text-white">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d4a752]">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#c5e86c]">
                   {lastVisit ? <lastVisit.icon size={17} /> : <LayoutDashboard size={17} />}
                 </span>
                 <div className="min-w-0">
@@ -232,13 +232,13 @@ export function Launcher() {
                     {lastVisit ? lastVisit.label : 'Executive Dashboard'}
                   </div>
                   <div className="truncate text-[11px] text-[#94a3b8]">
-                    {lastVisit ? `Recently Visited · ${lastVisit.section}` : 'Live KPIs, Pipeline & Operations'}
+                    {lastVisit ? `Recently Visited · ${lastVisit.section}` : 'Live Pipeline, Journeys & Analytics'}
                   </div>
                 </div>
               </div>
               <Link
                 to={lastVisit ? lastVisit.to : '/dashboard'}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-[#d4a752] hover:border-[#d4a752] hover:text-[#0b1f2a]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-[#c5e86c] hover:border-[#c5e86c] hover:text-[#0f172a]"
               >
                 <Clock3 size={12} />
                 {lastVisit ? 'Resume' : 'Open'}
@@ -305,16 +305,16 @@ export function Launcher() {
           </div>
         </div>
 
-        {/* Right Hero Card: Obsidian Today's Progress Ring (directly inspired by Productivity editorial screen!) */}
-        <div className="lg:col-span-4 rounded-[26px] bg-gradient-to-br from-[#0b1f2a] via-[#122b3a] to-[#0a1922] p-5 text-white shadow-[0_20px_48px_-18px_rgba(11,31,42,0.34)] flex flex-col justify-between gap-4">
+        {/* Right Hero Card: Obsidian Today's Progress Ring (100% consistent with Dashboard Progress Card) */}
+        <div className="lg:col-span-4 rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-5 text-white shadow-[0_20px_48px_-18px_rgba(15,23,42,0.42)] flex flex-col justify-between gap-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#d4a752]">Today&apos;s Pulse</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#c5e86c]">Today&apos;s Pulse</span>
               <h2 className="m-0 mt-0.5 text-[18px] font-bold text-white">Daily Operations</h2>
             </div>
             <Link
               to={restricted ? '/reception-qr' : '/dashboard'}
-              className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-[#d4a752] hover:text-[#0b1f2a] transition-colors"
+              className="inline-flex items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-[#c5e86c] no-underline hover:bg-[#c5e86c] hover:text-[#0f172a] transition-colors"
             >
               {restricted ? 'Check-In' : 'Dashboard'} <ArrowRight size={13} />
             </Link>
@@ -328,7 +328,7 @@ export function Launcher() {
                   cx={52}
                   cy={52}
                   r={42}
-                  stroke="#a3e635"
+                  stroke="#c5e86c"
                   strokeWidth={10}
                   fill="none"
                   strokeLinecap="round"

@@ -74,11 +74,11 @@
     gap: 10px;
     height: 64px;
     padding: 0 clamp(14px, 2vw, 24px);
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border-bottom: 1px solid rgba(226, 232, 240, 0.85);
-    box-shadow: 0 4px 20px -10px rgba(11, 31, 42, 0.08);
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 4px 20px -12px rgba(15, 23, 42, 0.08);
     color: var(--ink);
     flex: none;
   }
@@ -247,21 +247,21 @@
     height: 38px;
     padding: 0 14px;
     border-radius: 999px;
-    border: 1px solid #0b1f2a;
-    background: #0b1f2a;
+    border: 1px solid #0f172a;
+    background: #0f172a;
     color: #ffffff;
     font-size: 12.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
     cursor: pointer;
     flex: none;
-    box-shadow: 0 8px 20px -10px rgba(11, 31, 42, 0.45);
+    box-shadow: 0 8px 20px -10px rgba(15, 23, 42, 0.45);
     transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
   }
   .swk-create:hover {
-    background: #b78328;
-    border-color: #b78328;
-    color: #ffffff;
+    background: #1e293b;
+    border-color: #1e293b;
+    color: #c5e86c;
     transform: translateY(-1px);
   }
 
@@ -342,9 +342,9 @@
 
   /* ------------------------------------------------ Executive Light Sidebar (High-Contrast) */
   .swk-app-sidebar {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: rgba(255, 255, 255, 0.84);
+    backdrop-filter: blur(22px) saturate(1.3);
+    -webkit-backdrop-filter: blur(22px) saturate(1.3);
     border-right: 1px solid var(--line);
     color: var(--ink);
     display: flex;
@@ -442,7 +442,7 @@
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--champ-deep);
+    color: var(--eyebrow);
     padding: 8px 10px 6px;
   }
   .swk-sidebar-link {
@@ -474,14 +474,14 @@
     color: var(--ink);
   }
   .swk-sidebar-link.active {
-    background: #0b1f2a;
+    background: #0f172a;
     color: #ffffff;
-    border-color: #0b1f2a;
+    border-color: #0f172a;
     font-weight: 600;
-    box-shadow: 0 8px 20px -10px rgba(11, 31, 42, 0.45);
+    box-shadow: 0 8px 20px -10px rgba(15, 23, 42, 0.45);
   }
   .swk-sidebar-link.active svg {
-    color: #d4a752;
+    color: #c5e86c;
   }
   .swk-sidebar-link-tx {
     white-space: nowrap;
@@ -501,8 +501,8 @@
     flex: none;
   }
   .swk-sidebar-link.active .swk-sidebar-step-badge {
-    background: rgba(212, 167, 82, 0.22);
-    color: #f8e2ae;
+    background: rgba(197, 232, 108, 0.2);
+    color: #c5e86c;
   }
   .swk-app-sidebar.is-collapsed .swk-sidebar-group-label,
   .swk-app-sidebar.is-collapsed .swk-sidebar-link-tx,
@@ -524,12 +524,12 @@
     gap: 10px;
     padding: 10px 14px;
     margin-bottom: 18px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    border-radius: 24px;
+    background: var(--card-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--line);
-    box-shadow: 0 4px 18px -12px rgba(11, 31, 42, 0.1);
+    box-shadow: var(--surface-raised);
   }
   :root[data-theme='dark'] .swk-workflow-bar {
     background: var(--card);
@@ -569,10 +569,10 @@
     color: var(--ink);
   }
   .swk-wf-pill.active {
-    background: #0b1f2a;
+    background: #0f172a;
     color: #ffffff;
-    border-color: #0b1f2a;
-    box-shadow: 0 6px 16px -8px rgba(11, 31, 42, 0.45);
+    border-color: #0f172a;
+    box-shadow: 0 6px 16px -8px rgba(15, 23, 42, 0.45);
   }
   .swk-wf-num {
     display: inline-grid;
@@ -586,8 +586,8 @@
     color: var(--ink);
   }
   .swk-wf-pill.active .swk-wf-num {
-    background: #d4a752;
-    color: #0b1f2a;
+    background: #c5e86c;
+    color: #0f172a;
   }
   .swk-wf-nav {
     display: inline-flex;

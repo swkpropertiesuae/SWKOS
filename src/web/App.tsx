@@ -10,7 +10,7 @@ import { Launcher } from './pages/Launcher'
 import { Workspaces,WorkspaceUtilities } from './pages/Workspaces'
 import { EntityListPage,EntityRecordPage } from './pages/EntityPages'
 import { CalendarPage } from './pages/CalendarPage'
-import { ReportsPage,KpiPage } from './pages/ReportPages'
+import { ReportsPage } from './pages/ReportPages'
 import { ToolsPage } from './pages/ToolsPage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -214,7 +214,6 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reports" element={<Guard module="reports"><ReportsPage /></Guard>} />
           <Route path="/finance/statements" element={<Guard module="finance"><Statements /></Guard>} />
-          <Route path="/kpi" element={<Guard module="reports"><KpiPage /></Guard>} />
           <Route path="/studio" element={<Guard module="documents"><StudioHome /></Guard>} />
           <Route path="/studio/:id" element={<Guard module="documents"><StudioEditor /></Guard>} />
           <Route path="/finance/new-invoice" element={<Guard module="finance"><NewInvoicePage /></Guard>} />

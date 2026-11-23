@@ -18,19 +18,22 @@
   --bg-obsidian-card: #122d3d;
 
   --card: #ffffff;
-  --soft: #f1f5f9;
-  --hover: #edf2f7;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
+  --card-glass: rgba(255, 255, 255, 0.94);
+  --soft: #f4f6fb;
+  --hover: #eef1f9;
+  --line: #e5e8f2;
+  --line-strong: #d2d8e8;
 
-  /* High-Contrast Typography (>= 6:1 on white) */
-  --ink: #0b1f2a;
-  --ink-primary: #0b1f2a;
+  /* High-Contrast Typography (>= 7:1 on white) */
+  --ink: #0f172a;
+  --ink-primary: #0f172a;
   --body: #334155;
   --ink-secondary: #334155;
   --muted: #526273;
   --ink-muted: #526273;
   --ink-subtle: #64748b;
+  --eyebrow: #6d28d9;
+  --lime-accent: #c5e86c;
 
   /* Brand & Vibrant Corporate Semantic Accents */
   --navy: #0b1f2a;
@@ -66,32 +69,32 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-swiss: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-fast: 160ms;
-  --radius: 16px;
-  --radius-lg: 24px;
-  --surface-raised: 0 1px 2px rgba(11, 31, 42, 0.04), 0 8px 24px -12px rgba(11, 31, 42, 0.1);
-  --surface-floating: 0 16px 44px -16px rgba(11, 31, 42, 0.18);
-  --elevation: 0 12px 32px -14px rgba(11, 31, 42, 0.16);
-  --workspace-ground: #f5f7fb;
+  --radius: 22px;
+  --radius-lg: 28px;
+  --surface-raised: 0 14px 36px -22px rgba(15, 23, 42, 0.12);
+  --surface-floating: 0 22px 54px -22px rgba(15, 23, 42, 0.18);
+  --elevation: 0 16px 40px -20px rgba(15, 23, 42, 0.16);
+  --workspace-ground: #f5f5fa;
 
   /* shadcn / 21st.dev Semantic Tokens (Light Executive Porcelain) */
-  --background: #f5f7fb;
-  --foreground: #0b1f2a;
-  --card-foreground: #0b1f2a;
+  --background: #f5f5fa;
+  --foreground: #0f172a;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #0b1f2a;
-  --primary: #0b1f2a;
+  --popover-foreground: #0f172a;
+  --primary: #0f172a;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0b1f2a;
-  --accent: #edf2f7;
-  --accent-foreground: #0b1f2a;
+  --secondary: #f4f6fb;
+  --secondary-foreground: #0f172a;
+  --accent: #eef1f9;
+  --accent-foreground: #0f172a;
   --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #cbd5e1;
-  --ring: #2563eb;
+  --border: #e5e8f2;
+  --input: #d2d8e8;
+  --ring: #6d28d9;
   --muted-foreground: #526273;
-  --muted-surface: #f1f5f9;
+  --muted-surface: #f4f6fb;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -108,6 +111,7 @@
   --bg: #08131a;
   --workspace-ground: #08131a;
   --card: #0f202b;
+  --card-glass: rgba(15, 32, 43, 0.94);
   --soft: #162c3a;
   --hover: #1c3647;
   --line: #213c4d;
@@ -119,6 +123,8 @@
   --muted: #94a3b8;
   --ink-muted: #94a3b8;
   --ink-subtle: #94a3b8;
+  --eyebrow: #c5e86c;
+  --lime-accent: #c5e86c;
   --focus: #d4a752;
   --champ-soft: rgba(212, 167, 82, 0.16);
   --section-tint: #162c3a;
