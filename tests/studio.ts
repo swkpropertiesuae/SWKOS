@@ -18,9 +18,9 @@ async function main() {
   ok('50+ templates are installed', r.data.total >= 50, r.data.total)
   ok('list responses stay light (no content)', tpls.every((t: any) => t.content === undefined))
   const cats = new Set(tpls.map((t: any) => t.category))
-  for (const c of ['Corporate', 'Legal & Contracts', 'Sales & Customers', 'Letters & Notices', 'Finance & Procurement', 'Compliance & Permits', 'Control & Guidance', 'HR & Administration', 'E-mail templates', 'Marketing & Brochures']) ok(`category “${c}” has templates`, cats.has(c))
+  for (const c of ['Corporate Governance', 'Policies', 'Sales (Secondary)', 'Off-Plan', 'Leasing', 'Property Management', 'Letters & Notices', 'Finance & Procurement', 'Compliance & Permits', 'Control & Guidance', 'HR & Administration', 'E-mail templates', 'Marketing & Brochures']) ok(`category “${c}” has templates`, cats.has(c))
   const code = (c: string) => tpls.find((t: any) => t.code === c)
-  for (const [c, name] of [['CO-FACTS', 'Company particulars'], ['LC-02', 'Residential tenancy contract'], ['FN-01', 'Statement of account'], ['FN-02', 'Friendly reminder - invoice due'], ['MKT-01', 'Company profile'], ['MKT-02', 'Corporate brochure'], ['EM-09', 'Invoice']]) ok(`${c} ${name} is present`, code(c)?.title === name, code(c)?.title)
+  for (const [c, name] of [['CO-FACTS', 'Company particulars'], ['LC-02', 'Residential tenancy contract (summary and special conditions)'], ['FN-01', 'Statement of account'], ['FN-02', 'Friendly reminder – invoice due'], ['MKT-01', 'Company profile'], ['MKT-02', 'Corporate brochure'], ['EM-09', 'Invoice']]) ok(`${c} ${name} is present`, code(c)?.title === name, code(c)?.title)
   ok('codes are unique', new Set(tpls.map((t: any) => t.code)).size === tpls.length)
   const one = (await a.get(`/api/e/doc_templates/${code('LC-02').id}`)).data
   const letterhead = (await a.get(`/api/e/doc_templates/${code('CO-LETTER').id}`)).data
@@ -40,7 +40,7 @@ async function main() {
   const dxb = (await a.get('/api/e/branches')).data.rows[0].id
   const job = (await a.post('/api/e/jobs', { deal_name: 'Studio test deal', deal_type: 'Sale', client_id: cust.id, branch_id: dxb, deal_date: '2026-10-01', deal_value: 1500000 })).data
   r = await a.post('/api/studio/documents', { template_id: code('FN-02').id, party_id: cust.id, job_id: job.id })
-  ok('document created with a number, title and status Draft', r.status === 201 && /^DOC26\d{5}$/.test(r.data.doc_no) && r.data.status === 'Draft' && r.data.title === 'Friendly reminder - invoice due', r.data)
+  ok('document created with a number, title and status Draft', r.status === 201 && /^DOC26\d{5}$/.test(r.data.doc_no) && r.data.status === 'Draft' && r.data.title === 'Friendly reminder – invoice due', r.data)
   const doc = r.data
   ok('company tokens are filled in, unfilled fields stay highlighted', !doc.content.includes('{{') && doc.content.includes('class="ph"'))
   r = await a.post('/api/studio/documents', { template_id: code('MKT-02').id }); ok('brochure keeps its design classes and company details', r.data.content.includes('class="cover"') && /SWK/i.test(r.data.content) && !r.data.content.includes('{{'), r.data.content.slice(0, 300))

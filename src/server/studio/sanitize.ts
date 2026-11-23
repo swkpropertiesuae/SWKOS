@@ -3,7 +3,7 @@ import { bad } from '../util'
 
 /** Classes the Document Studio layouts use. Anything else is removed so stored documents cannot restyle the application. */
 export const STUDIO_CLASSES = [
-  'ph', 'note', 'guidance', 'page-break', 'fields', 'totals', 'sig', 'sig-line', 'avoid-break', 'small', 'muted', 'center', 'right', 'lead', 'keep',
+  'ph', 'note', 'guidance', 'page-break', 'fields', 'doc-meta', 'totals', 'sig', 'sig-line', 'avoid-break', 'small', 'muted', 'center', 'right', 'lead', 'keep',
   // brochure / flyer layout blocks
   'hero', 'hero-title', 'hero-sub', 'band', 'band-dark', 'band-light', 'cols-2', 'cols-3', 'cols-4', 'card', 'stat', 'stat-num', 'cta', 'steps', 'step', 'kicker', 'contact-strip', 'badge', 'divider', 'cover', 'cover-title', 'cover-sub', 'toc', 'letter-head', 'ref-line', 'subject',
 ]

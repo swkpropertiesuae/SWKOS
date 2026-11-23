@@ -144,3 +144,47 @@ table.grid tbody tr:hover td { background: #f8f8f8; }
 .web-btn::before, .web-btn::after { border-color: rgba(11, 38, 64, 0.35); }
 @media (max-width: 640px) { .swk-top-title { display: none; } }
 .no-focus-outline:focus-visible { outline: none; }
+
+/* =====================================================================================
+   Corporate documents (Document Studio, print and PDF): letterhead, typography, tables, signatures, footer.
+   Same brand as swkpropertiesuae.com: obsidian ink, crest gold logo, mint accent, Switzer.
+   ===================================================================================== */
+.swk-letterhead { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 0 12px; margin: 0 0 18px; border-bottom: 1px solid #121212; position: relative; break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.swk-letterhead::after { content: ''; position: absolute; left: 0; bottom: -4px; width: 64px; height: 3px; background: #51fec0; }
+.swk-letterhead-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.swk-letterhead-icon { width: 46px; height: 46px; object-fit: contain; }
+.swk-letterhead-word { height: 40px; width: auto; object-fit: contain; }
+.swk-letterhead-details { display: flex; flex-direction: column; align-items: flex-end; text-align: right; font-family: var(--font-sans); font-size: 8.6px; line-height: 1.55; color: #4a4a4a; letter-spacing: 0; max-width: 62%; }
+.swk-letterhead-details b { font-size: 10.5px; font-weight: 600; color: #121212; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 1px; }
+.swk-letterhead-reg { color: #121212; font-weight: 600; letter-spacing: .04em; }
+
+.studio-content { font-family: var(--font-sans); font-size: 11.2px; line-height: 1.62; color: #1e1e1e; letter-spacing: -0.005em; }
+.studio-content .kicker { font-size: 8.8px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: #0b7f58; margin: 2px 0 4px; }
+.studio-content h1 { font-family: var(--font-display); font-size: 25px; font-weight: 500; line-height: 1.12; letter-spacing: -0.03em; color: #121212; margin: 0 0 12px; }
+.studio-content h2 { font-size: 11.6px; font-weight: 600; letter-spacing: .02em; color: #121212; margin: 18px 0 7px; padding: 0 0 5px; border-bottom: 1px solid #e5e5e5; break-after: avoid; page-break-after: avoid; }
+.studio-content h3 { font-size: 11.2px; font-weight: 600; color: #121212; }
+.studio-content p { margin: 0 0 7px; orphans: 3; widows: 3; }
+.studio-content p.lead { font-size: 12.6px; color: #4a4a4a; }
+.studio-content table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 6px 0 12px; break-inside: auto; }
+.studio-content th, .studio-content td { border: 1px solid #e5e5e5; padding: 6px 8px; vertical-align: top; text-align: start; overflow-wrap: anywhere; word-break: normal; }
+.studio-content thead th { background: #121212; color: #ffffff; font-size: 8.6px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; border-color: #121212; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.studio-content tbody tr:nth-child(even) td { background: #fafafa; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.studio-content table.fields th { width: 32%; background: #f7f7f7; color: #4a4a4a; font-size: 9.6px; font-weight: 500; letter-spacing: .02em; text-transform: none; border-color: #e5e5e5; }
+.studio-content table.fields td { background: #fff !important; color: #121212; }
+.studio-content table.doc-meta { width: auto; min-width: 46%; margin: 0 0 16px; }
+.studio-content table.doc-meta th, .studio-content table.doc-meta td { border: 0; border-bottom: 1px solid #ececec; padding: 3px 14px 3px 0; background: transparent !important; font-size: 9.6px; }
+.studio-content table.doc-meta th { width: auto; color: #8b8b8b; text-transform: uppercase; letter-spacing: .14em; font-size: 8.2px; font-weight: 600; white-space: nowrap; }
+.studio-content tr { break-inside: avoid; page-break-inside: avoid; }
+.studio-content table.sig { margin-top: 10px; }
+.studio-content table.sig td { width: 50%; border: 0; background: transparent !important; padding: 18px 28px 6px 0; }
+.studio-content .sig-line { height: 34px; border-bottom: 1px solid #121212; margin-bottom: 4px; }
+.studio-content .keep, .studio-content table.sig { break-inside: avoid; page-break-inside: avoid; }
+.studio-content ul, .studio-content ol { margin: 0 0 8px; padding-inline-start: 18px; } .studio-content li { margin: 0 0 3px; }
+.studio-content .note, .studio-content .guidance { border: 1px solid #f2e3b3; border-radius: 6px; background: #fffaeb; color: #6b5a14; padding: 7px 10px; font-size: 9.8px; margin: 10px 0; }
+.studio-content .small { font-size: 9.6px; } .studio-content .muted { color: #8b8b8b; }
+.corporate-footer { margin-top: 26px; padding-top: 9px; border-top: 1px solid #121212; font-family: var(--font-sans); font-size: 8.4px; line-height: 1.6; color: #737373; position: relative; }
+.corporate-footer::before { content: ''; position: absolute; left: 0; top: -3px; width: 64px; height: 2px; background: #51fec0; }
+.corporate-footer-identity strong { color: #121212 !important; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 8.8px; }
+.corporate-footer-contact strong { color: #121212 !important; font-weight: 600; }
+.studio-paper { padding: 16mm 16mm 14mm; }
+@media print { html, body, #root { background: #fff !important; } .swk-main::before { display: none !important; } }

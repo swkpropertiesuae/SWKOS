@@ -1,5 +1,5 @@
 import { documentNotice,documentRecipient,useDocumentSeal } from '@shared/document-presentation'
-import { SWK_OFFICIAL_WEBSITES_TEXT,normalizeSwkCompanyName } from '@shared/corporate-footer'
+import { normalizeSwkCompanyName } from '@shared/corporate-footer'
 import { CorporateFooter } from '../components/CorporateFooter'
 import { DocumentPrinter } from '../components/ui/document-printer'
 import { createContext,useContext,useEffect,useRef,useState,type ReactNode } from 'react'
@@ -19,29 +19,18 @@ export function Letterhead() {
   const s = S()
   const companyName = normalizeSwkCompanyName(s.company_name)
   return (
-    <div className="flex items-start justify-between gap-6 pb-3 mb-4" style={{ borderBottom: '3px solid #121212' }}>
-      <div
-        className="flex items-center gap-3"
-        style={{
-          background: 'linear-gradient(135deg, #121212 0%, #173e30 100%)',
-          padding: '8px 16px',
-          borderRadius: 10,
-          border: '1px solid rgba(201,169,110,.45)',
-          boxShadow: '0 4px 12px rgba(14,36,28,.14)',
-          WebkitPrintColorAdjust: 'exact',
-          printColorAdjust: 'exact',
-        }}
-      >
-        <img src="/brand/site/swk-logo-horizontal.svg" alt={companyName} style={{ height: 42, width: 'auto', objectFit: 'contain', display: 'block' }} />
+    <header className="swk-letterhead">
+      <div className="swk-letterhead-brand">
+        <img src="/brand/web/swk-icon-192.webp" alt="" className="swk-letterhead-icon" />
+        <img src="/brand/web/swk-logo-light.webp" alt={companyName} className="swk-letterhead-word" />
       </div>
-      <div style={{ textAlign: 'right', fontSize: 10.5, lineHeight: 1.45 }}>
-        <b style={{ fontSize: 12.5, color: '#121212' }}>{companyName}</b>
-        <div style={{ whiteSpace: 'pre-line' }}>{s.company_address}</div>
-        {s.company_phone && <div>Tel {s.company_phone}</div>}
-        <div>{s.company_email}{s.company_info_email && s.company_info_email !== s.company_email ? ` · ${s.company_info_email}` : ''}</div>
-        <div style={{ fontWeight: 700, color: '#121212', marginTop: 1 }}>{SWK_OFFICIAL_WEBSITES_TEXT}</div>
+      <div className="swk-letterhead-details">
+        <b>{companyName}</b>
+        <span>{s.company_address}</span>
+        <span>{[s.company_phone && `T ${s.company_phone}`, s.company_info_email || s.company_email].filter(Boolean).join('  ·  ')}</span>
+        <span className="swk-letterhead-reg">RERA ORN 51517  ·  www.swkpropertiesuae.com</span>
       </div>
-    </div>
+    </header>
   )
 }
 const Title = ({ children, sub, watermark }: { children: ReactNode; sub?: ReactNode; watermark?: string }) => <div className="flex items-end justify-between mb-3 relative"><h1>{children}</h1><div style={{ textAlign: 'right' }}>{sub}</div>{watermark && <div style={{ position: 'absolute', left: '28%', top: 40, transform: 'rotate(-12deg)', fontSize: 54, fontWeight: 800, color: '#dc2626', opacity: 0.12, pointerEvents: 'none', whiteSpace: 'nowrap' }}>{watermark}</div>}</div>
