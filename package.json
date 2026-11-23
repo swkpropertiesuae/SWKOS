@@ -24,6 +24,7 @@
     "test:compliance": "tsx --env-file-if-exists=.env tests/compliance.ts",
     "test:documents": "node tests/documents-ui.mjs",
     "test:ocr": "tsx tests/ocr.ts",
+    "test:superapp": "tsx --env-file-if-exists=.env tests/zero-leak-superapp.ts",
     "test:all": "bash tests/run-all.sh"
   },
   "dependencies": {
