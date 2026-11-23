@@ -145,7 +145,14 @@ export default async function (app: FastifyInstance) {
     const uid = me(req)
     reply.hijack()
     const res = reply.raw
-    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+    const baseHeaders = reply.getHeaders() as Record<string, string | string[] | number | undefined>
+    res.writeHead(200, {
+      ...baseHeaders,
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      'x-accel-buffering': 'no',
+    })
     res.write('retry: 3000\n\n')
     const send = (e: Evt) => { try { res.write(`event: chat\ndata: ${JSON.stringify(e)}\n\n`) } catch { /* closed */ } }
     liveBus.on('chat:' + uid, send)
@@ -154,13 +161,18 @@ export default async function (app: FastifyInstance) {
     if (!wasOnline) for (const u of q.all<{ user_id: number }>(`SELECT DISTINCT b.user_id FROM chat_members a JOIN chat_members b ON b.thread_id = a.thread_id WHERE a.user_id = ? AND b.user_id <> ?`, uid, uid)) emit(u.user_id, { type: 'presence', user_id: uid, online: true })
     deliverAll(uid)
     const ping = setInterval(() => { try { res.write(': ping\n\n') } catch { /* closed */ } }, 20_000)
-    req.raw.on('close', () => {
+    let cleaned = false
+    const cleanup = () => {
+      if (cleaned) return
+      cleaned = true
       clearInterval(ping); liveBus.off('chat:' + uid, send)
       const n = (online.get(uid) ?? 1) - 1
       if (n > 0) { online.set(uid, n); return }
       online.delete(uid); lastSeen.set(uid, nowIso())
       for (const u of q.all<{ user_id: number }>(`SELECT DISTINCT b.user_id FROM chat_members a JOIN chat_members b ON b.thread_id = a.thread_id WHERE a.user_id = ? AND b.user_id <> ?`, uid, uid)) emit(u.user_id, { type: 'presence', user_id: uid, online: false, last_seen: lastSeen.get(uid) })
-    })
+    }
+    req.raw.on('close', cleanup)
+    res.on('close', cleanup)
   })
 
   // ------------------------------------------------------------------ people, threads

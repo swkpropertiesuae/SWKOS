@@ -17,7 +17,7 @@ function makeEcP256Jwk() {
   return { jwk, expectedDeviceId }
 }
 
-async function openSseFirstChunk(url: string, headers: Record<string, string> = {}): Promise<{ status: number; contentType: string; firstChunk: string }> {
+async function openSseFirstChunk(url: string, headers: Record<string, string> = {}): Promise<{ status: number; contentType: string; headers: Headers; firstChunk: string }> {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), 4000)
   try {
@@ -25,13 +25,13 @@ async function openSseFirstChunk(url: string, headers: Record<string, string> = 
     const contentType = res.headers.get('content-type') || ''
     if (!res.ok || !res.body) {
       const text = await res.text().catch(() => '')
-      return { status: res.status, contentType, firstChunk: text }
+      return { status: res.status, contentType, headers: res.headers, firstChunk: text }
     }
     const reader = res.body.getReader()
     const { value } = await reader.read()
     const firstChunk = value ? Buffer.from(value).toString('utf8') : ''
     try { await reader.cancel() } catch {}
-    return { status: res.status, contentType, firstChunk }
+    return { status: res.status, contentType, headers: res.headers, firstChunk }
   } finally {
     clearTimeout(timer)
     ac.abort()
@@ -141,6 +141,16 @@ async function run() {
       assert.ok(!redacted.includes('secretTicket999'), `redactUrl must strip ticket value, got: ${redacted}`)
       assert.ok(redacted.includes('ticket=[redacted]'), `redactUrl must replace ticket with [redacted], got: ${redacted}`)
     }
+
+    // Mobile login without device_pub or device_id must be rejected with 400
+    const missingDevRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      remoteAddress: nextIp(),
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile' },
+      payload: { email: 'mobile-agent1@swk.rent', password: staffPw },
+    })
+    assert.equal(missingDevRes.statusCode, 400, `Mobile login omitting device_pub and device_id must return 400, got ${missingDevRes.statusCode}: ${missingDevRes.body}`)
 
     // -----------------------------------------------------------------------
     // 1. Mobile login with x-swk-client: mobile returns session_token usable via x-swk-session
@@ -299,9 +309,13 @@ async function run() {
       headers: { 'x-swk-client': 'mobile', 'x-swk-session': mobileToken },
     })
     const chatTicket = (chatTicketRes.json() as any).ticket as string
-    const chatSse = await openSseFirstChunk(`${baseUrl}/api/chat/stream?ticket=${encodeURIComponent(chatTicket)}`)
+    const chatSse = await openSseFirstChunk(`${baseUrl}/api/chat/stream?ticket=${encodeURIComponent(chatTicket)}`, {
+      Origin: 'https://os.swk.properties',
+    })
     assert.equal(chatSse.status, 200, `Expected 200 on /api/chat/stream?ticket=..., got ${chatSse.status}`)
     assert.match(chatSse.contentType, /text\/event-stream/)
+    assert.equal(chatSse.headers.get('access-control-allow-origin'), 'https://os.swk.properties', 'GET /api/chat/stream must preserve Access-Control-Allow-Origin')
+    assert.equal(chatSse.headers.get('access-control-allow-credentials'), 'true', 'GET /api/chat/stream must preserve Access-Control-Allow-Credentials')
 
     // Expired ticket (>30s) returns null
     const expTicketRes = await app.inject({
@@ -499,6 +513,48 @@ async function run() {
     })
     assert.equal(approvedLoginRes.statusCode, 200, `Approved device login must succeed: ${approvedLoginRes.body}`)
     assert.equal((approvedLoginRes.json() as any).device_status, 'Approved')
+    const approvedTok = (approvedLoginRes.json() as any).session_token as string
+    const approvedTicket = ((await app.inject({
+      method: 'POST',
+      url: '/api/auth/stream-ticket',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': approvedTok },
+    })).json() as any).ticket as string
+
+    // Deleting staff_devices row must fail closed: 401 on bound mobile session and null on stream ticket
+    q.run(`DELETE FROM staff_devices WHERE id = ?`, devRow3.id)
+    const deletedDevMe = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': approvedTok },
+    })
+    assert.equal(deletedDevMe.statusCode, 401, `Deleted staff_devices row must fail closed with 401, got ${deletedDevMe.statusCode}`)
+    assert.equal(consumeStreamTicket(approvedTicket), null, 'Stream ticket for deleted staff_devices row must fail closed with null')
+
+    // Enabling mobile_require_device_approval must invalidate an existing Pending mobile session & ticket
+    setSettings({ mobile_require_device_approval: false })
+    const { jwk: jwk4 } = makeEcP256Jwk()
+    const pendingPreLogin = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      remoteAddress: nextIp(),
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile' },
+      payload: { email: 'mobile-agent2@swk.rent', password: staffPw, device_pub: jwk4, device_name: 'Pending Phone', platform: 'android' },
+    })
+    assert.equal(pendingPreLogin.statusCode, 200)
+    const pendingTok = (pendingPreLogin.json() as any).session_token as string
+    const pendingTicket = ((await app.inject({
+      method: 'POST',
+      url: '/api/auth/stream-ticket',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': pendingTok },
+    })).json() as any).ticket as string
+    setSettings({ mobile_require_device_approval: true })
+    const pendingPostToggleMe = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': pendingTok },
+    })
+    assert.equal(pendingPostToggleMe.statusCode, 401, `Enabling mobile_require_device_approval must invalidate Pending mobile session, got ${pendingPostToggleMe.statusCode}`)
+    assert.equal(consumeStreamTicket(pendingTicket), null, 'Enabling mobile_require_device_approval must reject Pending device stream ticket')
 
     console.log('Mobile auth, unified device binding & SSE ticket tests passed.')
   } finally {

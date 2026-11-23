@@ -54,6 +54,9 @@ export default async function (app: FastifyInstance) {
 
     let resolvedMobileDeviceId: string | undefined
     if (isMobileClient) {
+      if (!b.device_pub && !b.device_id) {
+        throw bad('device_pub or device_id is required for mobile sign-in')
+      }
       if (b.device_id !== undefined && !/^[A-Za-z0-9._:-]{4,80}$/.test(b.device_id)) {
         throw bad('Invalid device_id format')
       }
@@ -64,7 +67,7 @@ export default async function (app: FastifyInstance) {
         }
         resolvedMobileDeviceId = derived
       } else {
-        resolvedMobileDeviceId = b.device_id ?? ('mob-' + crypto.randomBytes(16).toString('hex'))
+        resolvedMobileDeviceId = b.device_id!
       }
     }
 

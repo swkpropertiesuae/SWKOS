@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { q, inDemo } from './db'
 import { config } from './config'
 import { nowIso,safeJson,bad,HttpError } from './util'
-import { decryptSecret, hmacWithAppSecret } from './settings'
+import { decryptSecret, getSetting, hmacWithAppSecret } from './settings'
 import type { SessionUser,Perms } from './engine'
 import {
   isRestrictedStaffUser,
@@ -115,6 +115,17 @@ export function isDemoStreamTicket(ticket: string | undefined): boolean {
   return !!entry && entry.expiresAt > Date.now() && entry.isDemo
 }
 
+function isDeviceSessionAuthorized(userId: number, deviceId: string): boolean {
+  const dev = q.get<{ status: string; revoked_at: string | null }>(
+    `SELECT status, revoked_at FROM staff_devices WHERE user_id = ? AND device_id = ?`,
+    userId,
+    deviceId,
+  )
+  if (!dev || dev.status === 'Blocked' || !!dev.revoked_at) return false
+  if (getSetting('mobile_require_device_approval') && dev.status !== 'Approved') return false
+  return true
+}
+
 export function consumeStreamTicket(ticket: string | undefined): SessionUser | null {
   if (!ticket || typeof ticket !== 'string') return null
   const clean = ticket.trim()
@@ -125,14 +136,7 @@ export function consumeStreamTicket(ticket: string | undefined): SessionUser | n
   streamTickets.delete(h)
   if (Date.now() > entry.expiresAt) return null
   if (entry.isDemo !== inDemo()) return null
-  if (entry.deviceId) {
-    const dev = q.get<{ status: string; revoked_at: string | null }>(
-      `SELECT status, revoked_at FROM staff_devices WHERE user_id = ? AND device_id = ?`,
-      entry.userId,
-      entry.deviceId,
-    )
-    if (dev && (dev.status === 'Blocked' || !!dev.revoked_at)) return null
-  }
+  if (entry.deviceId && !isDeviceSessionAuthorized(entry.userId, entry.deviceId)) return null
   const user = loadUser(entry.userId)
   if (!user || user.party_id) return null
   return user
@@ -311,16 +315,9 @@ export function userFromToken(token: string | undefined): { user: SessionUser; h
   const now = new Date()
   if (new Date(s.expires_at) < now) { q.run(`DELETE FROM sessions WHERE id = ?`, h); return null }
   const deviceId: string | null = s.device_id ? String(s.device_id) : null
-  if (deviceId) {
-    const dev = q.get<{ status: string; revoked_at: string | null }>(
-      `SELECT status, revoked_at FROM staff_devices WHERE user_id = ? AND device_id = ?`,
-      s.user_id,
-      deviceId,
-    )
-    if (dev && (dev.status === 'Blocked' || !!dev.revoked_at)) {
-      q.run(`DELETE FROM sessions WHERE id = ?`, h)
-      return null
-    }
+  if (deviceId && !isDeviceSessionAuthorized(s.user_id, deviceId)) {
+    q.run(`DELETE FROM sessions WHERE id = ?`, h)
+    return null
   }
   const user = loadUser(s.user_id)
   if (!user) return null
