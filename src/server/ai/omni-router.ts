@@ -200,7 +200,7 @@ export function loadLegacyEndpoints(modelOverride?: string): { base: string; key
     const base = String(getSetting(pre + 'base_url') || p?.base || '')
       .trim()
       .replace(/\/+$/, '')
-      .replace('ACCOUNT_ID', cfAccount || 'ACCOUNT_ID')
+      .replace(/\{?ACCOUNT_ID\}?/g, cfAccount || 'ACCOUNT_ID')
     const model = String((pre === 'ai_' && modelOverride) || getSetting(pre + 'model') || p?.model || '').trim()
     const key = String(getSetting(pre + 'api_key') || '').trim()
     if (base && model) out.push({ base, key, model, label, provider })
@@ -229,7 +229,10 @@ function mapDbRowToResolved(r: OmniRouteRow): ResolvedRoute {
     stateKey: `db:${r.id}`,
     label: r.label,
     provider_key: r.provider_key,
-    base_url: String(r.base_url || preset?.baseUrl || '').trim().replace(/\/+$/, ''),
+    base_url: String(r.base_url || preset?.baseUrl || '')
+      .trim()
+      .replace(/\/+$/, '')
+      .replace(/\{?ACCOUNT_ID\}?/g, String(getSetting('ai_cloudflare_account_id') || '').trim() || 'ACCOUNT_ID'),
     api_key: decrypted,
     has_key: Boolean(r.api_key_enc),
     model_id: String(r.model_id || preset?.defaultModel || '').trim(),
