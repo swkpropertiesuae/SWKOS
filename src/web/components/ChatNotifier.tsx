@@ -6,7 +6,7 @@ import { MessagesSquare,X } from 'lucide-react'
 import { get } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { chatState,chime,desktopAlert,previewOf,subscribeChat,type ChatEvent } from '../lib/chatLive'
-import { teamProfileByEmail } from '@shared/swk-team-profiles'
+import { StaffPhoto } from './ui/staff-photo'
 
 type Banner = { key: number; thread_id: number; title: string; sender: string; text: string; group: boolean; user_id: number }
 
@@ -44,7 +44,6 @@ export function ChatNotifier() {
     if (document.hidden) void desktopAlert(e.group ? e.thread_title : e.message.name, e.group ? `${e.message.name}: ${text}` : text, `chat-${e.thread_id}`, () => nav(`/chat?t=${e.thread_id}`))
   }), [qc, nav])
 
-  const photo = (uid: number) => teamProfileByEmail(people?.find(p => p.id === uid)?.email)?.photo
   return (
     <>
       <Link to="/chat" className="swk-tbtn relative" aria-label={`Inside messenger, ${unread} unread`} title="Inside messenger">
@@ -57,7 +56,7 @@ export function ChatNotifier() {
               className="pointer-events-auto flex items-start gap-3 rounded-2xl border border-black/5 bg-white/95 p-3 shadow-[0_24px_60px_rgba(18,18,18,0.18)] backdrop-blur-xl" role="status">
               <button type="button" className="flex min-w-0 flex-1 items-start gap-3 border-0 bg-transparent p-0 text-left" onClick={() => { setBanners(a => a.filter(x => x.key !== b.key)); nav(`/chat?t=${b.thread_id}`) }}>
                 <span className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#121212] text-[13px] font-semibold text-[#51fec0]">
-                  {photo(b.user_id) ? <img src={photo(b.user_id)} alt="" className="size-full object-cover object-top" /> : b.sender.split(' ').map(s => s[0]).slice(0, 2).join('')}
+                  <StaffPhoto email={people?.find(p => p.id === b.user_id)?.email} className="size-full object-cover object-top" fallback={b.sender.split(' ').map(s => s[0]).slice(0, 2).join('')} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2"><b className="truncate text-[14px] font-semibold text-[#121212]">{b.group ? b.title : b.sender}</b><span className="ml-auto shrink-0 text-[10.5px] text-[#0e9f6e]">now</span></span>

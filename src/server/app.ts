@@ -49,7 +49,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
 
   await app.register(helmet, {
-    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https://www.swkpropertiesuae.com'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:'], objectSrc: ["'self'"], frameSrc: ["'self'"], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
+    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:'], objectSrc: ["'self'"], frameSrc: ["'self'"], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
     crossOriginEmbedderPolicy: false, hsts: config.isProd ? { maxAge: 15552000 } : false,
   })
   await app.register(cookie)
@@ -74,13 +74,12 @@ export async function buildApp(): Promise<FastifyInstance> {
       }
     }
     const raw = req.cookies?.[COOKIE]
-    const mobSession = typeof req.headers['x-swk-session'] === 'string' ? req.headers['x-swk-session'].trim() : undefined
     const url = req.url.split('?')[0]
     const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7).trim() : undefined
     const publicRequest = PUBLIC.some(r => r.test(url))
     // Public links select their workspace by the link, never by an unrelated browser cookie.
     // API keys always belong to production; a demo cookie must not change their database.
-    const demoRequest = url.startsWith('/api/public/deal/demo-') || url.startsWith('/api/public/track/demo-') || (!publicRequest && !bearer && !!(raw || mobSession)?.startsWith(DEMO_PREFIX))
+    const demoRequest = url.startsWith('/api/public/deal/demo-') || url.startsWith('/api/public/track/demo-') || (!publicRequest && !bearer && !!raw?.startsWith(DEMO_PREFIX))
     const demoDb = demoRequest ? getDemoDb() : null
     if (demoRequest && !demoDb) return done(new HttpError(503, 'The demo workspace is unavailable'))
     enterDb(demoDb ?? undefined, () => {
@@ -89,7 +88,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         if (!publicRequest && bearer) {
           req.user = userFromApiKey(bearer)
         } else if (!publicRequest) {
-          const tok = mobSession || raw
+          const tok = raw
           const found = userFromToken(tok && tok.startsWith(DEMO_PREFIX) ? tok.slice(DEMO_PREFIX.length) : tok)
           if (found) { req.user = found.user; req.sessionHash = found.hash }
         }
@@ -110,8 +109,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     if (!url.startsWith('/api/')) return
     if (PUBLIC.some(r => r.test(url))) return
     if (!req.user) throw new HttpError(401, 'Please sign in')
-    // CSRF: cookie/session-authenticated mutations must carry the custom header ('web' or 'android')
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.user.apiKey && req.headers['x-swk-client'] !== 'web' && req.headers['x-swk-client'] !== 'android') throw new HttpError(403, 'Missing client header')
+    // CSRF: cookie/session-authenticated mutations must carry the custom header
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.user.apiKey && req.headers['x-swk-client'] !== 'web') throw new HttpError(403, 'Missing client header')
     const mustChange = q.val<number>('SELECT must_change_password FROM users WHERE id = ?', req.user.id)
     if (mustChange && !(PASSWORD_SETUP.has(url) && !req.user.apiKey)) throw new HttpError(403, 'Change your temporary password before using the application')
     if (req.user.party_id && !PORTAL_OK.some(r => r.test(url))) throw new HttpError(403, 'This area is for company staff')
@@ -133,10 +132,10 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // routes
   const mods = await Promise.all([
-    import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/mobile'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
+    import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/daily'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))

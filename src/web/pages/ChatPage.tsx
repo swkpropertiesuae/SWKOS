@@ -7,7 +7,7 @@ import { useToast } from '../lib/toast'
 import { useMeta } from '../lib/meta'
 import { Modal,useDialogs,useClickOutside } from '../ui/kit'
 import { chatState,previewOf,subscribeChat,type ChatMessage } from '../lib/chatLive'
-import { teamProfileByEmail } from '@shared/swk-team-profiles'
+import { StaffPhoto } from '../components/ui/staff-photo'
 
 type Thread = { id: number; kind: 'dm' | 'group'; title: string; peer: { id: number; email: string; online: boolean; last_seen: string | null } | null; members: number; role: string; pinned: boolean; muted: boolean; archived: boolean; announce: boolean; system: boolean; last: ChatMessage | null; unread: number }
 type Person = { id: number; name: string; email: string; designation?: string; online: boolean; last_seen: string | null }
@@ -32,11 +32,10 @@ const fmtSize = (n: number) => (n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math
 const colorFor = (id: number) => NAME_COLORS[id % NAME_COLORS.length]
 
 function Avatar({ name, email, group, size = 48, online }: { name: string; email?: string | null; group?: boolean; size?: number; online?: boolean }) {
-  const photo = !group ? teamProfileByEmail(email)?.photo : undefined
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
       <span className="flex size-full items-center justify-center overflow-hidden rounded-full bg-[#121212] font-semibold text-[#51fec0]" style={{ fontSize: size * 0.32 }}>
-        {group ? <Users size={size * 0.44} /> : photo ? <img src={photo} alt="" className="size-full object-cover object-top" /> : name.replace(/\(.*?\)/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]!.toUpperCase()).join('')}
+        {group ? <Users size={size * 0.44} /> : <StaffPhoto email={email} className="size-full object-cover object-top" fallback={name.replace(/\(.*?\)/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]!.toUpperCase()).join('')} />}
       </span>
       {online && <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-white bg-[#22c55e]" aria-label="online" />}
     </span>

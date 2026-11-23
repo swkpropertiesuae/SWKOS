@@ -53,6 +53,10 @@ export const platform: EntityDef[] = [
       I('failed_logins', 'Failed logins', { readonly: true, hidden: true }),
       DT('locked_until', 'Locked until', { readonly: true, hidden: true }),
       T('signature', 'E-mail signature', { span: 3, hidden: true }),
+      T('photo_stored', 'Profile photo', { secret: true, hidden: true }),
+      PH('work_phone', 'Internal phone / extension', { hidden: true }),
+      T('about', 'About me (internal)', { hidden: true }),
+      T('languages', 'Languages', { hidden: true }),
     ],
   },
   {

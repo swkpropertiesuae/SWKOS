@@ -31,7 +31,6 @@ Press **Play** below to watch the complete step-by-step visual tour of **SWK Pro
    - [Department 7: Accounting (9-Step Legal UAE Payments, 50/50 + A2A Commissions & VAT)](#department-7-accounting-9-step-legal-uae-payments-5050--a2a-commissions--vat)
    - [Department 8: Compliance (RERA, Trakheesi, KYC & Anti-Money Laundering)](#department-8-compliance-rera-trakheesi-kyc--anti-money-laundering)
    - [Department 9: Employees (Sales Advisors, Company Visas, Attendance & Leaderboard)](#department-9-employees-sales-advisors-company-visas-attendance--leaderboard)
-   - [Department 10: Field Service (SWK ONE Mobile App, Reception QR, GPS Visits & Checkout Gate)](#department-10-field-service-swk-one-mobile-app-reception-qr-gps-visits--checkout-gate)
    - [Department 11: Documents (Instant Deal Calculators, Letter Studio & Reports)](#department-11-documents-instant-deal-calculators-letter-studio--reports)
    - [Department 12: Settings (Company Directory, Branches & Audit Visibility)](#department-12-settings-company-directory-branches--audit-visibility)
 5. [**Part 5 — Five Core Manager Playbooks (Step-by-Step Operational Execution)**](#part-5--five-core-manager-playbooks-step-by-step-operational-execution)
@@ -51,7 +50,6 @@ As **Operations Manager** of **SWK Properties L.L.C**, you (`manager@swkproperti
 ```mermaid
 flowchart LR
   A["1. Property & Permit\n(Properties Dept)"] --> B["2. Portal Ad & Lead\n(CRM Dept)"]
-  B --> C["3. Viewing & Offer\n(SWK ONE + Sales)"]
   C --> D["4. Form F / SPA / Ejari\n(Sales or Leasing)"]
   D --> E["5. Cheques, NOC & Transfer\n(Compliance & Vault)"]
   E --> F["6. Invoice, 50/50 Split & VAT\n(Accounting & Owner Dashboard)"]
@@ -76,7 +74,6 @@ SWK Properties OS is built around a clear governance chain between **Shabib Sira
 Every screen in **SWK Properties OS** follows the same four rules so you can supervise the entire brokerage effortlessly:
 
 ### Rule 1: Sign In at the Private Gate
-Open `https://os.swk.properties` in your browser (or open the **SWK ONE** app on your Android phone). Sign in with your Operations Manager credentials (`manager@swkpropertiesuae.com`).
 
 ![Chapter 1 — Secure Sign-In Screen](./handbook-assets/hb-01-login.png)
 
@@ -136,7 +133,6 @@ flowchart TD
 1. **10:00 AM – 10:05 AM — Office Opening & Reception QR Roll Call (`Field Service → Step 2: Reception QR`)**:
    - Ensure the rotating **Reception QR** terminal is live at the entrance.
    - Staff scanning in up to **10:05 AM** are recorded as **On-Time**.
-   - Any broker who is outside the office for a scheduled morning viewing checks in via **Live GPS** on the **SWK ONE** app (`Field Service → Step 4: Field Visits`), which automatically registers their attendance against their viewing schedule.
 2. **10:30 AM — Attendance Report & Continuous Contemptor Action (`Employees → Step 5: Attendance`)**:
    - At **10:30 AM**, Owner **Shabib Siraj** receives the automated WhatsApp Attendance Report, and any staff member with **≥3 late arrivals (`>10:05 AM`) in 7 days** triggers a **Continuous Contemptor Alert** to both the Owner and you.
    - Call in any late or contemptor staff member immediately, take their written explanation, log your coaching note, and guide them on schedule compliance.
@@ -185,7 +181,6 @@ Below is how you use each of the **12 Departments** as Operations Manager to sup
 | **5** | **Calendar** | Master schedule of all broker site visits, client meetings, Developer NOC appointments, DLD transfers, and lease renewals. |
 | **6** | **Daily Operations** | **Your #1 Management Screen.** Switch across its 9 tabs (*Daily Work Reports*, *New Properties & Permits*, *Developer NOCs*, *Sales & Transfers*, *Commission Payouts*, *Visas & Agent Cards*, *WhatsApp & Field Visits*, *Compliance & Quality*, *Approvals & Staff Handover*) to run the entire floor from one page. |
 | **7** | **Market Pulse** | Live benchmarks for **24 Dubai communities** (price/sq ft, YoY growth, rental yield, daily DLD transactions, real estate news, and UAE mortgage calculator). Train brokers to open the **Site-Visit Area Companion** here before every viewing. |
-| **8** | **SWK ONE Mobile** | Preview the mobile app interface and check live broker duty status, checkout gate status, and field sessions. |
 | **9** | **Reception QR** | Open on the office reception tablet so the rotating 15-second QR code is ready for `10:00 AM` check-in and `7:00 PM` check-out. |
 | **10** | **AI Assistant** | Ask the AI team (Jarvis) for instant operational summaries, overdue follow-ups, or draft client communications. |
 
@@ -249,7 +244,6 @@ Below is how you use each of the **12 Departments** as Operations Manager to sup
 | Step | App Icon | What Mohammad Haseeb Checks & Does Here |
 |---|---|---|
 | **1** | **Seller Form A** | Verify signed Seller Form A agreements, seller requirements (cash vs. mortgaged property, payoff bank if mortgaged), and commission % before marketing. |
-| **2** | **Viewings** | Check scheduled viewings and ensure brokers check in via **Live GPS** on **SWK ONE** and log client feedback afterward (required to unlock their evening checkout). |
 | **3** | **Buyer Offers** | Verify buyer finance status (**Cash Buyer**, **Mortgage Pre-Approved**, or **Mortgage In Progress**) and ensure payment mode is 100% legal under UAE regulations. |
 | **4** | **Sale Contract (F)** | Supervise **RERA Form F (MOU)** signing for Secondary units (or **SPA / Oqood** for Off-Plan units) and verify that 3rd-Party A2A details (Form I) are recorded if co-brokered. |
 | **5** | **Escrow** | Track the 10% security deposit cheque or developer escrow payment. |
@@ -350,15 +344,12 @@ Below is how you use each of the **12 Departments** as Operations Manager to sup
 
 ---
 
-### Department 10: Field Service (SWK ONE Mobile App, Reception QR, GPS Visits & Checkout Gate)
+### Department 10: Field Service (Reception QR, Field Visits & Checkout Gate)
 
-**Manager’s Role**: Enforce real-time field accountability using the **SWK ONE** Android app (`ae.swkproperties.one`).
 
-![Field Service — SWK ONE Mobile App & Workday Briefing](./handbook-assets/hb-18-field-swk-one.png)
 
 | Step | App Icon | What Mohammad Haseeb Checks & Does Here |
 |---|---|---|
-| **1** | **SWK ONE App** | Use on your own phone and verify how brokers check in, view scheduled site visits, use the **Site-Visit Area Companion** (15-year area outlook + closing pitch keywords), and submit daily reports. |
 | **2** | **Reception QR** | Keep displayed on the office reception screen (`10:00 AM` arrival / `7:00 PM` sign-out). |
 | **3** | **Gate Logs** | Audit raw QR scan and GPS arrival timestamps. |
 | **4** | **Field Visits** | When a broker is outside the office for a morning or afternoon viewing, verify that they checked in via **Live GPS** at the property location (`Field Site Visit Live GPS`) matching their scheduled viewing. |
@@ -394,7 +385,6 @@ Below is how you use each of the **12 Departments** as Operations Manager to sup
 ## Part 5 — Five Core Manager Playbooks (Step-by-Step Operational Execution)
 
 ### Playbook 1: Running the `10:00 AM` Roll Call, `10:30 AM` Report & Coaching Continuous Contemptors
-1. **10:00 AM – 10:05 AM**: In-office brokers scan the **Reception QR** (`Field Service → Step 2`). Brokers at an early client site visit check in via **Live GPS** on **SWK ONE** (`Field Service → Step 4`), which automatically registers their attendance against their scheduled viewing.
 2. **10:06 AM Onwards**: Any check-in after `10:05 AM` (without an approved client-schedule variable hours reason) is marked **Late** with exact late minutes.
 3. **10:30 AM Alert**: Owner **Shabib Siraj** receives the automated WhatsApp Attendance Report. If any broker reaches **≥3 late arrivals in 7 rolling days**, the system fires a **Continuous Contemptor Alert** to both **Owner Shabib Siraj** and **Mohammad Haseeb** and creates an urgent coaching task.
 4. **Manager Action**: Open `Employees → Step 5: Attendance`, meet the broker, record their explanation and your guidance note, and update the task for the Owner’s visibility.
@@ -404,7 +394,6 @@ Below is how you use each of the **12 Departments** as Operations Manager to sup
 ### Playbook 2: Supervising a Secondary Sale (Seller Requirement → A2A → Form F → Legal Payment → 50/50 Split)
 1. **Seller / A2A Intake (`Properties → Step 1: New Submissions`)**: Verify whether the property comes directly from a Seller or via a **3rd-Party Agent (A2A)**. Ensure the seller’s detailed requirements (minimum net price, cash vs. mortgaged property, notice period) and signed **Form A / Trakheesi permit** (`Step 2`) are uploaded before approving the listing.
 2. **Portal Promotion & Lead Qualification (`Properties → Step 5: Listing Studio` → `CRM → Step 1: Leads`)**: Promote on Bayut & Dubizzle. Ensure the broker qualifies the buyer’s finance status (**Cash**, **Mortgaged**, or **Mortgage Pre-Approved**).
-3. **Site Visit with Area Companion (`Field Service → Step 1: SWK ONE App`)**: Before the viewing, ensure the broker opens the **Site-Visit Area Companion** (`Dashboards → Step 7: Market Pulse`) to present the community’s stock-style price/sq ft ticker, nearby landmarks, **15-year outlook (2026–2041)**, and **top closing pitch keywords**.
 4. **Form F, NOC & DLD Transfer (`Sales → Steps 3 to 7`)**: Once the offer is accepted, oversee **RERA Form F (MOU)** signing, 10% security deposit in Escrow, Developer NOC clearance, and DLD Trustee transfer.
 5. **Legal Payment & 50/50 + A2A Commission Split (`Accounting → Steps 1 to 4`)**:
    - Confirm payment arrived via a legal UAE method into SWK’s corporate account.

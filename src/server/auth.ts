@@ -4,7 +4,7 @@ import { config } from './config'
 import { nowIso,safeJson,bad,HttpError } from './util'
 import { decryptSecret } from './settings'
 import type { SessionUser,Perms } from './engine'
-import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS,SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
+import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS,SWK_STAFF_ACCOUNTS,hardcodedAccountFor,HARDCODED_ROLE_PERMISSIONS } from '../shared/swk-staff-access'
 import { syncSwkStaffRoster } from './seed'
 
 // ---------------------------------------------------------------- passwords (scrypt)
@@ -49,7 +49,12 @@ export function loadUser(userId: number): SessionUser | null {
   if (!u) return null
   const perms = safeJson<Perms>(u.permissions, {})
   const userObj: SessionUser = { id: u.id, name: u.name, email: u.email, role_id: u.role_id, role_name: u.role_name ?? '', permissions: perms, branch_id: u.branch_id, party_id: u.party_id ?? null }
-  if (!userObj.party_id && isRestrictedStaffUser(userObj)) {
+  // Fixed in code for every SWK staff account: the database role cannot widen or narrow it.
+  const fixed = !userObj.party_id ? hardcodedAccountFor(userObj.email) : undefined
+  if (fixed) {
+    userObj.role_name = fixed.roleName
+    userObj.permissions = HARDCODED_ROLE_PERMISSIONS[fixed.roleName] as Perms
+  } else if (!userObj.party_id && isRestrictedStaffUser(userObj)) {
     userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
     userObj.role_name = 'Staff (Attendance & General)'
   }

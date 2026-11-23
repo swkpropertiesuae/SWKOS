@@ -1,3 +1,8 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
+import { dirs } from '../config'
+import { openStored,persistUpload,removeStored } from '../integrations/storage'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { q,tx } from '../db'
@@ -33,18 +38,16 @@ export default async function (app: FastifyInstance) {
     const out = isDemoLogin ? runInDb(getDemoDb()!, work) : work()
     if ('needsTotp' in out) return { needsTotp: true }
     setCookie(req, reply, (isDemoLogin ? DEMO_PREFIX : '') + out.s.token, out.s.expires)
-    const isAndroidClient = req.headers['x-swk-client'] === 'android'
     return {
       ok: true,
       demo: isDemoLogin,
       user: { id: out.user.id, name: out.user.name, email: out.user.email, role: out.user.role_name },
       mustChangePassword: !!out.must,
-      ...(isAndroidClient ? { sessionToken: (isDemoLogin ? DEMO_PREFIX : '') + out.s.token, expiresAt: out.s.expires.toISOString() } : {}),
     }
   })
 
   app.post('/api/auth/logout', async (req, reply) => {
-    // The session may have arrived as a cookie (web) or as the x-swk-session header (Android); the request hook already resolved either to its hash.
+    // The request hook resolved the session cookie to its hash.
     if (req.sessionHash) destroySessionByHash(req.sessionHash)
     reply.clearCookie(COOKIE, { path: '/' })
     return { ok: true }
@@ -56,6 +59,57 @@ export default async function (app: FastifyInstance) {
     const config0 = config.accounts
     const usingDefault = !inDemo() && [config0.adminPassword, config0.managerPassword].some(p => verifyPassword(p, row?.password_hash))
     return { demo: inDemo(), id: u.id, name: u.name, email: u.email, role: u.role_name, permissions: u.permissions, branch_id: u.branch_id, party_id: u.party_id, totp: !!row?.totp_secret, mustChangePassword: !!row?.must_change_password, defaultPassword: usingDefault, lastLogin: row?.last_login_at }
+  })
+
+  // ---- Own profile, internal only: photo, internal phone, short about line and languages. Name, e-mail, role and designation stay with HR / Admin.
+  app.get('/api/auth/profile', async (req) => {
+    const u = req.user!
+    const r = q.get<any>(`SELECT name, email, designation, work_phone, about, languages, photo_stored FROM users WHERE id = ?`, u.id)
+    return { name: r?.name, email: r?.email, designation: r?.designation, work_phone: r?.work_phone ?? '', about: r?.about ?? '', languages: r?.languages ?? '', has_photo: !!r?.photo_stored, photo_url: r?.photo_stored ? `/api/users/${u.id}/photo` : null }
+  })
+  app.patch('/api/auth/profile', async (req) => {
+    const u = req.user!
+    if (u.party_id) throw new HttpError(403, 'Staff only')
+    const b = z.object({ work_phone: z.string().trim().max(40).regex(/^[+\d\s()-]*$/, 'Use digits, spaces, + ( ) or -').optional(), about: z.string().trim().max(280).optional(), languages: z.string().trim().max(120).optional() }).parse(req.body ?? {})
+    for (const [k, v] of Object.entries(b)) if (v !== undefined) q.run(`UPDATE users SET ${k} = ?, updated_at = ? WHERE id = ?`, v || null, new Date().toISOString(), u.id)
+    return { ok: true }
+  })
+  app.post('/api/auth/profile/photo', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req) => {
+    const u = req.user!
+    if (u.party_id) throw new HttpError(403, 'Staff only')
+    const part = await (req as any).file()
+    if (!part) throw new HttpError(400, 'Choose a photo')
+    const mime = String(part.mimetype || '').toLowerCase()
+    if (!/^image\/(png|jpe?g|webp)$/.test(mime)) { part.file.resume(); throw new HttpError(400, 'Use a JPG, PNG or WebP photo') }
+    const buf: Buffer = await part.toBuffer()
+    if (buf.length > 5 * 1024 * 1024) throw new HttpError(400, 'Photos can be up to 5 MB')
+    const ext = mime.includes('png') ? '.png' : mime.includes('webp') ? '.webp' : '.jpg'
+    const rel = path.join('profile', `${u.id}-${crypto.randomBytes(6).toString('hex')}${ext}`)
+    fs.mkdirSync(path.join(dirs.uploads, 'profile'), { recursive: true })
+    fs.writeFileSync(path.join(dirs.uploads, rel), buf)
+    const stored = await persistUpload(rel, mime)
+    const old = q.val<string>(`SELECT photo_stored FROM users WHERE id = ?`, u.id)
+    q.run(`UPDATE users SET photo_stored = ?, updated_at = ? WHERE id = ?`, stored, new Date().toISOString(), u.id)
+    if (old) void removeStored(old)
+    return { ok: true, photo_url: `/api/users/${u.id}/photo?v=${Date.now()}` }
+  })
+  app.delete('/api/auth/profile/photo', async (req) => {
+    const u = req.user!
+    const old = q.val<string>(`SELECT photo_stored FROM users WHERE id = ?`, u.id)
+    q.run(`UPDATE users SET photo_stored = NULL WHERE id = ?`, u.id)
+    if (old) void removeStored(old)
+    return { ok: true }
+  })
+  // Staff photos are visible to signed-in staff only (chat, team directory, top bar). Lookup by id or by e-mail.
+  app.get('/api/users/:id/photo', async (req, reply) => {
+    if (!req.user || req.user.party_id) throw new HttpError(403, 'Staff only')
+    const key = String((req.params as any).id)
+    const stored = /^\d+$/.test(key) ? q.val<string>(`SELECT photo_stored FROM users WHERE id = ? AND deleted_at IS NULL`, Number(key)) : q.val<string>(`SELECT photo_stored FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, key.toLowerCase())
+    const stream = stored ? await openStored(stored) : null
+    if (!stream) return reply.status(404).send({ error: 'No photo' })
+    reply.header('content-type', /\.png$/i.test(stored!) ? 'image/png' : /\.webp$/i.test(stored!) ? 'image/webp' : 'image/jpeg')
+    reply.header('cache-control', 'private, max-age=300')
+    return reply.send(stream)
   })
 
   app.post('/api/auth/change-password', { config: { rateLimit: { max: 8, timeWindow: '1 minute' } } }, async (req) => {

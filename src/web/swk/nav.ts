@@ -4,7 +4,7 @@ LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rock
 UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText
 } from 'lucide-react';
 import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
@@ -146,6 +146,7 @@ export const SWK_NAV: NavSection[] = [
   ] },
   { key: 'tools', label: 'Documents & Manual', items: [
     { label: 'Calculators', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI & mortgage tools' },
+    { label: 'Document Tools', to: '/document-tools', icon: ScanText, module: 'documents', isNew: true, desc: 'OCR, merge & split PDFs, photos to PDF' },
     { label: 'Letter Studio', to: '/studio', icon: FileCode2, module: 'documents', desc: 'Contracts & letter templates' },
     { label: 'Reports', to: '/reports', icon: BarChart3, module: 'reports', desc: 'Custom business exports' },
   ] },

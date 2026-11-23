@@ -1,7 +1,8 @@
 import { useMemo,useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { ArrowUpRight,Bath,BedDouble,Expand,Flame,Eye,EyeOff,Pencil,Plus,Rocket,Download,Search,Globe,CheckCircle2,AlertTriangle,GitCommitHorizontal } from 'lucide-react'
+import { ArrowUpRight,Bath,BedDouble,Expand,Flame,Eye,EyeOff,Pencil,Plus,Rocket,Download,Search,Globe,CheckCircle2,AlertTriangle,GitCommitHorizontal,Share2 } from 'lucide-react'
+import { ShareWithClient } from '../../components/ShareWithClient'
 import { get,put,post,downloadUrl } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { useMeta } from '../../lib/meta'
@@ -16,7 +17,7 @@ const statusDot = (l: Listing) => (l.purpose === 'off-plan' ? '#51fec0' : l.stat
 const statusText = (l: Listing) => (l.purpose === 'off-plan' ? 'Off-Plan Launch' : l.purpose === 'rent' ? 'For Rent' : l.status === 'available' ? 'For Sale · Ready' : l.status)
 const beds = (l: Listing) => (l.property_type === 'Office' ? 'Commercial' : !l.bedrooms ? 'Studio' : `${l.bedrooms} ${l.bedrooms === 1 ? 'Bed' : 'Beds'}`)
 
-function ListingCard({ l, onToggle }: { l: Listing; onToggle: (field: 'published' | 'hot_offer') => void }) {
+function ListingCard({ l, onToggle, onShare }: { l: Listing; onToggle: (field: 'published' | 'hot_offer') => void; onShare: () => void }) {
   return (
     <article className={`web-card hoverable group flex h-full flex-col overflow-hidden ${l.published ? '' : 'opacity-60'}`}>
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e7f2f9]">
@@ -29,6 +30,7 @@ function ListingCard({ l, onToggle }: { l: Listing; onToggle: (field: 'published
         <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5">
           <button type="button" onClick={() => onToggle('hot_offer')} aria-pressed={l.hot_offer} aria-label={l.hot_offer ? 'Remove hot offer' : 'Promote as hot offer'} title={l.hot_offer ? 'Remove hot offer' : 'Promote as hot offer'}
             className={`flex size-8 cursor-pointer items-center justify-center rounded-full border-0 backdrop-blur-md transition-colors ${l.hot_offer ? 'bg-[#121212] text-[#51fec0]' : 'bg-white/90 text-[#121212] hover:bg-[#121212] hover:text-white'}`}><Flame size={14} /></button>
+          <button type="button" onClick={onShare} aria-label="Share with client" title="Share with client" className="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-white/90 text-[#121212] backdrop-blur-md transition-colors hover:bg-[#121212] hover:text-white"><Share2 size={14} /></button>
           <button type="button" onClick={() => onToggle('published')} aria-pressed={l.published} aria-label={l.published ? 'Hide from website' : 'Show on website'} title={l.published ? 'Hide from website' : 'Show on website'}
             className="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-white/90 text-[#121212] backdrop-blur-md transition-colors hover:bg-[#121212] hover:text-white">{l.published ? <Eye size={14} /> : <EyeOff size={14} />}</button>
         </div>
@@ -81,6 +83,7 @@ export default function WebsiteStudioPage() {
   const [term, setTerm] = useState('')
   const [purpose, setPurpose] = useState<'all' | 'buy' | 'rent' | 'off-plan' | 'hot' | 'hidden'>('all')
   const [deploying, setDeploying] = useState(false)
+  const [share, setShare] = useState<Listing | null>(null)
   const listingsQ = useQuery({ queryKey: ['website', 'listings'], queryFn: () => get<{ rows: Listing[] }>('/api/e/website_listings', { pageSize: 1000, sort: 'sort_order', dir: 'asc' }) })
   const promosQ = useQuery({ queryKey: ['website', 'promotions'], queryFn: () => get<{ rows: Promo[] }>('/api/e/website_promotions', { pageSize: 200, sort: 'sort_order', dir: 'asc' }) })
   const statusQ = useQuery({ queryKey: ['website', 'status'], queryFn: () => get<Status>('/api/website/status') })
@@ -162,7 +165,7 @@ export default function WebsiteStudioPage() {
           </div>
           {listingsQ.isLoading ? <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-[380px]" />)}</div>
             : !shown.length ? <div className="web-card p-12 text-center text-[#4a4a4a]">No listings match. {canEdit && <Link to="/e/website_listings?new=1" className="link">Add one</Link>}</div>
-            : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{shown.map(l => <ListingCard key={l.id} l={l} onToggle={f => void toggle('website_listings', l.id, l.version, f, !l[f])} />)}</div>}
+            : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{shown.map(l => <ListingCard key={l.id} l={l} onShare={() => setShare(l)} onToggle={f => void toggle('website_listings', l.id, l.version, f, !l[f])} />)}</div>}
         </>
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
@@ -170,6 +173,7 @@ export default function WebsiteStudioPage() {
           <p className="text-[12.5px] text-[#737373] lg:col-span-2">Hot-offer listings are added to the spotlight automatically on deploy, ahead of these promotions.</p>
         </div>
       )}
+      {share && <ShareWithClient entity="website_listings" ids={[share.id]} label={share.title} onClose={() => setShare(null)} />}
     </div>
   )
 }

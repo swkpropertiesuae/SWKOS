@@ -421,6 +421,25 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     );
     CREATE INDEX chat_members_user ON chat_members(user_id);
   ` },
+  { id: '015_remove_mobile_app', sql: `
+    DROP TABLE IF EXISTS mobile_devices;
+  ` },
+  { id: '016_client_share_links', sql: `
+    CREATE TABLE share_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT NOT NULL UNIQUE,
+      entity TEXT NOT NULL,
+      ref_ids TEXT NOT NULL,
+      title TEXT,
+      client_name TEXT,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT,
+      revoked_at TEXT,
+      views INTEGER NOT NULL DEFAULT 0,
+      last_viewed_at TEXT
+    );
+  ` },
 ]
 
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */

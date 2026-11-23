@@ -18,6 +18,7 @@ import { RolesPage,SettingsPage,AuditPage,BackupPage } from './pages/AdminPages'
 import { CompliancePage } from './pages/CompliancePage'
 import { WorkQueuePage,HandoverPage } from './pages/WorkPages'
 import { PublicTrack } from './pages/PublicTrack'
+import { PublicListing } from './pages/PublicListing'
 import { AcceptInvite } from './pages/AcceptInvite'
 import { IntegrationsPage } from './pages/IntegrationsPage'
 import { AiPage } from './pages/AiPage'
@@ -54,6 +55,7 @@ const TeamProfilePage = lazy(() => import('./pages/swk/TeamPage').then(m => ({ d
 const WebsiteStudioPage = lazy(() => import('./pages/swk/WebsiteStudioPage'))
 const AutomationsPage = lazy(() => import('./pages/swk/AutomationsPage'))
 const MyWorkPage = lazy(() => import('./pages/swk/MyWorkPage'))
+const DocumentToolsPage = lazy(() => import('./pages/swk/DocumentToolsPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -81,6 +83,7 @@ export default function App() {
   const defaultLanding = '/home'
   if (loc.pathname === '/accept-invite') return <AcceptInvite />
   if (loc.pathname.startsWith('/t/')) return <Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes>
+  if (loc.pathname.startsWith('/l/')) return <Routes><Route path="/l/:token" element={<PublicListing />} /></Routes>
   const isStandaloneReceptionQr =
     loc.pathname === '/qr-checkin' ||
     loc.pathname.startsWith('/qr-checkin/') ||
@@ -150,6 +153,7 @@ export default function App() {
           <Route path="/withdrawals" element={<Guard module="admin"><WithdrawalsPage /></Guard>} />
           <Route path="/crm-vault" element={<CrmVaultGuard><CrmVaultPage /></CrmVaultGuard>} />
           <Route path="/my-deals" element={<MyAssignedDealsPage />} />
+          <Route path="/document-tools" element={<Guard module="documents"><DocumentToolsPage /></Guard>} />
           <Route path="/my-work" element={<Guard module="projects"><MyWorkPage /></Guard>} />
           <Route path="/automations" element={<Guard module="admin"><AutomationsPage /></Guard>} />
           <Route path="/team" element={<TeamDirectoryPage />} />

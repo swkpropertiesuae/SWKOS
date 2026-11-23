@@ -2,7 +2,9 @@ import { AccountCarousel } from './ui/account-card'
 import { useMemo,useState,useEffect,type ReactNode } from 'react'
 import { useNavigate,useSearchParams,Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X,CalendarDays,ChevronLeft,ChevronRight,Bookmark,Check } from 'lucide-react'
+import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X,CalendarDays,ChevronLeft,ChevronRight,Bookmark,Check,Share2,ScanText } from 'lucide-react'
+import { SmartImport } from './SmartImport'
+import { ShareWithClient,SHAREABLE_ENTITIES } from './ShareWithClient'
 import type { FieldDef } from '@shared/types'
 import { optValue } from '@shared/types'
 import { canViewEmployeeRecords } from '@shared/swk-staff-access'
@@ -61,6 +63,8 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
   }
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [newPresets, setNewPresets] = useState<Record<string, any> | null>(null)
+  const [sharing, setSharing] = useState<number[] | null>(null)
+  const [smart, setSmart] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -109,6 +113,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
           {headerExtra}
           {can(def.module, 'export') && <a className="btn outline" href={downloadUrl(`/api/e/${entity}/export.csv`, { q: param('q'), filters: allFilters.length ? JSON.stringify(allFilters) : undefined, sort, dir })}><Download /> Export</a>}
           {canCreate && !def.children?.length && <button className="btn outline" onClick={() => setShowImport(true)}><Upload /> Import</button>}
+          {canCreate && !def.children?.length && <button className="btn outline" onClick={() => setSmart(true)}><ScanText /> Smart import (OCR)</button>}
           {canCreate && <button className="btn green" onClick={() => setEditing('new')}><Plus /> New {def.label}</button>}
         </>} />
       )}
@@ -134,6 +139,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
         {selected.size > 0 && (
           <div className="flex items-center gap-2 px-3 py-2 bg-mint text-fold text-sm font-semibold flex-wrap"><span>{selected.size} selected</span>
             {bulkActions?.map((b, i) => <button key={i} className="btn sm dark" onClick={() => void b.run([...selected])}>{b.label}</button>)}
+            {SHAREABLE_ENTITIES.has(entity) && <button className="btn sm dark" onClick={() => setSharing([...selected])}><Share2 size={14} /> Share with client</button>}
             {statusOpts.length > 0 && can(def.module, 'edit') && <select className="select" style={{ width: 170, minHeight: 30 }} value="" onChange={e => { if (e.target.value) void runBulk('status', e.target.value) }}><option value="">Set {def.statusField?.replace(/_/g, ' ')}…</option>{statusOpts.map(o => <option key={o}>{o}</option>)}</select>}
             {canDelete && <button className="btn sm red" onClick={() => void runBulk('delete')}><Trash2 /> Delete</button>}
             <button className="btn sm ghost" onClick={() => setSelected(new Set())}><X /> Clear</button></div>)}
@@ -167,6 +173,8 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
         {view === 'list' && query.data && <Pagination page={page} pageSize={size} total={query.data.total} onPage={p => setParam({ page: String(p) })} onSize={s => setParam({ size: String(s), page: null })} />}
       </div>
       {editing !== null && <EntityFormModal entity={entity} id={editing === 'new' ? undefined : editing} presets={{ ...createPresets, ...newPresets }} onClose={() => { setEditing(null); setNewPresets(null) }} onSaved={r => { setEditing(null); const stay = !!newPresets; setNewPresets(null); refresh(); if (editing === 'new' && !embedded && !stay) nav(recordPath(entity, r.id)) }} />}
+      {sharing && <ShareWithClient entity={entity} ids={sharing} label={`${sharing.length} ${sharing.length === 1 ? def.label : def.plural} selected for you`} onClose={() => setSharing(null)} />}
+      {smart && <SmartImport def={def} onClose={() => setSmart(false)} onDone={refresh} />}
       {showImport && <ImportModal def={def} onClose={() => setShowImport(false)} onDone={() => { refresh(); }} />}
     </div>
   )

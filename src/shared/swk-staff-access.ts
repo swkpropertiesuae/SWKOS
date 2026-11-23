@@ -402,7 +402,6 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/',
     '/home',
     '/login',
-    '/swk-one',
     '/qr-checkin',
     '/reception-qr',
     '/swk/reception-qr',
@@ -484,4 +483,34 @@ export const HR_ROLE_PERMISSIONS: Record<string, string[]> = {
   masters: ['view'],
   reports: ['view', 'export'],
   ai: ['view', 'create'],
+}
+
+const ALL_MOD = ['view', 'create', 'edit', 'delete', 'approve', 'export']
+/** Operations Manager (Haseeb): majority operational access; administration is view-only. */
+export const MANAGER_PERMISSIONS: Record<string, string[]> = {
+  dashboard: ALL_MOD, crm: ALL_MOD, sales: ALL_MOD, properties: ALL_MOD, mandates: ALL_MOD,
+  transactions: ALL_MOD, leases: ALL_MOD, finance: ALL_MOD, assets: ALL_MOD, hr: ALL_MOD,
+  support: ALL_MOD, projects: ALL_MOD, documents: ALL_MOD, compliance: ALL_MOD, ai: ALL_MOD,
+  reports: ALL_MOD, masters: ALL_MOD, admin: ['view'],
+}
+
+/**
+ * HARD RULE: the access of every SWK staff account is fixed here in code, by email.
+ * The database role and its permission set are ignored for these accounts, so no screen, API call,
+ * role edit or user edit can give a person more (or less) than this table. Change access only here.
+ */
+export const HARDCODED_ROLE_PERMISSIONS: Record<SwkHardcodedStaffAccount['roleName'], '*' | Record<string, string[]>> = {
+  Owner: '*',
+  Admin: '*',
+  Manager: MANAGER_PERMISSIONS,
+  HR: HR_ROLE_PERMISSIONS,
+  'Office Admin': OFFICE_ADMIN_PERMISSIONS,
+  'Staff (Attendance & General)': RESTRICTED_STAFF_PERMISSIONS,
+}
+
+/** The fixed account (and so the fixed role) behind an email or one of its aliases. */
+export function hardcodedAccountFor(email: string | null | undefined): SwkHardcodedStaffAccount | undefined {
+  const e = String(email || '').trim().toLowerCase()
+  if (!e) return undefined
+  return SWK_STAFF_ACCOUNTS.find(a => a.email.toLowerCase() === e || a.aliases.some(x => x.toLowerCase() === e))
 }
