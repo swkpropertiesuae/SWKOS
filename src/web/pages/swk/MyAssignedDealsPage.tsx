@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, get, post } from '../../lib/api'
+import { sipClient } from '../../lib/sipClient'
 import { useToast } from '../../lib/toast'
 import { MyHandoverDocs } from './HandoverCustody'
 import { Lock, PhoneCall, MessageCircle, MapPinned, Building2, RefreshCw, Save, ShieldCheck } from 'lucide-react'
@@ -57,8 +58,22 @@ export default function MyAssignedDealsPage() {
   const triggerMaskedCall = async (id: number) => {
     setBusyId(id)
     try {
-      const res = await post(`/api/crm-vault/my-assignments/${id}/masked-call`, {})
-      toast.ok(res.message || 'Masked Bridge Call initiated — answer SWK Office call on your phone')
+      const res = await post<{
+        ok: boolean
+        mode: 'sip_token' | 'bridge'
+        dial_uri?: string
+        masked_label?: string
+        message?: string
+      }>(`/api/sip/vault-call/${id}`, {})
+      if (res.mode === 'sip_token' && res.dial_uri) {
+        await sipClient.dialUri(res.dial_uri, res.masked_label || 'Masked Vault Owner', {
+          isMaskedVault: true,
+          propertyId: id,
+        })
+        toast.ok(`Dialing ${res.masked_label || 'Masked Vault Owner'} via SWK Softphone (number stays hidden)`)
+      } else {
+        toast.ok(res.message || 'Masked Bridge Call initiated — answer SWK Office call on your phone')
+      }
       loadDeals()
     } catch (e: any) {
       toast.error(e.message || 'Could not start masked call')
