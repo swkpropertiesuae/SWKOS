@@ -142,6 +142,8 @@ export default function FieldLiveMapPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [agents, setAgents] = useState<LiveAgentPin[]>([])
+  const agentsRef = useRef<LiveAgentPin[]>([])
+  agentsRef.current = agents
   const [recentClosed, setRecentClosed] = useState<ClosedSessionSummary[]>([])
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [streamStatus, setStreamStatus] = useState<'connecting' | 'live' | 'reconnecting'>('connecting')
@@ -271,12 +273,13 @@ export default function FieldLiveMapPage() {
           }
 
           if (payload.user_id && Number.isFinite(Number(payload.lat)) && Number.isFinite(Number(payload.lng))) {
+            if (!agentsRef.current.some(a => a.user_id === payload.user_id)) {
+              void loadLiveAgents(true)
+              return
+            }
             setAgents(prev => {
               const idx = prev.findIndex(a => a.user_id === payload.user_id)
-              if (idx === -1) {
-                void loadLiveAgents(true)
-                return prev
-              }
+              if (idx === -1) return prev
               const updated = [...prev]
               updated[idx] = {
                 ...updated[idx]!,

@@ -202,6 +202,76 @@ function emitLiveEvent(event: Record<string, unknown>) {
   liveBus.emit('field-gps:live', event)
 }
 
+function mergeFlagReasons(...sources: Array<string | null | undefined>): string | null {
+  const seen = new Set<string>()
+  const parts: string[] = []
+  for (const src of sources) {
+    if (!src) continue
+    for (const piece of String(src).split(';')) {
+      const clean = piece.trim()
+      if (!clean || seen.has(clean)) continue
+      seen.add(clean)
+      parts.push(clean)
+    }
+  }
+  return parts.length ? parts.join('; ').slice(0, 400) : null
+}
+
+function detectRepeatedIdenticalCoords(
+  sessionId: number,
+  acceptedPoints: Array<{
+    lat: number
+    lng: number
+    accuracy_m: number
+    speed_mps?: number | null
+    recorded_at: string
+  }>,
+): boolean {
+  const prior = decodeSessionTrail(sessionId).points.slice(-25)
+  const combined = [
+    ...prior.map(p => ({
+      lat: p.lat,
+      lng: p.lng,
+      accuracy_m: p.accuracy_m,
+      speed_mps: p.speed_mps,
+      recorded_at: p.recorded_at,
+    })),
+    ...acceptedPoints,
+  ]
+  if (combined.length < 5) return false
+
+  let runStart = 0
+  for (let i = 1; i <= combined.length; i++) {
+    const prev = combined[i - 1]!
+    const cur = combined[i]
+    const sameCoord =
+      cur !== undefined &&
+      cur.lat.toFixed(6) === prev.lat.toFixed(6) &&
+      cur.lng.toFixed(6) === prev.lng.toFixed(6)
+    if (sameCoord) continue
+
+    const run = combined.slice(runStart, i)
+    if (run.length >= 5) {
+      const distinctTimestamps = new Set(run.map(p => p.recorded_at))
+      if (distinctTimestamps.size >= 5) {
+        const hasNonZeroOrMissingSpeed = run.some(
+          p => p.speed_mps === null || p.speed_mps === undefined || Number(p.speed_mps) > 0,
+        )
+        const accuracies = run.map(p => p.accuracy_m)
+        const identicalAccuracy =
+          accuracies[0] !== null &&
+          accuracies[0] !== undefined &&
+          accuracies.every(a => a === accuracies[0])
+        if (hasNonZeroOrMissingSpeed || identicalAccuracy) {
+          return true
+        }
+      }
+    }
+    runStart = i
+  }
+  return false
+}
+
 function recordSpoofAttempt(
   req: FastifyRequest,
   user: { id: number; name: string; email: string },
@@ -232,11 +302,18 @@ function recordSpoofAttempt(
     req.ip ?? null,
   )
 
-  const existingLive = q.get<{ user_id: number }>(`SELECT user_id FROM staff_live_locations WHERE user_id = ?`, user.id)
+  const existingLive = q.get<{ user_id: number; field_session_id: number | null; flag_reason: string | null }>(
+    `SELECT user_id, field_session_id, flag_reason FROM staff_live_locations WHERE user_id = ?`,
+    user.id,
+  )
+  const spoofReason = mergeFlagReasons(
+    'Mock GPS detected',
+    existingLive && (!session || existingLive.field_session_id === session.id) ? existingLive.flag_reason : null,
+  ) ?? 'Mock GPS detected'
   if (existingLive) {
     q.run(
       `UPDATE staff_live_locations SET is_flagged = 1, flag_reason = ?, updated_at = ? WHERE user_id = ?`,
-      'Mock GPS detected',
+      spoofReason,
       now,
       user.id,
     )
@@ -258,7 +335,7 @@ function recordSpoofAttempt(
       coords.accuracy_m ?? null,
       meta.purpose,
       meta.community,
-      'Mock GPS detected',
+      spoofReason,
       now,
     )
   }
@@ -391,10 +468,12 @@ export function autoExpireFieldSessions(now = new Date()): { expired: number; re
   const nowUtcIso = now.toISOString()
 
   for (const s of active) {
+    const isSos = s.status === 'SOS Emergency Active'
     const startMs = parseTimestampMs(s.started_at || s.created_at)
-    const elapsed12h = Number.isFinite(startMs) && (now.getTime() - startMs) >= TWELVE_HOURS_MS
-    const pastAutoStopHour = dubaiHour >= autoStopHour
+    const elapsed12h = !isSos && Number.isFinite(startMs) && (now.getTime() - startMs) >= TWELVE_HOURS_MS
+    const pastAutoStopHour = !isSos && dubaiHour >= autoStopHour
     const pastDutyDay =
+      !isSos &&
       Boolean(s.duty_date) &&
       String(s.duty_date) < dubaiDate &&
       (!Number.isFinite(startMs) || now.getTime() - startMs >= 3 * 3_600_000)
@@ -453,8 +532,8 @@ export function autoExpireFieldSessions(now = new Date()): { expired: number; re
       continue
     }
 
-    // Friendly 19:30 Asia/Dubai reminder if still active before auto-stop hour
-    if (empUserId && dubaiMins >= 19 * 60 + 30 && dubaiHour < autoStopHour) {
+    // Friendly 19:30 Asia/Dubai reminder if still active before auto-stop hour (exempt SOS emergencies)
+    if (!isSos && empUserId && dubaiMins >= 19 * 60 + 30 && dubaiHour < autoStopHour) {
       const dedupeKey = `field-duty-1930-${s.id}-${dubaiDate}`
       const alreadySent = q.val<number>(
         `SELECT 1 FROM notifications WHERE user_id = ? AND dedupe_key = ? LIMIT 1`,
@@ -561,10 +640,21 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
       let livePin = q.get<any>(`SELECT * FROM staff_live_locations WHERE user_id = ?`, user.id) ?? null
       if (hasCoords && b.lat !== undefined && b.lng !== undefined) {
         const meta = extractPurposeAndCommunity(existingActive)
+        const stickySos = existingActive.status === 'SOS Emergency Active'
+        const stickyReview = existingActive.review_status === 'Pending Human Review'
+        const stickyPrior = Boolean(livePin && livePin.field_session_id === existingActive.id && livePin.is_flagged === 1)
+        const stickyFlagged = stickySos || stickyReview || stickyPrior
+        const stickyReason = stickyFlagged
+          ? mergeFlagReasons(
+              stickySos ? 'SOS Emergency' : null,
+              livePin && livePin.field_session_id === existingActive.id ? livePin.flag_reason : null,
+              stickyReview && !livePin?.flag_reason ? 'Flagged for human review' : null,
+            )
+          : null
         q.run(
           `INSERT INTO staff_live_locations (
             user_id, employee_id, field_session_id, lat, lng, accuracy_m, speed_mps, heading, battery_pct, purpose, community, is_flagged, flag_reason, updated_at
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,NULL,?)
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(user_id) DO UPDATE SET
             employee_id = excluded.employee_id,
             field_session_id = excluded.field_session_id,
@@ -574,6 +664,8 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
             speed_mps = excluded.speed_mps,
             heading = excluded.heading,
             battery_pct = excluded.battery_pct,
+            is_flagged = excluded.is_flagged,
+            flag_reason = excluded.flag_reason,
             updated_at = excluded.updated_at`,
           user.id,
           emp.id,
@@ -586,6 +678,8 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
           b.battery_pct !== undefined && b.battery_pct !== null ? Math.round(b.battery_pct) : null,
           b.purpose ?? meta.purpose,
           b.community ?? meta.community,
+          stickyFlagged ? 1 : 0,
+          stickyReason,
           nowUtc,
         )
         livePin = q.get<any>(`SELECT * FROM staff_live_locations WHERE user_id = ?`, user.id) ?? null
@@ -862,38 +956,35 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
       }
     }
 
-    const sameBatchCount =
-      q.val<number>(
-        `SELECT COUNT(*) FROM duty_location_batches WHERE field_session_id = ? AND last_lat = ? AND last_lng = ?`,
-        activeSession.id,
-        String(lastPt.lat),
-        String(lastPt.lng),
-      ) ?? 0
-    if (sameBatchCount >= 2) {
+    if (detectRepeatedIdenticalCoords(activeSession.id, acceptedPoints)) {
       flags.add('Identical coordinates repeated (possible fake GPS)')
-    } else if (acceptedPoints.length >= 3) {
-      let identicalRun = 1
-      for (let i = 1; i < acceptedPoints.length; i++) {
-        if (acceptedPoints[i]!.lat === acceptedPoints[i - 1]!.lat && acceptedPoints[i]!.lng === acceptedPoints[i - 1]!.lng) {
-          identicalRun++
-          if (identicalRun >= 3) {
-            flags.add('Identical coordinates repeated (possible fake GPS)')
-            break
-          }
-        } else {
-          identicalRun = 1
-        }
-      }
     }
 
     const flagList = [...flags]
+    const existingLive = q.get<{ field_session_id: number | null; is_flagged: number; flag_reason: string | null }>(
+      `SELECT field_session_id, is_flagged, flag_reason FROM staff_live_locations WHERE user_id = ?`,
+      user.id,
+    )
     const isSosActive = activeSession.status === 'SOS Emergency Active'
-    const isFlagged = isSosActive || flagList.length > 0
-    const flagReason = isSosActive
-      ? ['SOS Emergency', ...flagList].join('; ').slice(0, 400)
-      : flagList.length > 0
-        ? flagList.join('; ').slice(0, 400)
+    const isPendingHumanReview = activeSession.review_status === 'Pending Human Review'
+    const hadSameSessionLiveFlag = Boolean(
+      existingLive && existingLive.field_session_id === activeSession.id && existingLive.is_flagged === 1,
+    )
+    const isFlagged = isSosActive || isPendingHumanReview || hadSameSessionLiveFlag || flagList.length > 0
+
+    const fallbackAnomalyReason =
+      isPendingHumanReview && !hadSameSessionLiveFlag && flagList.length === 0
+        ? (String(activeSession.anomaly_note || '').split('\n').pop()?.replace(/^\[[^\]]+\]\s*/, '').trim() || 'Session flagged for human review')
         : null
+
+    const flagReason = isFlagged
+      ? mergeFlagReasons(
+          isSosActive ? 'SOS Emergency' : null,
+          hadSameSessionLiveFlag ? existingLive?.flag_reason : null,
+          fallbackAnomalyReason,
+          ...flagList,
+        )
+      : null
 
     const meta = extractPurposeAndCommunity(activeSession)
     const deviceId = metaParsed.device_id ?? req.sessionDeviceId ?? null
@@ -1436,8 +1527,8 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
     const autoStopHour = autoStopHourDubai()
     const isActive = session.status === 'Active (On Duty)' || session.status === 'SOS Emergency Active'
     const isActiveOrTodayDuty =
-      (isActive && (!session.duty_date || String(session.duty_date) >= dubai.date)) ||
-      (String(session.duty_date || '') === dubai.date && dubai.hour < autoStopHour)
+      session.status === 'SOS Emergency Active' ||
+      (isActive && (!session.duty_date || String(session.duty_date) >= dubai.date) && dubai.hour < autoStopHour)
 
     const reason = String((req.query as any)?.reason ?? '').trim()
     const accessedAt = nowIso()

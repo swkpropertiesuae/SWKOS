@@ -125,6 +125,15 @@ function writeQueue(storageKey: string, items: QueuedPing[]) {
   }
 }
 
+function haversineM(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const R = 6371000
+  const dLat = rad(bLat - aLat)
+  const dLng = rad(bLng - aLng)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+
 function currentDevicePosition(timeoutMs = 8000): Promise<{
   lat: number
   lng: number
@@ -194,6 +203,8 @@ export default function FieldDutyPage() {
   const markerRef = useRef<L.CircleMarker | null>(null)
   const flushingRef = useRef(false)
   const sessionIdRef = useRef<number | null>(null)
+  const lastFixTimestampRef = useRef<number>(0)
+  const lastQueuedRef = useRef<{ lat: number; lng: number; queuedAtMs: number } | null>(null)
 
   const activeSession = data?.session ?? null
   sessionIdRef.current = activeSession?.id ?? null
@@ -325,14 +336,19 @@ export default function FieldDutyPage() {
     }
 
     setGpsError('')
+    lastFixTimestampRef.current = 0
+    lastQueuedRef.current = null
     let watchId: number | null = null
-    let lastSampleMs = 0
 
     try {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
           setGpsError('')
           const nowMs = Date.now()
+          const fixTs = Number.isFinite(pos.timestamp) && pos.timestamp > 0 ? pos.timestamp : nowMs
+          if (fixTs <= lastFixTimestampRef.current) return
+          lastFixTimestampRef.current = fixTs
+
           const acc = Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : 25
           const fix = {
             lat: pos.coords.latitude,
@@ -340,19 +356,21 @@ export default function FieldDutyPage() {
             accuracy_m: acc,
             speed_mps: pos.coords.speed !== null && Number.isFinite(pos.coords.speed) && pos.coords.speed >= 0 ? pos.coords.speed : null,
             heading: pos.coords.heading !== null && Number.isFinite(pos.coords.heading) && pos.coords.heading >= 0 ? pos.coords.heading : null,
-            recorded_at: new Date(pos.timestamp || nowMs).toISOString(),
+            recorded_at: new Date(fixTs).toISOString(),
           }
           setLatestFix(fix)
-
-          // Sample at most once every 5s into queue; 20s batcher flushes to server
-          if (nowMs - lastSampleMs < 5000) return
-          lastSampleMs = nowMs
 
           const maxAcc = data?.config?.max_accuracy_m || 150
           if (acc > maxAcc) {
             setGpsError(`Waiting for stronger GPS signal (±${acc}m > ${maxAcc}m max).`)
             return
           }
+
+          const prevQ = lastQueuedRef.current
+          const movedMeters = prevQ ? haversineM(prevQ.lat, prevQ.lng, fix.lat, fix.lng) : Infinity
+          const elapsedSinceQueued = prevQ ? nowMs - prevQ.queuedAtMs : Infinity
+          if (prevQ && movedMeters < 5 && elapsedSinceQueued < 30_000) return
+          lastQueuedRef.current = { lat: fix.lat, lng: fix.lng, queuedAtMs: nowMs }
 
           const item: QueuedPing = {
             field_session_id: activeSession.id,
@@ -369,7 +387,7 @@ export default function FieldDutyPage() {
         (err) => {
           setGpsError(err.message || 'Location permission denied or GPS unavailable.')
         },
-        { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
       )
     } catch (e: any) {
       setGpsError(e?.message || 'Unable to start GPS watch')

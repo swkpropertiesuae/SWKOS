@@ -286,6 +286,29 @@ async function run() {
     const flaggedLoc = q.get<any>(`SELECT is_flagged, flag_reason FROM staff_live_locations WHERE user_id = ?`, agent1User.id)
     assert.equal(flaggedLoc?.is_flagged, 1, 'staff_live_locations.is_flagged must be marked 1 after mock GPS attempt')
 
+    // [Fix Round 1 #2] Subsequent clean ping must keep is_flagged === 1 sticky on staff_live_locations
+    const cleanAfterSpoof = await app.inject({
+      method: 'POST',
+      url: '/api/field-gps/pings',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agent1Cookie },
+      payload: {
+        points: [
+          {
+            lat: 25.0806,
+            lng: 55.1404,
+            accuracy_m: 11,
+            speed_mps: 1.1,
+            recorded_at: new Date().toISOString(),
+            idempotency_key: 'clean-after-spoof-001',
+          },
+        ],
+      },
+    })
+    assert.equal(cleanAfterSpoof.statusCode, 200)
+    const stickyPin = q.get<any>(`SELECT is_flagged, flag_reason FROM staff_live_locations WHERE user_id = ?`, agent1User.id)
+    assert.equal(stickyPin?.is_flagged, 1, 'Clean ping after spoof must preserve is_flagged === 1')
+    assert.ok(String(stickyPin?.flag_reason || '').includes('Mock GPS detected'), 'Clean ping after spoof must preserve Mock GPS detected reason')
+
     // -------------------------------------------------------------------------
     // 3. Field Agent calling GET /live, GET /sessions/:id/trail, GET /stream -> 403 Forbidden
     // -------------------------------------------------------------------------
@@ -311,7 +334,9 @@ async function run() {
     })
     assert.equal(liveRes.statusCode, 200, `Owner GET /live failed: ${liveRes.statusCode} ${liveRes.body}`)
     const liveBody = liveRes.json() as any
-    assert.ok(Array.isArray(liveBody.rows) && liveBody.rows.some((r: any) => r.user_id === agent1User.id), 'Live map must include active agent pin')
+    const agent1LivePin = (liveBody.rows || []).find((r: any) => r.user_id === agent1User.id)
+    assert.ok(agent1LivePin, 'Live map must include active agent pin')
+    assert.equal(Number(agent1LivePin.is_flagged), 1, 'GET /live must expose sticky is_flagged === 1 after clean ping following spoof')
     const logsAfterLive = q.val<number>(`SELECT COUNT(*) FROM location_access_logs`) ?? 0
     assert.ok(logsAfterLive > logsBeforeLive, 'GET /live must insert immutable row into location_access_logs')
 
@@ -350,6 +375,80 @@ async function run() {
     })
     assert.equal(stopRes.statusCode, 200)
     assert.equal((stopRes.json() as any).stopped, true)
+
+    // [Fix Round 1 #1] Same-day closed session trail WITHOUT reason -> 400 + Denied log
+    const sameDayClosedNoReason = await app.inject({
+      method: 'GET',
+      url: `/api/field-gps/sessions/${sessionId}/trail`,
+      headers: { cookie: ownerCookie },
+    })
+    assert.equal(
+      sameDayClosedNoReason.statusCode,
+      400,
+      `Same-day closed session trail without reason must return 400, got ${sameDayClosedNoReason.statusCode}`,
+    )
+    const sameDayDeniedLog = q.get<any>(
+      `SELECT * FROM location_access_logs WHERE field_session_id = ? AND access_outcome = 'Denied – Off Hours Blocked' ORDER BY id DESC LIMIT 1`,
+      sessionId,
+    )
+    assert.ok(sameDayDeniedLog, 'Denied same-day closed trail access must log Denied – Off Hours Blocked')
+
+    // [Fix Round 1 #4] Stationary heartbeats (speed_mps=0, varying accuracy) do NOT false-flag;
+    // >=5 identical coords + identical accuracy across distinct timestamps DO flag
+    const a2Start = await app.inject({
+      method: 'POST',
+      url: '/api/field-gps/sessions/start',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agent2Cookie },
+      payload: { purpose: 'Viewing', community: 'Downtown Dubai' },
+    })
+    assert.equal(a2Start.statusCode, 200)
+    const baseStationaryMs = Date.now() - 4 * 60_000
+    const stationaryRes = await app.inject({
+      method: 'POST',
+      url: '/api/field-gps/pings',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agent2Cookie },
+      payload: {
+        offline_replay: true,
+        points: [10, 13, 9, 14, 11].map((acc, idx) => ({
+          lat: 25.197201,
+          lng: 55.274401,
+          accuracy_m: acc,
+          speed_mps: 0,
+          recorded_at: new Date(baseStationaryMs + idx * 35_000).toISOString(),
+          idempotency_key: `stationary-ok-${idx}`,
+        })),
+      },
+    })
+    assert.equal(stationaryRes.statusCode, 200)
+    assert.equal((stationaryRes.json() as any).flags?.length, 0, 'Realistic stationary heartbeats must NOT trigger Identical coordinates repeated')
+
+    const fakeRepeatRes = await app.inject({
+      method: 'POST',
+      url: '/api/field-gps/pings',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agent2Cookie },
+      payload: {
+        offline_replay: true,
+        points: [0, 1, 2, 3, 4].map(idx => ({
+          lat: 25.211111,
+          lng: 55.282222,
+          accuracy_m: 5,
+          speed_mps: 1.8,
+          recorded_at: new Date(baseStationaryMs + 200_000 + idx * 10_000).toISOString(),
+          idempotency_key: `fake-repeat-${idx}`,
+        })),
+      },
+    })
+    assert.equal(fakeRepeatRes.statusCode, 200)
+    assert.ok(
+      ((fakeRepeatRes.json() as any).flags || []).some((f: string) => /identical coordinates/i.test(f)),
+      '>=5 identical coords with non-zero speed / identical accuracy must trigger Identical coordinates repeated flag',
+    )
+    await app.inject({
+      method: 'POST',
+      url: '/api/field-gps/sessions/stop',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agent2Cookie },
+      payload: {},
+    })
 
     // -------------------------------------------------------------------------
     // 5. Historical closed trail without reason -> 400; with reason -> 200 + compliance & access log
@@ -480,12 +579,37 @@ async function run() {
     const remind2 = autoExpireFieldSessions(new Date('2026-11-23T15:40:00.000Z'))
     assert.equal(remind2.reminded, 0, '19:30 reminder must be deduped once per day')
 
-    // 21:05 Asia/Dubai (17:05 UTC) auto-stops active session at field_duty_auto_stop_hour (21)
+    // [Fix Round 1 #3] SOS Emergency Active session must NEVER be auto-expired at 21:00 Asia/Dubai
+    const sosPersistSession = createRecord(
+      getDef('field_sessions'),
+      {
+        employee_id: agent1EmpId,
+        duty_date: '2026-11-23',
+        scheduled_start: freshStartedIso.slice(0, 16),
+        scheduled_end: '2026-11-23T17:00',
+        started_at: freshStartedIso.slice(0, 16),
+        status: 'SOS Emergency Active',
+        sos_triggered: true,
+        sos_reason: 'SOS beacon must stay live past 21:00',
+        assigned_location: 'Palm Jumeirah SOS',
+      },
+      SYSTEM_CTX,
+    )
+    q.run(
+      `INSERT INTO staff_live_locations (user_id, employee_id, field_session_id, lat, lng, accuracy_m, is_flagged, flag_reason, updated_at) VALUES (?,?,?,?,?,?,1,?,?)
+       ON CONFLICT(user_id) DO UPDATE SET field_session_id = excluded.field_session_id, is_flagged = 1, flag_reason = excluded.flag_reason, updated_at = excluded.updated_at`,
+      agent1User.id, agent1EmpId, sosPersistSession.id, 25.1124, 55.1390, 10, 'SOS Emergency', freshStartedIso,
+    )
+
+    // 21:05 Asia/Dubai (17:05 UTC) auto-stops normal active session at field_duty_auto_stop_hour (21)
+    // while exempting SOS Emergency Active!
     const dubai2105Utc = new Date('2026-11-23T17:05:00.000Z')
     const stop21 = autoExpireFieldSessions(dubai2105Utc)
-    assert.equal(stop21.expired, 1, 'Expected active session to auto-expire past 21:00 Asia/Dubai')
+    assert.equal(stop21.expired, 1, 'Expected 1 normal active session to auto-expire past 21:00 Asia/Dubai (SOS exempted)')
     assert.equal(q.val<string>(`SELECT status FROM field_sessions WHERE id = ?`, freshSession.id), 'Auto-Expired')
     assert.equal(q.get(`SELECT * FROM staff_live_locations WHERE user_id = ?`, agent2User.id), undefined)
+    assert.equal(q.val<string>(`SELECT status FROM field_sessions WHERE id = ?`, sosPersistSession.id), 'SOS Emergency Active', 'SOS Emergency Active session must survive 21:00 auto-stop')
+    assert.ok(q.get(`SELECT * FROM staff_live_locations WHERE user_id = ?`, agent1User.id), 'SOS Emergency Active live pin must NOT be deleted past 21:00')
 
     // Test 90-day PDPL purge on duty_location_batches while retaining field_sessions
     const refNow = new Date('2026-11-23T08:00:00.000Z')
