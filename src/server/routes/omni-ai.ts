@@ -20,10 +20,13 @@ import {
   omniChatStream,
   omniConfigured,
   preflightOmniRequest,
+  recordAdditionalUserTokens,
+  recordUserUsage,
   resetRouteCooldown,
   testOmniRoute,
   type OmniMessage,
   type OmniRequest,
+  type OmniResult,
   type OmniRouteRow,
 } from '../ai/omni-router'
 import { idOf } from './helpers'
@@ -223,17 +226,33 @@ function buildSystemPrompt(lane: OmniLane, userName: string, confidential: boole
     .join('\n\n')
 }
 
+interface ToolResolutionResult {
+  messages: OmniMessage[]
+  directResult: OmniResult | null
+  extraTokens: number
+  extraAttempts: number
+  extraPiiRedacted: number
+}
+
 async function resolveReadToolsIfRequested(
   useTools: boolean,
   user: ReturnType<typeof requireStaff>,
   omniReq: OmniRequest,
-): Promise<OmniMessage[]> {
-  if (!useTools) return omniReq.messages
+): Promise<ToolResolutionResult> {
+  if (!useTools) {
+    return { messages: omniReq.messages, directResult: null, extraTokens: 0, extraAttempts: 0, extraPiiRedacted: 0 }
+  }
   const allowedTools: Tool[] = TOOLS.filter(t => t.risk === 'read' && isToolAllowedForUser(user, t.name))
-  if (!allowedTools.length) return omniReq.messages
+  if (!allowedTools.length) {
+    return { messages: omniReq.messages, directResult: null, extraTokens: 0, extraAttempts: 0, extraPiiRedacted: 0 }
+  }
 
   const toolDefs = allowedTools.map(t => ({ name: t.name, description: t.description, parameters: t.parameters }))
   const working = [...omniReq.messages]
+  let planningTokens = 0
+  let planningAttempts = 0
+  let planningPiiRedacted = 0
+
   for (let step = 0; step < 3; step++) {
     const res = await omniChat({
       ...omniReq,
@@ -241,7 +260,29 @@ async function resolveReadToolsIfRequested(
       tools: toolDefs,
       bypassQuota: true,
     })
-    if (!res.tool_calls.length) return working
+    planningTokens += res.tokens
+    planningAttempts += res.attempts
+    planningPiiRedacted += res.piiRedacted
+
+    if (!res.tool_calls.length) {
+      if (res.content.trim()) {
+        return {
+          messages: working,
+          directResult: res,
+          extraTokens: planningTokens - res.tokens,
+          extraAttempts: planningAttempts - res.attempts,
+          extraPiiRedacted: planningPiiRedacted - res.piiRedacted,
+        }
+      }
+      return {
+        messages: working,
+        directResult: null,
+        extraTokens: planningTokens,
+        extraAttempts: planningAttempts,
+        extraPiiRedacted: planningPiiRedacted,
+      }
+    }
+
     working.push({
       role: 'assistant',
       content: res.content || null,
@@ -261,7 +302,13 @@ async function resolveReadToolsIfRequested(
       }
     }
   }
-  return working
+  return {
+    messages: working,
+    directResult: null,
+    extraTokens: planningTokens,
+    extraAttempts: planningAttempts,
+    extraPiiRedacted: planningPiiRedacted,
+  }
 }
 
 export default async function omniAiRoutes(app: FastifyInstance) {
@@ -443,8 +490,11 @@ export default async function omniAiRoutes(app: FastifyInstance) {
       includeLegacyFallback: true,
     }
 
-    // Preflight quota & route eligibility BEFORE committing DB rows or hijacking SSE
+    // Preflight configured check, quota & route eligibility BEFORE committing DB rows or hijacking SSE
     if (!inDemo()) {
+      if (!omniConfigured()) {
+        throw new HttpError(503, 'AI is not configured. Ask an Owner or Admin to configure an Omni-Route provider.')
+      }
       preflightOmniRequest(omniReq)
     }
 
@@ -489,8 +539,18 @@ export default async function omniAiRoutes(app: FastifyInstance) {
       return { conversation_id: convId, user_message_id: userMsgId, message_id: msgId, content: reply, model: 'demo-assistant', provider: 'demo', route_id: null, route_label: 'Demo', zero_retention: true, pii_redacted: 0, tokens: 0, lane: effectiveLane }
     }
 
-    const resolvedMsgs = await resolveReadToolsIfRequested(input.use_tools, user, omniReq)
-    const result = await omniChat({ ...omniReq, messages: resolvedMsgs })
+    const toolRes = await resolveReadToolsIfRequested(input.use_tools, user, omniReq)
+    let result: OmniResult
+    if (toolRes.directResult) {
+      result = toolRes.directResult
+      recordUserUsage(user, result.tokens + toolRes.extraTokens)
+    } else {
+      result = await omniChat({ ...omniReq, messages: toolRes.messages })
+      if (toolRes.extraTokens > 0) recordAdditionalUserTokens(user, toolRes.extraTokens)
+    }
+    const totalTokens = result.tokens + toolRes.extraTokens
+    const totalAttempts = result.attempts + toolRes.extraAttempts
+    const totalPiiRedacted = result.piiRedacted + toolRes.extraPiiRedacted
     const now = nowIso()
     const msgId = q.insert(
       `INSERT INTO ai_messages(conversation_id, user_id, role, content, model_used, provider_used, tokens, pii_redacted, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
@@ -500,8 +560,8 @@ export default async function omniAiRoutes(app: FastifyInstance) {
       result.content,
       result.model,
       result.provider,
-      result.tokens,
-      result.piiRedacted,
+      totalTokens,
+      totalPiiRedacted,
       now,
     )
     q.run(`UPDATE ai_conversations SET updated_at = ? WHERE id = ?`, now, convId)
@@ -515,9 +575,9 @@ export default async function omniAiRoutes(app: FastifyInstance) {
       route_id: result.routeId,
       route_label: result.routeLabel,
       zero_retention: result.zeroRetention,
-      pii_redacted: result.piiRedacted,
-      tokens: result.tokens,
-      attempts: result.attempts,
+      pii_redacted: totalPiiRedacted,
+      tokens: totalTokens,
+      attempts: totalAttempts,
       lane: result.lane,
     }
   })
@@ -546,9 +606,10 @@ export default async function omniAiRoutes(app: FastifyInstance) {
     }
 
     const ctl = new AbortController()
-    const onClose = () => ctl.abort()
-    req.raw.on('close', onClose)
-    res.on('close', onClose)
+    const onResClose = () => {
+      if (!res.writableEnded) ctl.abort()
+    }
+    res.on('close', onResClose)
 
     sendEvent('meta', {
       conversation_id: convId,
@@ -585,11 +646,22 @@ export default async function omniAiRoutes(app: FastifyInstance) {
         return
       }
 
-      const resolvedMsgs = await resolveReadToolsIfRequested(input.use_tools, user, { ...omniReq, signal: ctl.signal })
-      const result = await omniChatStream(
-        { ...omniReq, messages: resolvedMsgs, signal: ctl.signal },
-        delta => sendEvent('token', { delta }),
-      )
+      const toolRes = await resolveReadToolsIfRequested(input.use_tools, user, { ...omniReq, signal: ctl.signal })
+      let result: OmniResult
+      if (toolRes.directResult) {
+        result = toolRes.directResult
+        if (result.content) sendEvent('token', { delta: result.content })
+        recordUserUsage(user, result.tokens + toolRes.extraTokens)
+      } else {
+        result = await omniChatStream(
+          { ...omniReq, messages: toolRes.messages, signal: ctl.signal },
+          delta => sendEvent('token', { delta }),
+        )
+        if (toolRes.extraTokens > 0) recordAdditionalUserTokens(user, toolRes.extraTokens)
+      }
+      const totalTokens = result.tokens + toolRes.extraTokens
+      const totalAttempts = result.attempts + toolRes.extraAttempts
+      const totalPiiRedacted = result.piiRedacted + toolRes.extraPiiRedacted
       const now = nowIso()
       const msgId = q.insert(
         `INSERT INTO ai_messages(conversation_id, user_id, role, content, model_used, provider_used, tokens, pii_redacted, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
@@ -599,8 +671,8 @@ export default async function omniAiRoutes(app: FastifyInstance) {
         result.content,
         result.model,
         result.provider,
-        result.tokens,
-        result.piiRedacted,
+        totalTokens,
+        totalPiiRedacted,
         now,
       )
       q.run(`UPDATE ai_conversations SET updated_at = ? WHERE id = ?`, now, convId)
@@ -613,17 +685,16 @@ export default async function omniAiRoutes(app: FastifyInstance) {
         route_id: result.routeId,
         route_label: result.routeLabel,
         zero_retention: result.zeroRetention,
-        pii_redacted: result.piiRedacted,
-        tokens: result.tokens,
-        attempts: result.attempts,
+        pii_redacted: totalPiiRedacted,
+        tokens: totalTokens,
+        attempts: totalAttempts,
         lane: result.lane,
       })
     } catch (err: any) {
       const status = err instanceof HttpError ? err.status : 500
       sendEvent('error', { error: String(err?.message ?? err), status })
     } finally {
-      req.raw.off('close', onClose)
-      res.off('close', onClose)
+      res.off('close', onResClose)
       if (!res.writableEnded) res.end()
     }
   })

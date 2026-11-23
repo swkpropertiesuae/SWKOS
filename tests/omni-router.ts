@@ -20,7 +20,7 @@ async function run() {
 
   const { OMNI_PRESETS } = await import('../src/server/ai/omni-catalog')
   const { scrubSensitivePii, restoreScrubbedPii } = await import('../src/server/ai/pii-shield')
-  const { omniChat, omniChatStream } = await import('../src/server/ai/omni-router')
+  const { loadPoolRoutes, omniChat, omniChatStream } = await import('../src/server/ai/omni-router')
 
   // ---------------------------------------------------------------------------
   // Local Mock Multi-Route LLM Gateway
@@ -31,6 +31,10 @@ async function run() {
     route3: [],
     nonzr: [],
     vision: [],
+    empty: [],
+    sseErr: [],
+    sseEmpty: [],
+    toolEcho: [],
   }
 
   const server = http.createServer((req, res) => {
@@ -51,6 +55,71 @@ async function run() {
         hits.route2.push(rec)
         res.writeHead(503, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ error: { message: 'Route 2 temporarily unavailable' } }))
+        return
+      }
+      if (url.startsWith('/empty/')) {
+        hits.empty.push(rec)
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ choices: [] }))
+        return
+      }
+      if (url.startsWith('/sse-err/')) {
+        hits.sseErr.push(rec)
+        res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8' })
+        res.write(`data: ${JSON.stringify({ error: { message: 'OpenRouter 429 upstream overload', code: 429 } })}\n\n`)
+        res.end()
+        return
+      }
+      if (url.startsWith('/sse-empty/')) {
+        hits.sseEmpty.push(rec)
+        res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8' })
+        res.write('data: [DONE]\n\n')
+        res.end()
+        return
+      }
+      if (url.startsWith('/tool-echo/')) {
+        hits.toolEcho.push(rec)
+        const hasToolMsg = (body.messages ?? []).some((m: any) => m.role === 'tool')
+        const lastUser = [...(body.messages ?? [])].reverse().find((m: any) => m.role === 'user')
+        const userStr = typeof lastUser?.content === 'string' ? lastUser.content : ''
+        if (!hasToolMsg && /\[EMAIL_1\]/.test(userStr) && Array.isArray(body.tools) && body.tools.length) {
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({
+            choices: [{
+              message: {
+                role: 'assistant',
+                content: null,
+                tool_calls: [{ id: 'tc_pii_1', type: 'function', function: { name: 'lookup_listings', arguments: JSON.stringify({ area: '[EMAIL_1]', purpose: 'sale' }) } }],
+              },
+            }],
+            usage: { total_tokens: 17 },
+          }))
+          return
+        }
+        if (!hasToolMsg && /CALL_TOOL_NOW/.test(userStr) && Array.isArray(body.tools) && body.tools.length) {
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({
+            choices: [{
+              message: {
+                role: 'assistant',
+                content: null,
+                tool_calls: [{ id: 'tc_list_1', type: 'function', function: { name: 'lookup_listings', arguments: JSON.stringify({ purpose: 'sale', area: 'Marina' }) } }],
+              },
+            }],
+            usage: { total_tokens: 19 },
+          }))
+          return
+        }
+        const reply = `ToolEchoDone(${hits.toolEcho.length}): ${userStr.slice(0, 100)}`
+        if (body.stream) {
+          res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8' })
+          res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: reply } }], usage: { total_tokens: 23 } })}\n\n`)
+          res.write('data: [DONE]\n\n')
+          res.end()
+        } else {
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: reply } }], usage: { total_tokens: 21 } }))
+        }
         return
       }
       if (url.startsWith('/route3/') || url.startsWith('/nonzr/') || url.startsWith('/vision/')) {
@@ -197,6 +266,39 @@ async function run() {
       headers: { cookie: portalCookie },
     })
     assert.equal(portalStatusRes.statusCode, 403, 'Portal user must receive 403 on /api/omni-ai/status')
+
+    // =========================================================================
+    // Fix Round 1 [Important #1]: Fresh unconfigured DB reports configured=false, empty lanes, returns 503 with zero outbound calls
+    // =========================================================================
+    assert.deepEqual(
+      loadPoolRoutes({ includeDisabled: false, includeLegacy: true }),
+      [],
+      'Fresh unconfigured DB must NOT emit unauthenticated default groq route',
+    )
+    const unconfStatus = await app.inject({
+      method: 'GET',
+      url: '/api/omni-ai/status',
+      headers: { cookie: agentACookie },
+    })
+    assert.equal(unconfStatus.statusCode, 200)
+    assert.equal((unconfStatus.json() as any).configured, false)
+    assert.deepEqual((unconfStatus.json() as any).lanes, [])
+
+    const unconfChat = await app.inject({
+      method: 'POST',
+      url: '/api/omni-ai/chat',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agentACookie },
+      payload: { message: 'Should not hit api.groq.com' },
+    })
+    assert.equal(unconfChat.statusCode, 503, `Expected 503 when AI is unconfigured, got ${unconfChat.statusCode}`)
+
+    const unconfStream = await app.inject({
+      method: 'POST',
+      url: '/api/omni-ai/chat/stream',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agentACookie },
+      payload: { message: 'Should not hit api.groq.com' },
+    })
+    assert.equal(unconfStream.statusCode, 503, `Expected 503 stream preflight when AI is unconfigured, got ${unconfStream.statusCode}`)
 
     const r1 = await mkRoute({
       label: 'Route 1 (429)',
@@ -536,6 +638,170 @@ async function run() {
     assert.ok(Array.isArray(healthJson.routes) && healthJson.routes.length >= 4)
     assert.ok(Array.isArray(healthJson.staff_usage))
     assert.ok(!JSON.stringify(healthJson).includes('secret-key-'), 'Health dashboard must never leak API keys')
+
+    // =========================================================================
+    // Fix Round 1 [Important #2 & #3]: Single-count empty 502, network error containing 'HTTP ', and SSE 200 error/empty failover
+    // =========================================================================
+    const rEmpty = await mkRoute({
+      label: 'Route Empty 200',
+      provider_key: 'groq',
+      base_url: `${mockBase}/empty/v1`,
+      api_key: 'k-empty',
+      model_id: 'openai/gpt-oss-20b',
+      lanes: ['general'],
+      tier: 'free',
+      priority: 1,
+      zero_retention: false,
+    })
+    const emptyFailover = await omniChat({
+      messages: [{ role: 'user', content: 'Fail over after empty response' }],
+      user: ownerUser,
+    })
+    assert.equal(emptyFailover.routeId, r3.id, 'Empty 200 choices[] must fail over to Route 3')
+    const emptyCd = q.val<string | null>(`SELECT cooldown_until FROM ai_provider_routes WHERE id = ?`, rEmpty.id)
+    assert.ok(emptyCd, 'Empty 502 must place route in cooldown')
+    const emptyCdMs = Date.parse(emptyCd!) - Date.now()
+    assert.ok(emptyCdMs > 45_000 && emptyCdMs <= 65_000, `Empty 502 must record failure ONCE (~60s, not 180s double-count), got ${emptyCdMs}ms`)
+    q.run(`UPDATE ai_provider_routes SET enabled = 0 WHERE id = ?`, rEmpty.id)
+
+    // Network error containing 'HTTP ' must still record failure & trigger cooldown
+    const rNetErr = await mkRoute({
+      label: 'Route Net HTTP Err',
+      provider_key: 'groq',
+      base_url: 'http://net-err.invalid/v1',
+      api_key: 'k-net',
+      model_id: 'openai/gpt-oss-20b',
+      lanes: ['general'],
+      tier: 'free',
+      priority: 2,
+      zero_retention: false,
+    })
+    const origFetch = globalThis.fetch
+    globalThis.fetch = (async (input: any, init?: any) => {
+      if (String(input).includes('net-err.invalid')) {
+        throw new Error('HTTP socket hang up before status')
+      }
+      return origFetch(input, init)
+    }) as typeof fetch
+    try {
+      const netFailover = await omniChat({
+        messages: [{ role: 'user', content: 'Fail over after network error containing HTTP' }],
+        user: ownerUser,
+      })
+      assert.equal(netFailover.routeId, r3.id)
+      const netCd = q.val<string | null>(`SELECT cooldown_until FROM ai_provider_routes WHERE id = ?`, rNetErr.id)
+      assert.ok(netCd && Date.parse(netCd) > Date.now() + 45_000, 'Network error containing "HTTP " must still trigger cooldown')
+    } finally {
+      globalThis.fetch = origFetch
+      q.run(`UPDATE ai_provider_routes SET enabled = 0 WHERE id = ?`, rNetErr.id)
+    }
+
+    // SSE 200 error payload & empty SSE stream failover
+    const rSseErr = await mkRoute({
+      label: 'Route SSE 200 Error',
+      provider_key: 'openrouter',
+      base_url: `${mockBase}/sse-err/v1`,
+      api_key: 'k-sse-err',
+      model_id: 'openrouter/free',
+      lanes: ['general'],
+      tier: 'free',
+      priority: 3,
+      zero_retention: false,
+    })
+    const rSseEmpty = await mkRoute({
+      label: 'Route SSE 200 Empty',
+      provider_key: 'openrouter',
+      base_url: `${mockBase}/sse-empty/v1`,
+      api_key: 'k-sse-empty',
+      model_id: 'openrouter/free',
+      lanes: ['general'],
+      tier: 'free',
+      priority: 4,
+      zero_retention: false,
+    })
+    const sseErrTokens: string[] = []
+    const sseErrFailover = await omniChatStream(
+      { messages: [{ role: 'user', content: 'Stream failover test' }], user: ownerUser },
+      d => sseErrTokens.push(d),
+    )
+    assert.equal(sseErrFailover.routeId, r3.id, 'SSE 200 error + empty stream must fail over to Route 3')
+    assert.equal(hits.sseErr.length, 1)
+    assert.equal(hits.sseEmpty.length, 1)
+    assert.ok(q.val<string | null>(`SELECT cooldown_until FROM ai_provider_routes WHERE id = ?`, rSseErr.id), 'SSE 200 error must put route in cooldown')
+    assert.ok(q.val<string | null>(`SELECT cooldown_until FROM ai_provider_routes WHERE id = ?`, rSseEmpty.id), 'Empty SSE stream must put route in cooldown')
+    q.run(`UPDATE ai_provider_routes SET enabled = 0 WHERE id IN (?, ?)`, rSseErr.id, rSseEmpty.id)
+
+    // =========================================================================
+    // Fix Round 1 [Important #5]: Tool-call arg PII round-trip + single-call use_tools optimization
+    // =========================================================================
+    q.run(`UPDATE ai_provider_routes SET enabled = 0 WHERE id = ?`, r3.id)
+    const rToolEcho = await mkRoute({
+      label: 'Route Tool Echo',
+      provider_key: 'groq',
+      base_url: `${mockBase}/tool-echo/v1`,
+      api_key: 'k-tool',
+      model_id: 'openai/gpt-oss-20b',
+      lanes: ['general'],
+      tier: 'free',
+      priority: 5,
+      zero_retention: false,
+    })
+
+    // 5a: omniChat restores PII in tool_calls[].args AND scrubMessages scrubs assistant.tool_calls[].function.arguments on next turn
+    const tcTurn1 = await omniChat({
+      messages: [{ role: 'user', content: 'Look up client@example.com' }],
+      tools: [{ name: 'lookup_listings', description: 'Lookup', parameters: { type: 'object', properties: { area: { type: 'string' } } } }],
+      user: ownerUser,
+    })
+    assert.equal(tcTurn1.tool_calls.length, 1)
+    assert.equal(tcTurn1.tool_calls[0]!.args.area, 'client@example.com', 'omniChat() must restore scrubbed PII inside tool_calls[].args')
+
+    const tcTurn2 = await omniChat({
+      messages: [
+        { role: 'user', content: 'Look up client@example.com' },
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [{ id: 'tc_pii_1', type: 'function', function: { name: 'lookup_listings', arguments: JSON.stringify(tcTurn1.tool_calls[0]!.args) } }],
+        },
+        { role: 'tool', tool_call_id: 'tc_pii_1', name: 'lookup_listings', content: JSON.stringify({ owner_email: 'client@example.com' }) },
+      ],
+      tools: [{ name: 'lookup_listings', description: 'Lookup', parameters: { type: 'object', properties: { area: { type: 'string' } } } }],
+      user: ownerUser,
+    })
+    const turn2Outbound = JSON.stringify(hits.toolEcho[hits.toolEcho.length - 1]!.body.messages)
+    assert.ok(!turn2Outbound.includes('client@example.com'), 'Turn 2 must scrub assistant tool_calls[].function.arguments and tool content outbound')
+    assert.ok(tcTurn2.content.includes('ToolEchoDone'))
+
+    // 5b: POST /api/omni-ai/chat with use_tools=true and no tool calls makes ONLY 1 LLM call (no duplicate call)
+    const callsBeforeNoTool = hits.toolEcho.length
+    const usageBefore = q.val<number>(`SELECT req_count FROM ai_usage_daily WHERE user_id = ?`, agentBId) ?? 0
+    const noToolRes = await app.inject({
+      method: 'POST',
+      url: '/api/omni-ai/chat',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agentBCookie },
+      payload: { message: 'Just answer directly without calling tools', use_tools: true },
+    })
+    assert.equal(noToolRes.statusCode, 200, `use_tools chat failed: ${noToolRes.body}`)
+    assert.equal(hits.toolEcho.length, callsBeforeNoTool + 1, 'use_tools=true with no tool calls must invoke LLM once, not twice')
+    assert.equal((noToolRes.json() as any).tokens, 21)
+    assert.equal(q.val<number>(`SELECT req_count FROM ai_usage_daily WHERE user_id = ?`, agentBId), usageBefore + 1)
+
+    // 5c: POST /api/omni-ai/chat/stream with use_tools=true executing tool -> accumulates planning + final tokens (19 + 21 = 40)
+    const callsBeforeWithTool = hits.toolEcho.length
+    const tokensBefore = q.val<number>(`SELECT token_count FROM ai_usage_daily WHERE user_id = ?`, agentBId) ?? 0
+    const withToolStreamRes = await app.inject({
+      method: 'POST',
+      url: '/api/omni-ai/chat/stream',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agentBCookie },
+      payload: { message: 'CALL_TOOL_NOW please', use_tools: true },
+    })
+    assert.equal(withToolStreamRes.statusCode, 200, `use_tools stream failed: ${withToolStreamRes.body}`)
+    assert.equal(hits.toolEcho.length, callsBeforeWithTool + 2, 'use_tools=true with 1 tool round must invoke LLM twice total (planning + answer)')
+    assert.match(withToolStreamRes.body, /"tokens":40/, 'SSE done event must include planning (19) + answer (21) = 40 tokens')
+    assert.equal(q.val<number>(`SELECT req_count FROM ai_usage_daily WHERE user_id = ?`, agentBId), usageBefore + 2)
+    assert.equal(q.val<number>(`SELECT token_count FROM ai_usage_daily WHERE user_id = ?`, agentBId), tokensBefore + 40)
+    void rToolEcho
 
     console.log('All Omni-Route AI Brain & PII Shield tests passed.')
   } finally {

@@ -100,25 +100,74 @@ export function restoreScrubbedPii(text: string, map: Map<string, string>): stri
   return text.replace(re, match => map.get(match) ?? match)
 }
 
-/** Clones and scrubs all text content across a ChatMsg[] array using a shared token map. */
-export function scrubMessages<T extends { role: string; content: any }>(
+/** Recursively restores scrubbed PII placeholders inside parsed JSON tool arguments or objects. */
+export function restoreValueWithPii<T>(value: T, map: Map<string, string>): T {
+  if (!map.size || value === null || value === undefined) return value
+  if (typeof value === 'string') return restoreScrubbedPii(value, map) as unknown as T
+  if (Array.isArray(value)) return value.map(item => restoreValueWithPii(item, map)) as unknown as T
+  if (typeof value === 'object') {
+    const out: Record<string, any> = {}
+    for (const [k, v] of Object.entries(value as Record<string, any>)) {
+      out[k] = restoreValueWithPii(v, map)
+    }
+    return out as T
+  }
+  return value
+}
+
+function scrubValueWithState<T>(value: T, state: ScrubberState): T {
+  if (value === null || value === undefined) return value
+  if (typeof value === 'string') return scrubWithState(value, state) as unknown as T
+  if (Array.isArray(value)) return value.map(item => scrubValueWithState(item, state)) as unknown as T
+  if (typeof value === 'object') {
+    const out: Record<string, any> = {}
+    for (const [k, v] of Object.entries(value as Record<string, any>)) {
+      out[k] = scrubValueWithState(v, state)
+    }
+    return out as T
+  }
+  return value
+}
+
+/** Clones and scrubs all text content (including tool_calls arguments) across a ChatMsg[] array using a shared token map. */
+export function scrubMessages<T extends { role: string; content: any; tool_calls?: any[] }>(
   messages: T[],
 ): { messages: T[]; map: Map<string, string>; redactedCount: number } {
   const state = createScrubberState()
   const scrubbed = messages.map(msg => {
+    const clone: any = { ...msg }
     if (typeof msg.content === 'string') {
-      return { ...msg, content: scrubWithState(msg.content, state) }
-    }
-    if (Array.isArray(msg.content)) {
-      const parts = msg.content.map(part => {
+      clone.content = scrubWithState(msg.content, state)
+    } else if (Array.isArray(msg.content)) {
+      clone.content = msg.content.map(part => {
         if (part && typeof part === 'object' && part.type === 'text' && typeof part.text === 'string') {
           return { ...part, text: scrubWithState(part.text, state) }
         }
         return part
       })
-      return { ...msg, content: parts }
     }
-    return { ...msg }
+    if (Array.isArray(msg.tool_calls)) {
+      clone.tool_calls = msg.tool_calls.map(tc => {
+        if (!tc || typeof tc !== 'object' || !tc.function) return tc
+        const rawArgs = tc.function.arguments
+        let nextArgs = rawArgs
+        if (typeof rawArgs === 'string') {
+          try {
+            const parsed = JSON.parse(rawArgs)
+            nextArgs = JSON.stringify(scrubValueWithState(parsed, state))
+          } catch {
+            nextArgs = scrubWithState(rawArgs, state)
+          }
+        } else if (rawArgs && typeof rawArgs === 'object') {
+          nextArgs = scrubValueWithState(rawArgs, state)
+        }
+        return {
+          ...tc,
+          function: { ...tc.function, arguments: nextArgs },
+        }
+      })
+    }
+    return clone as T
   })
   return { messages: scrubbed, map: state.map, redactedCount: state.redactedCount }
 }

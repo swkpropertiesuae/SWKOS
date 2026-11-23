@@ -6,7 +6,7 @@ import { decryptSecret, getSetting } from '../settings'
 import { HttpError, nowIso, safeJson, todayStr } from '../util'
 import { canAccessCrmVault } from '../../shared/swk-staff-access'
 import { getOmniPreset, normalizeLane, OMNI_PRESETS, type OmniLane, type OmniTier } from './omni-catalog'
-import { findPendingPlaceholderStart, restoreScrubbedPii, scrubMessages } from './pii-shield'
+import { findPendingPlaceholderStart, restoreScrubbedPii, restoreValueWithPii, scrubMessages } from './pii-shield'
 
 export interface ToolDef {
   name: string
@@ -252,10 +252,15 @@ export function loadPoolRoutes(opts: { includeDisabled?: boolean; includeLegacy?
     : `SELECT * FROM ai_provider_routes WHERE enabled = 1 ORDER BY priority ASC, id ASC`
   const dbRoutes = q.all<OmniRouteRow>(sql).map(mapDbRowToResolved)
 
-  const wantLegacy = opts.includeLegacy !== false && (Boolean(getSetting('ai_enabled')) || dbRoutes.length === 0)
+  const aiEnabled = Boolean(getSetting('ai_enabled'))
+  const wantLegacy = opts.includeLegacy !== false && (aiEnabled || dbRoutes.length === 0)
   if (!wantLegacy) return dbRoutes
 
-  const legacyEps = loadLegacyEndpoints(opts.modelOverride)
+  const legacyEps = loadLegacyEndpoints(opts.modelOverride).filter(e => {
+    if (aiEnabled) return true
+    const preset = getOmniPreset(e.provider)
+    return Boolean(e.key) || (preset ? !preset.keyRequired : false)
+  })
   const legacyRoutes: ResolvedRoute[] = legacyEps.map((e, idx) => {
     const preset = getOmniPreset(e.provider)
     const id = idx === 0 ? -1 : -2
@@ -352,7 +357,7 @@ function assertUserQuota(user: SessionUser | null | undefined): void {
   }
 }
 
-function recordUserUsage(user: SessionUser | null | undefined, tokens: number): void {
+export function recordUserUsage(user: SessionUser | null | undefined, tokens: number): void {
   if (!user?.id) return
   const now = Date.now()
   const store = getStore()
@@ -373,6 +378,23 @@ function recordUserUsage(user: SessionUser | null | undefined, tokens: number): 
     user.id,
     day,
     Math.max(0, Math.round(tokens || 0)),
+    nowIso(),
+  )
+}
+
+export function recordAdditionalUserTokens(user: SessionUser | null | undefined, tokens: number): void {
+  const clean = Math.max(0, Math.round(tokens || 0))
+  if (!user?.id || !clean) return
+  const day = todayStr()
+  q.run(
+    `INSERT INTO ai_usage_daily(user_id, usage_date, req_count, token_count, updated_at)
+     VALUES (?, ?, 0, ?, ?)
+     ON CONFLICT(user_id, usage_date) DO UPDATE SET
+       token_count = ai_usage_daily.token_count + excluded.token_count,
+       updated_at = excluded.updated_at`,
+    user.id,
+    day,
+    clean,
     nowIso(),
   )
 }
@@ -679,6 +701,12 @@ async function callRouteOnce(
   const started = Date.now()
   const timeoutMs = opts.timeoutMs ?? 90_000
   const { signal, cleanup } = combineSignals(timeoutMs, opts.signal)
+  let failureRecorded = false
+  const recordFailureOnce = (status: number | null, retryAfter: string | null, message: string) => {
+    if (failureRecorded) return
+    failureRecorded = true
+    applyRouteFailure(route, status, retryAfter, message)
+  }
 
   try {
     // Native Ollama /api/chat path (when no tools & not streaming)
@@ -736,7 +764,7 @@ async function callRouteOnce(
       try { data = text ? JSON.parse(text) : null } catch { data = null }
       const detail = String(data?.error?.message ?? data?.message ?? text.slice(0, 160))
       const msg = formatHttpErrorHint(route, res.status, detail)
-      applyRouteFailure(route, res.status, res.headers.get('retry-after'), msg)
+      recordFailureOnce(res.status, res.headers.get('retry-after'), msg)
       throw new Error(msg)
     }
 
@@ -748,6 +776,44 @@ async function callRouteOnce(
       let rawContent = ''
       let tokens = 0
       const toolCallsMap = new Map<number, { id: string; name: string; argsRaw: string }>()
+      const retryAfter = res.headers.get('retry-after')
+
+      const processSseLine = (line: string) => {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) return
+        const dataStr = trimmed.slice(5).trim()
+        if (!dataStr || dataStr === '[DONE]') return
+        let parsed: any
+        try { parsed = JSON.parse(dataStr) } catch { return }
+        if (parsed?.error) {
+          const errStatus = Number(parsed.error.code ?? parsed.error.status ?? 502) || 502
+          const detail = String(parsed.error.message ?? JSON.stringify(parsed.error)).slice(0, 200)
+          const msg = formatHttpErrorHint(route, errStatus, detail)
+          recordFailureOnce(errStatus, retryAfter, msg)
+          throw new Error(msg)
+        }
+        if (parsed?.usage?.total_tokens) tokens = Number(parsed.usage.total_tokens) || tokens
+        const delta = parsed?.choices?.[0]?.delta
+        const msgFallback = parsed?.choices?.[0]?.message
+        const textDelta = typeof delta?.content === 'string'
+          ? delta.content
+          : (typeof msgFallback?.content === 'string' && !rawContent ? msgFallback.content : '')
+        if (textDelta) {
+          rawContent += textDelta
+          onRawDelta?.(textDelta)
+        }
+        const tcs = delta?.tool_calls ?? msgFallback?.tool_calls
+        if (Array.isArray(tcs)) {
+          for (const tc of tcs) {
+            const idx = Number(tc.index ?? 0)
+            const cur = toolCallsMap.get(idx) ?? { id: tc.id || `tc_${idx}`, name: '', argsRaw: '' }
+            if (tc.id) cur.id = tc.id
+            if (tc.function?.name) cur.name += tc.function.name
+            if (tc.function?.arguments) cur.argsRaw += tc.function.arguments
+            toolCallsMap.set(idx, cur)
+          }
+        }
+      }
 
       while (true) {
         const { done, value } = await reader.read()
@@ -755,37 +821,9 @@ async function callRouteOnce(
         buf += decoder.decode(value, { stream: true })
         const lines = buf.split(/\r?\n/)
         buf = lines.pop() ?? ''
-
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data:')) continue
-          const dataStr = trimmed.slice(5).trim()
-          if (!dataStr || dataStr === '[DONE]') continue
-          let parsed: any
-          try { parsed = JSON.parse(dataStr) } catch { continue }
-          if (parsed?.usage?.total_tokens) tokens = Number(parsed.usage.total_tokens) || tokens
-          const delta = parsed?.choices?.[0]?.delta
-          const msgFallback = parsed?.choices?.[0]?.message
-          const textDelta = typeof delta?.content === 'string'
-            ? delta.content
-            : (typeof msgFallback?.content === 'string' && !rawContent ? msgFallback.content : '')
-          if (textDelta) {
-            rawContent += textDelta
-            onRawDelta?.(textDelta)
-          }
-          const tcs = delta?.tool_calls ?? msgFallback?.tool_calls
-          if (Array.isArray(tcs)) {
-            for (const tc of tcs) {
-              const idx = Number(tc.index ?? 0)
-              const cur = toolCallsMap.get(idx) ?? { id: tc.id || `tc_${idx}`, name: '', argsRaw: '' }
-              if (tc.id) cur.id = tc.id
-              if (tc.function?.name) cur.name += tc.function.name
-              if (tc.function?.arguments) cur.argsRaw += tc.function.arguments
-              toolCallsMap.set(idx, cur)
-            }
-          }
-        }
+        for (const line of lines) processSseLine(line)
       }
+      if (buf.trim()) processSseLine(buf)
 
       let content = rawContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
       let calls = [...toolCallsMap.values()].map(c => {
@@ -800,6 +838,11 @@ async function callRouteOnce(
           content = content.replace(found.raw, '').replace(/```(json)?/g, '').trim()
         }
       }
+      if (!content && !calls.length) {
+        const errMsg = `${route.label} model ${route.model_id}: HTTP 502 empty stream response`
+        recordFailureOnce(502, retryAfter, errMsg)
+        throw new Error(errMsg)
+      }
       markRouteSuccess(route, tokens, Date.now() - started)
       return { content, tool_calls: calls, tokens, model: route.model_id }
     }
@@ -811,7 +854,7 @@ async function callRouteOnce(
     const msg = data?.choices?.[0]?.message
     if (!msg) {
       const errMsg = `${route.label}: empty response`
-      applyRouteFailure(route, 502, null, errMsg)
+      recordFailureOnce(502, null, errMsg)
       throw new Error(errMsg)
     }
     let content: string = typeof msg.content === 'string' ? msg.content : ''
@@ -833,11 +876,8 @@ async function callRouteOnce(
     markRouteSuccess(route, tokens, Date.now() - started)
     return { content, tool_calls: calls, tokens, model: route.model_id }
   } catch (err: any) {
-    // Only record network/timeout failures if not already recorded by !res.ok above
     const msg = String(err?.message ?? err)
-    if (!msg.includes('HTTP ')) {
-      applyRouteFailure(route, null, null, msg)
-    }
+    recordFailureOnce(null, null, msg)
     throw err
   } finally {
     cleanup()
@@ -874,10 +914,13 @@ export async function omniChat(req: OmniRequest): Promise<OmniResult> {
         stream: false,
       })
       const restored = pii.map.size ? restoreScrubbedPii(res.content, pii.map) : res.content
+      const restoredCalls = pii.map.size
+        ? res.tool_calls.map(c => ({ ...c, args: restoreValueWithPii(c.args, pii.map) }))
+        : res.tool_calls
       if (!req.bypassQuota) recordUserUsage(req.user, res.tokens)
       return {
         content: restored,
-        tool_calls: res.tool_calls,
+        tool_calls: restoredCalls,
         tokens: res.tokens,
         model: res.model,
         provider: route.provider_key,
@@ -966,10 +1009,13 @@ export async function omniChatStream(req: OmniRequest, onToken: (delta: string) 
       )
       flushSafe(true)
       const restored = pii.map.size ? restoreScrubbedPii(res.content, pii.map) : res.content
+      const restoredCalls = pii.map.size
+        ? res.tool_calls.map(c => ({ ...c, args: restoreValueWithPii(c.args, pii.map) }))
+        : res.tool_calls
       if (!req.bypassQuota) recordUserUsage(req.user, res.tokens)
       return {
         content: restored,
-        tool_calls: res.tool_calls,
+        tool_calls: restoredCalls,
         tokens: res.tokens,
         model: res.model,
         provider: route.provider_key,
