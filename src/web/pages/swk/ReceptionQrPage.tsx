@@ -1,11 +1,34 @@
 import { useEffect,useRef,useState } from 'react'
+import { Link } from 'react-router-dom'
 import { canPrintReceptionQr } from '@shared/swk-staff-access'
 import { qrCodeFrom } from '@shared/qr-payload'
 import jsQR from 'jsqr'
-import { CheckCircle2,Eye,EyeOff,Loader2,Lock,Mail,ScanLine,Wifi,WifiOff } from 'lucide-react'
+import { CheckCircle2,Eye,EyeOff,Loader2,Lock,Mail,MapPinned,ScanLine,Wifi,WifiOff } from 'lucide-react'
 import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
 import { signProof } from '../../lib/deviceKey'
+
+async function ensureLiveCameraPermission(): Promise<boolean> {
+  const cap = (window as any).Capacitor
+  const cameraPlugin = cap?.Plugins?.Camera
+  if (cap?.isNativePlatform?.() && cameraPlugin) {
+    try {
+      if (typeof cameraPlugin.checkPermissions === 'function') {
+        const current = await cameraPlugin.checkPermissions()
+        if (current?.camera === 'granted') return true
+      }
+      if (typeof cameraPlugin.requestPermissions === 'function') {
+        const res = await cameraPlugin.requestPermissions({ permissions: ['camera'] })
+        if (res?.camera && res.camera !== 'granted' && res.camera !== 'limited') {
+          return false
+        }
+      }
+    } catch {
+      /* fallback to browser WebView getUserMedia permission prompt */
+    }
+  }
+  return true
+}
 
 type Net = { ssid: string; detected_client_ip: string; ip_matches_office: boolean; office_ip_locked?: boolean }
 type Step = 'scan' | 'signin' | 'done'
@@ -45,6 +68,9 @@ export default function ReceptionQrPage() {
     if (step !== 'scan') return
     let stream: MediaStream | null = null, raf = 0, stopped = false
     const start = async () => {
+      const permOk = await ensureLiveCameraPermission()
+      if (stopped) return
+      if (!permOk) { setCamErr('Camera permission is required in the SWK Mobile app. Enable Camera in device settings and retry.'); return }
       if (!navigator.mediaDevices?.getUserMedia) { setCamErr('This browser has no camera access. Open this page in Chrome or Safari over https.'); return }
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 960 } }, audio: false })
@@ -148,6 +174,17 @@ export default function ReceptionQrPage() {
               <Row k="Network" v={`${result.verification_summary?.office_wifi_ssid} · ${result.verification_summary?.client_ip}`} />
             </div>
             <a href="/home" className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-[#121212] text-[12px] font-semibold uppercase tracking-[0.14em] text-white no-underline hover:bg-[#51fec0] hover:text-[#0a1624]">Continue to SWK OS</a>
+            <a href="/field-duty" className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#0e9f6e]/30 bg-[#f0fdf7] text-[12px] font-semibold uppercase tracking-[0.1em] text-[#0e9f6e] no-underline hover:bg-[#dcfce7]">
+              <MapPinned size={15} /> Switch to Field Duty GPS
+            </a>
+          </div>
+        )}
+
+        {step !== 'done' && me && !me.party_id && (
+          <div className="mt-4 pt-3 border-t border-[#efefef] text-center">
+            <Link to="/field-duty" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0e9f6e] no-underline hover:underline">
+              <MapPinned size={14} /> Out on a viewing? Switch to Field Duty GPS
+            </Link>
           </div>
         )}
 
