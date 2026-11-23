@@ -1,6 +1,9 @@
-import { q } from './db'
+import { q, inDemo } from './db'
 import { nowIso } from './util'
 import { EventEmitter } from 'node:events'
+import { loadUser } from './auth'
+import { can } from './engine'
+import { canAccessCrmVault } from '../shared/swk-staff-access'
 
 /** Pushes each new notification to the signed-in person's open pages the moment it is saved. */
 import { emitChange } from './changefeed'
@@ -18,25 +21,26 @@ export function notify(userId: number | null | undefined, title: string, body = 
   } catch { /* never fail business logic for a notification */ }
 }
 export function notifyRole(permModule: string, title: string, body = '', link = '', kind = 'approval', dedupe?: string) {
-  const users = q.all<{ id: number; permissions: string | null }>(`SELECT u.id, r.permissions FROM users u JOIN roles r ON r.id = u.role_id WHERE u.deleted_at IS NULL AND u.active = 1`)
+  const users = q.all<{ id: number }>(`SELECT id FROM users WHERE deleted_at IS NULL AND active = 1 AND party_id IS NULL`)
   for (const u of users) {
-    let ok = false
-    try { const p = JSON.parse(u.permissions ?? '{}'); ok = p === '*' || (p[permModule] ?? []).some((a: string) => a === 'approve' || a === '*') } catch { /* ignore */ }
-    if (ok) notify(u.id, title, body, link, kind, dedupe ? `${dedupe}:${u.id}` : undefined)
+    const loaded = loadUser(u.id)
+    if (loaded && can(loaded, permModule, 'approve')) {
+      notify(loaded.id, title, body, link, kind, dedupe ? `${dedupe}:${loaded.id}` : undefined)
+    }
   }
 }
 
-/** Notify Owner (Shabib Siraj), Manager (Mohammad Haseeb), and BDM/IT Admin (Talha Shabbir). */
+/** Notify hardcoded leadership (Owner Shabib Siraj, Admin, and Operations Manager Mohammad Haseeb). */
 export function notifyLeadership(title: string, body = '', link = '', kind = 'audit', dedupe?: string) {
   try {
-    const users = q.all<{ id: number }>(`
-      SELECT u.id FROM users u
-      LEFT JOIN roles r ON r.id = u.role_id
-      WHERE u.deleted_at IS NULL AND u.active = 1
-        AND (r.name IN ('Owner', 'Admin', 'Manager', 'BDM & IT Admin') OR r.permissions = '"*"' OR r.permissions = '*')
-    `)
+    const users = q.all<{ id: number }>(
+      `SELECT id FROM users WHERE deleted_at IS NULL AND active = 1 AND party_id IS NULL AND lower(email) IN ('shabib@swk.properties', 'admin@swk.properties', 'haseeb@swk.properties', 'demo@swkpropertiesuae.com')`,
+    )
     for (const u of users) {
-      notify(u.id, title, body, link, kind, dedupe ? `${dedupe}:${u.id}` : undefined)
+      const loaded = loadUser(u.id)
+      if (!loaded) continue
+      const ok = canAccessCrmVault(loaded) || (inDemo() && loaded.email.toLowerCase() === 'demo@swkpropertiesuae.com')
+      if (ok) notify(loaded.id, title, body, link, kind, dedupe ? `${dedupe}:${loaded.id}` : undefined)
     }
   } catch { /* ignore */ }
 }

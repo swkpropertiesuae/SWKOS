@@ -1,11 +1,12 @@
-import { toolPolicy } from './policy'
+import { toolPolicy, isToolAllowedForUser } from './policy'
 import { q } from '../db'
 import { getSetting } from '../settings'
 import { chat,aiConfigured,type ChatMsg,type ToolDef } from './llm'
 import { TOOLS,toolByName,type Tool } from './tools'
 import { AGENT_TEMPLATES } from './templates'
 import { AGENT_AUTONOMY } from '../../shared/entities/automation'
-import { createRecord,getDef,insertRow,SYSTEM_CTX } from '../engine'
+import { createRecord,getDef,insertRow,SYSTEM_CTX,type SessionUser } from '../engine'
+import { loadUser } from '../auth'
 import { nowLocal,nowIso,todayStr,safeJson,bad } from '../util'
 import { notifyRole } from '../notify'
 import { queueEmail } from '../mailer'
@@ -26,11 +27,17 @@ export function ensureAgents() {
 }
 
 const autonomyLevel = (a: string) => Math.max(0, AGENT_AUTONOMY.indexOf(a))
-const allowed = (agent: any): Tool[] => {
+const allowed = (agent: any, caller?: SessionUser | null): Tool[] => {
   const spec = String(agent.tools ?? '*').trim()
-  if (spec === '*' || !spec) return TOOLS
-  const names = new Set(spec.split(',').map(s => s.trim()))
-  return TOOLS.filter(t => names.has(t.name))
+  const base =
+    spec === '*' || !spec
+      ? TOOLS
+      : (() => {
+          const names = new Set(spec.split(',').map(s => s.trim()))
+          return TOOLS.filter(t => names.has(t.name))
+        })()
+  if (!caller) return base
+  return base.filter(t => isToolAllowedForUser(caller, t.name))
 }
 const toDef = (t: Tool): ToolDef => ({ name: t.name, description: `${t.description}${t.risk !== 'read' ? ` [${t.risk === 'external' ? 'sends outside the company' : 'changes data'}]` : ''}`, parameters: t.parameters })
 
@@ -50,19 +57,20 @@ function queueAction(agent: any, runId: number | null, tool: Tool, args: any): s
   return JSON.stringify({ queued_for_approval: true, action_id: id, note: 'The founder must approve this before it happens.' })
 }
 
-async function execTool(agent: any, runId: number | null, name: string, args: any, tools: Tool[]): Promise<string> {
+async function execTool(agent: any, runId: number | null, name: string, args: any, tools: Tool[], caller?: SessionUser | null): Promise<string> {
   const tool = tools.find(t => t.name === name)
   if (!tool) return JSON.stringify({ error: `Unknown or not permitted tool "${name}"` })
+  if (caller && !isToolAllowedForUser(caller, tool.name)) return JSON.stringify({ error: 'This capability is not permitted for your role' })
   const lvl = autonomyLevel(agent.autonomy)
   const policy=toolPolicy(tool.name,tool.risk,lvl)
   if(policy==='deny') return JSON.stringify({error:'This capability is prohibited for AI execution'})
   if (policy === 'approve') return queueAction(agent, runId, tool, args)
-  try { const out = await tool.run(args ?? {}, { agent: agent.name }); return JSON.stringify(out ?? { ok: true }).slice(0, 7000) } catch (e: any) { return JSON.stringify({ error: String(e?.message ?? e).slice(0, 300) }) }
+  try { const out = await tool.run(args ?? {}, { agent: agent.name, user: caller ?? undefined }); return JSON.stringify(out ?? { ok: true }).slice(0, 7000) } catch (e: any) { return JSON.stringify({ error: String(e?.message ?? e).slice(0, 300) }) }
 }
 
 /** The agent loop: think → call tools → think … → final answer. */
-async function loop(agent: any, messages: ChatMsg[], runId: number | null, channel: string, maxSteps = MAX_STEPS): Promise<{ text: string; steps: number; tokens: number; model: string }> {
-  const tools = allowed(agent)
+async function loop(agent: any, messages: ChatMsg[], runId: number | null, channel: string, maxSteps = MAX_STEPS, caller?: SessionUser | null): Promise<{ text: string; steps: number; tokens: number; model: string }> {
+  const tools = allowed(agent, caller)
   const defs = tools.map(toDef)
   // A caller is waiting on the line: keep replies short and the tool loop tight.
   const opts = channel === 'voice' ? { maxTokens: 350, temperature: 0.3 } : {}
@@ -72,21 +80,21 @@ async function loop(agent: any, messages: ChatMsg[], runId: number | null, chann
     tokens += r.tokens; model = r.model
     if (!r.tool_calls.length) return { text: r.content || '(no answer)', steps: steps + 1, tokens, model }
     messages.push({ role: 'assistant', content: r.content || null, tool_calls: r.tool_calls.map(c => ({ id: c.id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args) } })) })
-    for (const c of r.tool_calls) messages.push({ role: 'tool', tool_call_id: c.id, name: c.name, content: await execTool(agent, runId, c.name, c.args, tools) })
+    for (const c of r.tool_calls) messages.push({ role: 'tool', tool_call_id: c.id, name: c.name, content: await execTool(agent, runId, c.name, c.args, tools, caller) })
   }
   messages.push({ role: 'user', content: 'Stop calling tools now and write your final answer from what you have.' })
   const fin = await chat(messages, undefined, agent.model || undefined, opts)
   return { text: fin.content || '(no answer)', steps, tokens: tokens + fin.tokens, model: fin.model }
 }
 
-export async function runAgent(agentId: number, task?: string, trigger = 'manual'): Promise<{ run_id: number; output: string; ok: boolean }> {
+export async function runAgent(agentId: number, task?: string, trigger = 'manual', caller?: SessionUser | null): Promise<{ run_id: number; output: string; ok: boolean }> {
   const agent = q.get(`SELECT * FROM ai_agents WHERE id = ? AND deleted_at IS NULL`, agentId)
   if (!agent) throw bad('Agent not found')
   if (!aiConfigured()) throw bad('AI is not configured yet. Open Integrations → AI and choose a provider.')
   const prompt = task || `Run your standing routine now. Today is ${todayStr()}.`
   const runId = insertRow(getDef('ai_runs'), { agent_id: agentId, started_at: nowLocal(), trigger, status: 'running', input: prompt })
   try {
-    const res = await loop(agent, [{ role: 'system', content: systemPrompt(agent, 'report') }, { role: 'user', content: prompt }], runId, 'report')
+    const res = await loop(agent, [{ role: 'system', content: systemPrompt(agent, 'report') }, { role: 'user', content: prompt }], runId, 'report', MAX_STEPS, caller)
     q.run(`UPDATE ai_runs SET status='ok', output=?, steps=?, tokens=?, model=? WHERE id=?`, res.text, res.steps, res.tokens, res.model, runId)
     q.run(`UPDATE ai_agents SET last_run_at=?, last_status='ok' WHERE id=?`, nowLocal(), agentId)
     await deliver(agent, res.text, trigger)
@@ -108,15 +116,16 @@ async function deliver(agent: any, text: string, trigger: string) {
 }
 
 /** Conversational use (web chat or WhatsApp): the caller supplies history. */
-export async function chatWithAgent(nameOrId: string | number, message: string, o: { channel?: string; history?: { role: 'user' | 'assistant'; content: string }[]; maxSteps?: number } = {}): Promise<string> {
+export async function chatWithAgent(nameOrId: string | number, message: string, o: { channel?: string; history?: { role: 'user' | 'assistant'; content: string }[]; maxSteps?: number; caller?: SessionUser | null } = {}, callerArg?: SessionUser | null): Promise<string> {
   const agent = typeof nameOrId === 'number' ? q.get(`SELECT * FROM ai_agents WHERE id = ? AND deleted_at IS NULL`, nameOrId) : q.get(`SELECT * FROM ai_agents WHERE lower(name) = lower(?) AND deleted_at IS NULL`, nameOrId)
   if (!agent) throw bad('Agent not found')
   if (!aiConfigured()) throw bad('AI is not configured yet. Open Integrations → AI.')
   const channel = o.channel ?? 'chat'
+  const caller = callerArg ?? o.caller
   const msgs: ChatMsg[] = [{ role: 'system', content: systemPrompt(agent, channel) }, ...(o.history ?? []).slice(-12).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }]
   const runId = insertRow(getDef('ai_runs'), { agent_id: agent.id, started_at: nowLocal(), trigger: channel, status: 'running', input: message.slice(0, 2000) })
   try {
-    const res = await loop(agent, msgs, runId, channel, o.maxSteps)
+    const res = await loop(agent, msgs, runId, channel, o.maxSteps, caller)
     q.run(`UPDATE ai_runs SET status='ok', output=?, steps=?, tokens=?, model=? WHERE id=?`, res.text, res.steps, res.tokens, res.model, runId)
     return res.text
   } catch (e: any) { q.run(`UPDATE ai_runs SET status='failed', error=? WHERE id=?`, String(e?.message ?? e).slice(0, 400), runId); throw e }
@@ -129,12 +138,13 @@ export async function decideAction(id: number, approve: boolean, userId: number)
   if (!approve) { q.run(`UPDATE ai_actions SET status='Rejected', decided_at=?, decided_by=? WHERE id=?`, nowLocal(), userId, id); return { status: 'Rejected' } }
   const tool = toolByName(a.tool)
   const agent = q.get(`SELECT * FROM ai_agents WHERE id = ? AND deleted_at IS NULL`, a.agent_id)
-  if (!tool || !agent || !allowed(agent).some(t=>t.name===a.tool) || toolPolicy(tool.name,tool.risk,autonomyLevel(agent.autonomy))==='deny') { q.run(`UPDATE ai_actions SET status='Failed', result='Unknown tool', decided_at=?, decided_by=? WHERE id=?`, nowLocal(), userId, id); return { status: 'Failed' } }
+  const decider = loadUser(userId)
+  if (!tool || !agent || !allowed(agent, decider).some(t=>t.name===a.tool) || toolPolicy(tool.name,tool.risk,autonomyLevel(agent.autonomy))==='deny') { q.run(`UPDATE ai_actions SET status='Failed', result='Unknown tool', decided_at=?, decided_by=? WHERE id=?`, nowLocal(), userId, id); return { status: 'Failed' } }
   const claim=q.run(`UPDATE ai_actions SET status='Executing',decided_at=?,decided_by=? WHERE id=? AND status='Pending'`,nowLocal(),userId,id)
   if(!claim.changes) throw bad('Action has already been claimed by another approver')
   try {
     let args: any = safeJson(a.args, {}); if (typeof args === 'string') args = safeJson(args, {})
-    const out = await tool.run(args, { agent: agent?.name ?? 'AI' })
+    const out = await tool.run(args, { agent: agent?.name ?? 'AI', user: decider ?? undefined })
     if (out && typeof out === 'object' && (out as any).error) { q.run(`UPDATE ai_actions SET status='Failed', result=?, decided_at=?, decided_by=? WHERE id=?`, String((out as any).error), nowLocal(), userId, id); return { status: 'Failed', result: out } }
     q.run(`UPDATE ai_actions SET status='Executed', result=?, decided_at=?, decided_by=? WHERE id=?`, JSON.stringify(out ?? { ok: true }).slice(0, 2000), nowLocal(), userId, id)
     return { status: 'Executed', result: out }

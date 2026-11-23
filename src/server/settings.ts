@@ -148,3 +148,6 @@ export function decryptSecret(v: string): string {
     return Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8')
   } catch { return '' }
 }
+export function hmacWithAppSecret(payload: string): string {
+  return crypto.createHmac('sha256', secretKey()).update(payload).digest('hex')
+}

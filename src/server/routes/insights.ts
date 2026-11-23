@@ -11,6 +11,7 @@ import { addDays,bad,daysBetween,fromCents,monthStart,r2,todayStr,toCsv,nowIso }
 import { idOf,need } from './helpers'
 import { reportCatalog,runReport,REPORTS } from '../reports'
 import { getSetting } from '../settings'
+import { canViewEmployeeRecords, isRestrictedStaffUser, RESTRICTED_STAFF_ALLOWED_ENTITIES } from '../../shared/swk-staff-access'
 import { z } from 'zod'
 
 const SIGN = `CASE WHEN i.doc_type = 'Credit Note' THEN -1 ELSE 1 END`
@@ -191,8 +192,11 @@ export default async function (app: FastifyInstance) {
       { entity: 'employees', cols: ['name', 'emp_no'], module: 'hr', group: 'Employees' },
       { entity: 'announcements', cols: ['title'], module: 'documents', group: 'Blog' },
     ]
+    const restricted = isRestrictedStaffUser(user)
     const out: any[] = []
     for (const s of specs) {
+      if (s.entity === 'employees' && !canViewEmployeeRecords(user)) continue
+      if (restricted && !RESTRICTED_STAFF_ALLOWED_ENTITIES.has(s.entity)) continue
       if (!can(user, s.module, 'view')) continue
       const def = ENTITIES[s.entity]
       const rows = q.all(`SELECT id FROM "${s.entity}" WHERE deleted_at IS NULL AND (${s.cols.map(c => `"${c}" LIKE ? ESCAPE '\\'`).join(' OR ')}) ORDER BY id DESC LIMIT 5`, ...s.cols.map(() => pat))

@@ -1,10 +1,20 @@
 import crypto from 'node:crypto'
-import { q } from './db'
+import { q, inDemo } from './db'
 import { config } from './config'
 import { nowIso,safeJson,bad,HttpError } from './util'
-import { decryptSecret } from './settings'
+import { decryptSecret, hmacWithAppSecret } from './settings'
 import type { SessionUser,Perms } from './engine'
-import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS,SWK_STAFF_ACCOUNTS,hardcodedAccountFor,HARDCODED_ROLE_PERMISSIONS } from '../shared/swk-staff-access'
+import {
+  isRestrictedStaffUser,
+  RESTRICTED_STAFF_PERMISSIONS,
+  SWK_STAFF_ACCOUNTS,
+  hardcodedAccountFor,
+  HARDCODED_ROLE_PERMISSIONS,
+  NON_ELEVATED_ASSIGNABLE_ROLES,
+  isElevatedCanonicalEmail,
+  isSwkCompanyEmail,
+  type NonElevatedAssignableRole,
+} from '../shared/swk-staff-access'
 import { syncSwkStaffRoster } from './seed'
 
 // ---------------------------------------------------------------- passwords (scrypt)
@@ -44,17 +54,150 @@ export function destroySessionByHash(hash: string) { q.run(`DELETE FROM sessions
 export function destroyUserSessions(userId: number, exceptHash?: string) { q.run(`DELETE FROM sessions WHERE user_id = ? AND id <> ?`, userId, exceptHash ?? '') }
 export const sessionHash = sha
 
+const NON_ELEVATED_SET = new Set<string>(NON_ELEVATED_ASSIGNABLE_ROLES)
+const ELEVATED_ROLE_NAMES = new Set(['owner', 'admin', 'manager'])
+
+function roleGrantPayload(userId: number, email: string, roleName: string): string {
+  return `swk-role-v1:${userId}:${String(email || '').trim().toLowerCase()}:${roleName}`
+}
+
+export function signRoleGrant(userId: number, email: string, roleName: NonElevatedAssignableRole): string {
+  if (!Number.isInteger(userId) || userId <= 0) throw bad('Invalid user id for role grant signature')
+  if (!NON_ELEVATED_SET.has(roleName)) throw bad(`Role "${roleName}" is not eligible for a signed non-elevated grant`)
+  return hmacWithAppSecret(roleGrantPayload(userId, email, roleName))
+}
+
+export function verifyRoleGrant(
+  userId: number,
+  email: string,
+  roleName: string,
+  sig: string | null | undefined,
+): boolean {
+  if (!Number.isInteger(userId) || userId <= 0) return false
+  if (!NON_ELEVATED_SET.has(roleName)) return false
+  if (typeof sig !== 'string') return false
+  const cleanSig = sig.trim()
+  if (!cleanSig) return false
+  const expected = hmacWithAppSecret(roleGrantPayload(userId, email, roleName))
+  const a = Buffer.from(expected, 'utf8')
+  const b = Buffer.from(cleanSig, 'utf8')
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
+}
+
+function isElevatedRoleOrWildcard(roleName: string | null | undefined, perms: Perms): boolean {
+  if (perms === '*') return true
+  return ELEVATED_ROLE_NAMES.has(String(roleName || '').trim().toLowerCase())
+}
+
+function logSecurityTamper(userId: number, email: string, attemptedRole: string | null | undefined, reason: string) {
+  try {
+    const changes = JSON.stringify({
+      attempted_role: attemptedRole ?? null,
+      enforced_role: 'Staff (Attendance & General)',
+      reason,
+    })
+    const cutoff = new Date(Date.now() - 60_000).toISOString()
+    const recent = q.get<{ id: number }>(
+      `SELECT id FROM audit_log WHERE entity = 'users' AND record_id = ? AND action = 'security_tamper' AND changes = ? AND at >= ? ORDER BY id DESC LIMIT 1`,
+      userId,
+      changes,
+      cutoff,
+    )
+    if (recent) return
+    q.run(
+      `INSERT INTO audit_log(at, user_id, user_name, entity, record_id, record_label, action, changes, ip) VALUES (?,?,?,?,?,?,?,?,?)`,
+      nowIso(),
+      userId,
+      email,
+      'users',
+      userId,
+      email,
+      'security_tamper',
+      changes,
+      null,
+    )
+  } catch {
+    /* non-fatal so read queries never crash */
+  }
+}
+
 export function loadUser(userId: number): SessionUser | null {
   const u = q.get(`SELECT u.*, r.name AS role_name, r.permissions FROM users u LEFT JOIN roles r ON r.id = u.role_id WHERE u.id = ? AND u.deleted_at IS NULL AND u.active = 1`, userId)
   if (!u) return null
   const perms = safeJson<Perms>(u.permissions, {})
   const userObj: SessionUser = { id: u.id, name: u.name, email: u.email, role_id: u.role_id, role_name: u.role_name ?? '', permissions: perms, branch_id: u.branch_id, party_id: u.party_id ?? null }
-  // Fixed in code for every SWK staff account: the database role cannot widen or narrow it.
-  const fixed = !userObj.party_id ? hardcodedAccountFor(userObj.email) : undefined
+  const email = String(userObj.email || '').trim().toLowerCase()
+  const demoMode = inDemo()
+
+  // Customer portal accounts may never carry elevated/wildcard permissions.
+  if (userObj.party_id) {
+    if (isElevatedRoleOrWildcard(userObj.role_name, perms)) {
+      logSecurityTamper(userObj.id, email, u.role_name, 'portal_user_elevated_role_tamper')
+      userObj.role_name = 'Customer Portal'
+      userObj.permissions = {}
+    }
+    return userObj
+  }
+
+  // Isolated demo presenter exception inside demo DB only.
+  if (demoMode && email === 'demo@swkpropertiesuae.com') {
+    return userObj
+  }
+
+  // 1. Hardcoded SWK staff accounts: locked to their exact hardcoded role in code.
+  const fixed = hardcodedAccountFor(email)
   if (fixed) {
+    const fixedIsElevated = ELEVATED_ROLE_NAMES.has(fixed.roleName.toLowerCase())
+    if (fixedIsElevated && !isElevatedCanonicalEmail(email) && !demoMode) {
+      logSecurityTamper(userObj.id, email, u.role_name, 'non_canonical_elevated_alias')
+      userObj.role_name = 'Staff (Attendance & General)'
+      userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
+      return userObj
+    }
+    if (!fixed.fullAccess && isElevatedRoleOrWildcard(u.role_name, perms)) {
+      logSecurityTamper(userObj.id, email, u.role_name, 'hardcoded_staff_role_tamper')
+    }
     userObj.role_name = fixed.roleName
     userObj.permissions = HARDCODED_ROLE_PERMISSIONS[fixed.roleName] as Perms
-  } else if (!userObj.party_id && isRestrictedStaffUser(userObj)) {
+    return userObj
+  }
+
+  // 2. Non-hardcoded SWK company staff (#13–25+): hard-clamped to {HR, Office Admin, Staff (Attendance & General)}.
+  //    HR and Office Admin require a valid APP_SECRET-HMAC role_grant_sig.
+  if (isSwkCompanyEmail(email)) {
+    const dbRole = String(u.role_name ?? '').trim()
+    if ((dbRole === 'HR' || dbRole === 'Office Admin') && perms !== '*') {
+      if (verifyRoleGrant(userObj.id, email, dbRole, u.role_grant_sig)) {
+        userObj.role_name = dbRole
+        userObj.permissions = HARDCODED_ROLE_PERMISSIONS[dbRole] as Perms
+        return userObj
+      }
+      logSecurityTamper(userObj.id, email, dbRole, 'missing_or_invalid_role_grant_sig')
+      userObj.role_name = 'Staff (Attendance & General)'
+      userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
+      return userObj
+    }
+    if (dbRole === 'Staff (Attendance & General)' && perms !== '*') {
+      userObj.role_name = 'Staff (Attendance & General)'
+      userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
+      return userObj
+    }
+    logSecurityTamper(userObj.id, email, dbRole || (perms === '*' ? '*' : 'unknown'), 'disallowed_swk_staff_role')
+    userObj.role_name = 'Staff (Attendance & General)'
+    userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
+    return userObj
+  }
+
+  // 3. Non-SWK non-portal accounts (e.g. test fixtures): hard-blocked from elevated roles or wildcard '*'.
+  if (isElevatedRoleOrWildcard(u.role_name, perms)) {
+    logSecurityTamper(userObj.id, email, u.role_name || '*', 'non_canonical_elevated_role_tamper')
+    userObj.role_name = 'Staff (Attendance & General)'
+    userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
+    return userObj
+  }
+
+  if (isRestrictedStaffUser(userObj)) {
     userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
     userObj.role_name = 'Staff (Attendance & General)'
   }

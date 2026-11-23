@@ -1,14 +1,14 @@
 import crypto from 'node:crypto'
-import { q } from '../db'
+import { q,inDemo } from '../db'
 import type { Hooks } from '../hooks'
 import { bad,r2,todayStr,nowLocal,addDays,safeJson } from '../util'
 import { labelsFor,type Rec,type Perms } from '../engine'
-import { hashPassword,destroyUserSessions,validatePasswordStrength,newApiKey } from '../auth'
+import { hashPassword,destroyUserSessions,validatePasswordStrength,newApiKey,signRoleGrant } from '../auth'
 import { notify,notifyLeadership,notifyRole } from '../notify'
 import { checkEmployeeAndDocumentExpiries } from './compliance'
 import { MODULE_DEFS } from '../../shared/entities'
 import { ACTIONS } from '../../shared/types'
-import { isOwnerSwkUser,hardcodedAccountFor } from '../../shared/swk-staff-access'
+import { isOwnerSwkUser,isAdminSwkUser,hardcodedAccountFor,isElevatedCanonicalEmail,NON_ELEVATED_ASSIGNABLE_ROLES,type NonElevatedAssignableRole } from '../../shared/swk-staff-access'
 
 // ---------------------------------------------------------------- users & roles
 /** True when everything in `target` is already held by `actor`: nobody can hand out rights they do not have themselves. */
@@ -32,6 +32,26 @@ export const userHooks: Hooks = {
     if (rec.party_id) { const role = q.get(`SELECT name FROM roles WHERE id = ?`, rec.role_id); if (role?.name !== 'Customer Portal') throw bad('Portal company can only be set for users with the "Customer Portal" role') }
     // SWK staff roles are fixed in code (swk-staff-access.ts); a role change here would be ignored, so refuse it plainly.
     if (!ctx.system && old && rec.role_id !== old.role_id && hardcodedAccountFor(old.email ?? rec.email)) throw bad('The role of this SWK staff account is fixed by company policy and cannot be changed here.')
+    if (!ctx.system && old && String(rec.email || '').trim().toLowerCase() !== String(old.email || '').trim().toLowerCase() && hardcodedAccountFor(old.email)) {
+      throw bad('The e-mail address of this hardcoded SWK staff account cannot be changed.')
+    }
+    if (!ctx.system && isNew && hardcodedAccountFor(rec.email)) {
+      throw bad('This SWK staff e-mail address is managed automatically by company policy.')
+    }
+    if (!ctx.system && !rec.party_id && rec.role_id) {
+      const targetEmail = String(rec.email ?? old?.email ?? '').trim().toLowerCase()
+      const targetRole = q.get<{ name: string; permissions: string }>(`SELECT name, permissions FROM roles WHERE id = ?`, rec.role_id)
+      const targetPerms = targetRole ? safeJson<Perms>(targetRole.permissions, {}) : {}
+      const isElevated =
+        targetRole?.name === 'Owner' ||
+        targetRole?.name === 'Admin' ||
+        targetRole?.name === 'Manager' ||
+        targetPerms === '*'
+      const allowedElevated = isElevatedCanonicalEmail(targetEmail) || (inDemo() && targetEmail === 'demo@swkpropertiesuae.com')
+      if (isElevated && !allowedElevated) {
+        throw bad('Elevated roles (Owner, Admin, Manager, or full wildcard access) cannot be assigned to non-canonical accounts.')
+      }
+    }
     if (!ctx.system && ctx.user) {
       const oldRoleName = old ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, old.role_id) : null
       const newRoleName = rec.role_id ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, rec.role_id) : null
@@ -61,7 +81,22 @@ export const userHooks: Hooks = {
       throw bad('Only Owner Shabib Siraj (shabib@swk.properties) has authority over the Admin account (admin@swk.properties).')
     }
   },
-  afterSave({ rec }) {
+  afterSave({ rec, old, ctx }) {
+    if (!ctx.system && ctx.user && !rec.party_id && !hardcodedAccountFor(rec.email)) {
+      const role = rec.role_id ? q.get<{ name: string; permissions: string }>(`SELECT name, permissions FROM roles WHERE id = ?`, rec.role_id) : null
+      const rolePermsObj = role ? safeJson<Perms>(role.permissions, {}) : {}
+      const isSignedEligible =
+        !!role &&
+        rolePermsObj !== '*' &&
+        (NON_ELEVATED_ASSIGNABLE_ROLES as readonly string[]).includes(role.name) &&
+        (isOwnerSwkUser(ctx.user) || isAdminSwkUser(ctx.user))
+      if (isSignedEligible) {
+        const sig = signRoleGrant(rec.id, rec.email, role.name as NonElevatedAssignableRole)
+        q.run(`UPDATE users SET role_grant_sig = ?, role_granted_by = ? WHERE id = ?`, sig, ctx.user.id, rec.id)
+      } else if (old) {
+        q.run(`UPDATE users SET role_grant_sig = NULL, role_granted_by = NULL WHERE id = ?`, rec.id)
+      }
+    }
     if ((rec as any).__pw) {
       destroyUserSessions(rec.id)
       q.run(`UPDATE api_keys SET active = 0 WHERE user_id = ?`, rec.id)

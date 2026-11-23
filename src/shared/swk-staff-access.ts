@@ -227,8 +227,26 @@ const FULL_ACCESS_EMAILS = new Set<string>([
   'demo@swkpropertiesuae.com',
 ])
 
-/** The ONLY three accounts that may see, print, regenerate or switch the attendance QR. Matched on the exact email: no role, name or domain rule can add anyone. */
-const QR_VIEWER_EMAILS: ReadonlySet<string> = new Set(['shabib@swk.properties', 'admin@swk.properties', 'haseeb@swk.properties'])
+export const NON_ELEVATED_ASSIGNABLE_ROLES = [
+  'HR',
+  'Office Admin',
+  'Staff (Attendance & General)',
+] as const
+
+export type NonElevatedAssignableRole = (typeof NON_ELEVATED_ASSIGNABLE_ROLES)[number]
+
+/** The ONLY three canonical accounts that may hold Owner/Admin/Manager privileges, print/view reception QR, open CRM Vault, or view live Field GPS. */
+export const CANONICAL_ELEVATED_EMAILS: ReadonlySet<string> = new Set([
+  'shabib@swk.properties',
+  'admin@swk.properties',
+  'haseeb@swk.properties',
+])
+
+export function isElevatedCanonicalEmail(email: string | null | undefined): boolean {
+  return CANONICAL_ELEVATED_EMAILS.has(String(email || '').trim().toLowerCase())
+}
+
+const QR_VIEWER_EMAILS: ReadonlySet<string> = CANONICAL_ELEVATED_EMAILS
 
 /**
  * HARD RULE: ONLY Owner Shabib, Admin and Manager Haseeb can view, print or change the Office Attendance QR code.
@@ -238,7 +256,7 @@ export function canPrintReceptionQr(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
-  return QR_VIEWER_EMAILS.has(String(user.email || '').trim().toLowerCase())
+  return isElevatedCanonicalEmail(user.email)
 }
 
 /**
@@ -250,13 +268,24 @@ export function canAccessCrmVault(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
-  return QR_VIEWER_EMAILS.has(String(user.email || '').trim().toLowerCase())
+  return isElevatedCanonicalEmail(user.email)
+}
+
+/**
+ * HARD RULE: ONLY the 3 canonical elevated accounts (shabib@swk.properties, admin@swk.properties,
+ * haseeb@swk.properties) can access the Live Field GPS Map of all staff.
+ */
+export function canAccessFieldLiveMap(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id) return false
+  return isElevatedCanonicalEmail(user.email)
 }
 
 /**
  * Hard check for Administration & Governance logic (Recycle Bin, Withdrawals, Universal Approvals,
  * Owner Morning Briefing, 10:30 AM Contemptor Report, System Settings, Roles & Users).
- * Visible ONLY to Owner, Haseeb, or staff who have been explicitly granted an Administrative role.
+ * Visible ONLY to Owner, Admin, Haseeb, or explicitly scoped non-restricted admin fixtures.
  */
 export function canAccessSwkAdminLogic(
   user: {
@@ -271,10 +300,8 @@ export function canAccessSwkAdminLogic(
   if (!user || user.party_id) return false
   if (canPrintReceptionQr(user)) return true
   if (isRestrictedStaffUser(user)) return false
-  const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  if (role === 'admin' || role === 'owner') return true
+  if (isOwnerSwkUser(user) || isAdminSwkUser(user)) return true
   const perms = user.permissions
-  if (perms === '*') return true
   if (perms && typeof perms === 'object' && Array.isArray(perms.admin) && perms.admin.includes('view')) {
     return true
   }
@@ -345,40 +372,35 @@ export function isSwkCompanyEmail(email: string | null | undefined): boolean {
 }
 
 export function isOwnerSwkUser(
-  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null } | null | undefined,
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user) return false
+  if (!user || user.party_id) return false
   const email = String(user.email || '').trim().toLowerCase()
-  if (OWNER_EMAILS.has(email)) return true
-  const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  return role === 'owner'
+  return OWNER_EMAILS.has(email)
 }
 
 export function isAdminSwkUser(
-  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null } | null | undefined,
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user) return false
+  if (!user || user.party_id) return false
   const email = String(user.email || '').trim().toLowerCase()
   if (ADMIN_EMAILS.has(email)) return true
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  return role === 'admin'
+  return email === 'demo@swkpropertiesuae.com' && role === 'admin'
 }
 
 /**
- * Checks whether the user has full operational access (Owner, Admin, Operations Manager Haseeb, or explicitly promoted role).
+ * Checks whether the user has full operational access (Owner, Admin, Operations Manager Haseeb, or demo admin).
  */
 export function isFullAccessSwkUser(
-  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null } | null | undefined,
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user) return false
+  if (!user || user.party_id) return false
   const email = String(user.email || '').trim().toLowerCase()
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  const name = String(user.name || '').trim().toLowerCase()
-  if (role === 'admin' || role === 'owner') return true
   if (role === 'staff (attendance & general)') return false
+  if (email === 'demo@swkpropertiesuae.com') return role === 'admin'
   if (FULL_ACCESS_EMAILS.has(email)) return true
-  if (RESTRICTED_STAFF_EMAILS.has(email) && !role) return false
-  if (role === 'manager' && (name.includes('haseeb') || email.includes('haseeb') || email.includes('manager'))) return true
   return false
 }
 
@@ -390,6 +412,13 @@ export function isRestrictedStaffUser(
   const email = String(user.email || '').trim().toLowerCase()
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
   if (role === 'staff (attendance & general)') return true
+  if (email === 'demo@swkpropertiesuae.com' && role === 'admin') return false
+  if (isSwkCompanyEmail(email)) {
+    const fixed = hardcodedAccountFor(email)
+    if (fixed) return fixed.roleName === 'Staff (Attendance & General)'
+    if (role === 'hr' || role === 'office admin') return false
+    return true
+  }
   if (role && role !== 'staff (attendance & general)') return false
   if (RESTRICTED_STAFF_EMAILS.has(email)) return true
   if (email.endsWith('@swk.property') && !FULL_ACCESS_EMAILS.has(email)) return true
@@ -419,6 +448,9 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/workspace-tools',
     '/handover',
     '/handover-portal',
+    '/utilities',
+    '/phone',
+    '/field-duty',
   ])
   if (exactAllowed.has(clean)) return true
   if (
@@ -427,7 +459,10 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     clean.startsWith('/qr-reception/') ||
     clean.startsWith('/handover/') ||
     clean.startsWith('/team/') ||
-    clean.startsWith('/print/')
+    clean.startsWith('/print/') ||
+    clean.startsWith('/utilities/') ||
+    clean.startsWith('/phone/') ||
+    clean.startsWith('/field-duty/')
   ) {
     return true
   }
@@ -442,7 +477,7 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
 export function canOpenEmployeeRecords(
   user: { email?: string | null; role?: string | null; role_name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user || user.party_id) return false
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
   return isOwnerSwkUser(user) || isAdminSwkUser(user)
 }
 
@@ -450,7 +485,7 @@ export function canOpenEmployeeRecords(
 export function canViewEmployeeRecords(
   user: { email?: string | null; role?: string | null; role_name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user || user.party_id) return false
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
   const e = String(user.email ?? '').trim().toLowerCase()
   if (String(user.role_name || user.role || '').trim().toLowerCase() === 'hr') return true
   return canOpenEmployeeRecords(user) || ['haseeb@swk.properties', 'haseeb@swk.property', 'haseeb@swkpropertiesuae.com', 'manager@swkpropertiesuae.com'].includes(e)
