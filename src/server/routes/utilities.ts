@@ -20,7 +20,7 @@ import { z } from 'zod'
 import { corporateFooterDetails } from '../../shared/corporate-footer'
 import { looksLikeHtml, markdownToHtml } from '../../shared/studio-html'
 import { canAccessCrmVault } from '../../shared/swk-staff-access'
-import { omniChat, omniConfigured } from '../ai/omni-router'
+import { omniChat, omniConfigured, recordAdditionalUserTokens } from '../ai/omni-router'
 import { scrubSensitivePii } from '../ai/pii-shield'
 import { inDemo, q } from '../db'
 import { can, type SessionUser } from '../engine'
@@ -32,6 +32,7 @@ import { idOf } from './helpers'
 
 const MAX_HTML = 4_000_000
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+const MAX_TRANSLATE_DOC_CHARS = 60_000
 
 const SOURCE_LANGS = ['auto', 'en', 'ar', 'hi', 'ur', 'ru', 'zh', 'fr', 'es', 'fa'] as const
 const TARGET_LANGS = ['en', 'ar', 'hi', 'ur', 'ru', 'zh', 'fr', 'es', 'fa'] as const
@@ -558,13 +559,39 @@ function buildTranslatorSystemPrompt(opts: {
   return lines.join('\n\n')
 }
 
+async function extractDocxSafe(buf: Buffer): Promise<{ html: string; text: string; warnings: string[] }> {
+  try {
+    const htmlRes = await mammoth.convertToHtml({ buffer: buf })
+    const rawRes = await mammoth.extractRawText({ buffer: buf })
+    const html = cleanWordHtml(String(htmlRes.value ?? ''))
+    const text = String(rawRes.value ?? '').trim() || htmlToText(html)
+    const warnings = (htmlRes.messages ?? []).map(m => m.message).filter(Boolean)
+    return { html, text, warnings }
+  } catch (e: any) {
+    throw bad(`Could not read .docx file: ${e?.message ?? e}`)
+  }
+}
+
+async function extractTextSafe(buf: Buffer, name: string, mime: string) {
+  try {
+    return await extractText(buf, name, mime)
+  } catch (e: any) {
+    throw bad(`Could not read "${name}": ${e?.message ?? e}`)
+  }
+}
+
 function chunkTextForTranslation(text: string, maxChunkChars = 3500): string[] {
   const normalized = text.trim()
   if (!normalized) return []
+  if (normalized.length > MAX_TRANSLATE_DOC_CHARS) {
+    throw bad(
+      `Document text exceeds the ${MAX_TRANSLATE_DOC_CHARS.toLocaleString('en-US')}-character limit for single-pass document translation.`,
+    )
+  }
   if (normalized.length <= maxChunkChars) return [normalized]
   const chunks: string[] = []
   let remaining = normalized
-  while (remaining.length > maxChunkChars && chunks.length < 20) {
+  while (remaining.length > maxChunkChars) {
     let splitAt = remaining.lastIndexOf('\n\n', maxChunkChars)
     if (splitAt < maxChunkChars * 0.4) splitAt = remaining.lastIndexOf('\n', maxChunkChars)
     if (splitAt < maxChunkChars * 0.4) splitAt = remaining.lastIndexOf(' ', maxChunkChars)
@@ -584,8 +611,10 @@ async function runTranslation(opts: {
   glossary_lock: boolean
   confidential: boolean
   user: SessionUser
+  bypassQuota?: boolean
 }): Promise<{
   translated_text: string
+  tokens: number
   model: string
   provider: string
   zero_retention: boolean
@@ -596,6 +625,7 @@ async function runTranslation(opts: {
     const glossaryTag = opts.glossary_lock ? ' [Glossary Lock: Ejari/Oqood/Form F/RERA]' : ''
     return {
       translated_text: `[Demo ${opts.target_lang.toUpperCase()} · ${opts.tone}${glossaryTag}] ${opts.text}`,
+      tokens: 0,
       model: 'demo-translator',
       provider: 'demo',
       zero_retention: true,
@@ -612,6 +642,7 @@ async function runTranslation(opts: {
     user: opts.user,
     confidential: opts.confidential,
     zeroRetentionOnly: opts.confidential,
+    bypassQuota: opts.bypassQuota,
     temperature: 0.1,
     maxTokens: 4000,
     messages: [
@@ -621,6 +652,7 @@ async function runTranslation(opts: {
   })
   return {
     translated_text: res.content.trim(),
+    tokens: res.tokens,
     model: res.model,
     provider: res.provider,
     zero_retention: res.zeroRetention,
@@ -794,26 +826,24 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const { fields, file } = await readSingleMultipartUpload(req)
     const ext = path.extname(file.name).toLowerCase()
 
-    let rawHtml = ''
+    let htmlContent = ''
+    let text = ''
     let warnings: string[] = []
     if (ext === '.docx' || file.mime.includes('wordprocessingml')) {
-      try {
-        const res = await mammoth.convertToHtml({ buffer: file.buf })
-        rawHtml = String(res.value ?? '')
-        warnings = (res.messages ?? []).map(m => m.message).filter(Boolean)
-      } catch (e: any) {
-        throw bad(`Could not read .docx file: ${e?.message ?? e}`)
-      }
+      const parsed = await extractDocxSafe(file.buf)
+      htmlContent = parsed.html
+      text = parsed.text
+      warnings = parsed.warnings
     } else if (ext === '.html' || ext === '.htm' || file.mime === 'text/html') {
-      rawHtml = file.buf.toString('utf8')
+      htmlContent = cleanWordHtml(file.buf.toString('utf8'))
+      text = htmlToText(htmlContent)
     } else if (['.txt', '.md', '.csv'].includes(ext) || file.mime.startsWith('text/')) {
-      rawHtml = plainTextToHtml(file.buf.toString('utf8'))
+      htmlContent = cleanWordHtml(plainTextToHtml(file.buf.toString('utf8')))
+      text = htmlToText(htmlContent)
     } else {
       throw bad('Unsupported file type. Upload a .docx, .html, .txt, or .md file.')
     }
 
-    const htmlContent = cleanWordHtml(rawHtml)
-    const text = htmlToText(htmlContent)
     const title = String(fields.title || path.basename(file.name, ext) || 'Imported Document').trim().slice(0, 200)
     return { title, html_content: htmlContent, text, filename: file.name, warnings }
   })
@@ -893,9 +923,9 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     let pages = 1
 
     if (ext === '.docx' || file.mime.includes('wordprocessingml')) {
-      const converted = await mammoth.convertToHtml({ buffer: file.buf })
-      html = cleanWordHtml(converted.value ?? '')
-      plainText = (await mammoth.extractRawText({ buffer: file.buf })).value ?? htmlToText(html)
+      const parsed = await extractDocxSafe(file.buf)
+      html = parsed.html
+      plainText = parsed.text
     } else if (ext === '.html' || ext === '.htm' || file.mime === 'text/html') {
       html = cleanWordHtml(file.buf.toString('utf8'))
       plainText = htmlToText(html)
@@ -917,7 +947,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
           throw bad('Could not read the uploaded PDF file')
         }
       }
-      const ex = await extractText(file.buf, file.name, file.mime)
+      const ex = await extractTextSafe(file.buf, file.name, file.mime)
       plainText = ex.text
       method = ex.method
       pages = ex.pages
@@ -1109,7 +1139,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const ex =
       ext === '.html' || ext === '.htm' || file.mime === 'text/html'
         ? { text: htmlToText(cleanWordHtml(file.buf.toString('utf8'))), method: 'text' as const, pages: 1 }
-        : await extractText(file.buf, file.name, file.mime)
+        : await extractTextSafe(file.buf, file.name, file.mime)
 
     if (!ex.text.trim()) throw bad('No readable text found in uploaded document')
 
@@ -1120,16 +1150,20 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     let provider = ''
     let zeroRetention = true
 
-    for (const chunk of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
       const r = await runTranslation({
-        text: chunk,
+        text: chunks[i]!,
         source_lang: params.source_lang,
         target_lang: params.target_lang,
         tone: params.tone,
         glossary_lock: params.glossary_lock,
         confidential: params.confidential,
         user,
+        bypassQuota: i > 0,
       })
+      if (i > 0 && !inDemo() && r.tokens > 0) {
+        recordAdditionalUserTokens(user, r.tokens)
+      }
       translatedChunks.push(r.translated_text)
       totalPii += r.pii_redacted
       model = r.model

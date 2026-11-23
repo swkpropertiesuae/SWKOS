@@ -13,6 +13,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'swk-utilities-search-'))
 process.env.DATA_DIR = tmpDir
 process.env.DATABASE_URL = ''
 process.env.APP_SECRET = 'test-utilities-search-secret-0123456789abcdef'
+process.env.DEMO_ENABLED = 'true'
 
 function buildMultipart(
   fields: Record<string, string>,
@@ -52,7 +53,7 @@ async function run() {
   const { encryptSecret, setSettings } = await import('../src/server/settings')
   const authMod = await import('../src/server/auth')
   const { createRecord, getDef, SYSTEM_CTX } = await import('../src/server/engine')
-  const { getDemoDb } = await import('../src/server/demo/workspace')
+  const { getDemoDb, rebuildDemoWorkspace } = await import('../src/server/demo/workspace')
   const { buildApp } = await import('../src/server/app')
   const webSearchMod = await import('../src/server/integrations/web-search')
 
@@ -393,6 +394,35 @@ async function run() {
     assert.equal(convTxtRes.statusCode, 200)
     assert.match(convTxtRes.body, /Unit 1012 Marina Gate/)
 
+    // Corrupt .docx uploads must return 400 (not 500) in both /convert and /translate-document
+    const corruptDocxMp = buildMultipart({ target: 'pdf' }, {
+      fieldname: 'file',
+      filename: 'corrupt.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      data: Buffer.from('not-a-valid-zip-docx-payload', 'utf8'),
+    })
+    const corruptConvRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/utilities/convert',
+      headers: { 'content-type': corruptDocxMp.contentType, 'x-swk-client': 'web', cookie: agentACookie },
+      payload: corruptDocxMp.body,
+    })
+    assert.equal(corruptConvRes.statusCode, 400, `Expected 400 for corrupt .docx in /convert, got ${corruptConvRes.statusCode}: ${corruptConvRes.body}`)
+
+    const corruptTrDocMp = buildMultipart({ source_lang: 'en', target_lang: 'ar' }, {
+      fieldname: 'file',
+      filename: 'corrupt.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      data: Buffer.from('not-a-valid-zip-docx-payload', 'utf8'),
+    })
+    const corruptTrDocRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/utilities/translate-document',
+      headers: { 'content-type': corruptTrDocMp.contentType, 'x-swk-client': 'web', cookie: agentACookie },
+      payload: corruptTrDocMp.body,
+    })
+    assert.equal(corruptTrDocRes.statusCode, 400, `Expected 400 for corrupt .docx in /translate-document, got ${corruptTrDocRes.statusCode}: ${corruptTrDocRes.body}`)
+
     // =========================================================================
     // 3. PDF Watermark & PDF -> .docx Convert
     // =========================================================================
@@ -440,7 +470,8 @@ async function run() {
     // 4. Unified Role-Scoped Hybrid Search (ZERO-LEAK) & Web Search Adapters
     // =========================================================================
     // Seed confidential & public fixtures all containing "Marina"
-    createRecord(getDef('employees'), {
+    // Seed cross-module attachments to verify Office Admin attachment RBAC scoping
+    const empRec = createRecord(getDef('employees'), {
       emp_no: 'EMP-MARINA-99',
       name: 'Confidential Marina Payroll Director',
       email: 'marina-hr-secret@swk.properties',
@@ -452,9 +483,30 @@ async function run() {
       `INSERT INTO parties(code, name, is_customer, status, created_at, updated_at) VALUES (?,?,?,?,?,?)`,
       'P-MARINA-1', 'Marina Investor Client', 1, 'Active', now, now,
     )
-    q.insert(
+    const invId = q.insert(
       `INSERT INTO invoices(invoice_no, doc_type, party_id, invoice_date, currency, status, reference, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
       'INV-MARINA-777', 'Tax Invoice', partyId, '2026-11-01', 'AED', 'Posted', 'Marina Commission Invoice Secret', now, now,
+    )
+    const ticketRec = createRecord(getDef('tickets'), {
+      subject: 'Marina AC Maintenance Ticket',
+      status: 'Open',
+      priority: 'Medium',
+    }, SYSTEM_CTX)
+    q.insert(
+      `INSERT INTO attachments(file_name, stored_name, size, mime, category, link_entity, link_id, link_label, note, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      'Marina Employee Salary.pdf', 'test/emp.pdf', 1200, 'application/pdf', 'KYC', 'employees', empRec.id, 'EMP-MARINA-99', 'Confidential HR file', now, now,
+    )
+    q.insert(
+      `INSERT INTO attachments(file_name, stored_name, size, mime, category, link_entity, link_id, link_label, note, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      'Marina Commission Invoice.pdf', 'test/inv.pdf', 1400, 'application/pdf', 'Invoice / Bill', 'invoices', invId, 'INV-MARINA-777', 'Confidential finance file', now, now,
+    )
+    q.insert(
+      `INSERT INTO attachments(file_name, stored_name, size, mime, category, link_entity, link_id, link_label, note, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      'Marina Ticket Photo.png', 'test/tkt.png', 900, 'image/png', 'Photo', 'tickets', ticketRec.id, ticketRec.ticket_no, 'Support ticket attachment', now, now,
+    )
+    q.insert(
+      `INSERT INTO attachments(file_name, stored_name, size, mime, category, link_entity, link_id, link_label, note, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      'Marina General Brochure.pdf', 'test/gen.pdf', 1800, 'application/pdf', 'General', null, null, null, 'Public reception brochure', now, now,
     )
 
     createRecord(getDef('leads'), {
@@ -554,8 +606,8 @@ async function run() {
     assert.equal(hrHits.filter(h => h.entity === 'invoices').length, 0, 'HR must get ZERO invoices')
     assert.equal(hrHits.filter(h => h.entity === 'crm_vault_properties').length, 0, 'HR must get ZERO crm_vault_properties')
 
-    // Office Admin search: sees leads, NEVER employees/invoices/crm_vault_properties
-    const officeSearchRes = await app.inject({
+    // Office Admin search: sees leads + tickets/unlinked attachments, NEVER employees/invoices/crm_vault_properties or HR/Finance attachments
+    const officeSearchRes = await serverApp.inject({
       method: 'POST',
       url: '/api/search/unified',
       headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: officeCookie },
@@ -564,32 +616,48 @@ async function run() {
     assert.equal(officeSearchRes.statusCode, 200)
     const officeHits = (officeSearchRes.json() as any).results as any[]
     assert.ok(officeHits.some(h => h.entity === 'leads'), 'Office Admin must see leads')
+    assert.ok(officeHits.some(h => h.entity === 'attachments' && h.title === 'Marina Ticket Photo.png'), 'Office Admin must see tickets-linked attachments')
+    assert.ok(officeHits.some(h => h.entity === 'attachments' && h.title === 'Marina General Brochure.pdf'), 'Office Admin must see unlinked general attachments')
+    assert.ok(!officeSearchRes.body.includes('Marina Employee Salary.pdf'), 'Office Admin must NEVER see employees-linked attachments')
+    assert.ok(!officeSearchRes.body.includes('Marina Commission Invoice.pdf'), 'Office Admin must NEVER see invoices-linked attachments')
     assert.equal(officeHits.filter(h => h.entity === 'employees').length, 0, 'Office Admin must get ZERO employees')
     assert.equal(officeHits.filter(h => h.entity === 'invoices').length, 0, 'Office Admin must get ZERO invoices')
     assert.equal(officeHits.filter(h => h.entity === 'crm_vault_properties').length, 0, 'Office Admin must get ZERO crm_vault_properties')
 
-    // Leadership search: sees employees, invoices, crm_vault_properties, own word docs; NEVER Agent A's private word doc
-    const ownerSearchRes = await app.inject({
+    // Leadership search: sees employees, invoices, crm_vault_properties, and all attachments; NEVER Agent A's private word doc
+    const ownerSearchRes = await serverApp.inject({
       method: 'POST',
       url: '/api/search/unified',
       headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: ownerCookie },
-      payload: { q: 'Marina', scopes: ['internal'] },
+      payload: { q: 'Marina', scopes: ['internal'], limit: 50 },
     })
     assert.equal(ownerSearchRes.statusCode, 200)
     const ownerHits = (ownerSearchRes.json() as any).results as any[]
     assert.ok(ownerHits.some(h => h.entity === 'employees'), 'Owner must see employees')
     assert.ok(ownerHits.some(h => h.entity === 'invoices'), 'Owner must see invoices')
     assert.ok(ownerHits.some(h => h.entity === 'crm_vault_properties'), 'Owner must see crm_vault_properties')
+    assert.ok(ownerHits.some(h => h.entity === 'attachments' && h.title === 'Marina Employee Salary.pdf'), 'Owner must see employees attachment')
     assert.ok(!ownerSearchRes.body.includes('Agent A Marina Deal Notes'), 'Owner must NEVER see another user private word_documents')
 
     // Web Search integration tests via injectable hook (zero external network)
-    webSearchMod.setWebSearchFetcherForTests(async (url: string) => {
+    webSearchMod.setWebSearchFetcherForTests(async (url: string, init?: RequestInit) => {
+      if (url.includes('duckduckgo.com') && url.includes('timeout-body-test')) {
+        return {
+          ok: true,
+          status: 200,
+          text: () => new Promise<string>((_resolve, reject) => {
+            const sig = init?.signal
+            if (sig?.aborted) return reject(sig.reason ?? new Error('Aborted'))
+            sig?.addEventListener('abort', () => reject(sig.reason ?? new Error('Timed out')), { once: true })
+          }),
+        } as unknown as Response
+      }
       if (url.includes('duckduckgo.com')) {
         return new Response(
           `<html><body>
             <div class="result">
-              <a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fdubailand.gov.ae%2Fejari"><b>Ejari</b> Official<script>alert(1)</script></a>
-              <a class="result__snippet">Register Dubai tenancy <b>contracts</b> safely.</a>
+              <a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fdubailand.gov.ae%2Fejari"><b>Ejari</b> Official &#9999999; &amp;#9999999;<script>alert(1)</script></a>
+              <a class="result__snippet">Register Dubai tenancy <b>contracts</b> safely &#9999999; &amp;#x110000;.</a>
             </div>
           </body></html>`,
           { status: 200, headers: { 'content-type': 'text/html' } },
@@ -619,6 +687,15 @@ async function run() {
     assert.equal(ddg.results.length, 1)
     assert.equal(ddg.results[0]!.url, 'https://dubailand.gov.ae/ejari')
     assert.ok(!ddg.results[0]!.title.includes('<script>') && !ddg.results[0]!.title.includes('alert(1)'))
+    assert.ok(ddg.results[0]!.title.includes('&#9999999;'), 'Malformed decimal entity out of Unicode range must stay un-decoded without throwing RangeError')
+    assert.ok(ddg.results[0]!.snippet.includes('&#x110000;'), 'Malformed hex entity out of Unicode range must stay un-decoded without throwing RangeError')
+
+    // Body-read timeout must remain armed until res.text() finishes
+    await assert.rejects(
+      () => webSearchMod.searchWeb('timeout-body-test', { timeoutMs: 1000 }),
+      /timed out/i,
+      'AbortController timeout must stay active through body read',
+    )
 
     setSettings({ web_search_provider: 'tavily', web_search_api_key: 'tvly-key' })
     const tvly = await webSearchMod.searchWeb('DLD')
@@ -635,18 +712,51 @@ async function run() {
     assert.equal(sx.provider, 'searxng')
     assert.equal(sx.results[0]!.source, 'google')
 
-    // Demo-mode web search must make ZERO outbound calls
-    webSearchMod.setWebSearchFetcherForTests(async () => {
-      throw new Error('Demo mode must NEVER call fetch!')
-    })
+    // Unconditional Demo-mode verification (zero outbound network & zero LLM calls)
+    await rebuildDemoWorkspace()
     const demoDb = getDemoDb()
+    assert.ok(demoDb, 'Demo DB must be initialized for unconditional inDemo() verification')
     demoDbRef = demoDb
-    if (demoDb) {
-      await runInDb(demoDb, async () => {
-        const demoRes = await webSearchMod.searchWeb('Dubai Marina')
-        assert.ok(demoRes.results.length >= 1)
-      })
-    }
+
+    webSearchMod.setWebSearchFetcherForTests(async () => {
+      throw new Error('Demo mode must NEVER call web fetch!')
+    })
+    await runInDb(demoDb, async () => {
+      const demoWebRes = await webSearchMod.searchWeb('Dubai Marina')
+      assert.equal(demoWebRes.provider, 'demo')
+      assert.ok(demoWebRes.results.length >= 1)
+    })
+
+    const demoLoginRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web' },
+      payload: { email: 'demo@swkpropertiesuae.com', password: process.env.DEMO_PASSWORD ?? 'Demo@SWK2026' },
+    })
+    assert.equal(demoLoginRes.statusCode, 200, `Demo login failed: ${demoLoginRes.body}`)
+    const demoCookie = 'swk_sid=' + demoLoginRes.cookies.find((c: any) => c.name === 'swk_sid')!.value
+
+    const llmCallsBeforeDemo = llmCalls.length
+    const demoTranslateRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/utilities/translate',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: demoCookie },
+      payload: { text: 'Ejari renewal for Dubai Marina', source_lang: 'en', target_lang: 'ar' },
+    })
+    assert.equal(demoTranslateRes.statusCode, 200, `Demo translate failed: ${demoTranslateRes.body}`)
+    assert.equal(demoTranslateRes.json().provider, 'demo')
+
+    const demoSearchRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/search/unified',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: demoCookie },
+      payload: { q: 'Marina', scopes: ['internal', 'website', 'market', 'web'], synthesize: true },
+    })
+    assert.equal(demoSearchRes.statusCode, 200, `Demo unified search failed: ${demoSearchRes.body}`)
+    assert.equal(demoSearchRes.json().synthesis?.provider, 'demo')
+    assert.ok(demoSearchRes.json().by_scope?.web?.length >= 1, 'Demo unified search must return deterministic web results')
+    assert.equal(llmCalls.length, llmCallsBeforeDemo, 'Demo mode must NEVER make outbound LLM requests')
+
     webSearchMod.setWebSearchFetcherForTests(null)
 
     // =========================================================================
@@ -733,6 +843,47 @@ async function run() {
     assert.ok(trDocJson.translated_text.includes('[AR-TRANSLATED]'))
     assert.ok(trDocJson.docx_base64, 'translate-document must include docx_base64')
     assert.equal(Buffer.from(trDocJson.docx_base64, 'base64').subarray(0, 2).toString('ascii'), 'PK')
+
+    // Oversized document (>60,000 chars) must fail cleanly with 400 (not dump an oversized trailing chunk)
+    const hugeText = ('RERA Form F tenancy addendum clause for Dubai Marina.\n\n').repeat(1300)
+    const hugeTrMp = buildMultipart({ source_lang: 'en', target_lang: 'ar' }, {
+      fieldname: 'file',
+      filename: 'huge-contract.txt',
+      contentType: 'text/plain',
+      data: Buffer.from(hugeText, 'utf8'),
+    })
+    const hugeTrRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/utilities/translate-document',
+      headers: { 'content-type': hugeTrMp.contentType, 'x-swk-client': 'web', cookie: agentACookie },
+      payload: hugeTrMp.body,
+    })
+    assert.equal(hugeTrRes.statusCode, 400, `Expected 400 for >60k char document, got ${hugeTrRes.statusCode}: ${hugeTrRes.body}`)
+
+    // Multi-chunk document translation counts as 1 staff RPM/RPD request (no mid-document 429)
+    setSettings({ ai_staff_rpm_limit: 1 })
+    const multiChunkText = Array.from({ length: 4 }, (_, i) =>
+      `Paragraph ${i + 1}: ` + 'Dubai Marina RERA Form F lease obligation. '.repeat(65),
+    ).join('\n\n')
+    const multiChunkMp = buildMultipart({ source_lang: 'en', target_lang: 'ar', tone: 'legal_rera' }, {
+      fieldname: 'file',
+      filename: 'multi-chunk-contract.txt',
+      contentType: 'text/plain',
+      data: Buffer.from(multiChunkText, 'utf8'),
+    })
+    llmCalls.length = 0
+    const multiRes = await serverApp.inject({
+      method: 'POST',
+      url: '/api/utilities/translate-document',
+      headers: { 'content-type': multiChunkMp.contentType, 'x-swk-client': 'web', cookie: agentBCookie },
+      payload: multiChunkMp.body,
+    })
+    assert.equal(multiRes.statusCode, 200, `Multi-chunk translate-document must not 429 under RPM=1, got ${multiRes.statusCode}: ${multiRes.body}`)
+    assert.ok(multiRes.json().chunks >= 3, `Expected >=3 chunks, got ${multiRes.json().chunks}`)
+    assert.equal(llmCalls.length, multiRes.json().chunks)
+    const agentBUsage = q.val<number>(`SELECT req_count FROM ai_usage_daily WHERE user_id = ?`, agentBId)
+    assert.equal(agentBUsage, 1, `Multi-chunk translate-document must charge only 1 quota request, got ${agentBUsage}`)
+    setSettings({ ai_staff_rpm_limit: 10 })
 
     // Unified search with synthesize: true (Field Agent sends ONLY public snippets, NEVER internal hits)
     llmCalls.length = 0

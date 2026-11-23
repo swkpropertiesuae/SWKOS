@@ -30,20 +30,26 @@ function getFetcher(): WebSearchFetcher {
   return customFetcherForTests ?? (fetch as unknown as WebSearchFetcher)
 }
 
+function isSafeCodePoint(n: number): boolean {
+  return Number.isInteger(n) && n >= 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff)
+}
+
 function decodeBasicEntities(s: string): string {
   return s
     .replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&nbsp;/gi, ' ')
-    .replace(/&#(\d+);/g, (_m, code) => {
+    .replace(/&#(\d+);/g, (m, code) => {
       const n = Number(code)
-      if (!Number.isFinite(n) || n === 60 || n === 62) return ''
+      if (!isSafeCodePoint(n)) return m
+      if (n === 60 || n === 62) return ''
       return String.fromCodePoint(n)
     })
-    .replace(/&#x([0-9a-f]+);/gi, (_m, hex) => {
+    .replace(/&#x([0-9a-f]+);/gi, (m, hex) => {
       const n = parseInt(hex, 16)
-      if (!Number.isFinite(n) || n === 60 || n === 62) return ''
+      if (!isSafeCodePoint(n)) return m
+      if (n === 60 || n === 62) return ''
       return String.fromCodePoint(n)
     })
 }
@@ -92,13 +98,27 @@ function hostnameOf(url: string): string {
   }
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+async function fetchTextWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 8000,
+): Promise<{ ok: boolean; status: number; text: string }> {
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(new Error(`Web search timed out after ${timeoutMs}ms`)), timeoutMs)
   try {
-    return await getFetcher()(url, { ...init, signal: ctl.signal })
+    const res = await getFetcher()(url, { ...init, signal: ctl.signal })
+    const text = await res.text()
+    return { ok: res.ok, status: res.status, text }
   } finally {
     clearTimeout(timer)
+  }
+}
+
+function parseJsonSafe(raw: string): any {
+  try {
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
   }
 }
 
@@ -138,7 +158,7 @@ function parseDuckDuckGoHtml(html: string, limit: number): WebSearchResult[] {
 
 async function searchDuckDuckGo(query: string, limit: number, timeoutMs: number): Promise<WebSearchResult[]> {
   const endpoint = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
-  const res = await fetchWithTimeout(
+  const res = await fetchTextWithTimeout(
     endpoint,
     {
       method: 'GET',
@@ -150,14 +170,13 @@ async function searchDuckDuckGo(query: string, limit: number, timeoutMs: number)
     timeoutMs,
   )
   if (!res.ok) throw new HttpError(502, `DuckDuckGo search returned HTTP ${res.status}`)
-  const html = await res.text()
-  return parseDuckDuckGoHtml(html, limit)
+  return parseDuckDuckGoHtml(res.text, limit)
 }
 
 async function searchTavily(query: string, limit: number, timeoutMs: number): Promise<WebSearchResult[]> {
   const apiKey = String(getSetting('web_search_api_key') || '').trim()
   if (!apiKey) throw bad('Tavily API key (web_search_api_key) is not configured in Settings.')
-  const res = await fetchWithTimeout(
+  const res = await fetchTextWithTimeout(
     'https://api.tavily.com/search',
     {
       method: 'POST',
@@ -167,7 +186,7 @@ async function searchTavily(query: string, limit: number, timeoutMs: number): Pr
     timeoutMs,
   )
   if (!res.ok) throw new HttpError(502, `Tavily search returned HTTP ${res.status}`)
-  const data = (await res.json().catch(() => ({}))) as any
+  const data = parseJsonSafe(res.text)
   const items = Array.isArray(data?.results) ? data.results : []
   return items
     .map((r: any): WebSearchResult | null => {
@@ -189,7 +208,7 @@ async function searchBrave(query: string, limit: number, timeoutMs: number): Pro
   const apiKey = String(getSetting('web_search_api_key') || '').trim()
   if (!apiKey) throw bad('Brave Search API key (web_search_api_key) is not configured in Settings.')
   const endpoint = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${limit}`
-  const res = await fetchWithTimeout(
+  const res = await fetchTextWithTimeout(
     endpoint,
     {
       method: 'GET',
@@ -201,7 +220,7 @@ async function searchBrave(query: string, limit: number, timeoutMs: number): Pro
     timeoutMs,
   )
   if (!res.ok) throw new HttpError(502, `Brave Search returned HTTP ${res.status}`)
-  const data = (await res.json().catch(() => ({}))) as any
+  const data = parseJsonSafe(res.text)
   const items = Array.isArray(data?.web?.results) ? data.web.results : []
   return items
     .map((r: any): WebSearchResult | null => {
@@ -226,7 +245,7 @@ async function searchSearxng(query: string, limit: number, timeoutMs: number): P
     throw bad('SearXNG base URL (web_search_searxng_url) is not configured or invalid in Settings.')
   }
   const endpoint = `${validBase.replace(/\/+$/, '')}/search?q=${encodeURIComponent(query)}&format=json`
-  const res = await fetchWithTimeout(
+  const res = await fetchTextWithTimeout(
     endpoint,
     {
       method: 'GET',
@@ -235,7 +254,7 @@ async function searchSearxng(query: string, limit: number, timeoutMs: number): P
     timeoutMs,
   )
   if (!res.ok) throw new HttpError(502, `SearXNG search returned HTTP ${res.status}`)
-  const data = (await res.json().catch(() => ({}))) as any
+  const data = parseJsonSafe(res.text)
   const items = Array.isArray(data?.results) ? data.results : []
   return items
     .map((r: any): WebSearchResult | null => {

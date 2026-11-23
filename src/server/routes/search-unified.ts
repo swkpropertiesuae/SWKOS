@@ -1,16 +1,18 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import { ENTITIES } from '../../shared/entities'
 import {
   canAccessCrmVault,
   canViewEmployeeRecords,
   isFullAccessSwkUser,
   isRestrictedStaffUser,
+  RESTRICTED_STAFF_ALLOWED_ENTITIES,
 } from '../../shared/swk-staff-access'
 import { omniChat, omniConfigured } from '../ai/omni-router'
 import { inDemo, q } from '../db'
 import { listAgentAssignedProperties } from '../domain/crm-vault'
 import { custodyFilter } from '../domain/handover'
-import { type SessionUser } from '../engine'
+import { can, type SessionUser } from '../engine'
 import { searchWeb } from '../integrations/web-search'
 import { htmlToText } from '../studio/sanitize'
 import { forbidden, fromCents, HttpError, nowIso, safeJson, todayStr } from '../util'
@@ -227,26 +229,54 @@ function searchTasks(pat: string, limit: number): UnifiedSearchHit[] {
   }))
 }
 
-function searchAttachments(pat: string, limit: number): UnifiedSearchHit[] {
+function canAccessAttachmentLink(user: SessionUser, linkEntity: string | null | undefined): boolean {
+  const ent = String(linkEntity ?? '').trim()
+  if (!ent) return can(user, 'documents', 'view')
+  const def = ENTITIES[ent]
+  if (!def) return false
+  if (ent === 'employees' && !canViewEmployeeRecords(user)) return false
+  if (isRestrictedStaffUser(user) && !RESTRICTED_STAFF_ALLOWED_ENTITIES.has(ent)) return false
+  return can(user, def.module, 'view')
+}
+
+function searchAttachments(user: SessionUser, pat: string, limit: number): UnifiedSearchHit[] {
+  const restricted = isRestrictedStaffUser(user)
+  const allowUnlinked = !restricted && can(user, 'documents', 'view')
+  const allowedEntities = Object.keys(ENTITIES).filter(k => canAccessAttachmentLink(user, k))
+  if (!allowUnlinked && !allowedEntities.length) return []
+
+  const scopeClauses: string[] = []
+  const scopeArgs: unknown[] = []
+  if (allowUnlinked) scopeClauses.push(`(link_entity IS NULL OR link_entity = '')`)
+  if (allowedEntities.length) {
+    scopeClauses.push(`link_entity IN (${allowedEntities.map(() => '?').join(',')})`)
+    scopeArgs.push(...allowedEntities)
+  }
+
   const c = likeClause(['file_name', 'category', 'note', 'link_label'], pat)
   const rows = q.all<any>(
-    `SELECT id, file_name, category, link_label, note
+    `SELECT id, file_name, category, link_entity, link_id, link_label, note
      FROM attachments
-     WHERE deleted_at IS NULL AND ${c.sql}
+     WHERE deleted_at IS NULL
+       AND (${scopeClauses.join(' OR ')})
+       AND ${c.sql}
      ORDER BY id DESC LIMIT ?`,
+    ...scopeArgs,
     ...c.args,
     limit,
   )
-  return rows.map(r => ({
-    id: `attachments:${r.id}`,
-    scope: 'internal',
-    entity: 'attachments',
-    title: r.file_name,
-    subtitle: [r.category, r.link_label].filter(Boolean).join(' · '),
-    snippet: String(r.note || '').slice(0, 180),
-    link: `/api/files/${r.id}/download`,
-    meta: { record_id: r.id },
-  }))
+  return rows
+    .filter(r => canAccessAttachmentLink(user, r.link_entity))
+    .map(r => ({
+      id: `attachments:${r.id}`,
+      scope: 'internal',
+      entity: 'attachments',
+      title: r.file_name,
+      subtitle: [r.category, r.link_label].filter(Boolean).join(' · '),
+      snippet: String(r.note || '').slice(0, 180),
+      link: `/api/files/${r.id}/download`,
+      meta: { record_id: r.id, link_entity: r.link_entity ?? null },
+    }))
 }
 
 function interleaveHits(buckets: UnifiedSearchHit[][], limit: number): UnifiedSearchHit[] {
@@ -368,7 +398,7 @@ function searchInternalScoped(user: SessionUser, tier: RoleSearchTier, rawQ: str
         link: `/e/tickets/${t.id}`,
       })),
     )
-    buckets.push(searchAttachments(pat, perEntity))
+    buckets.push(searchAttachments(user, pat, perEntity))
     buckets.push(searchTasks(pat, perEntity))
     return interleaveHits(buckets, limit)
   }
@@ -377,7 +407,7 @@ function searchInternalScoped(user: SessionUser, tier: RoleSearchTier, rawQ: str
   buckets.push(searchEmployees(pat, perEntity))
   buckets.push(searchLeads(pat, perEntity))
   buckets.push(searchTasks(pat, perEntity))
-  buckets.push(searchAttachments(pat, perEntity))
+  buckets.push(searchAttachments(user, pat, perEntity))
 
   const propC = likeClause(['property_no', 'title', 'building_name', 'sub_community', 'address', 'rera_permit_no'], pat)
   buckets.push(
