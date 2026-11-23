@@ -128,12 +128,12 @@ export default function RecycleBinPage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="card p-4 border-l-4 border-[#1e1e1e]">
+        <div className="card p-4 border-l-4 border-[#16363f]">
           <div className="text-xs font-bold uppercase tracking-wider text-muted">Pending Owner Deletion Approval</div>
           <div className="text-2xl font-display font-extrabold text-ink mt-1">{counts.pending}</div>
           <div className="text-xs text-muted mt-1">Held safely in Bin until Shabib Siraj approves</div>
         </div>
-        <div className="card p-4 border-l-4 border-[#1e1e1e]">
+        <div className="card p-4 border-l-4 border-[#16363f]">
           <div className="text-xs font-bold uppercase tracking-wider text-muted">Rejected & Restored Records</div>
           <div className="text-2xl font-display font-extrabold text-ink mt-1">{counts.rejected}</div>
           <div className="text-xs text-muted mt-1">Protected from unauthorized deletion</div>

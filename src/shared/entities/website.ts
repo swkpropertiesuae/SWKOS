@@ -57,6 +57,7 @@ export const website: EntityDef[] = [
     title: ['title'],
     fields: [
       T('title', 'Headline', { required: true, list: true, search: true, span: 2, section: 'Promotion' }),
+      T('short_title', 'Short title', { help: 'Two or three words for the small rotating pill, e.g. Palm Jebel Ali' }),
       T('eyebrow', 'Eyebrow', { help: 'Small caps line, e.g. TRENDING OFF-PLAN LAUNCH · NAKHEEL', list: true }),
       S('tab', 'Spotlight tab', ['off-plan', 'secondary', 'commercial'], { required: true, default: 'off-plan', list: true }),
       B('active', 'Live on website', { default: true, list: true }),

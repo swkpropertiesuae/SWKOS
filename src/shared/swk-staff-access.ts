@@ -411,7 +411,6 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/toolkit',
     '/tools',
     '/calendar',
-    '/ai',
     '/profile',
     '/team',
     '/chat',

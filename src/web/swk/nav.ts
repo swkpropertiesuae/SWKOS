@@ -4,7 +4,8 @@ LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rock
 UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText,
+MessageCircleMore,SquareCheckBig,Gauge,UsersRound,Handshake,Settings2
 } from 'lucide-react';
 import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
@@ -56,7 +57,7 @@ export const SWK_NAV: NavSection[] = [
     { label: 'CRM Property Vault', to: '/crm-vault', icon: ShieldCheck, module: 'admin', isNew: true, desc: 'Leadership Vault · 3,600+ properties & masked dispatch' },
     { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Dispatched deals & hard-masked calling' },
     { label: 'Leads', to: '/e/leads', icon: UserPlus, module: 'crm', desc: 'Step 1 · New enquiries' },
-    { label: 'Phone Calls', to: '/e/voice_calls', icon: PhoneCall, module: 'crm', desc: 'Step 2 · Call log & notes' },
+    { label: 'Phone Calls', to: '/e/voice_calls', icon: PhoneCall, module: 'ai', desc: 'Step 2 · Call log & notes' },
     { label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle, module: 'crm', desc: 'Step 3 · Live WhatsApp chat' },
     { label: 'Email', to: '/email', icon: Mail, module: 'crm', desc: 'Step 4 · Client email inbox' },
     { label: 'Follow-Ups', to: '/e/activities', icon: CalendarCheck, module: 'crm', desc: 'Step 5 · Tasks & callbacks' },
@@ -118,14 +119,13 @@ export const SWK_NAV: NavSection[] = [
     { label: 'AML Reports', to: '/e/aml_reports', icon: ShieldAlert, module: 'compliance', desc: 'Step 4 · goAML filings' },
     { label: 'Risk Cases', to: '/e/compliance_cases', icon: ShieldAlert, module: 'compliance', desc: 'Step 5 · Compliance reviews' },
     { label: 'Trade Licences', to: '/compliance', icon: BadgeCheck, module: 'compliance', desc: 'Company renewal dates' },
-    { label: 'Registrations', to: '/e/compliance_items', icon: ScrollText, module: 'documents', desc: 'Official certificates' },
+    { label: 'Registrations', to: '/e/compliance_items', icon: ScrollText, module: 'compliance', desc: 'Official certificates' },
     { label: 'File Vault', to: '/documents', icon: FileStack, module: 'documents', desc: 'All uploaded documents' },
   ] },
   { key: 'website', label: 'Website', items: [
     { label: 'Website Studio', to: '/website', icon: Globe, module: 'website', isNew: true, desc: 'Inventory, hot offers & one-click deploy' },
     { label: 'Website Listings', to: '/e/website_listings', icon: Building2, module: 'website', desc: 'All listings on swkpropertiesuae.com' },
     { label: 'Trending Spotlight', to: '/e/website_promotions', icon: Flame, module: 'website', desc: 'Promotions shown on the website' },
-    { label: 'Our Team', to: '/team', icon: Contact, desc: 'Team profiles as on the website' },
   ] },
   { key: 'team', label: 'Employees', items: [
     { label: 'Team Profiles', to: '/team', icon: Contact, desc: 'Photos, bios & role access' },
@@ -136,7 +136,7 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Attendance', to: '/e/attendance', icon: Clock, module: 'hr', desc: 'Step 5 · Daily check-in log' },
     { label: 'Leave', to: '/e/leave_requests', icon: Plane, module: 'hr', desc: 'Step 6 · Holiday & sick leave' },
     { label: 'Payroll (WPS)', to: '/e/payslips', icon: Banknote, module: 'hr', desc: 'Step 7 · Monthly salary slips' },
-    { label: 'Leaderboard', to: '/agents', icon: Trophy, module: 'hr', desc: 'Top performing brokers' },
+    { label: 'Leaderboard', to: '/agents', icon: Trophy, module: 'sales', desc: 'Top performing brokers' },
   ] },
   { key: 'field', label: 'Field Service', items: [
     { label: 'Reception QR', to: '/reception-qr', icon: QrCode, desc: 'Step 1 · Office QR check-in' },
@@ -185,21 +185,21 @@ export function findNav(pathname: string) {
 /** Launcher ("Apps") presentation for each nav section — one simple icon tile per app on the post-sign-in home screen. */
 export type AppTone = 'navy' | 'champ' | 'oasis' | 'ocean' | 'dune' | 'plum'
 export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: AppTone }> = {
-  messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessagesSquare, tone: 'oasis' },
-  work: { blurb: 'My work, tasks & projects on boards, calendars and no-code automations', icon: ListChecks, tone: 'champ' },
-  command: { blurb: 'Overview, deal pipeline, approvals & calendar', icon: LayoutDashboard, tone: 'navy' },
+  messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessageCircleMore, tone: 'oasis' },
+  work: { blurb: 'My work, tasks & projects on boards, calendars and no-code automations', icon: SquareCheckBig, tone: 'champ' },
+  command: { blurb: 'Overview, deal pipeline, approvals & calendar', icon: Gauge, tone: 'navy' },
   inventory: { blurb: 'Submissions, owner permits, units & listings', icon: Building2, tone: 'champ' },
-  clients: { blurb: 'Leads, calls, WhatsApp, email & follow-ups', icon: Users, tone: 'oasis' },
-  sales: { blurb: 'Form A mandates, viewings, offers, NOC & transfer', icon: FileSignature, tone: 'champ' },
+  clients: { blurb: 'Leads, calls, WhatsApp, email & follow-ups', icon: UsersRound, tone: 'oasis' },
+  sales: { blurb: 'Form A mandates, viewings, offers, NOC & transfer', icon: Handshake, tone: 'champ' },
   leasing: { blurb: 'Leases, Ejari, rent schedules, cheques & repairs', icon: KeyRound, tone: 'navy' },
-  owners: { blurb: 'Landlord portfolios, yields & payout statements', icon: UserRoundCog, tone: 'plum' },
-  finance: { blurb: 'Invoices, receipts, commissions, bills & VAT', icon: Percent, tone: 'oasis' },
-  compliance: { blurb: 'KYC checks, RERA permits, broker cards & AML', icon: Gavel, tone: 'dune' },
+  owners: { blurb: 'Landlord portfolios, yields & payout statements', icon: DevIcon, tone: 'plum' },
+  finance: { blurb: 'Invoices, receipts, commissions, bills & VAT', icon: Wallet, tone: 'oasis' },
+  compliance: { blurb: 'KYC checks, RERA permits, broker cards & AML', icon: ShieldCheck, tone: 'dune' },
   website: { blurb: 'Website inventory, hot offers, spotlight & deploy', icon: Globe, tone: 'oasis' },
-  team: { blurb: 'Staff, brokers, visas, attendance, leave & payroll', icon: Users, tone: 'ocean' },
+  team: { blurb: 'Staff, brokers, visas, attendance, leave & payroll', icon: Contact, tone: 'ocean' },
   field: { blurb: 'Reception QR check-in, gate logs & field visits', icon: MapPinned, tone: 'champ' },
-  tools: { blurb: 'Deal calculators, contract studio & reports', icon: FileStack, tone: 'plum' },
-  admin: { blurb: 'Company info, branches, roles, backups & logs', icon: Settings, tone: 'navy' },
+  tools: { blurb: 'Deal calculators, contract studio & reports', icon: ScrollText, tone: 'plum' },
+  admin: { blurb: 'Company info, branches, roles, backups & logs', icon: Settings2, tone: 'navy' },
 }
 
 export type LauncherApp = { key: string; label: string; blurb: string; icon: LucideIcon; tone: AppTone; items: NavItem[]; landing: string }
@@ -209,7 +209,7 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
     key: 'messages',
     label: 'Inside',
     blurb: 'Team chats, project groups, announcements & attendance reports',
-    icon: MessagesSquare,
+    icon: MessageCircleMore,
     tone: 'oasis',
     landing: '/chat',
     items: [{ label: 'Inside Messenger', to: '/chat', icon: MessagesSquare, desc: 'Team chats, groups & announcements' }],
@@ -257,14 +257,13 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   {
     key: 'general',
     label: 'General Workspace',
-    blurb: 'Company calendar, AI assistant & profile',
+    blurb: 'Assigned deals & company calendar',
     icon: CalendarDays,
     tone: 'ocean',
     landing: '/calendar',
     items: [
       { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Assigned properties & hard-masked calling' },
       { label: 'Calendar', to: '/calendar', icon: CalendarDays, desc: 'Company schedule & events' },
-      { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Internal SWK AI assistant' },
     ],
   },
 ]

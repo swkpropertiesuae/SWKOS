@@ -108,7 +108,7 @@ export default function ReraCentre() {
       />
 
       {notice && (
-        <div className="px-4 py-2.5 rounded-xl bg-[#ececec] border border-[#b4dfcf] text-[#2b2b2b] text-sm font-semibold flex items-center gap-2">
+        <div className="px-4 py-2.5 rounded-xl bg-[#ece6da] border border-[#b4dfcf] text-[#22424c] text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 size={16} />{notice}
         </div>
       )}
@@ -205,7 +205,7 @@ export default function ReraCentre() {
                           <td>{p.property_type}</td>
                           <td className="font-mono text-xs">{p.rera_permit_no || 'Missing'}</td>
                           <td>{hasPermit ? <Pill tone="oasis">QR Verified</Pill> : <Pill tone="dune">Blocked</Pill>}</td>
-                          <td>{hasPermit ? <span className="text-xs font-semibold text-[#2b2b2b]">Cleared for PF / Bayut / dubizzle</span> : <span className="text-xs font-semibold text-[#a33a22]">Syndication locked</span>}</td>
+                          <td>{hasPermit ? <span className="text-xs font-semibold text-[#22424c]">Cleared for PF / Bayut / dubizzle</span> : <span className="text-xs font-semibold text-[#a33a22]">Syndication locked</span>}</td>
                         </tr>
                       )
                     })}
@@ -256,12 +256,12 @@ export default function ReraCentre() {
 
           <Card className="xl:col-span-4" title="UAE PDPL (Federal Decree-Law 45/2021)" subtitle="Personal data protection & DSAR controls" tone="champ">
             <div className="grid gap-3 text-[13px]">
-              <div className="p-3.5 rounded-xl bg-white border border-[#e5e5e5]">
-                <div className="font-semibold text-ink flex items-center gap-2"><Lock size={15} className="text-[#1e1e1e]" />Explicit marketing consent</div>
+              <div className="p-3.5 rounded-xl bg-white border border-[#e6e0d4]">
+                <div className="font-semibold text-ink flex items-center gap-2"><Lock size={15} className="text-[#16363f]" />Explicit marketing consent</div>
                 <div className="text-xs text-muted mt-1">All WhatsApp & email campaigns check party opt-in flags before dispatch.</div>
               </div>
-              <div className="p-3.5 rounded-xl bg-white border border-[#e5e5e5]">
-                <div className="font-semibold text-ink flex items-center gap-2"><Scale size={15} className="text-[#1e1e1e]" />5-year AML retention rule</div>
+              <div className="p-3.5 rounded-xl bg-white border border-[#e6e0d4]">
+                <div className="font-semibold text-ink flex items-center gap-2"><Scale size={15} className="text-[#16363f]" />5-year AML retention rule</div>
                 <div className="text-xs text-muted mt-1">Emirates ID, passport, UBO declarations and Form F contracts are retained for 5 years per Ministry of Economy DNFBP rules.</div>
               </div>
             </div>

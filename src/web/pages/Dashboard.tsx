@@ -125,7 +125,7 @@ export function Dashboard() {
               title: '1. Sales of Off-Plan Projects',
               sub: 'Developer launches → Bayut/Dubizzle/Campaigns → Leads → Site Visit → EOI/SPA → DLD Oqood → 50/50 Commission Split',
               to: '/pipeline?dept=offplan',
-              accent: '#1e1e1e',
+              accent: '#16363f',
               Icon: Rocket,
             },
             {
@@ -133,7 +133,7 @@ export function Dashboard() {
               title: '2. Secondary Projects (Ready Transfers)',
               sub: 'Seller / 3rd-Party A2A → Detailed Seller Req → Cash / Mortgaged / Pre-Approved → Form F (MOU) → NOC → DLD Title Deed',
               to: '/pipeline?dept=secondary',
-              accent: '#1e1e1e',
+              accent: '#16363f',
               Icon: Building2,
             },
             {
@@ -141,7 +141,7 @@ export function Dashboard() {
               title: '3. Leasing & Tenancy Department',
               sub: 'Connected Bayut & Dubizzle Ads → 3rd-Party A2A Match (Form I) → PDC Cheques → Ejari Registration → 50/50 Split after A2A',
               to: '/pipeline?dept=leasing',
-              accent: '#121212',
+              accent: '#0f2a33',
               Icon: KeyRound,
             },
           ].map(dept => (
@@ -153,7 +153,7 @@ export function Dashboard() {
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded bg-[#ffffff] text-ink border border-[#f5f5f5]">
+                  <span className="text-[11px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded bg-[#ffffff] text-ink border border-[#f4f0e8]">
                     DEPT · {dept.code}
                   </span>
                   <dept.Icon size={18} className="text-muted group-hover:text-ink transition" />
@@ -161,7 +161,7 @@ export function Dashboard() {
                 <div className="font-display font-bold text-lg text-ink mt-2.5">{dept.title}</div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">{dept.sub}</p>
               </div>
-              <div className="mt-3 pt-2.5 border-t border-[#f5f5f5] flex items-center justify-between text-xs font-bold text-[#1e1e1e]">
+              <div className="mt-3 pt-2.5 border-t border-[#f4f0e8] flex items-center justify-between text-xs font-bold text-[#16363f]">
                 <span>Open Department Pipeline</span>
                 <ArrowRight size={14} />
               </div>
@@ -171,10 +171,10 @@ export function Dashboard() {
       )}
 
       {/* ------------------------------------------------------------ 10-Step Sequential UAE Real Estate Dedicated Buttons */}
-      <Reveal className="card p-5 border border-[#f5f5f5] bg-white">
+      <Reveal className="card p-5 border border-[#f4f0e8] bg-white">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div>
-            <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[#1e1e1e]">STEP-BY-STEP COMPANY OPERATIONS</span>
+            <span className="text-[10.5px] font-extrabold uppercase tracking-widest text-[#16363f]">STEP-BY-STEP COMPANY OPERATIONS</span>
             <h2 className="font-display font-bold text-base text-ink m-0 mt-0.5">Sequential UAE Real Estate Execution Buttons (Click Any Step)</h2>
           </div>
           <Link to="/home" className="btn outline sm">
@@ -199,11 +199,11 @@ export function Dashboard() {
               <Link
                 key={st.step}
                 to={st.to}
-                className="p-3 rounded-xl border border-[#f5f5f5] bg-[#ffffff] hover:bg-[#e8fff6] hover:border-[#1e1e1e] transition flex flex-col justify-between group"
+                className="p-3 rounded-xl border border-[#f4f0e8] bg-[#ffffff] hover:bg-[#f7efdc] hover:border-[#16363f] transition flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[#121212] text-[#f7f7f7]">{st.step}</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[#0f2a33] text-[#f8f5ef]">{st.step}</span>
                     <ArrowUpRight size={14} className="text-muted group-hover:text-ink" />
                   </div>
                   <div className="font-bold text-[13px] text-ink mt-2 leading-snug">{st.title}</div>
@@ -215,11 +215,11 @@ export function Dashboard() {
       </Reveal>
 
       {adminOk && (
-        <Reveal className="card p-4 border border-[#f5f5f5] bg-[#ffffff]">
+        <Reveal className="card p-4 border border-[#f4f0e8] bg-[#ffffff]">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="space-y-0.5">
               <div className="text-xs font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                <ShieldCheck size={15} className="text-[#1e1e1e]" /> SWK Leadership Governance, Office Hours (Mon–Fri 10am–7pm · Sat 10am–4pm · Sun Holiday · 10:05 Grace) & WhatsApp Briefings
+                <ShieldCheck size={15} className="text-[#16363f]" /> SWK Leadership Governance, Office Hours (Mon–Fri 10am–7pm · Sat 10am–4pm · Sun Holiday · 10:05 Grace) & WhatsApp Briefings
               </div>
               <div className="text-xs text-muted">
                 <strong>Owner:</strong> Shabib Siraj (Full Control & Final Approver) · <strong>Manager:</strong> Mohammad Haseeb (Operations) · <strong>Sales Advisors:</strong> Company Visa, AED 0 Basic, 50–50% Net Commission Split
@@ -283,7 +283,7 @@ export function Dashboard() {
               {funnel.map((s, i) => (
                 <div key={s.stage} className="grid grid-cols-[120px_1fr_auto] sm:grid-cols-[150px_1fr_150px] items-center gap-3">
                   <div className="text-[13px] font-semibold text-ink truncate">{s.stage}</div>
-                  <div className="relative h-9 rounded-xl bg-[#f5f5f5] overflow-hidden">
+                  <div className="relative h-9 rounded-xl bg-[#f4f0e8] overflow-hidden">
                     <motion.div className="absolute inset-y-0 left-0 rounded-xl flex items-center px-3 text-[12px] font-semibold text-white" style={{ background: `linear-gradient(90deg, ${CHART[i % 2 ? 3 : 0]}, ${i % 2 ? SWK.sky : SWK.ocean})` }}
                       initial={{ width: 0 }} whileInView={{ width: `${Math.max(8, (Number(s.count) / funnelMax) * 100)}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}>
                       {Number(s.count) > 0 && `${s.count} deal${Number(s.count) === 1 ? '' : 's'}`}
@@ -297,11 +297,11 @@ export function Dashboard() {
         <Card className="xl:col-span-4" title="Today & upcoming" subtitle="Viewings, target closes and renewals" to="/calendar">
           {agenda.length === 0 ? <EmptyState title="Nothing scheduled" hint="Viewings, transfer dates and renewals will appear here." /> : (
             <ol className="relative m-0 p-0 list-none">
-              <span className="absolute left-[18px] top-2 bottom-2 w-px bg-gradient-to-b from-[#0e9f6e] to-transparent" />
+              <span className="absolute left-[18px] top-2 bottom-2 w-px bg-gradient-to-b from-[#8a621c] to-transparent" />
               {agenda.map((a, i) => (
                 <motion.li key={a.id} className="relative" initial={{ opacity: 0, x: -8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}>
                   <Link to={a.to} className="flex items-start gap-3 py-2.5 group">
-                    <span className="relative z-[1] w-9 h-9 rounded-xl grid place-items-center flex-none bg-white border border-[#e5e5e5] text-[#121212] group-hover:border-[#0e9f6e] transition-colors"><a.Icon size={16} /></span>
+                    <span className="relative z-[1] w-9 h-9 rounded-xl grid place-items-center flex-none bg-white border border-[#e6e0d4] text-[#0f2a33] group-hover:border-[#8a621c] transition-colors"><a.Icon size={16} /></span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2"><span className="text-[11px] font-semibold uppercase tracking-wider text-[#6F513B]">{a.kind}</span><span className="text-[11.5px] text-muted">{a.kind === 'Viewing' ? fmtDateTime(a.at) : fmtDate(a.at)}</span></span>
                       <span className="block text-[13.5px] font-semibold text-ink truncate">{a.title}</span>
@@ -323,7 +323,7 @@ export function Dashboard() {
                   <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={SWK.navy} stopOpacity={0.35} /><stop offset="100%" stopColor={SWK.navy} stopOpacity={0} /></linearGradient>
                   <linearGradient id="gPro" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={SWK.champ} stopOpacity={0.45} /><stop offset="100%" stopColor={SWK.champ} stopOpacity={0} /></linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 4" stroke="#f5f5f5" vertical={false} />
+                <CartesianGrid strokeDasharray="3 4" stroke="#f4f0e8" vertical={false} />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} tickFormatter={v => aed(v, { compact: true }).replace('AED ', '')} width={52} />
                 <Tooltip formatter={(v: any) => aed(Number(v))} />
@@ -378,7 +378,7 @@ export function Dashboard() {
                 <Link to={`/e/properties/${p.id}`} className="block swk-card group">
                   <div className="relative h-[170px] overflow-hidden">
                     <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-[1.06]" style={{ backgroundImage: `url(${photoFor(p.id)})` }} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#121212]/75 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0f2a33]/75 to-transparent" />
                     <div className="absolute top-3 left-3 flex gap-1.5">{p.is_off_plan ? <Pill tone="champ">Off-plan</Pill> : <Pill tone="navy">Ready</Pill>}{p.is_exclusive && <Pill tone="oasis">Exclusive</Pill>}</div>
                     <div className="absolute bottom-3 left-3 right-3 text-white font-display text-[19px] font-semibold">{p.price ? aed(p.price) : p.rent_annual ? `${aed(p.rent_annual)}/yr` : 'Price on request'}</div>
                   </div>
@@ -387,7 +387,7 @@ export function Dashboard() {
                     <div className="text-[12.5px] text-muted truncate">{p.address || p.property_type}</div>
                     <div className="flex items-center gap-3 mt-2.5 text-[12.5px] text-body">
                       <span>{p.bedrooms ? `${p.bedrooms} BR` : 'Studio'}</span><span className="w-1 h-1 rounded-full bg-[#d4c7ad]" /><span>{num(p.area_sqft)} sqft</span>
-                      {p.rera_permit_no ? <span className="ml-auto inline-flex items-center gap-1 text-[#2b2b2b] font-semibold"><BadgeCheck size={14} />Permit</span> : <span className="ml-auto text-[#a33a22] font-semibold">No permit</span>}
+                      {p.rera_permit_no ? <span className="ml-auto inline-flex items-center gap-1 text-[#22424c] font-semibold"><BadgeCheck size={14} />Permit</span> : <span className="ml-auto text-[#a33a22] font-semibold">No permit</span>}
                     </div>
                   </div>
                 </Link>
@@ -458,8 +458,8 @@ export function Dashboard() {
             { l: 'Activity', s: 'Calls & follow-ups', to: '/e/activities', I: Clock },
           ].map(m => (
             <motion.div key={m.to} variants={rise} whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }}>
-              <Link to={m.to} className="group flex flex-col gap-3 h-full p-4 rounded-[18px] bg-white border border-[#e5e5e5] hover:border-[#0e9f6e] hover:shadow-[0_18px_36px_-24px_rgba(18,18,18,.35)] transition-all">
-                <span className="w-10 h-10 rounded-xl grid place-items-center text-[#e8fff6] transition-transform group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: 'linear-gradient(145deg,#121212,#121212)' }}><m.I size={18} /></span>
+              <Link to={m.to} className="group flex flex-col gap-3 h-full p-4 rounded-[18px] bg-white border border-[#e6e0d4] hover:border-[#8a621c] hover:shadow-[0_18px_36px_-24px_rgba(15,42,51,.35)] transition-all">
+                <span className="w-10 h-10 rounded-xl grid place-items-center text-[#f7efdc] transition-transform group-hover:rotate-[-6deg] group-hover:scale-110" style={{ background: 'linear-gradient(145deg,#0f2a33,#0f2a33)' }}><m.I size={18} /></span>
                 <span><span className="block text-[14px] font-semibold text-ink">{m.l}</span><span className="block text-[12px] text-muted">{m.s}</span></span>
               </Link>
             </motion.div>))}
@@ -472,9 +472,9 @@ export function Dashboard() {
 function DashboardSkeleton() {
   return (
     <div className="grid gap-5 max-w-[1680px] mx-auto" aria-busy="true" aria-label="Loading dashboard">
-      <div className="h-[230px] rounded-[26px] animate-pulse" style={{ background: 'linear-gradient(120deg,#121212,#121212)' }} />
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-[118px] rounded-[18px] bg-white border border-[#f5f5f5] animate-pulse" />)}</div>
-      <div className="grid gap-4 xl:grid-cols-12"><div className="xl:col-span-8 h-[320px] rounded-[20px] bg-white border border-[#f5f5f5] animate-pulse" /><div className="xl:col-span-4 h-[320px] rounded-[20px] bg-white border border-[#f5f5f5] animate-pulse" /></div>
+      <div className="h-[230px] rounded-[26px] animate-pulse" style={{ background: 'linear-gradient(120deg,#0f2a33,#0f2a33)' }} />
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-[118px] rounded-[18px] bg-white border border-[#f4f0e8] animate-pulse" />)}</div>
+      <div className="grid gap-4 xl:grid-cols-12"><div className="xl:col-span-8 h-[320px] rounded-[20px] bg-white border border-[#f4f0e8] animate-pulse" /><div className="xl:col-span-4 h-[320px] rounded-[20px] bg-white border border-[#f4f0e8] animate-pulse" /></div>
     </div>
   )
 }

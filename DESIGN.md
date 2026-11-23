@@ -1,29 +1,23 @@
 ---
 name: SWK OS
-description: SWK OS in the exact swkpropertiesuae.com design system (obsidian, mint, Switzer, sky canvas). Tokens live in src/web/website-theme.css and mirror the website repo src/app/globals.css.
+description: SWK OS in the exact swkpropertiesuae.com design system (deep petrol ink, SWK crest gold, Switzer, ivory canvas; all text pairs WCAG AA). Tokens live in src/web/website-theme.css and mirror the website repo src/app/globals.css.
 colors:
-  obsidian: "#121212"
-  obsidian-card: "#1e1e1e"
+  petrol: "#0f2a33"
+  petrol-card: "#163a45"
   white: "#ffffff"
-  offwhite: "#f7f7f7"
-  cta-light: "#f5f5f5"
-  subtle: "#ececec"
-  ink: "#121212"
-  body: "#4a4a4a"
-  muted: "#737373"
-  grey: "#8b8b8b"
-  grey-subtle: "#a7a7a7"
-  line: "#e5e5e5"
-  line-strong: "#cfcfcf"
-  mint: "#51fec0"
-  emerald: "#0e9f6e"
-  mint-tint: "#e8fff6"
-  status-sale: "#62c584"
-  status-offer: "#a5ce3a"
-  signal: "#dc2626"
-  sky-start: "#eef8fd"
-  sky-mid: "#d4effc"
-  sky-end: "#f5fbff"
+  ivory: "#fbf9f4"
+  ivory-mid: "#f3eee3"
+  sand-tint: "#f4f0e8"
+  ink: "#0f2a33"
+  body: "#3d4a51"
+  muted: "#5b676e"
+  line: "#e6e0d4"
+  line-strong: "#cfc6b4"
+  gold: "#d4a752"
+  gold-text: "#8a621c"
+  gold-deep: "#7a5518"
+  burgundy: "#a3263a"
+  signal: "#a3263a"
 typography:
   display:
     fontFamily: "Switzer, Inter, system-ui, sans-serif"
@@ -185,7 +179,7 @@ Primary pills are white at rest and emerald with white text when active. Rail sh
 
 ### Workspace and feature cards
 
-Workspace cards show an icon, wrapping name, up to three previews, feature count and opening cue. All permitted features appear in the destination grid. Cards alternate mint, champagne and sky tints, with the first card deep green; dark mode uses corresponding green, warm and blue surfaces. Feature cards combine a mint icon tile, wrapping label and directional arrow on a white lifted surface. Search retains direct links and clear empty-state actions.
+The Home launcher uses compact horizontal app cards (21st.dev feature-08 pattern: hairline rails, corner crosshairs, pointer spotlight): a 46px SWK brand tile (deep petrol body, crest-gold glyph), the app name, a one-line blurb and an arrow cue, in up to four columns. Sidebar app icons use the same Lucide glyph as the tile. Search lists matching pages above the grid and keeps a clear empty-state action.
 
 ### Dashboard operating desk
 

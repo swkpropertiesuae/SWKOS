@@ -50,7 +50,7 @@ export function seedWebsiteContent() {
   if (!q.val(`SELECT 1 FROM website_promotions WHERE deleted_at IS NULL LIMIT 1`)) {
     ;(seedPromotions as Record<string, any>[]).forEach((p, i) => {
       createRecord(getDef('website_promotions'), {
-        title: p.title, eyebrow: p.eyebrow, tab: p.tab, active: true, sort_order: (i + 1) * 10, developer: p.developer, community: p.community,
+        title: p.title, short_title: p.shortTitle ?? null, eyebrow: p.eyebrow, tab: p.tab, active: true, sort_order: (i + 1) * 10, developer: p.developer, community: p.community,
         price_guide: p.priceGuide, plan_highlight: p.planHighlight, image: p.image, href: p.href, benefits: (p.benefits ?? []).join('\n'),
       }, SYSTEM_CTX)
     })
@@ -106,7 +106,7 @@ export function buildWebsiteExport() {
     id: `hot-${out.slug}`,
     tab: out.purpose === 'off-plan' ? 'off-plan' : out.propertyType === 'Office' ? 'commercial' : 'secondary',
     eyebrow: `HOT OFFER · ${String(out.developer || out.community).toUpperCase()}`,
-    title: out.title, developer: out.developer, community: out.community,
+    title: out.title, shortTitle: String(out.building || out.community || out.title).split(/\s+/).slice(0, 3).join(' '), developer: out.developer, community: out.community,
     priceGuide: out.purpose === 'rent' ? `${fmtAed(out.priceAed)} / year` : `From ${fmtAed(out.priceAed)}`,
     planHighlight: row.payment_plan || out.handover || out.completion,
     image: out.images[0] ?? '', href: `/properties/${out.slug}`,
@@ -114,7 +114,7 @@ export function buildWebsiteExport() {
   }))
   const promos = q.all<Record<string, any>>(`SELECT * FROM website_promotions WHERE deleted_at IS NULL AND active = 1 ORDER BY sort_order, id`)
     .filter(p => (!p.starts_on || p.starts_on <= today) && (!p.ends_on || p.ends_on >= today))
-    .map(p => ({ id: slugify(p.title), tab: p.tab, eyebrow: p.eyebrow ?? '', title: p.title, developer: p.developer ?? '', community: p.community ?? '', priceGuide: p.price_guide ?? '', planHighlight: p.plan_highlight ?? '', image: p.image ?? '', href: p.href ?? '/off-plan', benefits: lines(p.benefits) }))
+    .map(p => ({ id: slugify(p.title), tab: p.tab, eyebrow: p.eyebrow ?? '', title: p.title, shortTitle: p.short_title || String(p.title).split(/\s+/).slice(0, 3).join(' '), developer: p.developer ?? '', community: p.community ?? '', priceGuide: p.price_guide ?? '', planHighlight: p.plan_highlight ?? '', image: p.image ?? '', href: p.href ?? '/off-plan', benefits: lines(p.benefits) }))
   return { listings: listings.map(l => l.out), promotions: [...hotDeals, ...promos], problems }
 }
 

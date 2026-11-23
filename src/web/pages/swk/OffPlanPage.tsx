@@ -188,19 +188,19 @@ function Spotlight({ items, now, onOpen }: { items: Project[]; now: Date; onOpen
       <AnimatePresence mode="popLayout">
         <motion.div key={p.id} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${p.image})` }} initial={{ opacity: 0, scale: 1.12 }} animate={{ opacity: 1, scale: 1.02 }} exit={{ opacity: 0 }} transition={{ opacity: { duration: .8 }, scale: { duration: 7, ease: 'linear' } }} />
       </AnimatePresence>
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(18,18,18,.94) 0%, rgba(18,18,18,.7) 45%, rgba(18,18,18,.1) 100%)' }} />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(15,42,51,.94) 0%, rgba(15,42,51,.7) 45%, rgba(15,42,51,.1) 100%)' }} />
       <div className="relative z-[1] p-6 md:p-10 flex flex-col md:flex-row gap-6 md:items-end justify-between min-h-[340px] md:min-h-[380px]">
         <AnimatePresence mode="wait">
           <motion.div key={p.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .5, ease: [0.16, 1, 0.3, 1] }} className="max-w-[620px] text-white flex flex-col gap-3 mt-auto">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="swk-pill" style={{ background: 'rgba(14,159,110,.2)', color: '#f7f7f7' }}>Featured launch</span>
+              <span className="swk-pill" style={{ background: 'rgba(138,98,28,.2)', color: '#f8f5ef' }}>Featured launch</span>
               <span className="swk-pill" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }}>{p.handoverQ} handover</span>
               {logo && <span className="h-7 px-2 rounded-lg bg-white/95 grid place-items-center"><img src={logo} alt={p.developer} className="h-5 object-contain" /></span>}
             </div>
             <h2 className="font-display text-[30px] md:text-[42px] font-semibold leading-[1.05] !text-white" style={{ color: '#fff' }}>{p.project}</h2>
             <p className="text-[14px] text-white/75">{p.blurb}</p>
             <div className="flex flex-wrap gap-6 mt-1">
-              <div><div className="text-[11px] uppercase tracking-wider text-white/55">From</div><div className="font-display text-[22px] font-semibold" style={{ color: '#f7f7f7' }}>{aed(p.from, { compact: true })}</div></div>
+              <div><div className="text-[11px] uppercase tracking-wider text-white/55">From</div><div className="font-display text-[22px] font-semibold" style={{ color: '#f8f5ef' }}>{aed(p.from, { compact: true })}</div></div>
               <div><div className="text-[11px] uppercase tracking-wider text-white/55">Payment plan</div><div className="font-display text-[22px] font-semibold">{planLabel(p.plan)}</div></div>
               <div><div className="text-[11px] uppercase tracking-wider text-white/55">Community</div><div className="font-display text-[22px] font-semibold">{p.community}</div></div>
             </div>
@@ -247,7 +247,7 @@ function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; 
     <motion.article layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .45, delay: Math.min(i, 8) * .04 }} whileHover={{ y: -4 }} className="swk-card overflow-hidden flex flex-col group">
       <button onClick={onOpen} className="relative h-[180px] overflow-hidden text-left" aria-label={`Open ${p.project}`}>
         <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[1.2s] group-hover:scale-[1.06]" style={{ backgroundImage: `url(${p.image || communityImg(p.community)})` }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(18,18,18,0) 35%, rgba(18,18,18,.82) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,42,51,0) 35%, rgba(15,42,51,.82) 100%)' }} />
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           <Pill tone="oasis">SWK inventory</Pill>
           {isPost(p) && <Pill tone="sky">Post-handover</Pill>}
@@ -305,7 +305,7 @@ function ProjectDetail({ p, now, onToast }: { p: Project; now: Date; onToast: (m
   return (
     <div className="flex flex-col gap-5">
       <div className="relative h-[170px] rounded-2xl overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${p.image})` }}>
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(18,18,18,.85))' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(15,42,51,.85))' }} />
         <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between text-white">
           <div><div className="text-[12px] opacity-75">{p.blurb}</div></div>
           <Link to={`/e/properties/${p.swkId}`} className="swk-pill swk-pill-champ">Open property record</Link>
@@ -355,8 +355,8 @@ function ProjectDetail({ p, now, onToast }: { p: Project; now: Date; onToast: (m
       </div>
 
       <div className="rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${SWK.navy}, ${SWK.midnight})` }}>
-        <div className="flex items-center justify-between gap-2"><span className="swk-eyebrow" style={{ color: '#f7f7f7' }}>SWK commission estimate</span><span className="text-[11px] text-white/60">{p.commission}% developer-paid</span></div>
-        <div className="font-display text-[28px] font-semibold mt-1" style={{ color: '#f7f7f7' }}>{aed(gross)}</div>
+        <div className="flex items-center justify-between gap-2"><span className="swk-eyebrow" style={{ color: '#f8f5ef' }}>SWK commission estimate</span><span className="text-[11px] text-white/60">{p.commission}% developer-paid</span></div>
+        <div className="font-display text-[28px] font-semibold mt-1" style={{ color: '#f8f5ef' }}>{aed(gross)}</div>
         <div className="text-[12px] text-white/70">+ VAT {aed(gross * UAE.vat)} · invoice {aed(gross * (1 + UAE.vat))}</div>
         <label className="block mt-3 text-[12px] text-white/80">Agent split {split}% → agent {aed(gross * split / 100)} · SWK net {aed(gross * (100 - split) / 100)}
           <input type="range" min={30} max={80} step={5} value={split} onChange={e => setSplit(Number(e.target.value))} className="w-full mt-1" style={{ accentColor: SWK.champ }} aria-label="Agent split percent" />

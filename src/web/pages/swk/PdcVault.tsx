@@ -116,7 +116,7 @@ export default function PdcVault() {
       />
 
       {notice && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="px-4 py-2.5 rounded-xl bg-[#ececec] border border-[#b4dfcf] text-[#2b2b2b] text-sm font-semibold flex items-center gap-2">
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="px-4 py-2.5 rounded-xl bg-[#ece6da] border border-[#b4dfcf] text-[#22424c] text-sm font-semibold flex items-center gap-2">
           <CheckCircle2 size={16} />{notice}
         </motion.div>
       )}
@@ -174,7 +174,7 @@ export default function PdcVault() {
                     <tr key={c.id}>
                       <td className="font-semibold">
                         <span className="inline-flex items-center gap-1.5">
-                          <CreditCard size={14} className="text-[#1e1e1e]" />
+                          <CreditCard size={14} className="text-[#16363f]" />
                           {c.chequeNo}
                         </span>
                       </td>
@@ -227,7 +227,7 @@ export default function PdcVault() {
             <div style={{ height: 210 }}>
               <ResponsiveContainer>
                 <BarChart data={bankData} layout="vertical" margin={{ left: 12, right: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f4f0e8" horizontal={false} />
                   <XAxis type="number" tickFormatter={v => aed(v, { compact: true }).replace('AED ', '')} />
                   <YAxis type="category" dataKey="bank" width={115} />
                   <Tooltip formatter={(v: any) => aed(Number(v))} />
@@ -246,7 +246,7 @@ export default function PdcVault() {
                 ['2. 7-day replacement window', 'Issue formal cure notice before escalating; log partial payment or replacement cheque in SWK Vault.'],
                 ['3. Writ of Execution / RDC filing', 'Under UAE Federal Decree-Law 14/2020, a dishonoured cheque constitutes an executive instrument directly enforceable at Dubai Rental Dispute Centre (RDC).'],
               ].map(([t, s]) => (
-                <li key={t} className="p-3 rounded-xl bg-white border border-[#e5e5e5]">
+                <li key={t} className="p-3 rounded-xl bg-white border border-[#e6e0d4]">
                   <div className="font-semibold text-ink">{t}</div>
                   <div className="text-xs text-muted mt-0.5">{s}</div>
                 </li>

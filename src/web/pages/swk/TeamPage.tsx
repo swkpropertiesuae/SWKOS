@@ -15,7 +15,7 @@ const ACCESS_SUMMARY: Record<string, string[]> = {
   Manager: ['CRM, sales, properties, leases, finance, HR, reports', 'Deletions need Owner approval', 'View-only administration'],
   HR: ['HR & Payroll: employees, leave, attendance, payroll (with approvals)', 'Employee records', 'HR documents, tasks and HR reports'],
   'Office Admin': ['Reception & walk-in enquiries (create leads)', 'Company documents, calendar and tasks', 'Support tickets; own attendance & leave'],
-  'Staff (Attendance & General)': ['Attendance check-in, own leave & daily reports', 'Company manual, Market Pulse, calendar and AI assistant', 'Assigned deals only'],
+  'Staff (Attendance & General)': ['Attendance check-in, own leave & daily reports', 'Company manual, Market Pulse and company calendar', 'Assigned deals only'],
 }
 
 const accountOf = (p: SwkTeamProfile) => (p.email ? SWK_STAFF_ACCOUNTS.find(a => a.email === p.email) : undefined)
@@ -60,8 +60,8 @@ function Section({ icon: Icon, title, items }: { icon: typeof Star; title: strin
   if (!items.length) return null
   return (
     <section className="web-card p-6">
-      <div className="mb-4 flex items-center gap-2"><Icon size={16} className="text-[#0e9f6e]" /><h2 className="m-0 text-[11px] font-medium uppercase tracking-[0.18em] text-[#8b8b8b]">{title}</h2></div>
-      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">{items.map(i => <li key={i} className="rounded-full bg-[#f7f7f7] px-3.5 py-1.5 text-[13px] text-[#121212]">{i}</li>)}</ul>
+      <div className="mb-4 flex items-center gap-2"><Icon size={16} className="text-[#8a621c]" /><h2 className="m-0 text-[11px] font-medium uppercase tracking-[0.18em] text-[#5b676e]">{title}</h2></div>
+      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">{items.map(i => <li key={i} className="rounded-full bg-[#f8f5ef] px-3.5 py-1.5 text-[13px] text-[#0f2a33]">{i}</li>)}</ul>
     </section>
   )
 }
@@ -80,7 +80,7 @@ export function TeamProfilePage() {
   ]
   return (
     <div className="mx-auto max-w-[1260px]">
-      <Link to="/team" className="mb-6 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[#4a4a4a] no-underline hover:text-[#0e9f6e]"><ArrowLeft size={14} /> All team</Link>
+      <Link to="/team" className="mb-6 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[#3d4a51] no-underline hover:text-[#8a621c]"><ArrowLeft size={14} /> All team</Link>
       <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-6 lg:self-start">
           <ProfileCard
@@ -100,15 +100,15 @@ export function TeamProfilePage() {
             <ProfileAvatar name={p.name} src={p.photo || undefined} size="md" />
             <div className="min-w-0 flex-1">
               <div className="web-eyebrow">SWK OS account</div>
-              <div className="mt-1 text-[15px] font-medium text-[#121212]">{acc ? `${acc.designation} · ${acc.empNo}` : 'Website profile only (no OS sign-in yet)'}</div>
-              {showContact && acc && <div className="mt-1 text-[13px] text-[#4a4a4a]">{acc.displayEmail} · {acc.phone}</div>}
+              <div className="mt-1 text-[15px] font-medium text-[#0f2a33]">{acc ? `${acc.designation} · ${acc.empNo}` : 'Website profile only (no OS sign-in yet)'}</div>
+              {showContact && acc && <div className="mt-1 text-[13px] text-[#3d4a51]">{acc.displayEmail} · {acc.phone}</div>}
             </div>
-            {p.experience && <div className="text-right"><div className="web-stat">{p.experience.split(' ')[0]}</div><div className="mt-1 text-[11px] text-[#8b8b8b]">{p.experience.split(' ').slice(1).join(' ')}</div></div>}
+            {p.experience && <div className="text-right"><div className="web-stat">{p.experience.split(' ')[0]}</div><div className="mt-1 text-[11px] text-[#5b676e]">{p.experience.split(' ').slice(1).join(' ')}</div></div>}
           </section>
           {access.length > 0 && (
             <section className="web-card p-6">
-              <div className="mb-4 flex items-center gap-2"><ShieldCheck size={16} className="text-[#0e9f6e]" /><h2 className="m-0 text-[11px] font-medium uppercase tracking-[0.18em] text-[#8b8b8b]">Role access · {acc!.roleName}</h2></div>
-              <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">{access.map(a => <li key={a} className="rounded-xl border border-[#e5e5e5] px-4 py-3 text-[13.5px] text-[#121212]">{a}</li>)}</ul>
+              <div className="mb-4 flex items-center gap-2"><ShieldCheck size={16} className="text-[#8a621c]" /><h2 className="m-0 text-[11px] font-medium uppercase tracking-[0.18em] text-[#5b676e]">Role access · {acc!.roleName}</h2></div>
+              <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">{access.map(a => <li key={a} className="rounded-xl border border-[#e6e0d4] px-4 py-3 text-[13.5px] text-[#0f2a33]">{a}</li>)}</ul>
             </section>
           )}
           <Section icon={Star} title="Specialties" items={p.specialties} />

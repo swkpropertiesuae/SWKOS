@@ -252,7 +252,7 @@ export default function AgentsPage() {
           <Reveal className="grid gap-4 lg:grid-cols-2">
             <Card title="BRN licence tracker" subtitle="RERA broker cards — an expired BRN means the broker's listings must be paused (no Trakheesi advertising)">
               {(expired.length > 0 || expiring.length > 0) && (
-                <div className="mb-3 rounded-xl p-3 flex gap-2 text-[12.5px]" style={{ background: '#f7f7f7', color: '#a33a22' }}>
+                <div className="mb-3 rounded-xl p-3 flex gap-2 text-[12.5px]" style={{ background: '#f8f5ef', color: '#a33a22' }}>
                   <AlertTriangle size={16} className="flex-none mt-0.5" />
                   <span>{expired.length} expired, {expiring.length} expiring within 60 days. Book DREI renewal and pause portal listings of expired brokers.</span>
                 </div>
@@ -281,7 +281,7 @@ export default function AgentsPage() {
                     <ProgressRing value={a.earned ? (a.paid / a.earned) * 100 : 0} size={50} stroke={6} color={SWK.oasis} sub={undefined} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2"><b className="text-[13px] truncate" style={{ color: INK }}>{a.name}</b><span className="text-[11px]" style={{ color: MUTED }}>{a.split}% split</span></div>
-                      <div className="flex h-2 rounded-full overflow-hidden mt-1.5" style={{ background: '#f5f5f5' }}>
+                      <div className="flex h-2 rounded-full overflow-hidden mt-1.5" style={{ background: '#f4f0e8' }}>
                         <motion.div style={{ background: SWK.oasis }} initial={{ width: 0 }} whileInView={{ width: `${a.earned ? (a.paid / a.earned) * 100 : 0}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: i * 0.06 }} />
                         <motion.div style={{ background: SWK.champ }} initial={{ width: 0 }} whileInView={{ width: `${a.earned ? (a.pending / a.earned) * 100 : 0}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.2 + i * 0.06 }} />
                       </div>
@@ -312,12 +312,12 @@ export default function AgentsPage() {
                   const v = heat[di][hi], a = v / heatMax
                   return <motion.span key={`${d}${h}`} title={`${d} ${h}:00 — ${v} activities`} role="cell" aria-label={`${d} ${h}:00, ${v} activities`}
                     initial={{ opacity: 0, scale: 0.4 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: (di * HOURS.length + hi) * 0.004 }}
-                    className="rounded-md h-7" style={{ background: v === 0 ? '#f5f5f5' : `rgba(18,18,18,${0.18 + a * 0.82})` }} />
+                    className="rounded-md h-7" style={{ background: v === 0 ? '#f4f0e8' : `rgba(15,42,51,${0.18 + a * 0.82})` }} />
                 }),
               ])}
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-3 text-[11px]" style={{ color: MUTED }}>Less {[0.1, 0.3, 0.5, 0.7, 0.95].map(x => <span key={x} className="w-5 h-3 rounded" style={{ background: `rgba(18,18,18,${x})` }} />)} More · Populated automatically as viewings and calls are scheduled.</div>
+          <div className="flex items-center gap-2 mt-3 text-[11px]" style={{ color: MUTED }}>Less {[0.1, 0.3, 0.5, 0.7, 0.95].map(x => <span key={x} className="w-5 h-3 rounded" style={{ background: `rgba(15,42,51,${x})` }} />)} More · Populated automatically as viewings and calls are scheduled.</div>
         </Card>
       </Reveal>
       <div className="text-[11.5px]" style={{ color: MUTED }}>Totals: <AnimatedNumber value={totalDeals} /> deals · {num(totalViewings)} viewings</div>

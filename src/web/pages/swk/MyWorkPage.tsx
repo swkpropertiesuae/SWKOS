@@ -9,7 +9,7 @@ import { useToast } from '../../lib/toast'
 type Task = { id: number; version: number; title: string; status: string; priority: string; due_date: string | null; kind: string; link_label?: string; link_entity?: string; link_id?: number; _labels?: Record<string, string> }
 const dubaiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date())
 const addDays = (d: string, n: number) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10) }
-const PRIORITY: Record<string, string> = { Urgent: '#dc2626', High: '#b45309', Medium: '#1b6aa7', Low: '#8b8b8b' }
+const PRIORITY: Record<string, string> = { Urgent: '#a3263a', High: '#b45309', Medium: '#8a621c', Low: '#5b676e' }
 
 /** monday-style "My work": everything assigned to me, bucketed by due date, with one-click done and quick add. */
 export default function MyWorkPage() {
@@ -38,25 +38,25 @@ export default function MyWorkPage() {
         <div className="flex gap-2"><Link to="/e/tasks?view=kanban" className="web-btn light"><Columns3 size={14} /> Board</Link><Link to="/e/tasks?view=calendar" className="web-btn light"><CalendarDays size={14} /> Calendar</Link></div>
       </header>
       <form className="web-card mb-8 flex flex-wrap items-center gap-2 p-3" onSubmit={e => { e.preventDefault(); void add() }}>
-        <Plus size={18} className="ml-2 text-[#8b8b8b]" />
+        <Plus size={18} className="ml-2 text-[#5b676e]" />
         <input className="min-w-[200px] flex-1 border-0 bg-transparent px-2 py-2 text-[15px] outline-none no-focus-outline" placeholder="Add a task for yourself…" aria-label="New task" value={title} onChange={e => setTitle(e.target.value)} />
         <input type="date" className="input" style={{ width: 160 }} aria-label="Due date" value={due} onChange={e => setDue(e.target.value)} />
         <button className="web-btn" style={{ height: 40 }} disabled={!title.trim()}>Add</button>
       </form>
       {Object.entries(buckets).filter(([, v]) => v.length).map(([k, list]) => (
         <section key={k} className="mb-6">
-          <div className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${k === 'Overdue' ? 'text-[#dc2626]' : 'text-[#8b8b8b]'}`}>{k}<span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[#4a4a4a]">{list.length}</span></div>
-          <div className="web-card divide-y divide-[#e5e5e5]">
+          <div className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${k === 'Overdue' ? 'text-[#a3263a]' : 'text-[#5b676e]'}`}>{k}<span className="rounded-full bg-[#f4f0e8] px-2 py-0.5 text-[#3d4a51]">{list.length}</span></div>
+          <div className="web-card divide-y divide-[#e6e0d4]">
             {list.map(t => (
               <div key={t.id} className="group flex items-center gap-3 px-4 py-3">
-                <button type="button" aria-label={`Mark ${t.title} done`} className="flex size-6 shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-[#cfcfcf] hover:text-[#0e9f6e]" onClick={() => void done(t)}><Circle size={20} className="group-hover:hidden" /><Check size={20} className="hidden group-hover:block" /></button>
+                <button type="button" aria-label={`Mark ${t.title} done`} className="flex size-6 shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-[#cfc6b4] hover:text-[#8a621c]" onClick={() => void done(t)}><Circle size={20} className="group-hover:hidden" /><Check size={20} className="hidden group-hover:block" /></button>
                 <Link to={`/e/tasks/${t.id}`} className="min-w-0 flex-1 no-underline">
-                  <span className="block truncate text-[14.5px] text-[#121212]">{t.title}</span>
-                  <span className="block truncate text-[12px] text-[#8b8b8b]">{[t.kind !== 'Task' && t.kind, t.link_label, t._labels?.project_id].filter(Boolean).join(' · ')}</span>
+                  <span className="block truncate text-[14.5px] text-[#0f2a33]">{t.title}</span>
+                  <span className="block truncate text-[12px] text-[#5b676e]">{[t.kind !== 'Task' && t.kind, t.link_label, t._labels?.project_id].filter(Boolean).join(' · ')}</span>
                 </Link>
-                <span className="hidden items-center gap-1.5 text-[12px] text-[#4a4a4a] sm:flex"><span className="size-2 rounded-full" style={{ background: PRIORITY[t.priority] ?? '#8b8b8b' }} />{t.priority}</span>
+                <span className="hidden items-center gap-1.5 text-[12px] text-[#3d4a51] sm:flex"><span className="size-2 rounded-full" style={{ background: PRIORITY[t.priority] ?? '#5b676e' }} />{t.priority}</span>
                 <span className="web-pill">{t.status}</span>
-                <span className={`w-20 text-right text-[12px] ${t.due_date && t.due_date < today ? 'font-semibold text-[#dc2626]' : 'text-[#737373]'}`}>{t.due_date ? new Date(t.due_date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '—'}</span>
+                <span className={`w-20 text-right text-[12px] ${t.due_date && t.due_date < today ? 'font-semibold text-[#a3263a]' : 'text-[#5b676e]'}`}>{t.due_date ? new Date(t.due_date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '—'}</span>
               </div>))}
           </div>
         </section>
