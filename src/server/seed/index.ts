@@ -3,7 +3,6 @@ import { config } from '../config'
 import { createRecord,getDef,SYSTEM_CTX } from '../engine'
 import { nowIso } from '../util'
 import * as D from './data'
-import { setSettings } from '../settings'
 import { seedCompanyDocuments } from './company-documents'
 import { seedCompliance } from './compliance'
 import { syncStudioLibrary } from '../studio/library'
@@ -230,22 +229,19 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
     mark('developers')
   }
   if (!done('compliance')) { seedCompliance({ demo: opts.demo }); mark('compliance') }
-  if (!opts.demo && !done('company_documents_20261015')) {
+  if (!opts.demo && !done('company_documents_20261123')) {
     seedCompanyDocuments()
     mark('company_documents_20261015')
-  }
-  if (!opts.demo && !done('document_presentation_20261015')) {
-    setSettings({ company_address: 'Bur Dubai, Dubai, UAE' })
     mark('document_presentation_20261015')
+    mark('company_documents_20261123')
   }
   if (withUsers && !opts.demo && !done('swk_staff_accounts_v2')) {
     ensureHardcodedSwkStaffAccounts()
     mark('swk_staff_accounts_v2')
   }
-  if (!done('studio_library_v2')) {
-    syncStudioLibrary()
-    mark('studio_library_v2')
-  }
+  // syncStudioLibrary() hashes library.json and skips in one query when up to date,
+  // so existing deployments automatically refresh all built-in Document Studio templates.
+  syncStudioLibrary()
 }
 
 /**

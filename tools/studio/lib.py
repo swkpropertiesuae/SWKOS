@@ -73,8 +73,9 @@ def party_block(role, kind="ind"):
     return fields(rows, role)
 
 BROKER = fields([
-    ("Brokerage", "{{company.name}}"), ("RERA ORN", "51517"), ("Office", "{{company.address}}"),
-    ("Telephone / e-mail", "{{company.phone}} · {{company.email}}"), ("Agent name & BRN", "[Agent name] · BRN [000000]"),
+    ("Brokerage", "{{company.name}}"), ("DET Trade Licence No.", "{{company.trade_license}}"), ("RERA ORN", "{{company.orn}}"),
+    ("Office", "{{company.address}}"), ("Telephone / WhatsApp & e-mail", "{{company.phone}} · {{company.email}}"),
+    ("Website", "{{company.website}}"), ("Agent name & BRN", "[Agent name] · BRN [000000]"),
 ], "Broker")
 
 PROPERTY = lambda title="Property": fields([

@@ -6,20 +6,20 @@ def T(code, title, kind, desc, html, tags="", cat="Corporate Governance"):
 DOCS = [
 T("CO-FACTS", "Company particulars", "Form", "Official company particulars sheet for banks, developers and government portals.",
   head("Corporate information", "Company particulars") +
-  fields([("Legal name", "{{company.name}}"), ("Legal form", "Limited Liability Company (L.L.C.)"), ("Trade licence no.", "[Licence no.]"), ("Licensing authority", "Department of Economy and Tourism, Dubai"),
-          ("Licence activities", "Real estate brokerage; leasing and management of property; [other]"), ("RERA Office Registration (ORN)", "51517"), ("Tax registration no. (TRN)", "[TRN]"),
-          ("Date of establishment", "[Date]"), ("Registered office", "{{company.address}}"), ("Telephone", "{{company.phone}}"), ("E-mail", "{{company.email}}"), ("Website", "{{company.website}}")], "Registration") +
-  table(["Name", "Role", "Nationality", "Shareholding"], [["[Name]", "Owner & Managing Director", "[Nationality]", "[100]%"], ["[Name]", "[Manager]", "[Nationality]", "—"]], "Ownership and management") +
+  fields([("Legal name", "{{company.name}}"), ("Legal form", "Limited Liability Company – Single Owner (L.L.C.)"), ("DET Trade Licence No.", "{{company.trade_license}}"), ("Licensing authority", "Department of Economy and Tourism (DET), Dubai"),
+          ("Licence activities", "Real estate brokerage; leasing and property management"), ("RERA Office Registration (ORN)", "{{company.orn}}"), ("Tax registration no. (TRN)", "[TRN]"),
+          ("Established / experience", "Founded 2008 · 18+ years UAE real estate advisory across 5 Emirates"), ("Registered office", "{{company.address}}"), ("Telephone / WhatsApp", "{{company.phone}}"), ("E-mail", "{{company.email}}"), ("Website", "{{company.website}}"), ("Office hours", "{{company.hours}}")], "Registration") +
+  table(["Name", "Role", "Jurisdiction / Coverage", "Shareholding"], [["Shabib Siraj", "Owner & Managing Director", "Dubai & UAE", "100%"], ["Mohammad Haseeb", "Sales & Operations Manager", "Dubai & UAE", "—"]], "Ownership and management") +
   fields([("Bank", "[Bank name]"), ("Account name", "{{company.name}}"), ("IBAN", "[AE00 0000 0000 0000 0000 000]"), ("SWIFT", "[SWIFT]")], "Banking") +
-  company_sig(), "company profile facts licence ORN TRN"),
+  company_sig(), "company profile facts licence ORN TRN 1511391 51517"),
 T("CO-LETTER", "Company letterhead", "Letter", "Blank company letter on the official letterhead.",
   letter("Letter", "[Recipient name]<br>[Company]<br>[Address]", "[Subject]", ["Dear [Recipient],", "[Body of the letter.]", "Should you require any further information, please do not hesitate to contact us."]), "letter blank letterhead"),
 T("CO-REG", "Corporate document register", "Form", "Register of the company's constitutional, licensing and regulatory documents with expiry dates.",
   head("Corporate records", "Corporate document register") +
-  table(["Document", "Number", "Issued by", "Issue date", "Expiry", "Owner"], [[d, "[No.]", a, "[Date]", "[Date]", "[Name]"] for d, a in [
-    ("Trade licence", "DET Dubai"), ("Memorandum of Association", "Notary Public"), ("RERA ORN certificate", "RERA / DLD"), ("Establishment card (Immigration)", "GDRFA"),
-    ("MOHRE establishment registration", "MOHRE"), ("VAT registration certificate", "Federal Tax Authority"), ("Corporate tax registration", "Federal Tax Authority"),
-    ("Office Ejari", "RERA"), ("goAML registration", "UAE FIU"), ("Chamber of Commerce membership", "Dubai Chambers"), ("Professional indemnity insurance", "[Insurer]"), ("Company stamp & seal register", "Internal")]]) +
+  table(["Document", "Number", "Issued by", "Issue date", "Expiry", "Owner"], [[d, num, a, "[Date]", "[Date]", "[Name]"] for d, num, a in [
+    ("Trade licence", "{{company.trade_license}}", "DET Dubai"), ("Memorandum of Association", "[No.]", "Notary Public"), ("RERA ORN certificate", "{{company.orn}}", "RERA / DLD"), ("Establishment card (Immigration)", "[No.]", "GDRFA"),
+    ("MOHRE establishment registration", "[No.]", "MOHRE"), ("VAT registration certificate", "[No.]", "Federal Tax Authority"), ("Corporate tax registration", "[No.]", "Federal Tax Authority"),
+    ("Office Ejari", "[No.]", "RERA"), ("goAML registration", "[No.]", "UAE FIU"), ("Chamber of Commerce membership", "[No.]", "Dubai Chambers"), ("Professional indemnity insurance", "[No.]", "[Insurer]"), ("Company stamp & seal register", "[No.]", "Internal")]]) +
   note("Review this register monthly; licences must be renewed before expiry to keep advertising permits and broker cards valid."), "register licence expiry corporate records"),
 T("CG-BRD-RES", "Board / owner resolution", "Document", "Written resolution of the owner or board approving a corporate action.",
   head("Corporate resolution", "Written resolution of the owner(s)", [("Company", "{{company.name}}"), ("Resolution no.", "[RES-0000]"), ("Date", "{{today}}")]) +
