@@ -53,6 +53,13 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   masked_call_provider: 'none', masked_call_caller_id: '', masked_call_twilio_sid: '', masked_call_twilio_token: '', masked_call_webhook_url: '', masked_call_webhook_secret: '', masked_call_record: true,
   // --- AI
   ai_enabled: false, ai_provider: 'groq', ai_base_url: '', ai_api_key: '', ai_model: '', ai_fallback_provider: '', ai_fallback_base_url: '', ai_fallback_api_key: '', ai_fallback_model: '', ai_company_context: '',
+  ai_allow_nonvault_vision_free: false, ai_staff_daily_req_limit: 150, ai_staff_rpm_limit: 10,
+  // --- Web Search (Utilities Unified Search)
+  web_search_provider: 'duckduckgo', web_search_api_key: '', web_search_searxng_url: '',
+  // --- SIP / VoIP Softphone
+  sip_enabled: false, sip_ws_url: '', sip_domain: '', sip_outbound_proxy: '', sip_ice_servers: '[]', sip_caller_id_mode: 'company_main', sip_vault_bridge_prefix: '', sip_webhook_secret: '',
+  // --- Push Notifications (Web Push VAPID & FCM)
+  vapid_public_key: '', vapid_private_key: '', fcm_service_account_json: '', push_hide_preview_global: false,
   // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security
   office_wifi_ssid: 'XAVIER BUSINESS',
   office_wifi_bssid: '',
@@ -62,6 +69,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   office_gps_lat: '25.2532',
   office_gps_lng: '55.2972',
   office_gps_radius_m: 200, qr_token_secret: '', qr_mode: 'fixed', qr_fixed_version: 1, device_binding_enforce: true, gps_max_accuracy_m: 150,
+  mobile_require_device_approval: false, gps_retention_days: 90, field_duty_auto_stop_hour: 21,
   // --- tracking
   tracking_provider: 'none', tracking_api_key: '', tracking_webhook_secret: '',
   // --- e-invoicing (UAE PINT AE / Peppol)
@@ -80,7 +88,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'vapid_private_key', 'fcm_service_account_json'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {
