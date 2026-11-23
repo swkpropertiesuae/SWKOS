@@ -1,19 +1,31 @@
-import { useMemo,useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-Area,AreaChart,Bar as RBar,BarChart,CartesianGrid,Cell,Pie,PieChart,ResponsiveContainer,Tooltip,XAxis,YAxis,
+  Area, AreaChart, Bar as RBar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
+import QRCode from 'qrcode'
 import {
-Award,Calculator,Check,Copy,Printer,ShieldCheck
+  AlertTriangle, ArrowLeftRight, Award, Calculator, Check, Copy, Download, Printer, QrCode, RotateCcw, ShieldCheck,
 } from 'lucide-react'
 import {
-AnimatedNumber,Bar,CHART,Card,Field,ModuleHeader,Pill,ProgressRing,Reveal,SWK,Segmented,aed,num,pct,
+  AnimatedNumber, Bar, CHART, Card, Field, ModuleHeader, Pill, ProgressRing, Reveal, SWK, Segmented, aed, num, pct,
 } from '../../swk/ui'
 import {
-COMMUNITIES,RERA_BANDS,RENT_INDEX,UAE,commissionWaterfall,costToClose,leaseCosts,mortgagePlan,paymentPlan,reraIncrease,visaEligibility,yieldCalc,type Residency,
+  COMMUNITIES, RERA_BANDS, RENT_INDEX, UAE, commissionWaterfall, costToClose, leaseCosts, mortgagePlan, paymentPlan, reraIncrease, visaEligibility, yieldCalc, type Residency,
 } from '../../swk/uae'
 
-type ToolKey = 'cost' | 'mortgage' | 'rera' | 'yield' | 'visa' | 'commission' | 'movein' | 'offplan'
+type ToolKey =
+  | 'cost'
+  | 'mortgage'
+  | 'rera'
+  | 'yield'
+  | 'visa'
+  | 'commission'
+  | 'movein'
+  | 'offplan'
+  | 'converter'
+  | 'pdc'
+  | 'qr'
 
 const TOOLS: { value: ToolKey; label: string }[] = [
   { value: 'cost', label: 'Buyer Cost-to-Close' },
@@ -24,12 +36,72 @@ const TOOLS: { value: ToolKey; label: string }[] = [
   { value: 'commission', label: 'Commission Split' },
   { value: 'movein', label: 'Tenant Move-In' },
   { value: 'offplan', label: 'Off-Plan Schedule' },
+  { value: 'converter', label: 'Area & Currency' },
+  { value: 'pdc', label: 'PDC Cheque Split' },
+  { value: 'qr', label: 'Public QR Generator' },
 ]
 
-export default function ToolkitPage() {
+const SQFT_PER_SQM = 10.7639104167
+
+type CcyCode = 'AED' | 'USD' | 'EUR' | 'GBP' | 'INR' | 'SAR' | 'RUB' | 'CNY'
+const DEFAULT_RATES_TO_AED: Record<CcyCode, number> = {
+  AED: 1,
+  USD: 3.6725,
+  EUR: 3.98,
+  GBP: 4.66,
+  INR: 0.0435,
+  SAR: 0.9793,
+  RUB: 0.038,
+  CNY: 0.508,
+}
+const CCY_LABELS: Record<CcyCode, string> = {
+  AED: 'UAE Dirham',
+  USD: 'US Dollar',
+  EUR: 'Euro',
+  GBP: 'British Pound',
+  INR: 'Indian Rupee',
+  SAR: 'Saudi Riyal',
+  RUB: 'Russian Ruble',
+  CNY: 'Chinese Yuan',
+}
+
+type QrMode = 'listing' | 'whatsapp' | 'vcard' | 'custom'
+
+/** Reject any QR text targeting internal attendance / reception check-in terminals. */
+function isForbiddenQrPayload(raw: string): string | null {
+  const candidates = [raw]
+  try {
+    const once = decodeURIComponent(raw)
+    candidates.push(once)
+    candidates.push(decodeURIComponent(once))
+  } catch {
+    /* ignore malformed percent encoding */
+  }
+  for (const s of candidates) {
+    if (/swk[12]\./i.test(s)) {
+      return 'Blocked: Attendance QR prefixes (SWK1. / SWK2.) cannot be generated in the Public QR tool.'
+    }
+    if (/\/reception-qr/i.test(s) || /\/qr-checkin/i.test(s) || /\/qr-reception/i.test(s)) {
+      return 'Blocked: Internal office reception check-in paths (/reception-qr, /qr-checkin) cannot be generated here.'
+    }
+  }
+  return null
+}
+
+function todayDateInput(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+export default function ToolkitPage({ embedded = false }: { embedded?: boolean }) {
   const [sp, setSp] = useSearchParams()
   const active = (TOOLS.some(t => t.value === sp.get('tool')) ? sp.get('tool') : 'cost') as ToolKey
-  const setActive = (t: ToolKey) => setSp({ tool: t }, { replace: true })
+  const setActive = (t: ToolKey) => {
+    setSp(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('tool', t)
+      return next
+    }, { replace: true })
+  }
   const [copied, setCopied] = useState(false)
 
   // 1) Cost to close state
@@ -96,6 +168,34 @@ export default function ToolkitPage() {
   const [oPostInst, setOPostInst] = useState(4)
   const [oMonthsToHandover, setOMonthsToHandover] = useState(24)
 
+  // 9) Area & Currency converter state
+  const [convSqft, setConvSqft] = useState(1250)
+  const [convPricePerSqft, setConvPricePerSqft] = useState(2150)
+  const [convCcy, setConvCcy] = useState<CcyCode>('AED')
+  const [convAmount, setConvAmount] = useState(2_000_000)
+  const [rates, setRates] = useState<Record<CcyCode, number>>({ ...DEFAULT_RATES_TO_AED })
+
+  // 10) PDC Cheque Split state
+  const [pdcRent, setPdcRent] = useState(160_000)
+  const [pdcCount, setPdcCount] = useState<'1' | '2' | '4' | '6' | '12'>('4')
+  const [pdcStart, setPdcStart] = useState(todayDateInput)
+  const [pdcFurnished, setPdcFurnished] = useState(false)
+  const [pdcEjariFee, setPdcEjariFee] = useState(UAE.ejariFee)
+
+  // 11) Public QR Generator state
+  const [qrMode, setQrMode] = useState<QrMode>('listing')
+  const [qrUrl, setQrUrl] = useState('https://swkpropertiesuae.com/properties')
+  const [qrWaPhone, setQrWaPhone] = useState('+971501000001')
+  const [qrWaText, setQrWaText] = useState('Hello SWK Properties, I would like to book a viewing.')
+  const [qrVcName, setQrVcName] = useState('SWK Properties Advisor')
+  const [qrVcPhone, setQrVcPhone] = useState('+97143304899')
+  const [qrVcEmail, setQrVcEmail] = useState('info@swkpropertiesuae.com')
+  const [qrVcTitle, setQrVcTitle] = useState('Senior Property Consultant')
+  const [qrCustom, setQrCustom] = useState('https://www.swk.properties')
+  const [qrCaption, setQrCaption] = useState('Scan to view SWK Properties')
+  const [qrDataUrl, setQrDataUrl] = useState('')
+  const [qrErr, setQrErr] = useState('')
+
   // Calculations
   const cLoan = cUseLoan ? Math.max(0, cPrice * (1 - cDownPct / 100)) : 0
   const costRes = useMemo(() => costToClose({ price: cPrice, loan: cLoan, brokerPct: cBrokerPct / 100, nocFee: cNoc, includeBroker: true }), [cPrice, cLoan, cBrokerPct, cNoc])
@@ -112,6 +212,110 @@ export default function ToolkitPage() {
     ho.setMonth(ho.getMonth() + oMonthsToHandover)
     return paymentPlan({ price: oPrice, bookingPct: oBooking, constructionPct: oConst, handoverPct: oHandover, postHandoverPct: oPost, constructionInstalments: oConstInst, postInstalments: oPostInst, start, handover: ho })
   }, [oPrice, oBooking, oConst, oHandover, oPost, oConstInst, oPostInst, oMonthsToHandover])
+
+  const convSqm = convSqft / SQFT_PER_SQM
+  const convAedTotal = Math.max(0, convAmount) * Math.max(0.0001, rates[convCcy] || 1)
+
+  const pdcSchedule = useMemo(() => {
+    const n = Math.max(1, Number(pdcCount))
+    const monthsStep = 12 / n
+    const baseDate = pdcStart ? new Date(`${pdcStart}T00:00:00`) : new Date()
+    const validBase = Number.isNaN(baseDate.getTime()) ? new Date() : baseDate
+    const rent = Math.max(0, pdcRent)
+    const perCheque = Math.floor((rent / n) * 100) / 100
+    const rows = Array.from({ length: n }, (_, i) => {
+      const due = new Date(validBase)
+      due.setMonth(due.getMonth() + Math.round(i * monthsStep))
+      const amount = i === n - 1 ? Math.round((rent - perCheque * (n - 1)) * 100) / 100 : perCheque
+      return {
+        index: i + 1,
+        dueDate: due.toISOString().slice(0, 10),
+        amount,
+      }
+    })
+    const depositPct = pdcFurnished ? 10 : 5
+    const deposit = rent * (depositPct / 100)
+    const agencyInclVat = rent * 0.05 * (1 + UAE.vat)
+    return {
+      rows,
+      depositPct,
+      deposit,
+      agencyInclVat,
+      firstCheque: rows[0]?.amount ?? 0,
+      dayOneTotal: (rows[0]?.amount ?? 0) + deposit + pdcEjariFee + agencyInclVat,
+    }
+  }, [pdcRent, pdcCount, pdcStart, pdcFurnished, pdcEjariFee])
+
+  const qrPayload = useMemo(() => {
+    if (qrMode === 'listing') return qrUrl.trim()
+    if (qrMode === 'whatsapp') {
+      const digits = qrWaPhone.replace(/[^\d]/g, '')
+      const msg = qrWaText.trim()
+      return digits ? `https://wa.me/${digits}${msg ? `?text=${encodeURIComponent(msg)}` : ''}` : ''
+    }
+    if (qrMode === 'vcard') {
+      return [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        `FN:${qrVcName.trim()}`,
+        'ORG:SWK Properties LLC',
+        qrVcTitle.trim() ? `TITLE:${qrVcTitle.trim()}` : '',
+        qrVcPhone.trim() ? `TEL;TYPE=CELL:${qrVcPhone.trim()}` : '',
+        qrVcEmail.trim() ? `EMAIL:${qrVcEmail.trim()}` : '',
+        'URL:https://www.swkpropertiesuae.com',
+        'END:VCARD',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    }
+    return qrCustom.trim()
+  }, [qrMode, qrUrl, qrWaPhone, qrWaText, qrVcName, qrVcTitle, qrVcPhone, qrVcEmail, qrCustom])
+
+  const qrBlockReason = useMemo(() => (qrPayload ? isForbiddenQrPayload(qrPayload) : null), [qrPayload])
+
+  useEffect(() => {
+    if (active !== 'qr') return
+    if (!qrPayload) {
+      setQrDataUrl('')
+      setQrErr('')
+      return
+    }
+    if (qrBlockReason) {
+      setQrDataUrl('')
+      setQrErr(qrBlockReason)
+      return
+    }
+    let cancelled = false
+    setQrErr('')
+    QRCode.toDataURL(qrPayload, {
+      width: 512,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#121212', light: '#ffffff' },
+    })
+      .then(url => {
+        if (!cancelled) setQrDataUrl(url)
+      })
+      .catch((e: any) => {
+        if (!cancelled) {
+          setQrDataUrl('')
+          setQrErr(e?.message || 'Could not generate QR code')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [active, qrPayload, qrBlockReason])
+
+  const downloadQrPng = () => {
+    if (!qrDataUrl || qrBlockReason) return
+    const a = document.createElement('a')
+    a.href = qrDataUrl
+    a.download = `swk-public-qr-${qrMode}.png`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
 
   const buildSummary = () => {
     switch (active) {
@@ -131,6 +335,12 @@ export default function ToolkitPage() {
         return `*SWK Properties — Tenant Move-In Estimate*\nAnnual Rent: ${aed(tRent)} (${tCheques} cheques of ${aed(moveRes.chequeAmount)})\n*Total Upfront Move-In:* ${aed(moveRes.moveIn)}\nMonthly DM Housing Fee (5%): ${aed(moveRes.housingFeeMonthly)}`
       case 'offplan':
         return `*SWK Properties — Off-Plan Payment Schedule*\nUnit Price: ${aed(oPrice)}\nPlan: ${oBooking}% Booking / ${oConst}% Construction / ${oHandover}% Handover / ${oPost}% Post-Handover\nDLD Oqood (4%): ${aed(oPrice * 0.04)}`
+      case 'converter':
+        return `*SWK Properties — Area & Currency Conversion*\nArea: ${num(convSqft, 1)} sqft = ${num(convSqm, 2)} sqm\nAmount: ${num(convAmount, 2)} ${convCcy} = ${aed(convAedTotal)} (USD ${num(convAedTotal / rates.USD, 0)} · EUR ${num(convAedTotal / rates.EUR, 0)} · GBP ${num(convAedTotal / rates.GBP, 0)})`
+      case 'pdc':
+        return `*SWK Properties — PDC Cheque Split Schedule*\nAnnual Rent: ${aed(pdcRent)} (${pdcCount} cheques)\nSecurity Deposit (${pdcSchedule.depositPct}%): ${aed(pdcSchedule.deposit)} | Ejari: ${aed(pdcEjariFee)}\n${pdcSchedule.rows.map(r => `• Cheque ${r.index} (${r.dueDate}): ${aed(r.amount)}`).join('\n')}`
+      case 'qr':
+        return qrBlockReason ? 'Public QR blocked by security policy' : `*SWK Properties — Public QR Link*\n${qrPayload}`
     }
   }
 
@@ -144,23 +354,34 @@ export default function ToolkitPage() {
 
   return (
     <div className="grid gap-5 max-w-[1640px] mx-auto">
-      <ModuleHeader
-        eyebrow="DLD · RERA · CBUAE · FTA"
-        title="UAE Deal Toolkit"
-        subtitle="Interactive calculators for Dubai real estate transfers, CBUAE mortgage pre-qualification, RERA Decree 43/2013 rental caps, net yields, Golden Visa thresholds, Form I commission splits and off-plan schedules."
-        icon={<Calculator size={24} />}
-        actions={
-          <div className="flex items-center gap-2">
-            <button type="button" className="swk-btn swk-btn-gold" onClick={copySummary}>
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              {copied ? 'Copied for WhatsApp' : 'Copy WhatsApp summary'}
-            </button>
-            <button type="button" className="swk-btn swk-btn-ghost" onClick={() => window.print()}>
-              <Printer size={16} />Print sheet
-            </button>
-          </div>
-        }
-      />
+      {!embedded && (
+        <ModuleHeader
+          eyebrow="DLD · RERA · CBUAE · FTA"
+          title="UAE Deal Toolkit"
+          subtitle="Interactive calculators for Dubai transfers, CBUAE mortgages, RERA rental caps, net yields, Golden Visa, PDC cheque schedules, area/currency conversions, and public QR codes."
+          icon={<Calculator size={24} />}
+          actions={
+            <div className="flex items-center gap-2">
+              <button type="button" className="swk-btn swk-btn-gold" onClick={copySummary}>
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? 'Copied for WhatsApp' : 'Copy WhatsApp summary'}
+              </button>
+              <button type="button" className="swk-btn swk-btn-ghost" onClick={() => window.print()}>
+                <Printer size={16} />Print sheet
+              </button>
+            </div>
+          }
+        />
+      )}
+
+      {embedded && (
+        <div className="flex justify-end gap-2">
+          <button type="button" className="swk-btn swk-btn-gold" onClick={copySummary}>
+            {copied ? <Check size={15} /> : <Copy size={15} />}
+            {copied ? 'Copied for WhatsApp' : 'Copy WhatsApp summary'}
+          </button>
+        </div>
+      )}
 
       <div className="overflow-x-auto pb-1">
         <Segmented value={active} onChange={setActive} options={TOOLS} layoutId="toolkit-tabs" />
@@ -640,6 +861,341 @@ export default function ToolkitPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </Card>
+        </Reveal>
+      )}
+
+      {/* ============================================================ 9. AREA & CURRENCY CONVERTER */}
+      {active === 'converter' && (
+        <Reveal className="grid gap-5 lg:grid-cols-12">
+          <Card className="lg:col-span-5" title="Dubai Area Converter (sqft ↔ sqm)" subtitle="DLD title deed square metres vs brokerage square feet">
+            <div className="grid gap-4">
+              <Field
+                label="Built-up / Plot Area (sq. ft)"
+                value={Number(convSqft.toFixed(2))}
+                onChange={v => setConvSqft(Math.max(0, v))}
+                suffix="sqft"
+                step={25}
+              />
+              <Field
+                label="Built-up / Plot Area (sq. m)"
+                value={Number(convSqm.toFixed(2))}
+                onChange={v => setConvSqft(Math.max(0, v) * SQFT_PER_SQM)}
+                suffix="sqm"
+                step={5}
+                hint={`1 sqm = ${SQFT_PER_SQM.toFixed(4)} sqft`}
+              />
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-line">
+                <Field
+                  label="Price per sqft"
+                  value={Math.round(convPricePerSqft)}
+                  onChange={v => setConvPricePerSqft(Math.max(0, v))}
+                  prefix="AED"
+                  step={50}
+                />
+                <Field
+                  label="Price per sqm"
+                  value={Math.round(convPricePerSqft * SQFT_PER_SQM)}
+                  onChange={v => setConvPricePerSqft(Math.max(0, v) / SQFT_PER_SQM)}
+                  prefix="AED"
+                  step={250}
+                />
+              </div>
+              <div className="rounded-2xl bg-[#121212] text-white p-4">
+                <div className="text-[11px] uppercase tracking-wider text-white/75">Implied Property Value</div>
+                <div className="font-display text-[22px] font-semibold mt-1">{aed(convSqft * convPricePerSqft)}</div>
+                <div className="text-[11.5px] text-white/70 mt-0.5">
+                  {num(convSqft, 1)} sqft ({num(convSqm, 2)} sqm) @ {aed(convPricePerSqft)}/sqft
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            className="lg:col-span-7"
+            title="Multi-Currency Property Converter"
+            subtitle="AED ↔ USD / EUR / GBP / INR / SAR / RUB / CNY with editable exchange rates"
+            actions={
+              <button
+                type="button"
+                className="btn outline sm"
+                onClick={() => setRates({ ...DEFAULT_RATES_TO_AED })}
+              >
+                <RotateCcw size={13} /> Reset Rates
+              </button>
+            }
+          >
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              <label className="swk-field">
+                <span className="swk-field-label">Input Currency</span>
+                <span className="swk-field-box">
+                  <select value={convCcy} onChange={e => setConvCcy(e.target.value as CcyCode)}>
+                    {(Object.keys(CCY_LABELS) as CcyCode[]).map(c => (
+                      <option key={c} value={c}>{c} — {CCY_LABELS[c]}</option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+              <Field
+                label={`Amount (${convCcy})`}
+                value={convAmount}
+                onChange={v => setConvAmount(Math.max(0, v))}
+                prefix={convCcy}
+                step={10000}
+              />
+            </div>
+
+            <div className="overflow-auto">
+              <table className="swk-table">
+                <thead>
+                  <tr>
+                    <th>Currency</th>
+                    <th>Rate (1 unit = AED)</th>
+                    <th className="num">Converted Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(Object.keys(CCY_LABELS) as CcyCode[]).map(code => {
+                    const rate = rates[code]
+                    const converted = convAedTotal / Math.max(0.0001, rate)
+                    return (
+                      <tr key={code} style={code === convCcy ? { background: '#f5f5f5', fontWeight: 600 } : undefined}>
+                        <td>
+                          <b>{code}</b> <span className="text-xs text-muted">· {CCY_LABELS[code]}</span>
+                        </td>
+                        <td>
+                          {code === 'AED' ? (
+                            <span className="text-xs text-muted">1.0000 (Base)</span>
+                          ) : (
+                            <input
+                              type="number"
+                              step="0.001"
+                              min="0.0001"
+                              className="input"
+                              style={{ width: 110, minHeight: 30, padding: '2px 8px', fontSize: 12.5 }}
+                              value={rate}
+                              onChange={e => setRates(r => ({ ...r, [code]: Math.max(0.0001, Number(e.target.value) || 0.0001) }))}
+                              aria-label={`${code} to AED rate`}
+                            />
+                          )}
+                        </td>
+                        <td className="num font-semibold">
+                          {code} {converted.toLocaleString('en-US', { maximumFractionDigits: code === 'AED' ? 0 : 2 })}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </Reveal>
+      )}
+
+      {/* ============================================================ 10. PDC CHEQUE SPLIT */}
+      {active === 'pdc' && (
+        <Reveal className="grid gap-5 lg:grid-cols-12">
+          <Card className="lg:col-span-5" title="Tenancy & PDC Parameters" subtitle="Split annual rent into 1 / 2 / 4 / 6 / 12 Dubai PDC cheques">
+            <div className="grid gap-4">
+              <Field label="Annual Contract Rent" value={pdcRent} onChange={v => setPdcRent(Math.max(0, v))} prefix="AED" step={5000} />
+              <div>
+                <div className="swk-field-label mb-1.5">Number of Cheques</div>
+                <Segmented
+                  value={pdcCount}
+                  onChange={setPdcCount}
+                  options={[
+                    { value: '1', label: '1' },
+                    { value: '2', label: '2' },
+                    { value: '4', label: '4' },
+                    { value: '6', label: '6' },
+                    { value: '12', label: '12' },
+                  ]}
+                  layoutId="pdc-count"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="swk-field">
+                  <span className="swk-field-label">Lease Start Date</span>
+                  <span className="swk-field-box">
+                    <input type="date" value={pdcStart} onChange={e => setPdcStart(e.target.value)} />
+                  </span>
+                </label>
+                <Field label="Ejari Registration Fee" value={pdcEjariFee} onChange={v => setPdcEjariFee(Math.max(0, v))} prefix="AED" step={10} />
+              </div>
+              <label className="swk-toggle">
+                <input type="checkbox" checked={pdcFurnished} onChange={e => setPdcFurnished(e.target.checked)} />
+                <span>Furnished unit (10% security deposit instead of 5%)</span>
+              </label>
+            </div>
+          </Card>
+
+          <Card className="lg:col-span-7" title="Post-Dated Cheque Schedule" subtitle="Cheque dates, security deposit, Ejari & Day-1 cash required">
+            <div className="grid sm:grid-cols-4 gap-3 mb-4">
+              <div className="p-3.5 rounded-2xl bg-[#121212] text-white">
+                <div className="text-[10.5px] uppercase tracking-wider text-white/75">1st Cheque</div>
+                <div className="font-display text-[19px] font-semibold mt-1">{aed(pdcSchedule.firstCheque)}</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white border border-line">
+                <div className="text-[10.5px] uppercase tracking-wider text-muted">Security ({pdcSchedule.depositPct}%)</div>
+                <div className="font-display text-[19px] font-semibold text-ink mt-1">{aed(pdcSchedule.deposit)}</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white border border-line">
+                <div className="text-[10.5px] uppercase tracking-wider text-muted">Ejari + Agency VAT</div>
+                <div className="font-display text-[19px] font-semibold text-ink mt-1">{aed(pdcEjariFee + pdcSchedule.agencyInclVat)}</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-[#e8fff6] border border-[#0e9f6e]/30">
+                <div className="text-[10.5px] uppercase tracking-wider text-[#121212]">Day-1 Total</div>
+                <div className="font-display text-[19px] font-semibold text-[#121212] mt-1">{aed(pdcSchedule.dayOneTotal)}</div>
+              </div>
+            </div>
+
+            <div className="max-h-[340px] overflow-auto">
+              <table className="swk-table">
+                <thead>
+                  <tr>
+                    <th>Cheque #</th>
+                    <th>Due Date</th>
+                    <th>Payee</th>
+                    <th className="num">Amount (AED)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pdcSchedule.rows.map(r => (
+                    <tr key={r.index}>
+                      <td className="font-semibold">Cheque {r.index} of {pdcCount}</td>
+                      <td>{r.dueDate}</td>
+                      <td className="text-xs text-muted">Landlord / Property Management</td>
+                      <td className="num font-semibold">{aed(r.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </Reveal>
+      )}
+
+      {/* ============================================================ 11. PUBLIC QR GENERATOR */}
+      {active === 'qr' && (
+        <Reveal className="grid gap-5 lg:grid-cols-12">
+          <Card className="lg:col-span-6" title="Branded Public QR Generator" subtitle="Generate downloadable QR PNGs for SWKPROPERTY.COM listings, WhatsApp links, and agent vCards">
+            <div className="grid gap-4">
+              <div>
+                <div className="swk-field-label mb-1.5">QR Type</div>
+                <Segmented
+                  value={qrMode}
+                  onChange={setQrMode}
+                  options={[
+                    { value: 'listing', label: 'SWKPROPERTY.COM' },
+                    { value: 'whatsapp', label: 'WhatsApp' },
+                    { value: 'vcard', label: 'vCard' },
+                    { value: 'custom', label: 'Custom URL' },
+                  ]}
+                  layoutId="qr-mode"
+                />
+              </div>
+
+              {qrMode === 'listing' && (
+                <label className="swk-field">
+                  <span className="swk-field-label">SWKPROPERTY.COM URL</span>
+                  <span className="swk-field-box">
+                    <input type="url" value={qrUrl} onChange={e => setQrUrl(e.target.value)} placeholder="https://swkpropertiesuae.com/properties/..." />
+                  </span>
+                </label>
+              )}
+
+              {qrMode === 'whatsapp' && (
+                <div className="grid gap-3">
+                  <label className="swk-field">
+                    <span className="swk-field-label">WhatsApp Number (with country code)</span>
+                    <span className="swk-field-box">
+                      <input type="text" value={qrWaPhone} onChange={e => setQrWaPhone(e.target.value)} placeholder="+971501000001" />
+                    </span>
+                  </label>
+                  <label className="swk-field">
+                    <span className="swk-field-label">Prefilled Message</span>
+                    <span className="swk-field-box">
+                      <input type="text" value={qrWaText} onChange={e => setQrWaText(e.target.value)} placeholder="Hello SWK Properties..." />
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {qrMode === 'vcard' && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="swk-field">
+                    <span className="swk-field-label">Full Name</span>
+                    <span className="swk-field-box"><input type="text" value={qrVcName} onChange={e => setQrVcName(e.target.value)} /></span>
+                  </label>
+                  <label className="swk-field">
+                    <span className="swk-field-label">Role / Title</span>
+                    <span className="swk-field-box"><input type="text" value={qrVcTitle} onChange={e => setQrVcTitle(e.target.value)} /></span>
+                  </label>
+                  <label className="swk-field">
+                    <span className="swk-field-label">Phone</span>
+                    <span className="swk-field-box"><input type="text" value={qrVcPhone} onChange={e => setQrVcPhone(e.target.value)} /></span>
+                  </label>
+                  <label className="swk-field">
+                    <span className="swk-field-label">Email</span>
+                    <span className="swk-field-box"><input type="email" value={qrVcEmail} onChange={e => setQrVcEmail(e.target.value)} /></span>
+                  </label>
+                </div>
+              )}
+
+              {qrMode === 'custom' && (
+                <label className="swk-field">
+                  <span className="swk-field-label">Public URL or Text</span>
+                  <span className="swk-field-box">
+                    <input type="text" value={qrCustom} onChange={e => setQrCustom(e.target.value)} placeholder="https://www.swk.properties/..." />
+                  </span>
+                </label>
+              )}
+
+              <label className="swk-field">
+                <span className="swk-field-label">Card Caption</span>
+                <span className="swk-field-box">
+                  <input type="text" value={qrCaption} onChange={e => setQrCaption(e.target.value)} placeholder="Scan to view SWK Properties" />
+                </span>
+              </label>
+
+              {qrErr && (
+                <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800 flex items-start gap-2">
+                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                  <span>{qrErr}</span>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="lg:col-span-6" title="SWK QR Preview" subtitle="Public marketing & contact sharing only (attendance prefixes strictly blocked)">
+            <div className="flex flex-col items-center justify-center gap-4 p-4 rounded-2xl bg-[#f7f7f7] border border-line">
+              {qrDataUrl && !qrErr ? (
+                <>
+                  <div className="rounded-2xl bg-white p-5 border border-line shadow-sm text-center">
+                    <img src="/brand/web/swk-logo-light.webp" alt="SWK Properties" className="h-8 w-auto mx-auto mb-3" />
+                    <img src={qrDataUrl} alt="Generated SWK Public QR Code" className="w-56 h-56 mx-auto rounded-lg" />
+                    {qrCaption.trim() && <div className="mt-2.5 text-xs font-semibold text-[#121212]">{qrCaption}</div>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="btn green" onClick={downloadQrPng}>
+                      <Download size={15} /> Download QR PNG
+                    </button>
+                    <button
+                      type="button"
+                      className="btn outline"
+                      onClick={() => { void navigator.clipboard.writeText(qrPayload) }}
+                    >
+                      <ArrowLeftRight size={15} /> Copy Payload
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="py-12 text-center text-sm text-muted flex flex-col items-center gap-2">
+                  <QrCode size={36} className="opacity-40" />
+                  <span>{qrErr || 'Enter a public URL, WhatsApp link, or vCard details to preview QR.'}</span>
+                </div>
+              )}
             </div>
           </Card>
         </Reveal>
