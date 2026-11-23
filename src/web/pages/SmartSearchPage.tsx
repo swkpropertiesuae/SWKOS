@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Search,FileText } from 'lucide-react'
-import { get } from '../lib/api'
+import { buildApiPath, get, openAuthFile } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { PageHeader,ErrorBox } from '../ui/kit'
 
@@ -10,7 +10,7 @@ export function SmartSearchPage() {
   const toast = useToast()
   const [text, setText] = useState(''), [hits, setHits] = useState<Hit[] | null>(null), [picked, setPicked] = useState<number[]>([]), [client, setClient] = useState(''), [err, setErr] = useState<Error | null>(null)
   const run = async () => { setErr(null); try { setHits((await get<{ results: Hit[] }>('/api/growth/ask?q=' + encodeURIComponent(text))).results); setPicked([]) } catch (e: any) { setErr(e) } }
-  const present = () => { if (!picked.length) return toast.error('Tick at least one unit'); window.open(`/api/growth/presentation?units=${picked.join(',')}&client=${encodeURIComponent(client)}`, '_blank') }
+  const present = () => { if (!picked.length) return toast.error('Tick at least one unit'); void openAuthFile(buildApiPath('/api/growth/presentation', { units: picked.join(','), client })).catch(e => toast.error(e.message)) }
   return <div className="space-y-4">
     <PageHeader icon={<Search size={22} />} title="Smart search" subtitle='Try "2 bed marina under 2.5m" or "studio for rent jvc under 60k". Tick units to make a printable buyer shortlist.' />
     <form className="flex gap-2" onSubmit={e => { e.preventDefault(); void run() }}><input className="input flex-1" value={text} onChange={e => setText(e.target.value)} placeholder="Describe what the client wants" maxLength={200} /><button className="btn orange" type="submit"><Search />Search</button></form>

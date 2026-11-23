@@ -1,13 +1,14 @@
 import { Fragment,useEffect,useMemo,useRef,useState,type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft,Archive,BellOff,BellRing,Check,CheckCheck,ChevronDown,ClipboardList,Copy,CornerUpLeft,Crown,Download,FileText,Forward,Info,Loader2,LogOut,Megaphone,MessageSquarePlus,Mic,MoreVertical,Paperclip,Pencil,Pin,Search,Send,Smile,Trash2,UserPlus,Users,X } from 'lucide-react'
-import { get,post,del,api,upload } from '../lib/api'
+import { AlertCircle,ArrowLeft,Archive,BellOff,BellRing,Check,CheckCheck,ChevronDown,ClipboardList,Clock,Copy,CornerUpLeft,Crown,Download,ExternalLink,FileText,FolderOpen,Forward,Info,Loader2,LogOut,MapPin,Megaphone,MessageSquarePlus,Mic,MoreVertical,Paperclip,Pencil,Pin,RefreshCw,Search,Send,Smile,Trash2,UserPlus,Users,X } from 'lucide-react'
+import { get,post,del,api,upload,downloadAuthFile,openAuthFile,resolveApiUrl } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { useMeta } from '../lib/meta'
 import { Modal,useDialogs,useClickOutside } from '../ui/kit'
-import { chatState,previewOf,subscribeChat,type ChatMessage } from '../lib/chatLive'
+import { chatState,enqueueChatOutbox,flushChatOutbox,listQueuedChatMessages,noteSeenMessageId,parseLocationPayload,previewOf,registerWebPush,removeChatOutboxItem,subscribeChat,syncActiveThread,type ChatMessage,type QueuedChatMessage } from '../lib/chatLive'
 import { StaffPhoto } from '../components/ui/staff-photo'
+import { AuthAudio,AuthImg,AuthVideo } from '../components/ui/auth-media'
 
 type Thread = { id: number; kind: 'dm' | 'group'; title: string; peer: { id: number; email: string; online: boolean; last_seen: string | null } | null; members: number; role: string; pinned: boolean; muted: boolean; archived: boolean; announce: boolean; system: boolean; last: ChatMessage | null; unread: number }
 type Person = { id: number; name: string; email: string; designation?: string; online: boolean; last_seen: string | null }
@@ -42,10 +43,58 @@ function Avatar({ name, email, group, size = 48, online }: { name: string; email
   )
 }
 
-function Ticks({ status }: { status: ChatMessage['status'] }) {
+function Ticks({ status, pending, failed }: { status: ChatMessage['status']; pending?: boolean; failed?: boolean }) {
+  if (failed) return <AlertCircle size={14} className="text-[#dc2626]" aria-label="Failed to send" />
+  if (pending) return <Clock size={14} className="text-[#8b8b8b]" aria-label="Queued" />
   if (!status) return null
   if (status === 'sent') return <Check size={15} className="text-[#8b8b8b]" aria-label="Sent" />
   return <CheckCheck size={15} className={status === 'read' ? 'text-[#34b7f1]' : 'text-[#8b8b8b]'} aria-label={status === 'read' ? 'Read' : 'Delivered'} />
+}
+
+function LocationPinCard({ body }: { body: string }) {
+  const toast = useToast()
+  const loc = parseLocationPayload(body)
+  if (!loc) return <span className="text-[13px] text-[#737373]">📍 Shared location</span>
+  const coords = `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`
+  const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(`${loc.lat},${loc.lng}`)}`
+  return (
+    <div className="mb-1 w-[min(280px,100%)] overflow-hidden rounded-xl border border-black/10 bg-[#f6fbf9]">
+      <div
+        className="relative flex h-24 items-center justify-center border-b border-black/10"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 50% 50%, rgba(14,159,110,0.22), transparent 65%), repeating-linear-gradient(0deg, rgba(14,159,110,0.08) 0 1px, transparent 1px 18px), repeating-linear-gradient(90deg, rgba(14,159,110,0.08) 0 1px, transparent 1px 18px)',
+        }}
+      >
+        <div className="flex flex-col items-center gap-1">
+          <span className="flex size-9 items-center justify-center rounded-full bg-[#0e9f6e] text-white shadow-md">
+            <MapPin size={18} />
+          </span>
+          <span className="rounded-full bg-white/95 px-2 py-0.5 font-mono text-[10.5px] font-medium text-[#121212] shadow-sm">{coords}</span>
+        </div>
+      </div>
+      <div className="p-2.5">
+        <div className="truncate text-[13px] font-semibold text-[#121212]">{loc.label || 'Dubai Live Location'}</div>
+        <div className="mt-1.5 flex items-center gap-2">
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#121212] px-2.5 py-1 text-[11.5px] font-medium text-[#51fec0] no-underline hover:opacity-90"
+          >
+            <ExternalLink size={12} /> Open in Maps
+          </a>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-[11.5px] text-[#4a4a4a] hover:bg-[#f5f5f5]"
+            onClick={() => { void navigator.clipboard?.writeText(coords); toast.ok('Coordinates copied') }}
+          >
+            <Copy size={11} /> Copy
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /** WhatsApp formatting: *bold*, _italic_, ~strike~, and clickable links. Built as React nodes, never as HTML. */
@@ -86,7 +135,19 @@ export function ChatPage() {
   const threads = threadsQ.data ?? []
   const current = threads.find(t => t.id === sel) ?? null
 
-  useEffect(() => { chatState.activeChat = sel; return () => { chatState.activeChat = null } }, [sel])
+  useEffect(() => {
+    chatState.activeChat = sel
+    const publish = () => syncActiveThread(sel && !document.hidden ? sel : null)
+    publish()
+    document.addEventListener('visibilitychange', publish)
+    const hb = sel ? window.setInterval(publish, 55_000) : null
+    return () => {
+      chatState.activeChat = null
+      document.removeEventListener('visibilitychange', publish)
+      if (hb !== null) window.clearInterval(hb)
+      syncActiveThread(null)
+    }
+  }, [sel])
   useEffect(() => subscribeChat(e => {
     if (e.type === 'typing') { setTyping(t => ({ ...t, [e.thread_id]: { name: e.name, recording: e.recording, until: Date.now() + 4000 } })); return }
     if (e.type === 'presence') { void qc.invalidateQueries({ queryKey: ['chat-threads'] }); return }
@@ -94,6 +155,13 @@ export function ChatPage() {
     void qc.invalidateQueries({ queryKey: ['chat-threads'] })
     if ('thread_id' in e && e.thread_id) { void qc.invalidateQueries({ queryKey: ['chat-msgs', e.thread_id] }); if (e.type === 'thread') void qc.invalidateQueries({ queryKey: ['chat-info', e.thread_id] }) }
   }), [qc])
+  useEffect(() => {
+    if (!me?.id) return
+    void flushChatOutbox(me.id, () => {
+      void qc.invalidateQueries({ queryKey: ['chat-threads'] })
+      void qc.invalidateQueries({ queryKey: ['chat-msgs'] })
+    })
+  }, [me?.id, qc])
   useEffect(() => { const i = window.setInterval(() => setTyping(t => Object.fromEntries(Object.entries(t).filter(([, v]) => v.until > Date.now()))), 1500); return () => clearInterval(i) }, [])
 
   const shown = useMemo(() => {
@@ -103,7 +171,12 @@ export function ChatPage() {
   const archivedCount = threads.filter(t => t.archived).length
 
   const prefs = async (t: Thread, p: Partial<Pick<Thread, 'pinned' | 'muted' | 'archived'>>) => { setRowMenu(null); try { await post(`/api/chat/threads/${t.id}/prefs`, p); void qc.invalidateQueries({ queryKey: ['chat-threads'] }) } catch (e: any) { toast.error(e.message) } }
-  const askNotif = async () => { if (typeof Notification === 'undefined') return; setNotifPerm(await Notification.requestPermission()) }
+  const askNotif = async () => {
+    if (typeof Notification === 'undefined') return
+    const p = await Notification.requestPermission()
+    setNotifPerm(p)
+    if (p === 'granted') void registerWebPush()
+  }
 
   return (
     <div className="mx-auto -mb-6 grid h-[calc(100dvh-136px)] min-h-[480px] max-md:h-[calc(100dvh-190px)] max-w-[1400px] overflow-hidden rounded-[1.25rem] border border-white/70 bg-white shadow-[0_24px_60px_rgba(12,56,96,0.10)] md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
@@ -241,12 +314,52 @@ function NewChatModal({ mode, people, onClose, onOpen }: { mode: null | 'dm' | '
 function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, people }: { thread: Thread; typing?: { name: string; recording?: boolean }; onBack: () => void; showInfo: boolean; setShowInfo: (v: boolean) => void; threads: Thread[]; people: Person[] }) {
   const toast = useToast(), qc = useQueryClient(), dlg = useDialogs(), { me } = useMeta()
   const [older, setOlder] = useState<ChatMessage[]>([]), [hasOlder, setHasOlder] = useState(false)
+  const [optimistic, setOptimistic] = useState<ChatMessage[]>([]), [queued, setQueued] = useState<QueuedChatMessage[]>([])
   const msgsQ = useQuery({ queryKey: ['chat-msgs', thread.id], queryFn: () => get<{ messages: ChatMessage[]; more: boolean }>(`/api/chat/threads/${thread.id}/messages`) })
   const infoQ = useQuery({ queryKey: ['chat-info', thread.id], queryFn: () => get<Info>(`/api/chat/threads/${thread.id}`) })
-  const msgs = useMemo(() => { const latest = msgsQ.data?.messages ?? []; const ids = new Set(latest.map(m => m.id)); return [...older.filter(m => !ids.has(m.id)), ...latest] }, [older, msgsQ.data])
+
+  useEffect(() => {
+    const uid = me?.id
+    if (!uid) { setQueued([]); return }
+    const syncQ = () => { void listQueuedChatMessages(uid, thread.id).then(setQueued).catch(() => {}) }
+    syncQ()
+    window.addEventListener('swk:chat-outbox', syncQ)
+    return () => window.removeEventListener('swk:chat-outbox', syncQ)
+  }, [thread.id, me?.id])
+
+  const msgs = useMemo(() => {
+    const latest = msgsQ.data?.messages ?? []
+    const ids = new Set(latest.map(m => m.id))
+    const pendingQueued: ChatMessage[] = queued.map((qItem, idx) => ({
+      id: -1_000_000 - idx,
+      user_id: qItem.userId,
+      name: qItem.userName,
+      kind: qItem.kind,
+      body: qItem.body,
+      created_at: qItem.createdAt,
+      edited: false,
+      forwarded: false,
+      file: null,
+      reply: null,
+      reactions: [],
+      status: null,
+      pending: qItem.status === 'pending',
+      failed: qItem.status === 'failed',
+      client_id: qItem.clientId,
+      error: qItem.error,
+    }))
+    const qIds = new Set(pendingQueued.map(x => x.client_id))
+    return [...older.filter(m => !ids.has(m.id)), ...latest, ...optimistic.filter(m => !qIds.has(m.client_id)), ...pendingQueued]
+  }, [older, msgsQ.data, optimistic, queued])
   useEffect(() => { if (msgsQ.data && !older.length) setHasOlder(msgsQ.data.more) }, [msgsQ.data, older.length])
+  useEffect(() => {
+    const serverTop = (msgsQ.data?.messages ?? []).reduce((mx, m) => (m.id > mx ? m.id : mx), 0)
+    if (serverTop > 0) noteSeenMessageId(serverTop)
+  }, [msgsQ.data])
   const [text, setText] = useState(''), [reply, setReply] = useState<ChatMessage | null>(null), [editing, setEditing] = useState<ChatMessage | null>(null)
   const [menu, setMenu] = useState<number | null>(null), [emojiOpen, setEmojiOpen] = useState(false), [forward, setForward] = useState<ChatMessage | null>(null), [msgInfo, setMsgInfo] = useState<{ id: number; rows: { name: string; status: string }[] } | null>(null)
+  const [locOpen, setLocOpen] = useState(false), [locForm, setLocForm] = useState({ lat: 25.2532, lng: 55.2972, label: 'Viewing Entrance · Dubai', gpsStatus: '' })
+  const [docOpen, setDocOpen] = useState(false), [docItems, setDocItems] = useState<{ key: string; title: string; subtitle: string; url: string }[]>([]), [docLoading, setDocLoading] = useState(false)
   const [busy, setBusy] = useState(false), [atBottom, setAtBottom] = useState(true), [newBelow, setNewBelow] = useState(0)
   const [rec, setRec] = useState<{ mr: MediaRecorder; started: number; chunks: Blob[] } | null>(null), [recTick, setRecTick] = useState(0)
   const scroller = useRef<HTMLDivElement>(null), input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), lastTyping = useRef(0), seenTop = useRef(0)
@@ -256,7 +369,7 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
   const peer = thread.peer ? people.find(p => p.id === thread.peer!.id) ?? thread.peer : null
 
   // read receipts: everything on screen is read while the tab is visible
-  const top = msgs[msgs.length - 1]?.id ?? 0
+  const top = (msgsQ.data?.messages ?? [])[Math.max(0, (msgsQ.data?.messages?.length ?? 1) - 1)]?.id ?? 0
   useEffect(() => {
     const mark = () => { if (!document.hidden && top) void post(`/api/chat/threads/${thread.id}/read`).then(() => { void qc.invalidateQueries({ queryKey: ['chat-threads'] }); void qc.invalidateQueries({ queryKey: ['chat-unread'] }) }) }
     mark(); document.addEventListener('visibilitychange', mark); return () => document.removeEventListener('visibilitychange', mark)
@@ -264,26 +377,191 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
 
   // stick to the bottom like WhatsApp; count new messages when scrolled up
   useEffect(() => {
-    const el = scroller.current; if (!el || !top) return
-    const mine = msgs[msgs.length - 1]?.user_id === me?.id
-    if (seenTop.current === 0 || atBottom || mine) { el.scrollTop = el.scrollHeight; setNewBelow(0) } else if (top > seenTop.current) setNewBelow(n => n + 1)
-    seenTop.current = top
-  }, [top]) // eslint-disable-line react-hooks/exhaustive-deps
+    const el = scroller.current; if (!el || !msgs.length) return
+    const lastMsg = msgs[msgs.length - 1]
+    const mine = lastMsg?.user_id === me?.id
+    if (seenTop.current === 0 || atBottom || mine) { el.scrollTop = el.scrollHeight; setNewBelow(0) } else if ((lastMsg?.id ?? 0) > seenTop.current) setNewBelow(n => n + 1)
+    if (top > 0) seenTop.current = top
+  }, [top, msgs.length]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!rec) return; const i = window.setInterval(() => setRecTick(t => t + 1), 500); return () => clearInterval(i) }, [rec])
   useEffect(() => { input.current?.focus() }, [reply, editing])
 
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['chat-msgs', thread.id] }); void qc.invalidateQueries({ queryKey: ['chat-threads'] }) }
-  const loadOlder = async () => { const first = msgs[0]?.id; if (!first) return; const r = await get<{ messages: ChatMessage[]; more: boolean }>(`/api/chat/threads/${thread.id}/messages`, { before: first }); const el = scroller.current, h = el?.scrollHeight ?? 0; setOlder(o => [...r.messages, ...o]); setHasOlder(r.more); requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - h }) }
+  const loadOlder = async () => { const first = msgs.find(m => m.id > 0)?.id; if (!first) return; const r = await get<{ messages: ChatMessage[]; more: boolean }>(`/api/chat/threads/${thread.id}/messages`, { before: first }); const el = scroller.current, h = el?.scrollHeight ?? 0; setOlder(o => [...r.messages, ...o]); setHasOlder(r.more); requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - h }) }
 
   const onType = (v: string) => { setText(v); if (Date.now() - lastTyping.current > 2500 && v) { lastTyping.current = Date.now(); void post(`/api/chat/threads/${thread.id}/typing`, {}).catch(() => {}) } }
+
+  const deliverOptimistic = async (
+    kind: 'text' | 'location',
+    body: string,
+    opts?: { location?: { lat: number; lng: number; label?: string }; replyToId?: number | null },
+  ) => {
+    const clientId = crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}-${Math.random()}`
+    const createdAt = new Date().toISOString()
+    const userId = me?.id ?? 0
+    const userName = me?.name ?? 'You'
+    const qItem: QueuedChatMessage = {
+      clientId,
+      threadId: thread.id,
+      body,
+      kind,
+      location: opts?.location,
+      replyToId: opts?.replyToId ?? null,
+      createdAt,
+      status: 'pending',
+      userId,
+      userName,
+    }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await enqueueChatOutbox(qItem)
+      toast.ok('Offline — message queued and will auto-send when back online')
+      return
+    }
+    const optMsg: ChatMessage = {
+      id: -Date.now(),
+      user_id: userId,
+      name: userName,
+      kind,
+      body,
+      created_at: createdAt,
+      edited: false,
+      forwarded: false,
+      file: null,
+      reply: reply ? { id: reply.id, name: reply.name, body: reply.body, kind: reply.kind } : null,
+      reactions: [],
+      status: null,
+      pending: true,
+      client_id: clientId,
+    }
+    setOptimistic(o => [...o, optMsg])
+    try {
+      const res = kind === 'location' && opts?.location
+        ? await post<{ id: number }>(`/api/chat/threads/${thread.id}/messages`, { kind: 'location', location: opts.location, reply_to_id: opts.replyToId ?? undefined })
+        : await post<{ id: number }>(`/api/chat/threads/${thread.id}/messages`, { body, reply_to_id: opts?.replyToId ?? undefined })
+      if (res?.id) noteSeenMessageId(res.id)
+      setOptimistic(o => o.filter(x => x.client_id !== clientId))
+      refresh()
+    } catch (e: any) {
+      const status = Number(e?.status ?? 0)
+      if (!status || status >= 500 || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+        setOptimistic(o => o.filter(x => x.client_id !== clientId))
+        await enqueueChatOutbox(qItem)
+        toast.ok('Connection issue — message saved to offline queue')
+      } else {
+        setOptimistic(o => o.map(x => (x.client_id === clientId ? { ...x, pending: false, failed: true, error: e?.message || 'Failed to send' } : x)))
+        toast.error(e?.message || 'Failed to send')
+      }
+    }
+  }
+
   const send = async () => {
     const body = text.trim(); if (!body || busy) return
-    setBusy(true)
+    if (editing) {
+      setBusy(true)
+      try {
+        await api('PATCH', `/api/chat/messages/${editing.id}`, { body })
+        setText(''); setEditing(null); refresh()
+      } catch (e: any) { toast.error(e.message) } finally { setBusy(false); input.current?.focus() }
+      return
+    }
+    const replyId = reply?.id ?? null
+    setText(''); setReply(null)
+    await deliverOptimistic('text', body, { replyToId: replyId })
+    input.current?.focus()
+  }
+
+  const retryFailed = async (m: ChatMessage) => {
+    if (!m.client_id) return
+    const qMatch = queued.find(x => x.clientId === m.client_id)
+    if (qMatch && me?.id) {
+      await enqueueChatOutbox({ ...qMatch, status: 'pending', error: undefined })
+      await flushChatOutbox(me.id, () => refresh())
+      return
+    }
+    setOptimistic(o => o.filter(x => x.client_id !== m.client_id))
+    const loc = m.kind === 'location' ? parseLocationPayload(m.body) : null
+    await deliverOptimistic(m.kind === 'location' ? 'location' : 'text', m.body, {
+      location: loc ?? undefined,
+      replyToId: m.reply?.id ?? null,
+    })
+  }
+
+  const discardFailed = async (m: ChatMessage) => {
+    if (!m.client_id) return
+    setOptimistic(o => o.filter(x => x.client_id !== m.client_id))
+    await removeChatOutboxItem(m.client_id)
+  }
+
+  const openLocationModal = () => {
+    setLocForm({ lat: 25.2532, lng: 55.2972, label: 'Viewing Entrance · Dubai', gpsStatus: 'Checking GPS…' })
+    setLocOpen(true)
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setLocForm(f => ({
+            ...f,
+            lat: Number(pos.coords.latitude.toFixed(6)),
+            lng: Number(pos.coords.longitude.toFixed(6)),
+            gpsStatus: `GPS lock (±${Math.round(pos.coords.accuracy)}m)`,
+          }))
+        },
+        () => {
+          setLocForm(f => ({ ...f, gpsStatus: 'GPS unavailable — using Dubai default (editable)' }))
+        },
+        { enableHighAccuracy: true, timeout: 6000 },
+      )
+    } else {
+      setLocForm(f => ({ ...f, gpsStatus: 'Using Dubai default coordinates' }))
+    }
+  }
+
+  const sendLocation = async () => {
+    const lat = Number(locForm.lat), lng = Number(locForm.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast.error('Enter valid latitude (-90..90) and longitude (-180..180)')
+      return
+    }
+    const label = locForm.label.trim() || 'Dubai Live Location'
+    setLocOpen(false)
+    await deliverOptimistic('location', JSON.stringify({ lat, lng, label }), { location: { lat, lng, label } })
+  }
+
+  const openDocumentModal = async () => {
+    setDocOpen(true)
+    setDocLoading(true)
     try {
-      if (editing) await api('PATCH', `/api/chat/messages/${editing.id}`, { body })
-      else await post(`/api/chat/threads/${thread.id}/messages`, { body, reply_to_id: reply?.id })
-      setText(''); setReply(null); setEditing(null); refresh()
-    } catch (e: any) { toast.error(e.message) } finally { setBusy(false); input.current?.focus() }
+      const [studioRes, attRes, utilRes] = await Promise.allSettled([
+        get<{ rows: any[] }>('/api/e/studio_documents', { pageSize: 20 }),
+        get<{ rows: any[] }>('/api/e/attachments', { pageSize: 20 }),
+        get<any>('/api/utilities/word'),
+      ])
+      const items: { key: string; title: string; subtitle: string; url: string }[] = []
+      if (utilRes.status === 'fulfilled') {
+        const wordList = Array.isArray(utilRes.value)
+          ? utilRes.value
+          : Array.isArray(utilRes.value?.rows)
+            ? utilRes.value.rows
+            : Array.isArray(utilRes.value?.docs)
+              ? utilRes.value.docs
+              : []
+        for (const d of wordList) {
+          items.push({ key: `util-${d.id}`, title: d.title || `Word Doc #${d.id}`, subtitle: 'Word Studio / Utilities', url: `/utilities/word?id=${d.id}` })
+        }
+      }
+      if (studioRes.status === 'fulfilled' && Array.isArray(studioRes.value?.rows)) {
+        for (const d of studioRes.value.rows) {
+          items.push({ key: `studio-${d.id}`, title: d.title || d.doc_no || `Document #${d.id}`, subtitle: `Studio · ${d.doc_no || d.category || 'Document'}`, url: `/studio/${d.id}` })
+        }
+      }
+      if (attRes.status === 'fulfilled' && Array.isArray(attRes.value?.rows)) {
+        for (const a of attRes.value.rows) {
+          items.push({ key: `att-${a.id}`, title: a.file_name || `File #${a.id}`, subtitle: `Library · ${a.category || 'Attachment'}`, url: `/api/files/${a.id}/download` })
+        }
+      }
+      setDocItems(items)
+    } finally {
+      setDocLoading(false)
+    }
   }
   const sendFiles = async (files: FileList | File[]) => {
     for (const f of Array.from(files)) {
@@ -334,37 +612,47 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
           {msgs.map(m => {
             const d = dayKey(m.created_at), showDay = d !== prevDay, mine = m.user_id === me?.id, first = showDay || prevUser !== m.user_id || m.kind === 'system'
             prevDay = d; prevUser = m.kind === 'system' ? 0 : m.user_id
-            if (m.kind === 'system') return <Fragment key={m.id}>{showDay && <DayPill iso={m.created_at} />}<div className="my-2 text-center"><span className="inline-block rounded-lg bg-white/90 px-3 py-1 text-[12px] text-[#4a4a4a] shadow-sm">{m.body}</span></div></Fragment>
+            const msgKey = m.client_id ?? m.id
+            if (m.kind === 'system') return <Fragment key={msgKey}>{showDay && <DayPill iso={m.created_at} />}<div className="my-2 text-center"><span className="inline-block rounded-lg bg-white/90 px-3 py-1 text-[12px] text-[#4a4a4a] shadow-sm">{m.body}</span></div></Fragment>
             return (
-              <Fragment key={m.id}>
+              <Fragment key={msgKey}>
                 {showDay && <DayPill iso={m.created_at} />}
                 <div className={`group flex ${mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
                   {thread.kind === 'group' && !mine && <span className="mr-1.5 w-8 shrink-0">{first && <Avatar name={m.name} email={people.find(p => p.id === m.user_id)?.email} size={30} />}</span>}
-                  <div className={`relative max-w-[min(560px,78%)] rounded-2xl px-2.5 pb-1.5 pt-1.5 text-[14.2px] leading-[1.42] shadow-[0_1px_0.5px_rgba(11,20,26,.13)] ${mine ? 'bg-[#dcfce9] text-[#121212]' : 'bg-white text-[#121212]'} ${first ? (mine ? 'rounded-tr-md' : 'rounded-tl-md') : ''} ${m.kind === 'report' || m.kind === 'automation' ? 'ring-1 ring-[#0e9f6e]/40' : ''}`}>
+                  <div className={`relative max-w-[min(560px,78%)] rounded-2xl px-2.5 pb-1.5 pt-1.5 text-[14.2px] leading-[1.42] shadow-[0_1px_0.5px_rgba(11,20,26,.13)] ${mine ? 'bg-[#dcfce9] text-[#121212]' : 'bg-white text-[#121212]'} ${first ? (mine ? 'rounded-tr-md' : 'rounded-tl-md') : ''} ${m.kind === 'report' || m.kind === 'automation' ? 'ring-1 ring-[#0e9f6e]/40' : ''} ${m.pending ? 'opacity-85' : ''}`}>
                     {thread.kind === 'group' && !mine && first && <div className="mb-0.5 text-[12.5px] font-semibold" style={{ color: colorFor(m.user_id) }}>{m.name}</div>}
                     {(m.kind === 'report' || m.kind === 'automation') && <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-[#121212] px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#51fec0]"><ClipboardList size={12} />{m.kind === 'report' ? 'Attendance report' : 'Automation'}</div>}
                     {m.forwarded && <div className="mb-0.5 flex items-center gap-1 text-[11.5px] italic text-[#8b8b8b]"><Forward size={12} />Forwarded</div>}
                     {m.reply && <button type="button" className="mb-1 block w-full rounded-lg border-0 border-l-4 bg-black/5 px-2.5 py-1.5 text-left" style={{ borderLeftColor: colorFor(msgs.find(x => x.id === m.reply!.id)?.user_id ?? 0) }} onClick={() => document.getElementById(`msg-${m.reply!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
                       <span className="block text-[12px] font-semibold text-[#0e9f6e]">{m.reply.name}</span><span className="line-clamp-2 text-[12.5px] text-[#4a4a4a]">{m.reply.body.replace(/\*/g, '')}</span></button>}
                     <div id={`msg-${m.id}`}>
-                      {m.kind === 'deleted' ? <span className="italic text-[#8b8b8b]">🚫 {mine ? 'You deleted this message' : 'This message was deleted'}</span> : <>
-                        {m.file && m.kind === 'image' && <a href={m.file.url} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-xl"><img src={m.file.url} alt={m.file.name} loading="lazy" className="max-h-[320px] w-full max-w-[320px] object-cover" /></a>}
-                        {m.file && m.kind === 'video' && <video src={m.file.url} controls className="mb-1 max-h-[320px] max-w-[320px] rounded-xl" />}
-                        {m.file && m.kind === 'voice' && <div className="flex items-center gap-2 py-1"><Mic size={16} className="text-[#0e9f6e]" /><audio src={m.file.url} controls preload="metadata" className="h-9 w-[240px] max-w-full" /></div>}
-                        {m.file && m.kind === 'file' && <a href={`${m.file.url}?download=1`} className="mb-1 flex items-center gap-3 rounded-xl bg-black/5 px-3 py-2.5 no-underline"><FileText size={26} className="text-[#dc2626]" /><span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-medium text-[#121212]">{m.file.name}</b><small className="text-[#737373]">{fmtSize(m.file.size)} · {m.file.name.split('.').pop()?.toUpperCase()}</small></span><Download size={17} className="text-[#737373]" /></a>}
+                      {m.kind === 'deleted' ? <span className="italic text-[#8b8b8b]">🚫 {mine ? 'You deleted this message' : 'This message was deleted'}</span> : m.kind === 'location' ? (
+                        <LocationPinCard body={m.body} />
+                      ) : <>
+                        {m.file && m.kind === 'image' && <a href={resolveApiUrl(m.file.url)} onClick={e => { e.preventDefault(); void openAuthFile(m.file!.url, m.file!.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-xl"><AuthImg src={m.file.url} alt={m.file.name} loading="lazy" className="max-h-[320px] w-full max-w-[320px] object-cover" /></a>}
+                        {m.file && m.kind === 'video' && <AuthVideo src={m.file.url} controls className="mb-1 max-h-[320px] max-w-[320px] rounded-xl" />}
+                        {m.file && m.kind === 'voice' && <div className="flex items-center gap-2 py-1"><Mic size={16} className="text-[#0e9f6e]" /><AuthAudio src={m.file.url} controls preload="metadata" className="h-9 w-[240px] max-w-full" /></div>}
+                        {m.file && m.kind === 'file' && <a href={resolveApiUrl(`${m.file.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${m.file!.url}?download=1`, m.file!.name).catch(err => toast.error(err.message)) }} className="mb-1 flex items-center gap-3 rounded-xl bg-black/5 px-3 py-2.5 no-underline"><FileText size={26} className="text-[#dc2626]" /><span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-medium text-[#121212]">{m.file.name}</b><small className="text-[#737373]">{fmtSize(m.file.size)} · {m.file.name.split('.').pop()?.toUpperCase()}</small></span><Download size={17} className="text-[#737373]" /></a>}
                         {m.body && <span className="whitespace-pre-wrap break-words"><Rich text={m.body} /></span>}
                       </>}
-                      <span className="float-right ml-3 mt-1.5 flex translate-y-0.5 items-center gap-1 text-[11px] text-[#8b8b8b]">{m.edited && <span>Edited</span>}{timeOf(m.created_at)}{mine && m.kind !== 'deleted' && <Ticks status={m.status} />}</span>
+                      <span className="float-right ml-3 mt-1.5 flex translate-y-0.5 items-center gap-1 text-[11px] text-[#8b8b8b]">{m.edited && <span>Edited</span>}{timeOf(m.created_at)}{mine && m.kind !== 'deleted' && <Ticks status={m.status} pending={m.pending} failed={m.failed} />}</span>
                     </div>
+                    {(m.failed || (m.pending && m.client_id)) && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 border-t border-black/10 pt-1 text-[11.5px]">
+                        <span className={m.failed ? 'text-[#dc2626]' : 'text-[#737373]'}>{m.failed ? (m.error || 'Not sent') : 'Queued offline'}</span>
+                        <button type="button" className="inline-flex items-center gap-1 rounded border-0 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-[#121212] hover:bg-white" onClick={() => void retryFailed(m)}><RefreshCw size={11} /> Retry</button>
+                        <button type="button" className="rounded border-0 bg-transparent px-1.5 py-0.5 text-[11px] text-[#dc2626] hover:bg-black/5" onClick={() => void discardFailed(m)}>Remove</button>
+                      </div>
+                    )}
                     {m.reactions.length > 0 && (
                       <div className={`absolute -bottom-3 flex gap-0.5 rounded-full border border-black/5 bg-white px-1.5 py-0.5 text-[13px] shadow-sm ${mine ? 'right-2' : 'left-2'}`}>
                         {m.reactions.map(r => <button key={r.emoji} type="button" title={r.names.join(', ')} onClick={() => void react(m, r.mine ? null : r.emoji)} className={`border-0 bg-transparent p-0 ${r.mine ? 'opacity-100' : 'opacity-90'}`}>{r.emoji}{r.count > 1 && <span className="ml-0.5 text-[11px] text-[#737373]">{r.count}</span>}</button>)}
                       </div>
                     )}
-                    {m.kind !== 'deleted' && (
+                    {m.kind !== 'deleted' && !m.pending && !m.failed && (
                       <button type="button" aria-label="Message options" className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full border-0 bg-gradient-to-l from-white via-white to-transparent text-[#8b8b8b] opacity-0 group-hover:opacity-100 focus-visible:opacity-100" style={mine ? { background: 'linear-gradient(to left,#dcfce9,#dcfce9,transparent)' } : undefined} onClick={() => setMenu(menu === m.id ? null : m.id)}><ChevronDown size={15} /></button>
                     )}
-                    {menu === m.id && (
+                    {menu === m.id && !m.pending && !m.failed && (
                       <Menu onClose={() => setMenu(null)} className={`top-7 ${mine ? 'right-0' : 'left-0'}`}>
                         <div className="mb-1 flex justify-between gap-0.5 rounded-xl bg-[#f7f7f7] p-1">{REACTIONS.map(e => <button key={e} type="button" aria-label={`React ${e}`} className="rounded-lg border-0 bg-transparent p-1 text-[19px] transition-transform hover:scale-125" onClick={() => void react(m, m.reactions.find(r => r.mine)?.emoji === e ? null : e)}>{e}</button>)}</div>
                         <MenuItem icon={CornerUpLeft} onClick={() => { setReply(m); setEditing(null); setMenu(null) }}>Reply</MenuItem>
@@ -407,7 +695,9 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
               <div className="relative flex items-end gap-1.5">
                 <button type="button" aria-label="Emoji" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={() => setEmojiOpen(o => !o)}><Smile size={20} /></button>
                 {emojiOpen && <Menu onClose={() => setEmojiOpen(false)} className="bottom-12 left-0 grid w-[300px] grid-cols-8 gap-0.5">{EMOJI.map(e => <button key={e} type="button" className="rounded-lg border-0 bg-transparent p-1 text-[20px] hover:bg-[#f5f5f5]" onClick={() => { setText(t => t + e); input.current?.focus() }}>{e}</button>)}</Menu>}
-                <button type="button" aria-label="Attach file or photo" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={() => fileIn.current?.click()} disabled={!!editing}><Paperclip size={19} /></button>
+                <button type="button" aria-label="Attach file or photo" title="Attach file or photo" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={() => fileIn.current?.click()} disabled={!!editing}><Paperclip size={19} /></button>
+                <button type="button" aria-label="Share live location" title="Share live location pin" className="swk-tbtn" style={{ background: 'transparent', border: 0 }} onClick={openLocationModal} disabled={!!editing}><MapPin size={19} /></button>
+                <button type="button" aria-label="Share document" title="Share OS / Utility document" className="swk-tbtn hidden sm:grid" style={{ background: 'transparent', border: 0 }} onClick={() => void openDocumentModal()} disabled={!!editing}><FolderOpen size={19} /></button>
                 <input ref={fileIn} type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt,.csv" onChange={e => { if (e.target.files?.length) void sendFiles(e.target.files); e.target.value = '' }} />
                 <textarea ref={input} rows={1} value={text} onChange={e => onType(e.target.value)} placeholder="Type a message" aria-label="Message"
                   onPaste={e => { const f = Array.from(e.clipboardData.files); if (f.length) { e.preventDefault(); void sendFiles(f) } }}
@@ -427,6 +717,38 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
 
       {showInfo && info && <InfoPanel info={info} thread={thread} people={people} onClose={() => setShowInfo(false)} onReport={() => void report()} />}
 
+      <Modal open={locOpen} onClose={() => setLocOpen(false)} title="Share Live Location Pin" width={420}
+        footer={<><button type="button" className="btn outline" onClick={() => setLocOpen(false)}>Cancel</button><button type="button" className="web-btn" onClick={() => void sendLocation()}><MapPin size={15} /> Send Location Pin</button></>}>
+        <div className="grid gap-3">
+          {locForm.gpsStatus && <div className="rounded-xl bg-[#f5f5f5] px-3 py-2 text-[12.5px] text-[#4a4a4a]">{locForm.gpsStatus}</div>}
+          <label><span className="label">Location label</span><input className="input" value={locForm.label} maxLength={160} onChange={e => setLocForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Marina Gate 2 Entrance" /></label>
+          <div className="grid grid-cols-2 gap-3">
+            <label><span className="label">Latitude</span><input className="input" type="number" step="0.000001" value={locForm.lat} onChange={e => setLocForm(f => ({ ...f, lat: Number(e.target.value) }))} /></label>
+            <label><span className="label">Longitude</span><input className="input" type="number" step="0.000001" value={locForm.lng} onChange={e => setLocForm(f => ({ ...f, lng: Number(e.target.value) }))} /></label>
+          </div>
+        </div>
+      </Modal>
+      <Modal open={docOpen} onClose={() => setDocOpen(false)} title="Share OS / Utility Document" width={460}>
+        <div className="max-h-[55vh] overflow-y-auto">
+          {docLoading && <div className="flex justify-center p-6"><Loader2 className="animate-spin text-[#8b8b8b]" /></div>}
+          {!docLoading && !docItems.length && <div className="p-6 text-center text-[13px] text-[#737373]">No saved Studio, Utility, or Library documents found yet.</div>}
+          {docItems.map(d => (
+            <button key={d.key} type="button" className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2.5 text-left hover:bg-[#f7f7f7]"
+              onClick={() => {
+                setDocOpen(false)
+                const fullUrl = d.url.startsWith('http')
+                  ? d.url
+                  : d.url.startsWith('/api/')
+                    ? resolveApiUrl(d.url)
+                    : `${window.location.origin}${d.url}`
+                void deliverOptimistic('text', `📄 *${d.title}*\n${fullUrl}`)
+              }}>
+              <FileText size={20} className="shrink-0 text-[#0e9f6e]" />
+              <span className="min-w-0 flex-1"><b className="block truncate text-[14px] font-medium text-[#121212]">{d.title}</b><small className="text-[#8b8b8b]">{d.subtitle}</small></span>
+            </button>
+          ))}
+        </div>
+      </Modal>
       <Modal open={!!forward} onClose={() => setForward(null)} title="Forward message to" width={440}>
         <div className="max-h-[50vh] overflow-y-auto">{threads.filter(t => !t.archived).map(t => (
           <button key={t.id} type="button" className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-2 py-2.5 text-left hover:bg-[#f7f7f7]" disabled={t.announce && t.role !== 'admin'}
@@ -478,7 +800,7 @@ function InfoPanel({ info, thread, people, onClose, onReport }: { info: Info; th
       {info.media.length > 0 && (
         <div className="mt-2 bg-white px-6 py-4">
           <div className="web-eyebrow mb-3">Media, docs & voice · {info.media.length}</div>
-          <div className="grid grid-cols-3 gap-1.5">{info.media.slice(0, 9).map(f => f.mime.startsWith('image/') ? <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg bg-[#f5f5f5]"><img src={f.url} alt={f.name} className="size-full object-cover" loading="lazy" /></a> : <a key={f.id} href={`${f.url}?download=1`} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-[#f5f5f5] p-2 text-center no-underline">{f.mime.startsWith('audio/') ? <Mic size={20} className="text-[#0e9f6e]" /> : <FileText size={20} className="text-[#dc2626]" />}<span className="line-clamp-2 text-[10px] text-[#4a4a4a]">{f.name}</span></a>)}</div>
+          <div className="grid grid-cols-3 gap-1.5">{info.media.slice(0, 9).map(f => f.mime.startsWith('image/') ? <a key={f.id} href={resolveApiUrl(f.url)} onClick={e => { e.preventDefault(); void openAuthFile(f.url, f.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg bg-[#f5f5f5]"><AuthImg src={f.url} alt={f.name} className="size-full object-cover" loading="lazy" /></a> : <a key={f.id} href={resolveApiUrl(`${f.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${f.url}?download=1`, f.name).catch(err => toast.error(err.message)) }} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-[#f5f5f5] p-2 text-center no-underline">{f.mime.startsWith('audio/') ? <Mic size={20} className="text-[#0e9f6e]" /> : <FileText size={20} className="text-[#dc2626]" />}<span className="line-clamp-2 text-[10px] text-[#4a4a4a]">{f.name}</span></a>)}</div>
         </div>
       )}
       {group && (

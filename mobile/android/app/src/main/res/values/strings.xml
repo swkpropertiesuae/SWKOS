@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SWK OS</string>
+    <string name="title_activity_main">SWK OS</string>
+    <string name="package_name">ae.swkproperties.os</string>
+    <string name="custom_url_scheme">ae.swkproperties.os</string>
+    <string name="duty_channel_name">SWK Field Duty Active</string>
+    <string name="duty_channel_description">Persistent indicator while an authorised SWK field viewing or site duty session is sharing live GPS.</string>
+    <string name="duty_notification_title">SWK Field Duty Active — Sharing Live Location</string>
+    <string name="duty_notification_stop">End Field Duty</string>
+    <string name="call_channel_name">Incoming SIP Calls &amp; SOS</string>
+    <string name="call_channel_description">High-priority full-screen wake alerts for incoming SWK SIP calls and Field SOS emergencies.</string>
+    <string name="call_audio_channel_name">Active SWK SIP Call</string>
+    <string name="call_audio_channel_description">Keeps WebRTC softphone microphone and call audio active while navigating or locked.</string>
+    <string name="messages_channel_name">SWK Inside Messages</string>
+    <string name="messages_channel_description">Real-time team chats, direct messages and broadcast alerts.</string>
+    <string name="ops_channel_name">SWK Company Ops Alerts</string>
+    <string name="ops_channel_description">Approvals, leads, cheque reminders, attendance alerts and deal updates.</string>
+    <string name="biometric_title">SWK OS Security Lock</string>
+</resources>

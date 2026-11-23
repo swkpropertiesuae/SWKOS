@@ -14,7 +14,7 @@ export default async function (app: FastifyInstance) {
   app.get('/api/work/overview', async req => {
     assertCan(req.ctx, 'projects', 'view')
     const items = listRecords(getDef('work_items'), { pageSize: 10000 }, req.ctx).rows
-    const team = req.user && q.get(`SELECT 1 FROM roles WHERE id = (SELECT role_id FROM users WHERE id = ?) AND name = 'Admin'`, req.user.id)
+    const team = Boolean(req.user && (req.user.permissions === '*' || req.user.role_name === 'Admin' || req.user.role_name === 'Owner'))
     const userRows = team ? q.all(`SELECT id, name, department_id, work_capacity_points FROM users WHERE active = 1 AND party_id IS NULL AND deleted_at IS NULL`) : q.all(`SELECT id, name, department_id, work_capacity_points FROM users WHERE id = ? AND active = 1 AND deleted_at IS NULL`, req.user!.id)
     const workload = userRows.map(u => {
       const assigned = items.filter(i => i.assignee_id === u.id && ['Open', 'In progress', 'Waiting'].includes(i.status))
@@ -28,7 +28,7 @@ export default async function (app: FastifyInstance) {
   })
 
   app.post('/api/work/items/:id/transition', async req => {
-    const team = req.user && q.get(`SELECT 1 FROM roles WHERE id = (SELECT role_id FROM users WHERE id = ?) AND name = 'Admin'`, req.user.id)
+    const team = Boolean(req.user && (req.user.permissions === '*' || req.user.role_name === 'Admin' || req.user.role_name === 'Owner'))
     const b = z.object({ status: z.enum(['In progress', 'Waiting', 'Completed', 'Cancelled']), note: z.string().trim().max(2000).default('') }).parse(req.body)
     return tx(() => {
       const def = getDef('work_items')

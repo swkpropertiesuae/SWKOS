@@ -1,4 +1,5 @@
 import { useMeta } from '../../lib/meta'
+import { buildClientHeaders, getFetchCredentials, resolveApiUrl } from '../../lib/api'
 import { useDocumentSeal } from '@shared/document-presentation'
 import { Button } from './button'
 import { useState } from 'react'
@@ -14,7 +15,10 @@ export function PdfDownload({ entity, id }: { entity: string; id: number }) {
   const download = async () => {
     setBusy(true)
     try {
-      const res = await fetch(`/api/pdf/${entity}/${id}?download=1&seal=${seal ? '1' : '0'}`, { credentials: 'same-origin' })
+      const res = await fetch(resolveApiUrl(`/api/pdf/${entity}/${id}?download=1&seal=${seal ? '1' : '0'}`), {
+        credentials: getFetchCredentials(),
+        headers: buildClientHeaders(),
+      })
       if (!res.ok) { const data = await res.json().catch(() => null); throw new Error(data?.error || res.statusText || 'Request failed') }
       const blob = await res.blob(), url = URL.createObjectURL(blob), link = document.createElement('a')
       link.href = url; link.download = res.headers.get('content-disposition')?.match(/filename="?([^";]+)"?/)?.[1] ?? `${entity}-${id}.pdf`

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { ArrowUpRight,Bath,BedDouble,Expand,Flame,Eye,EyeOff,Pencil,Plus,Rocket,Download,Search,Globe,CheckCircle2,AlertTriangle,GitCommitHorizontal,Share2 } from 'lucide-react'
 import { ShareWithClient } from '../../components/ShareWithClient'
-import { get,put,post,downloadUrl } from '../../lib/api'
+import { downloadAuthFile, get, post, put } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { useMeta } from '../../lib/meta'
 import { websiteImage,WEBSITE_URL } from '@shared/entities/website'
@@ -122,7 +122,7 @@ export default function WebsiteStudioPage() {
         </div>
         <div className="flex flex-wrap gap-3">
           <a href={WEBSITE_URL} target="_blank" rel="noopener noreferrer" className="web-btn light"><Globe size={14} /> Open website</a>
-          <a href={downloadUrl('/api/website/export.json')} className="web-btn light"><Download size={14} /> Download data</a>
+          <button type="button" onClick={() => void downloadAuthFile('/api/website/export.json', 'website-export.json').catch(e => toast.error(e.message))} className="web-btn light"><Download size={14} /> Download data</button>
           {canEdit && <button type="button" className="web-btn" onClick={() => void deploy()} disabled={deploying || !st?.config.tokenSet}><Rocket size={14} /> {deploying ? 'Deploying…' : 'Publish & deploy'}</button>}
         </div>
       </header>

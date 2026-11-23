@@ -2,7 +2,7 @@ import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
@@ -56,6 +56,13 @@ const WebsiteStudioPage = lazy(() => import('./pages/swk/WebsiteStudioPage'))
 const AutomationsPage = lazy(() => import('./pages/swk/AutomationsPage'))
 const MyWorkPage = lazy(() => import('./pages/swk/MyWorkPage'))
 const DocumentToolsPage = lazy(() => import('./pages/swk/DocumentToolsPage'))
+const UtilitiesHubPage = lazy(() => import('./pages/swk/UtilitiesHubPage'))
+const WordStudioPage = lazy(() => import('./pages/swk/WordStudioPage'))
+const TranslatorPage = lazy(() => import('./pages/swk/TranslatorPage'))
+const UnifiedSearchPage = lazy(() => import('./pages/swk/UnifiedSearchPage'))
+const PhonePage = lazy(() => import('./pages/swk/PhonePage'))
+const FieldDutyPage = lazy(() => import('./pages/swk/FieldDutyPage'))
+const FieldLiveMapPage = lazy(() => import('./pages/swk/FieldLiveMapPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -63,6 +70,14 @@ function Guard({ module, children }: { module: string; children: ReactNode }) {
     return <ErrorBox error={new Error('Administration access is restricted until proper role access is granted by the Owner.')} />
   }
   return can(module, 'view') ? <>{children}</> : <ErrorBox error={new Error('You do not have access to this page. Ask an administrator to grant the permission.')} />
+}
+/** Staff-only guard: prevents portal accounts from loading internal staff tools and eliminates 403 API probes. */
+function StaffGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return me.party_id
+    ? <ErrorBox error={new Error('This module is restricted to company staff.')} />
+    : <>{children}</>
 }
 /** The reception code screen exists only for Owner, Admin and Haseeb: everyone else is sent home and never loads the page code. */
 function QrGuard({ children }: { children: ReactNode }) {
@@ -74,6 +89,14 @@ function CrmVaultGuard({ children }: { children: ReactNode }) {
   const { me } = useMeta()
   if (!me) return <Loading />
   return canAccessCrmVault(me) ? <>{children}</> : <ErrorBox error={new Error('CRM Property Vault is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')} />
+}
+/** Live Field GPS Map is restricted strictly to the 3 canonical elevated accounts via canAccessFieldLiveMap. */
+function FieldLiveGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessFieldLiveMap(me)
+    ? <>{children}</>
+    : <ErrorBox error={new Error('Live Field GPS Map is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')} />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -152,7 +175,14 @@ export default function App() {
           <Route path="/recycle-bin" element={<Guard module="admin"><RecycleBinPage /></Guard>} />
           <Route path="/withdrawals" element={<Guard module="admin"><WithdrawalsPage /></Guard>} />
           <Route path="/crm-vault" element={<CrmVaultGuard><CrmVaultPage /></CrmVaultGuard>} />
-          <Route path="/my-deals" element={<MyAssignedDealsPage />} />
+          <Route path="/my-deals" element={<StaffGuard><MyAssignedDealsPage /></StaffGuard>} />
+          <Route path="/utilities" element={<StaffGuard><UtilitiesHubPage /></StaffGuard>} />
+          <Route path="/utilities/word" element={<StaffGuard><WordStudioPage /></StaffGuard>} />
+          <Route path="/utilities/translator" element={<StaffGuard><TranslatorPage /></StaffGuard>} />
+          <Route path="/utilities/search" element={<StaffGuard><UnifiedSearchPage /></StaffGuard>} />
+          <Route path="/phone" element={<StaffGuard><PhonePage /></StaffGuard>} />
+          <Route path="/field-duty" element={<StaffGuard><FieldDutyPage /></StaffGuard>} />
+          <Route path="/field-live" element={<FieldLiveGuard><FieldLiveMapPage /></FieldLiveGuard>} />
           <Route path="/document-tools" element={<Guard module="documents"><DocumentToolsPage /></Guard>} />
           <Route path="/my-work" element={<Guard module="projects"><MyWorkPage /></Guard>} />
           <Route path="/automations" element={<Guard module="admin"><AutomationsPage /></Guard>} />
@@ -180,7 +210,7 @@ export default function App() {
           <Route path="/portal" element={<PortalPage />} />
           <Route path="/inspect" element={<Guard module="leases"><InspectList /></Guard>} />
           <Route path="/inspect/:id" element={<Guard module="leases"><InspectPage /></Guard>} />
-          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat" element={<StaffGuard><ChatPage /></StaffGuard>} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reports" element={<Guard module="reports"><ReportsPage /></Guard>} />
           <Route path="/finance/statements" element={<Guard module="finance"><Statements /></Guard>} />

@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
-import { db,q } from '../db'
+import { db,q,inDemo } from '../db'
 import { dirs,config,BACKUP_EXT } from '../config'
 import { getSetting,publicSettings,setSettings } from '../settings'
 import { audit,getDef,getRecord,assertCan,can } from '../engine'
@@ -20,6 +20,8 @@ import { testLlm,PRESETS,aiConfigured } from '../ai/llm'
 import { runAgent,chatWithAgent,decideAction,ensureAgents,latestBrief } from '../ai/agents'
 import { AGENT_TEMPLATES } from '../ai/templates'
 import { TOOLS } from '../ai/tools'
+import { isToolAllowedForUser } from '../ai/policy'
+import { canAccessCrmVault,canOpenEmployeeRecords,canViewEmployeeRecords } from '../../shared/swk-staff-access'
 import { buildEinvoiceXml,submitEinvoice } from '../integrations/einvoice'
 import { buildWps } from '../integrations/wps'
 import { closeYear,reopenYear,yearEndPreview } from '../integrations/yearend'
@@ -204,9 +206,15 @@ export default async function (app: FastifyInstance) {
   app.post('/api/invoices/:id/einvoice/submit', async (req) => { need(req, 'finance', 'edit'); const id = idOf((req.params as any).id); getRecord(getDef('invoices'), id, req.ctx, { children: false }); return submitEinvoice(id) })
 
   // =================================================================== HR – WPS
-  app.get('/api/hr/wps/:period', async (req) => { need(req, 'hr', 'view'); const r = buildWps((req.params as any).period, { includeDrafts: (req.query as any).drafts === '1' }); return { ...r, content: undefined } })
+  const requireHrWps = (req: any) => {
+    if (!canViewEmployeeRecords(req.user)) {
+      throw forbidden('WPS salary files are restricted to Owner, Admin, Operations Manager, and HR.')
+    }
+  }
+  app.get('/api/hr/wps/:period', async (req) => { need(req, 'hr', 'view'); requireHrWps(req); const r = buildWps((req.params as any).period, { includeDrafts: (req.query as any).drafts === '1' }); return { ...r, content: undefined } })
   app.post('/api/hr/wps/:period/generate', async (req) => {
     need(req, 'hr', 'approve')
+    requireHrWps(req)
     const r = buildWps((req.params as any).period, { save: true, entityId: (req.body as any)?.entity ?? null })
     if (!r.ok) throw bad('Fix the listed problems first', r)
     audit(req.ctx, getDef('wps_batches'), r.batch_id!, 'wps-generated', { file: [null, r.file_name] }, r.file_name)
@@ -214,6 +222,7 @@ export default async function (app: FastifyInstance) {
   })
   app.get('/api/hr/wps/batches/:id/download', async (req, reply) => {
     need(req, 'hr', 'export')
+    requireHrWps(req)
     const b = q.get(`SELECT file_name, content FROM wps_batches WHERE id = ? AND deleted_at IS NULL`, idOf((req.params as any).id))
     if (!b) throw notFound('File not found')
     reply.header('content-type', 'text/plain; charset=utf-8').header('content-disposition', `attachment; filename="${b.file_name}"`); return safeJson<string>(b.content, '')
@@ -224,11 +233,17 @@ export default async function (app: FastifyInstance) {
   /** Render one record's print view to PDF with the caller's own session; studio documents carry their own page settings. */
   const renderRecordPdf = async (req: any, def: ReturnType<typeof getDef>, rec: any, seal?: string) => {
     const rawCookie = req.cookies?.[COOKIE]
-    if (!rawCookie) throw forbidden('PDF generation requires a browser session')
+    const clientHeader = String(req.headers['x-swk-client'] || '').trim().toLowerCase()
+    const mobileSession =
+      clientHeader === 'mobile' && typeof req.headers['x-swk-session'] === 'string'
+        ? req.headers['x-swk-session'].trim()
+        : ''
+    const sid = rawCookie || mobileSession
+    if (!req.user || !sid) throw forbidden('PDF generation requires a signed-in user session')
     const sealQuery = seal !== undefined ? `?seal=${encodeURIComponent(seal)}` : ''
     // Studio documents choose their own page orientation, footer line and page numbering.
     const opts = def.key === 'studio_documents' ? { landscape: rec.orientation === 'Landscape', pageNumbers: rec.page_numbers !== false && rec.page_numbers !== 0, footerText: String(rec.footer_text ?? '') } : {}
-    return renderPrintPdf(`/print/${def.key}/${rec.id}${sealQuery}`, { name: COOKIE, value: rawCookie }, opts)
+    return renderPrintPdf(`/print/${def.key}/${rec.id}${sealQuery}`, { name: COOKIE, value: sid }, opts)
   }
   app.get('/api/pdf/:entity/:id', async (req, reply) => {
     const p = req.params as any, qs = req.query as any
@@ -281,26 +296,31 @@ export default async function (app: FastifyInstance) {
       pending,
       agents,
       templates: AGENT_TEMPLATES.map(t => ({ key: t.key, name: t.name, title: t.title, avatar: t.avatar, blurb: (t as any).blurb ?? t.description })),
-      tools: TOOLS.map(t => ({ name: t.name, risk: t.risk, description: t.description })),
+      tools: TOOLS.filter(t => isToolAllowedForUser(req.user, t.name)).map(t => ({ name: t.name, risk: t.risk, description: t.description })),
     }
   })
   app.get('/api/ai/brief', async (req) => {
     need(req, 'ai', 'view')
+    if (!canAccessCrmVault(req.user) && !(inDemo() && req.user?.email?.toLowerCase() === 'demo@swkpropertiesuae.com')) {
+      throw forbidden('Executive AI brief is restricted to Owner, Admin, and Operations Manager.')
+    }
     return latestBrief()
   })
   app.post('/api/ai/chat', async (req) => {
     need(req, 'ai', 'view')
     const b = z.object({ agent_id: z.number().int().positive(), message: z.string().min(1).max(4000), history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() })).optional() }).parse(req.body)
-    const reply = await chatWithAgent(b.agent_id, b.message, { channel: 'chat', history: b.history })
+    const reply = await chatWithAgent(b.agent_id, b.message, { channel: 'chat', history: b.history }, req.user!)
     return { reply }
   })
   app.post('/api/ai/agents/:id/run', async (req) => {
+    if (!canOpenEmployeeRecords(req.user)) throw forbidden('Only Owner and Admin can run AI agents manually.')
     need(req, 'ai', 'edit')
     const id = idOf((req.params as any).id)
     const task = (req.body as any)?.task ? String((req.body as any).task) : undefined
-    return runAgent(id, task, 'manual')
+    return runAgent(id, task, 'manual', req.user!)
   })
   app.post('/api/ai/agents/hire', async (req) => {
+    if (!canOpenEmployeeRecords(req.user)) throw forbidden('Only Owner and Admin can hire AI agents.')
     need(req, 'ai', 'create')
     const { template } = z.object({ template: z.string().min(1) }).parse(req.body)
     const t = AGENT_TEMPLATES.find(x => x.key === template)

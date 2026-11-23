@@ -6,15 +6,27 @@ import { z } from 'zod'
 import { db,q,tx,inDemo } from '../db'
 import { dirs,config,BACKUP_EXT,isBackupFile } from '../config'
 import { loadSettings,publicSettings,setSettings,SETTING_DEFAULTS,SECRET_SETTINGS } from '../settings'
-import { audit,getDef,getRecord,SYSTEM_CTX,createRecord } from '../engine'
+import { audit,getDef,getRecord,SYSTEM_CTX,createRecord,updateRecord } from '../engine'
 import { bad,forbidden,nowIso,safeJson,todayStr,notFound } from '../util'
 import { idOf,need } from './helpers'
 import { retryOutbox,verifySmtp,smtpConfigured,queueEmail } from '../mailer'
 import { generatePayroll,lastIssued } from '../domain/misc'
-import { destroyUserSessions,loadUser,hashPassword,validatePasswordStrength } from '../auth'
+import { destroyUserSessions,loadUser,hashPassword,validatePasswordStrength,signRoleGrant } from '../auth'
 import crypto from 'node:crypto'
 import { ENTITY_LIST } from '../../shared/entities'
-import { isOwnerSwkUser,isAdminSwkUser,canOpenEmployeeRecords } from '../../shared/swk-staff-access'
+import {
+  isOwnerSwkUser,
+  isAdminSwkUser,
+  canOpenEmployeeRecords,
+  canViewEmployeeRecords,
+  NON_ELEVATED_ASSIGNABLE_ROLES,
+  hardcodedAccountFor,
+  isElevatedCanonicalEmail,
+  OWNER_EMAILS,
+  ADMIN_EMAILS,
+  hasWildcardPermission,
+  type NonElevatedAssignableRole,
+} from '../../shared/swk-staff-access'
 
 export default async function (app: FastifyInstance) {
   app.post('/api/workflow-runs/:id/retry',async req=>{
@@ -128,6 +140,93 @@ export default async function (app: FastifyInstance) {
     if (target?.permissions === '*' && req.user.permissions !== '*') throw bad('Only a full administrator can change another full administrator')
     return id
   }
+  const resolveAssignableRole = (roleId?: number, roleName?: string) => {
+    const r = roleId
+      ? q.get<{ id: number; name: string; permissions: string }>(`SELECT id, name, permissions FROM roles WHERE id = ? AND deleted_at IS NULL`, roleId)
+      : q.get<{ id: number; name: string; permissions: string }>(`SELECT id, name, permissions FROM roles WHERE name = ? AND deleted_at IS NULL`, roleName || 'Staff (Attendance & General)')
+    if (!r) throw bad('Unknown role')
+    const p = safeJson(r.permissions, {})
+    if (r.name === 'Owner' || r.name === 'Admin' || r.name === 'Manager' || hasWildcardPermission(p)) {
+      throw bad('Elevated roles (Owner, Admin, Manager, or wildcard *) cannot be assigned to staff accounts.')
+    }
+    if (!(NON_ELEVATED_ASSIGNABLE_ROLES as readonly string[]).includes(r.name)) {
+      throw bad(`Only non-elevated staff tiers (${NON_ELEVATED_ASSIGNABLE_ROLES.join(', ')}) can be assigned here.`)
+    }
+    return r as { id: number; name: NonElevatedAssignableRole; permissions: string }
+  }
+  app.post('/api/admin/users', async (req, reply) => {
+    if (!canOpenEmployeeRecords(req.user)) throw forbidden('Only the Owner and the Admin can provision staff accounts.')
+    need(req, 'admin', 'create')
+    const b = z.object({
+      name: z.string().trim().min(1).max(160),
+      email: z.string().trim().email().max(160),
+      password: z.string().min(1).max(200),
+      role_id: z.number().int().positive().optional(),
+      role_name: z.string().trim().min(1).max(80).optional(),
+      branch_id: z.number().int().positive().nullable().optional(),
+      department_id: z.number().int().positive().nullable().optional(),
+      designation: z.string().trim().max(120).optional(),
+      phone: z.string().trim().max(40).optional(),
+      active: z.boolean().optional(),
+      must_change_password: z.boolean().optional(),
+    }).parse(req.body ?? {})
+    const email = b.email.toLowerCase()
+    if (hardcodedAccountFor(email) || isElevatedCanonicalEmail(email) || OWNER_EMAILS.has(email) || ADMIN_EMAILS.has(email)) {
+      throw bad('This SWK staff account is hardcoded by company policy.')
+    }
+    const role = resolveAssignableRole(b.role_id, b.role_name)
+    const rec = createRecord(getDef('users'), {
+      name: b.name,
+      email,
+      password: b.password,
+      role_id: role.id,
+      branch_id: b.branch_id ?? null,
+      department_id: b.department_id ?? null,
+      designation: b.designation ?? null,
+      phone: b.phone ?? null,
+      active: b.active ?? true,
+      must_change_password: b.must_change_password ?? false,
+    }, req.ctx)
+    const sig = signRoleGrant(rec.id, email, role.name)
+    q.run(`UPDATE users SET role_grant_sig = ?, role_granted_by = ? WHERE id = ?`, sig, req.user!.id, rec.id)
+    return reply.status(201).send({ record: rec, user: loadUser(rec.id) })
+  })
+  app.put('/api/admin/users/:id', async (req) => {
+    if (!canOpenEmployeeRecords(req.user)) throw forbidden('Only the Owner and the Admin can update staff roles.')
+    const id = manageUser(req)
+    const existing = q.get<{ id: number; email: string; party_id: number | null }>(`SELECT id, email, party_id FROM users WHERE id = ? AND deleted_at IS NULL`, id)
+    if (!existing) throw notFound('User not found')
+    if (existing.party_id) throw bad('Customer portal accounts cannot be modified here')
+    const existingEmail = String(existing.email || '').trim().toLowerCase()
+    if (hardcodedAccountFor(existingEmail) || isElevatedCanonicalEmail(existingEmail) || OWNER_EMAILS.has(existingEmail) || ADMIN_EMAILS.has(existingEmail)) {
+      throw bad('The role of this hardcoded SWK staff account is fixed by company policy.')
+    }
+    const b = z.object({
+      name: z.string().trim().min(1).max(160).optional(),
+      role_id: z.number().int().positive().optional(),
+      role_name: z.string().trim().min(1).max(80).optional(),
+      branch_id: z.number().int().positive().nullable().optional(),
+      department_id: z.number().int().positive().nullable().optional(),
+      designation: z.string().trim().max(120).optional(),
+      phone: z.string().trim().max(40).optional(),
+      active: z.boolean().optional(),
+    }).parse(req.body ?? {})
+    const patch: Record<string, any> = {}
+    for (const k of ['name', 'branch_id', 'department_id', 'designation', 'phone', 'active'] as const) {
+      if (b[k] !== undefined) patch[k] = b[k]
+    }
+    let resolvedRole: { id: number; name: NonElevatedAssignableRole } | null = null
+    if (b.role_id !== undefined || b.role_name !== undefined) {
+      resolvedRole = resolveAssignableRole(b.role_id, b.role_name)
+      patch.role_id = resolvedRole.id
+    }
+    const rec = updateRecord(getDef('users'), id, patch, req.ctx)
+    if (resolvedRole) {
+      const sig = signRoleGrant(id, existing.email, resolvedRole.name)
+      q.run(`UPDATE users SET role_grant_sig = ?, role_granted_by = ? WHERE id = ?`, sig, req.user!.id, id)
+    }
+    return { record: rec, user: loadUser(id) }
+  })
   app.post('/api/admin/users/:id/unlock', async (req) => { const id = manageUser(req); q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`, id); audit(req.ctx, getDef('users'), id, 'unlock', null, ''); return { ok: true } })
   app.post('/api/admin/users/:id/reset-2fa', async (req) => { const id = manageUser(req); q.run(`UPDATE users SET totp_secret = NULL WHERE id = ?`, id); audit(req.ctx, getDef('users'), id, 'reset-2fa', null, ''); return { ok: true } })
   app.post('/api/admin/users/:id/sign-out', async (req) => { const id = manageUser(req); destroyUserSessions(id); audit(req.ctx, getDef('users'), id, 'force-signout', null, ''); return { ok: true } })
@@ -186,6 +285,7 @@ export default async function (app: FastifyInstance) {
   // ---- HR payroll generation
   app.post('/api/hr/payroll/generate', async (req) => {
     need(req, 'hr', 'create')
+    if (!canViewEmployeeRecords(req.user)) throw forbidden('Payroll generation is restricted to Owner, Admin, Operations Manager, and HR.')
     const { period } = z.object({ period: z.string() }).parse(req.body)
     return generatePayroll(period, req.ctx)
   })

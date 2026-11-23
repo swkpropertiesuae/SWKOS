@@ -6,6 +6,7 @@ import { pipeline } from 'node:stream/promises'
 import { q } from '../db'
 import { dirs,config } from '../config'
 import { ENTITIES } from '../../shared/entities'
+import { RESTRICTED_HR_PII_ENTITIES, canViewEmployeeRecords } from '../../shared/swk-staff-access'
 import { assertCan,getDef,getRecord,insertRow,labelsFor,can } from '../engine'
 import { bad,forbidden,notFound,nowIso,todayStr } from '../util'
 import { audit } from '../engine'
@@ -99,6 +100,9 @@ export default async function (app: FastifyInstance) {
     const id = idOf((req.params as any).id)
     const f = q.get(`SELECT * FROM attachments WHERE id = ? AND deleted_at IS NULL`, id)
     if (!f) throw notFound('File not found')
+    if (f.link_entity && RESTRICTED_HR_PII_ENTITIES.has(String(f.link_entity)) && !canViewEmployeeRecords(req.user)) {
+      throw forbidden('Access restricted: HR, payroll, salary, and staff visa records are only accessible to Owner, Admin, Operations Manager, and HR.')
+    }
     if (f.link_entity && ENTITIES[f.link_entity]) assertCan(req.ctx, ENTITIES[f.link_entity].module, 'edit'); else assertCan(req.ctx, 'documents', 'delete')
     q.run(`UPDATE attachments SET deleted_at = ? WHERE id = ?`, nowIso(), id)
     audit(req.ctx, getDef('attachments'), id, 'delete', { file: [f.file_name, null] }, f.file_name)

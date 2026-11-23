@@ -3,6 +3,7 @@ import { createContext,useCallback,useContext,useEffect,useMemo,useState,type Re
 import type { EntityDef,FieldDef,NavGroup,Action } from '@shared/types'
 import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS } from '@shared/swk-staff-access'
 import { get } from './api'
+import { clearMobileSession, hydrateMobileSession } from './mobileBridge'
 
 export interface MetaEntity extends EntityDef { customFieldDefs: FieldDef[] }
 export interface Me { demo?: boolean; id: number; name: string; email: string; role: string; permissions: '*' | Record<string, string[]>; branch_id: number | null; party_id: number | null; totp: boolean; mustChangePassword: boolean; defaultPassword: boolean; lastLogin?: string }
@@ -17,6 +18,7 @@ export function MetaProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const reload = useCallback(async () => {
     try {
+      await hydrateMobileSession()
       const m = await get<Me>('/api/auth/me')
       const mt = await get<Meta>('/api/meta')
       if (lang === 'ar') {
@@ -27,7 +29,7 @@ export function MetaProvider({ children }: { children: ReactNode }) {
     } catch { setMe(null); setMeta(null) } finally { setLoading(false) }
   }, [])
   useEffect(() => { void reload() }, [reload])
-  useEffect(() => { const h = () => { setMe(null); setMeta(null) }; window.addEventListener('swk:unauthorized', h); return () => window.removeEventListener('swk:unauthorized', h) }, [])
+  useEffect(() => { const h = () => { void clearMobileSession(); setMe(null); setMeta(null) }; window.addEventListener('swk:unauthorized', h); return () => window.removeEventListener('swk:unauthorized', h) }, [])
   const byKey = useMemo(() => new Map((meta?.entities ?? []).map(e => [e.key, e])), [meta])
   const def = useCallback((k: string) => { const e = byKey.get(k); if (!e) throw new Error('Unknown entity ' + k); return e }, [byKey])
   const can = useCallback((module: string, a: Action = 'view') => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { FileUp,CalendarCheck2,FileSpreadsheet,Download,Lock,Undo2,ShieldAlert } from 'lucide-react'
-import { get,post } from '../lib/api'
+import { downloadAuthFile, get, post } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { PageHeader,Loading,ErrorBox,Badge,Empty } from '../ui/kit'
 import { useDialogs } from '../ui/kit'
@@ -71,7 +71,7 @@ export function WpsPage() {
   const chk = useQuery({ queryKey: ['wps', period, drafts], queryFn: () => get<any>(`/api/hr/wps/${period}`, { drafts: drafts ? 1 : undefined }), retry: false })
   const hist = useQuery({ queryKey: ['wps-hist'], queryFn: () => get<any>('/api/e/wps_batches', { pageSize: 30 }) })
   const [busy, setBusy] = useState(false)
-  const gen = async () => { setBusy(true); try { const r = await post<any>(`/api/hr/wps/${period}/generate`, {}); toast.ok(`${r.file_name} generated`); void hist.refetch(); window.location.href = `/api/hr/wps/batches/${r.batch_id}/download` } catch (e: any) { toast.error(e.message) } finally { setBusy(false) } }
+  const gen = async () => { setBusy(true); try { const r = await post<any>(`/api/hr/wps/${period}/generate`, {}); toast.ok(`${r.file_name} generated`); void hist.refetch(); await downloadAuthFile(`/api/hr/wps/batches/${r.batch_id}/download`, r.file_name) } catch (e: any) { toast.error(e.message) } finally { setBusy(false) } }
   const d = chk.data
   return (
     <div className="fade-in max-w-4xl">
@@ -86,7 +86,7 @@ export function WpsPage() {
           <div className="text-xs text-muted">{d.note}</div></>}
       </div>
       <h3 className="mt-6 mb-2">Generated files</h3>
-      {!hist.data ? <Loading /> : !hist.data.rows.length ? <Empty title="No WPS files yet" /> : <div className="card table-wrap"><table className="grid"><thead><tr><th>Period</th><th>File</th><th className="num">Employees</th><th className="num">Total</th><th>Generated</th><th /></tr></thead><tbody>{hist.data.rows.map((r: any) => <tr key={r.id}><td>{r.period}</td><td>{r.file_name}</td><td className="num">{r.employees}</td><td className="num">{fmtMoney(r.total)}</td><td>{r.created?.replace('T', ' ')}</td><td><a className="btn ghost sm" href={`/api/hr/wps/batches/${r.id}/download`}><Download /> Download</a></td></tr>)}</tbody></table></div>}
+      {!hist.data ? <Loading /> : !hist.data.rows.length ? <Empty title="No WPS files yet" /> : <div className="card table-wrap"><table className="grid"><thead><tr><th>Period</th><th>File</th><th className="num">Employees</th><th className="num">Total</th><th>Generated</th><th /></tr></thead><tbody>{hist.data.rows.map((r: any) => <tr key={r.id}><td>{r.period}</td><td>{r.file_name}</td><td className="num">{r.employees}</td><td className="num">{fmtMoney(r.total)}</td><td>{r.created?.replace('T', ' ')}</td><td><button type="button" className="btn ghost sm" onClick={() => void downloadAuthFile(`/api/hr/wps/batches/${r.id}/download`, r.file_name).catch(e => toast.error(e.message))}><Download /> Download</button></td></tr>)}</tbody></table></div>}
     </div>
   )
 }

@@ -1,0 +1,11 @@
+Pods/
+build/
+DerivedData/
+xcuserdata/
+*.xcworkspace/xcuserdata/
+App/App/public/
+App/App/config.xml
+App/App/capacitor.config.json
+*.ipa
+*.dSYM.zip
+*.dSYM

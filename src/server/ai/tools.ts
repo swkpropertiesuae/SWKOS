@@ -1,24 +1,27 @@
 import { q } from '../db'
 import { addDays,daysBetween,todayStr,fromCents,toCents,r2,nowLocal } from '../util'
-import { createRecord,getDef,SYSTEM_CTX } from '../engine'
+import { createRecord,getDef,SYSTEM_CTX,type SessionUser } from '../engine'
+import { findCanonicalElevatedUser } from '../auth'
 import { businessSnapshot } from '../integrations/snapshot'
 import { queueEmail } from '../mailer'
 import { sendWhatsApp,messageOwners,phonesForParty,normalizePhone,findPartyByPhone } from '../integrations/whatsapp'
 import { notifyRole } from '../notify'
 import { addJobEvent } from '../domain/jobs'
+import { listAgentAssignedProperties } from '../domain/crm-vault'
 import { getSetting } from '../settings'
 import { MODES } from '../../shared/entities/crm'
 import { currentCall,setOutcome } from './voice-context'
 
 export type Risk = 'read' | 'internal' | 'external'
-export interface Tool { name: string; description: string; risk: Risk; parameters: any; run: (a: any, ctx: { agent: string }) => Promise<any> | any; summarize?: (a: any) => string }
+export interface ToolContext { agent: string; user?: SessionUser | null }
+export interface Tool { name: string; description: string; risk: Risk; parameters: any; run: (a: any, ctx: ToolContext) => Promise<any> | any; summarize?: (a: any) => string }
 
 const S = (description: string) => ({ type: 'string', description })
 const Nn = (description: string) => ({ type: 'number', description })
 const obj = (properties: Record<string, any>, required: string[] = []) => ({ type: 'object', properties, required })
 const money = (c: number | null | undefined) => r2(fromCents(c))
 const lim = (a: any, d = 15) => Math.min(Math.max(Number(a?.limit) || d, 1), 40)
-const adminId = () => q.val<number>(`SELECT u.id FROM users u JOIN roles r ON r.id = u.role_id WHERE r.name = 'Admin' AND u.deleted_at IS NULL ORDER BY u.id LIMIT 1`) ?? 1
+const adminId = () => findCanonicalElevatedUser(true)?.id ?? 1
 const dealByNo = (no: string) => q.get(`SELECT * FROM jobs WHERE deleted_at IS NULL AND job_no = ? LIMIT 1`, String(no).trim().toUpperCase())
 const partyByName = (s: string) => q.get(`SELECT * FROM parties WHERE deleted_at IS NULL AND (code = ? OR name LIKE ?) ORDER BY (name = ?) DESC, id LIMIT 1`, s, `%${s}%`, s)
 
@@ -186,6 +189,108 @@ export const TOOLS: Tool[] = [
       if (!call || !String(getSetting('voice_transfer_number') || '').trim()) return { transferred: false, note: 'No staff line is available. Offer a call-back with request_callback instead.' }
       call.handoff = { reason: clip(a.reason, 200) }; setOutcome('Transferred to staff')
       return { transferred: true, note: 'The call will be connected to staff as soon as you finish this reply.' }
+    } },
+  // ---------------- role-scoped staff tools (safe for all staff including Field Agents)
+  { name: 'market_pulse_lookup', risk: 'read', description: 'Public Dubai community benchmarks (AED/sqft, annual rent), recent DLD market transactions, and real estate news talking points.',
+    parameters: obj({ area: S('optional community or area name'), limit: Nn('max rows (default 10)') }),
+    run: a => {
+      const area = clip(a?.area, 80)
+      const n = lim(a, 10)
+      const commWhere = area ? `AND (lower(name) LIKE ? OR lower(code) LIKE ?)` : ''
+      const commArgs = area ? [`%${area.toLowerCase()}%`, `%${area.toLowerCase()}%`] : []
+      const communities = q.all(
+        `SELECT code, name, master_developer, avg_price_sqft, avg_rent_annual FROM communities WHERE deleted_at IS NULL AND active = 1 ${commWhere} ORDER BY name LIMIT ${n}`,
+        ...commArgs,
+      )
+      const dldWhere = area ? `AND (lower(area_name) LIKE ? OR lower(community_code) LIKE ? OR lower(building_or_project) LIKE ?)` : ''
+      const dldArgs = area ? [`%${area.toLowerCase()}%`, `%${area.toLowerCase()}%`, `%${area.toLowerCase()}%`] : []
+      const transactions = q.all(
+        `SELECT dld_txn_no, txn_date, area_name, procedure_type, property_type, building_or_project, bedrooms, area_sqft, transacted_value_aed, price_per_sqft_aed FROM dld_market_transactions WHERE deleted_at IS NULL ${dldWhere} ORDER BY txn_date DESC, id DESC LIMIT ${n}`,
+        ...dldArgs,
+      ).map((r: any) => ({
+        ref: r.dld_txn_no,
+        date: r.txn_date,
+        area: r.area_name,
+        procedure: r.procedure_type,
+        type: r.property_type,
+        project: r.building_or_project,
+        bedrooms: r.bedrooms,
+        area_sqft: r.area_sqft,
+        value_aed: money(r.transacted_value_aed),
+        price_per_sqft_aed: money(r.price_per_sqft_aed),
+      }))
+      const newsWhere = area ? `AND (lower(area_name) LIKE ? OR lower(headline) LIKE ?)` : ''
+      const newsArgs = area ? [`%${area.toLowerCase()}%`, `%${area.toLowerCase()}%`] : []
+      const news = q.all(
+        `SELECT headline, category, area_name, impact_ticker, published_at, client_pitch_takeaway FROM real_estate_news WHERE deleted_at IS NULL ${newsWhere} ORDER BY published_at DESC, id DESC LIMIT 5`,
+        ...newsArgs,
+      )
+      return { communities, recent_dld_transactions: transactions, news }
+    } },
+  { name: 'my_assigned_deals_masked', risk: 'read', description: 'Properties and deals assigned specifically to the current signed-in agent, with owner phones hard-masked.',
+    parameters: obj({ status: S('optional vault status'), query: S('optional building, community or deal ref'), limit: Nn('max rows (default 15)') }),
+    run: (a, ctx) => {
+      if (!ctx.user) return { total: 0, deals: [], note: 'No user session context' }
+      const res = listAgentAssignedProperties(ctx.user, {
+        status: a?.status ? String(a.status) : undefined,
+        q: a?.query ? String(a.query) : undefined,
+        pageSize: lim(a, 15),
+      })
+      return { total: res.total, deals: res.rows }
+    } },
+  { name: 'my_attendance_status', risk: 'read', description: 'Check the current signed-in user\'s own attendance check-in/out and field duty status for a date (defaults to today).',
+    parameters: obj({ date: S('optional YYYY-MM-DD date') }),
+    run: (a, ctx) => {
+      const day = a?.date && /^\d{4}-\d{2}-\d{2}$/.test(String(a.date)) ? String(a.date) : todayStr()
+      if (!ctx.user) return { date: day, checked_in: false, note: 'No user session context' }
+      const email = String(ctx.user.email || '').trim().toLowerCase()
+      const emp = q.get<{ id: number; emp_no: string; name: string }>(
+        `SELECT id, emp_no, name FROM employees WHERE (user_id = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`,
+        ctx.user.id,
+        email,
+      )
+      const event = q.get<any>(
+        emp
+          ? `SELECT event_no, work_date, shift_name, terminal_type, check_in_at, check_out_at, duty_status, late_minutes, daily_report_verified FROM attendance_events WHERE work_date = ? AND deleted_at IS NULL AND (user_id = ? OR employee_id = ?) ORDER BY id DESC LIMIT 1`
+          : `SELECT event_no, work_date, shift_name, terminal_type, check_in_at, check_out_at, duty_status, late_minutes, daily_report_verified FROM attendance_events WHERE work_date = ? AND deleted_at IS NULL AND user_id = ? ORDER BY id DESC LIMIT 1`,
+        ...(emp ? [day, ctx.user.id, emp.id] : [day, ctx.user.id]),
+      )
+      const fieldSession = emp
+        ? q.get<any>(
+            `SELECT session_no, duty_date, status, assigned_location, scheduled_start, scheduled_end, started_at, ended_at FROM field_sessions WHERE duty_date = ? AND employee_id = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`,
+            day,
+            emp.id,
+          )
+        : null
+      return {
+        date: day,
+        employee_linked: !!emp,
+        emp_no: emp?.emp_no ?? null,
+        checked_in: !!(event?.check_in_at),
+        checked_out: !!(event?.check_out_at),
+        attendance_event: event ?? null,
+        field_session: fieldSession ?? null,
+      }
+    } },
+  { name: 'my_daily_report_status', risk: 'read', description: 'Check whether the current signed-in user has submitted their daily close-out report and next-day plan.',
+    parameters: obj({ date: S('optional YYYY-MM-DD date') }),
+    run: (a, ctx) => {
+      const day = a?.date && /^\d{4}-\d{2}-\d{2}$/.test(String(a.date)) ? String(a.date) : todayStr()
+      if (!ctx.user) return { date: day, submitted: false, note: 'No user session context' }
+      const email = String(ctx.user.email || '').trim().toLowerCase()
+      const emp = q.get<{ id: number }>(
+        `SELECT id FROM employees WHERE (user_id = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`,
+        ctx.user.id,
+        email,
+      )
+      const report = q.get<any>(
+        emp
+          ? `SELECT id, report_no, report_date, status, submitted_at, revision_no, sys_calls_count, sys_tasks_completed, sys_viewings_completed FROM daily_reports WHERE report_date = ? AND deleted_at IS NULL AND (user_id = ? OR employee_id = ?) ORDER BY id DESC LIMIT 1`
+          : `SELECT id, report_no, report_date, status, submitted_at, revision_no, sys_calls_count, sys_tasks_completed, sys_viewings_completed FROM daily_reports WHERE report_date = ? AND deleted_at IS NULL AND user_id = ? ORDER BY id DESC LIMIT 1`,
+        ...(emp ? [day, ctx.user.id, emp.id] : [day, ctx.user.id]),
+      )
+      const submitted = !!report && ['Submitted (Frozen)', 'Approved by Manager', 'Exemption Logged'].includes(report.status)
+      return { date: day, submitted, report: report ?? null }
     } },
 ]
 export const toolByName = (n: string) => TOOLS.find(t => t.name === n)

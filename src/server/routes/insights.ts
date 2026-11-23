@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { loadUser } from '../auth'
-import { liveBus } from '../notify'
+import { liveBus, liveScope } from '../notify'
 import { calendarEvents } from '../calendar'
 import { config } from '../config'
 import type { FastifyInstance } from 'fastify'
@@ -11,6 +11,7 @@ import { addDays,bad,daysBetween,fromCents,monthStart,r2,todayStr,toCsv,nowIso }
 import { idOf,need } from './helpers'
 import { reportCatalog,runReport,REPORTS } from '../reports'
 import { getSetting } from '../settings'
+import { canViewEmployeeRecords, isRestrictedStaffUser, RESTRICTED_HR_PII_ENTITIES, RESTRICTED_STAFF_ALLOWED_ENTITIES } from '../../shared/swk-staff-access'
 import { z } from 'zod'
 
 const SIGN = `CASE WHEN i.doc_type = 'Credit Note' THEN -1 ELSE 1 END`
@@ -191,8 +192,11 @@ export default async function (app: FastifyInstance) {
       { entity: 'employees', cols: ['name', 'emp_no'], module: 'hr', group: 'Employees' },
       { entity: 'announcements', cols: ['title'], module: 'documents', group: 'Blog' },
     ]
+    const restricted = isRestrictedStaffUser(user)
     const out: any[] = []
     for (const s of specs) {
+      if (RESTRICTED_HR_PII_ENTITIES.has(s.entity) && !canViewEmployeeRecords(user)) continue
+      if (restricted && !RESTRICTED_STAFF_ALLOWED_ENTITIES.has(s.entity)) continue
       if (!can(user, s.module, 'view')) continue
       const def = ENTITIES[s.entity]
       const rows = q.all(`SELECT id FROM "${s.entity}" WHERE deleted_at IS NULL AND (${s.cols.map(c => `"${c}" LIKE ? ESCAPE '\\'`).join(' OR ')}) ORDER BY id DESC LIMIT 5`, ...s.cols.map(() => pat))
@@ -243,17 +247,33 @@ export default async function (app: FastifyInstance) {
   })
 
   // ------------------------------------------------------------------ notifications
-  // Server-sent events: one open connection per page, a message for every new notification, a ping every 20 s so proxies keep it open.
+  // Server-sent events: one open connection per page (cookie or mobile stream ticket), a message for every new notification, a ping every 20 s so proxies keep it open.
   app.get('/api/notifications/stream', async (req, reply) => {
     const uid = req.user!.id
     reply.hijack()
     const res = reply.raw
-    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+    const baseHeaders = reply.getHeaders() as Record<string, string | string[] | number | undefined>
+    res.writeHead(200, {
+      ...baseHeaders,
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      'x-accel-buffering': 'no',
+    })
     res.write('retry: 4000\n\n')
     const send = (n: any) => { try { res.write(`event: notification\ndata: ${JSON.stringify(n)}\n\n`) } catch { /* closed */ } }
-    liveBus.on('u:' + uid, send)
+    const channel = `u:${liveScope()}:${uid}`
+    liveBus.on(channel, send)
     const ping = setInterval(() => { try { res.write(': ping\n\n') } catch { /* closed */ } }, 20_000)
-    req.raw.on('close', () => { clearInterval(ping); liveBus.off('u:' + uid, send) })
+    let cleaned = false
+    const cleanup = () => {
+      if (cleaned) return
+      cleaned = true
+      clearInterval(ping)
+      liveBus.off(channel, send)
+    }
+    req.raw.on('close', cleanup)
+    res.on('close', cleanup)
   })
   app.get('/api/notifications', async (req) => {
     const rows = q.all(`SELECT id, kind, title, body, link, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 60`, req.user!.id)

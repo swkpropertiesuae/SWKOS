@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { api, get, post } from '../../lib/api'
+import { api, buildClientHeaders, get, getFetchCredentials, post, resolveApiUrl } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { HandoverCustody } from './HandoverCustody'
 import {
@@ -200,11 +200,11 @@ export default function CrmVaultPage() {
     try {
       const fd = new FormData()
       for (const f of Array.from(fileList)) fd.append('file', f)
-      const res = await fetch('/api/crm-vault/import', {
+      const res = await fetch(resolveApiUrl('/api/crm-vault/import'), {
         method: 'POST',
         body: fd,
-        headers: { 'x-swk-client': 'web' },
-        credentials: 'same-origin',
+        headers: buildClientHeaders(),
+        credentials: getFetchCredentials(),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Import failed')

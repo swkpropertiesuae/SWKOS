@@ -5,6 +5,7 @@ import { SWK_TEAM_PROFILES } from '@shared/swk-team-profiles'
 import { SWK_COMPANY_ADDRESS,SWK_COMPANY_EMAIL,SWK_COMPANY_HOURS,SWK_COMPANY_NAME,SWK_COMPANY_PHONE,SWK_RERA_ORN,SWK_TRADE_LICENSE } from '@shared/corporate-footer'
 import { get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
+import { getMobileDeviceAuthPayload,isNativeMobile,setMobileSession } from '../lib/mobileBridge'
 
 const WEBSITE_TEAM = SWK_TEAM_PROFILES.filter(m => m.onWebsite && m.photo)
 
@@ -52,10 +53,14 @@ export function Login() {
   useEffect(() => { void get<any>('/api/demo/status').then(setDemo).catch(() => {}) }, [])
 
   const signIn = async (loginEmail: string, loginPassword: string, code?: string) => {
-    const r = await post<any>('/api/auth/login', { email: loginEmail, password: loginPassword, totp: code })
+    const mobilePayload = isNativeMobile() ? await getMobileDeviceAuthPayload() : {}
+    const r = await post<any>('/api/auth/login', { email: loginEmail, password: loginPassword, totp: code, ...mobilePayload })
     if (r.needsTotp) {
       setNeedTotp(true)
       throw new Error('Enter the 6-digit code from your authenticator app to finish signing in.')
+    }
+    if (r.session_token) {
+      await setMobileSession(r.session_token, r.device_id ?? (mobilePayload as any).device_id ?? null)
     }
     await reload()
     nav('/home', { replace: true })

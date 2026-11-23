@@ -1016,15 +1016,13 @@ function toE164(phone: string): string {
 }
 
 /**
- * Initiates a server-side Hard-Masked Bridge Call.
- * The owner's real number is decrypted ONLY in server memory and NEVER sent to the agent's device or phone dialer.
- * The agent's phone call history ONLY ever sees SWK's company caller ID.
+ * Verifies caller access to place a masked call for `propertyId` and decrypts
+ * the owner's E.164 phone number strictly inside server memory.
  */
-export async function initiateMaskedBridgeCall(
+export function resolveVaultOwnerForMaskedCall(
   user: SessionUser,
   propertyId: number,
-  publicBaseUrl: string,
-): Promise<{ ok: true; log_id: number; provider: string; call_sid: string; message: string }> {
+): { row: any; ownerE164: string } {
   const row = q.get<any>(`SELECT * FROM crm_vault_properties WHERE id = ?`, propertyId)
   if (!row) throw notFound('Property not found')
   if (row.assigned_user_id !== user.id && !canAccessCrmVault(user)) {
@@ -1036,8 +1034,22 @@ export async function initiateMaskedBridgeCall(
   }
   if (!row.direct_mobile_enc) throw bad('No phone number on file for this property.')
 
-  const ownerPhone = toE164(decryptSecret(row.direct_mobile_enc))
-  if (!ownerPhone) throw bad('Stored phone number could not be normalised.')
+  const ownerE164 = toE164(decryptSecret(row.direct_mobile_enc))
+  if (!ownerE164) throw bad('Stored phone number could not be normalised.')
+  return { row, ownerE164 }
+}
+
+/**
+ * Initiates a server-side Hard-Masked Bridge Call.
+ * The owner's real number is decrypted ONLY in server memory and NEVER sent to the agent's device or phone dialer.
+ * The agent's phone call history ONLY ever sees SWK's company caller ID.
+ */
+export async function initiateMaskedBridgeCall(
+  user: SessionUser,
+  propertyId: number,
+  publicBaseUrl: string,
+): Promise<{ ok: true; log_id: number; provider: string; call_sid: string; message: string }> {
+  const { row, ownerE164: ownerPhone } = resolveVaultOwnerForMaskedCall(user, propertyId)
 
   const agentPhone = toE164(resolveAgentPhone(user))
   if (!agentPhone) throw bad('Your staff phone number is not set in HR Employees. Ask Admin or Haseeb to update your phone number.')

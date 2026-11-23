@@ -9,7 +9,7 @@ import type { FieldDef } from '@shared/types'
 import { optValue } from '@shared/types'
 import { canViewEmployeeRecords } from '@shared/swk-staff-access'
 import { useMeta,type MetaEntity } from '../lib/meta'
-import { del,get,post,put,downloadUrl } from '../lib/api'
+import { buildApiPath, del, get, post, put, downloadAuthFile } from '../lib/api'
 import { CellValue } from './Fields'
 import { EntityFormModal } from './EntityForm'
 import { Badge,Empty,ErrorBox,Modal,PageHeader,Pagination,useDialogs,Loading } from '../ui/kit'
@@ -111,7 +111,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
       {!embedded && (
         <PageHeader icon={<Icon size={20} />} title={title ?? def.plural} subtitle={def.description ?? `${(query.data?.total ?? 0).toLocaleString()} records`} actions={<>
           {headerExtra}
-          {can(def.module, 'export') && <a className="btn outline" href={downloadUrl(`/api/e/${entity}/export.csv`, { q: param('q'), filters: allFilters.length ? JSON.stringify(allFilters) : undefined, sort, dir })}><Download /> Export</a>}
+          {can(def.module, 'export') && <button type="button" className="btn outline" onClick={() => void downloadAuthFile(buildApiPath(`/api/e/${entity}/export.csv`, { q: param('q'), filters: allFilters.length ? JSON.stringify(allFilters) : undefined, sort, dir }), `${entity}.csv`).catch(e => toast.error(e.message))}><Download /> Export</button>}
           {canCreate && !def.children?.length && <button className="btn outline" onClick={() => setShowImport(true)}><Upload /> Import</button>}
           {canCreate && !def.children?.length && <button className="btn outline" onClick={() => setSmart(true)}><ScanText /> Smart import (OCR)</button>}
           {canCreate && <button className="btn green" onClick={() => setEditing('new')}><Plus /> New {def.label}</button>}
@@ -247,7 +247,7 @@ function ImportModal({ def, onClose, onDone }: { def: MetaEntity; onClose: () =>
     try { const r = await post<any>(`/api/e/${def.key}/import`, { csv: text, dryRun }); setRes(r); if (!dryRun && r.created) { toast.ok(`${r.created} ${def.plural.toLowerCase()} imported`); onDone() } } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
   }
   return (
-    <Modal open onClose={onClose} title={`Import ${def.plural} from CSV or Excel`} width={640} footer={<><a className="btn outline" href={`/api/e/${def.key}/template.csv`}><Download /> Template</a><div className="flex-1" /><button className="btn outline" onClick={onClose}>Close</button><button className="btn outline" disabled={!text || busy} onClick={() => void run(true)}>Validate only</button><button className="btn green" disabled={!text || busy} onClick={() => void run(false)}>Import</button></>}>
+    <Modal open onClose={onClose} title={`Import ${def.plural} from CSV or Excel`} width={640} footer={<><button type="button" className="btn outline" onClick={() => void downloadAuthFile(`/api/e/${def.key}/template.csv`, `${def.key}-template.csv`).catch(e => toast.error(e.message))}><Download /> Template</button><div className="flex-1" /><button className="btn outline" onClick={onClose}>Close</button><button className="btn outline" disabled={!text || busy} onClick={() => void run(true)}>Validate only</button><button className="btn green" disabled={!text || busy} onClick={() => void run(false)}>Import</button></>}>
       <p className="text-sm text-muted mt-0">Use the template for column names. Reference columns (customer, property, agent…) accept the code or exact name. Up to 5,000 rows.</p>
       <input type="file" accept=".csv,text/csv,.xlsx" className="input" onChange={async e => { const f = e.target.files?.[0]; if (f) { setName(f.name); setText(/\.xlsx$/i.test(f.name) ? await xlsxToCsv(f) : await f.text()); setRes(null) } }} />
       {name && <div className="text-xs text-muted mt-1">{name} · {text.split('\n').length - 1} rows</div>}

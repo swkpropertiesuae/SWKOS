@@ -2,7 +2,7 @@ import { useEffect,useMemo,useState,type ReactNode } from 'react'
 import { Link,NavLink,Outlet,useLocation,useNavigate } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence,motion } from 'motion/react'
-import { Bell,Search,Plus,Check,ChevronDown,ChevronRight,LogOut,UserRound,LifeBuoy,LayoutGrid,Languages,Download,RefreshCw,ArrowLeft,PanelLeftClose,PanelLeftOpen,QrCode,Sparkles,Camera,BookOpen,Menu } from 'lucide-react'
+import { Bell,Search,Plus,Check,ChevronDown,ChevronRight,LogOut,UserRound,LifeBuoy,LayoutGrid,Languages,ArrowLeft,PanelLeftClose,PanelLeftOpen,QrCode,Sparkles,Camera,Menu,MessagesSquare,Wrench,PhoneCall,MapPinned,Navigation,Lock,ShieldCheck,X } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get,post } from '../lib/api'
 import { cls,fmtIsoStamp } from '../lib/format'
@@ -11,9 +11,13 @@ import { useToast } from '../lib/toast'
 import { CommandPalette } from './CommandPalette'
 import { LiveNotifications } from './LiveNotifications'
 import { ChatNotifier } from './ChatNotifier'
+import { SipSoftphoneDock } from './SipSoftphoneDock'
+import { BiometricLockOverlay } from './BiometricLockOverlay'
 import { StaffPhoto } from './ui/staff-photo'
-import { APP_META,QUICK_CREATE,findNav,rememberVisit } from '../swk/nav'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { clearMobileSession,lockScreenNow,openManageLockPin,registerNativePush,stopNativeFieldDuty,unregisterNativePush } from '../lib/mobileBridge'
+import { sipClient,useSipClient } from '../lib/sipClient'
+import { APP_META,QUICK_CREATE,findNav,isNavItemVisible,launcherApps,rememberVisit } from '../swk/nav'
+import { canAccessSwkAdminLogic,canAccessFieldLiveMap,canPrintReceptionQr,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 
 /** Live Dubai time (Gulf Standard Time). */
 function DubaiClock() {
@@ -52,6 +56,7 @@ function QuickCreate() {
   const { me, can } = useMeta()
   const [open, setOpen] = useState(false)
   const ref = useClickOutside<HTMLDivElement>(() => setOpen(false))
+  if (!me || me.party_id) return null
   const restricted = isRestrictedStaffUser(me)
   const items = QUICK_CREATE.filter(i => can(i.module, 'create') && (!restricted || isAllowedPathForRestrictedStaff(i.to.split('?')[0]!)))
   if (!items.length) return null
@@ -73,15 +78,9 @@ function QuickCreate() {
 function AppSidebar({ pathname, collapsed, onToggle }: { pathname: string; collapsed: boolean; onToggle: () => void }) {
   const { me, can } = useMeta()
   const here = findNav(pathname)
-  const restricted = isRestrictedStaffUser(me)
-  const adminOk = canAccessSwkAdminLogic(me)
   const items = useMemo(
-    () => (here?.section.items ?? []).filter(i => {
-      const cleanTo = i.to.split('?')[0]!
-      if (!adminOk && (i.module === 'admin' || cleanTo.startsWith('/admin') || cleanTo === '/recycle-bin' || cleanTo === '/withdrawals' || cleanTo === '/approvals')) return false
-      return (!i.module || can(i.module, 'view')) && (!restricted || isAllowedPathForRestrictedStaff(cleanTo))
-    }),
-    [here, can, restricted, adminOk],
+    () => (here?.section.items ?? []).filter(i => isNavItemVisible(i, can, me)),
+    [here, can, me],
   )
   if (!here || items.length < 1 || here.section.items.length < 2) return null
   const meta = APP_META[here.section.key]
@@ -110,34 +109,92 @@ function AppSidebar({ pathname, collapsed, onToggle }: { pathname: string; colla
 }
 
 export function Shell() {
-  const { me, setMe, meta } = useMeta()
+  const { me, setMe, meta, can } = useMeta()
   const nav = useNavigate()
   const loc = useLocation()
+  const sipSnap = useSipClient()
+  const isStaff = Boolean(me?.id && !me?.party_id)
+  const canFieldLive = canAccessFieldLiveMap(me)
+  const canAi = isStaff && can('ai', 'view')
+
   const [palette, setPalette] = useState(false)
   const [guide, setGuide] = useState(false)
   const [userMenu, setUserMenu] = useState(false)
   const [drawer, setDrawer] = useState(false)
-  useEffect(() => { setDrawer(false) }, [loc.pathname])
+  const [opsSheet, setOpsSheet] = useState(false)
+  useEffect(() => { setDrawer(false); setOpsSheet(false) }, [loc.pathname])
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('swk.sidebar.collapsed') === '1')
   const toggleSidebar = () => setCollapsed(c => {
     const next = !c
     try { localStorage.setItem('swk.sidebar.collapsed', next ? '1' : '0') } catch { /* ignore */ }
     return next
   })
-  const toast = useToast()
   const userRef = useClickOutside<HTMLDivElement>(() => setUserMenu(false))
+
+  const chatUnread =
+    useQuery({
+      queryKey: ['chat-unread'],
+      enabled: isStaff,
+      queryFn: () => get<{ unread: number }>('/api/chat/unread'),
+      refetchInterval: 60000,
+    }).data?.unread ?? 0
+
+  const mobileApps = useMemo(() => (isStaff ? launcherApps(can, me) : []), [isStaff, can, me])
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(true) } }
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(true) }
+      if (e.key === 'Escape') setOpsSheet(false)
+    }
     window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
   }, [])
   useEffect(() => { rememberVisit(loc.pathname) }, [loc.pathname])
-  const logout = async () => { try { await post('/api/auth/logout') } catch { /* ignore */ } setMe(null); nav('/login') }
+
+  useEffect(() => {
+    if (!isStaff) return
+    let disposePush: (() => void) | undefined
+    void registerNativePush().then(fn => { disposePush = fn })
+    const onNavigate = (ev: Event) => {
+      const target = String((ev as CustomEvent<{ url?: string }>)?.detail?.url || '').trim()
+      if (target.startsWith('/') && !target.startsWith('//')) {
+        nav(target)
+      }
+    }
+    const onSipWake = () => {
+      void sipClient.init(true)
+    }
+    const onSipCallEnded = () => {
+      void sipClient.hangup()
+    }
+    window.addEventListener('swk:navigate', onNavigate)
+    window.addEventListener('swk:sip-wake', onSipWake)
+    window.addEventListener('swk:sip-call-ended', onSipCallEnded)
+    return () => {
+      window.removeEventListener('swk:navigate', onNavigate)
+      window.removeEventListener('swk:sip-wake', onSipWake)
+      window.removeEventListener('swk:sip-call-ended', onSipCallEnded)
+      disposePush?.()
+    }
+  }, [isStaff, nav, me?.id])
+
+  const logout = async () => {
+    try { await unregisterNativePush() } catch { /* ignore */ }
+    try { await stopNativeFieldDuty() } catch { /* ignore */ }
+    try { await post('/api/auth/logout') } catch { /* ignore */ }
+    try { await sipClient.disconnect() } catch { /* ignore */ }
+    await clearMobileSession()
+    setMe(null)
+    nav('/login')
+  }
   const isPrint = loc.pathname.startsWith('/print')
   const here = findNav(loc.pathname)
   const isHome = loc.pathname === '/home'
   const pageTitle = isHome ? 'All apps' : here?.item.label ?? titleFromPath(loc.pathname)
   if (isPrint) return <main id="main"><Outlet context={{ openGuide: () => setGuide(true), openSearch: () => setPalette(true), logout }} /></main>
   const initials = (me?.name || me?.email || 'S').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(s => s[0]!.toUpperCase()).join('')
+  const isUtilitiesPath = loc.pathname.startsWith('/utilities') || loc.pathname === '/toolkit' || loc.pathname === '/document-tools'
+  const isFieldOrVoicePath = loc.pathname === '/reception-qr' || loc.pathname.startsWith('/field-duty') || loc.pathname === '/field-live' || loc.pathname.startsWith('/phone')
+
   return (
     <div className="swk-app">
       <div className="swk-main-col">
@@ -161,15 +218,21 @@ export function Shell() {
                 <div className="sep" />
                 {canPrintReceptionQr(me) ? (
                   <Link to="/reception-display" onClick={() => setUserMenu(false)}><span className="ic"><QrCode size={16} /></span>Reception check-in code screen</Link>
-                ) : (
+                ) : isStaff ? (
                   <Link to="/reception-qr" onClick={() => setUserMenu(false)}><span className="ic"><Camera size={16} /></span>Scan &amp; Check-In Attendance</Link>
+                ) : null}
+                {isStaff && (
+                  <>
+                    <button className="item" onClick={() => { setUserMenu(false); lockScreenNow('manual') }}><span className="ic"><Lock size={16} /></span>Lock screen</button>
+                    <button className="item" onClick={() => { setUserMenu(false); openManageLockPin() }}><span className="ic"><ShieldCheck size={16} /></span>Local lock PIN</button>
+                  </>
                 )}
                 <Link to="/profile" onClick={() => setUserMenu(false)}><span className="ic"><UserRound size={16} /></span>My profile & password</Link>
                 <Link to="/workspace-tools" onClick={() => setUserMenu(false)}><span className="ic"><Languages size={16} /></span>Language & preferences</Link>
                 <Link to="/home" onClick={() => setUserMenu(false)}><span className="ic"><LayoutGrid size={16} /></span>All apps</Link>
                 <button className="item" onClick={() => { setUserMenu(false); setGuide(true) }}><span className="ic"><LifeBuoy size={16} /></span>Help guide</button>
                 <div className="sep" />
-                <button className="item" onClick={logout}><span className="ic"><LogOut size={16} /></span>Sign out</button>
+                <button className="item" onClick={() => void logout()}><span className="ic"><LogOut size={16} /></span>Sign out</button>
               </motion.div>)}</AnimatePresence>
           </div>
         </header>
@@ -186,22 +249,160 @@ export function Shell() {
           </main>
         </div>
 
-        {/* Responsive Bottom Navigation Bar (visible on small screens <= 768px) */}
-        <nav className="swk-mobile-bottom-nav no-print" aria-label="Quick navigation">
-          <NavLink to="/home" className={({ isActive }) => cls('swk-mnav-item', isActive && 'active')}>
-            <LayoutGrid size={18} />
-            <span>Apps</span>
-          </NavLink>
-          <NavLink to="/ai" className={({ isActive }) => cls('swk-mnav-item', isActive && 'active')}>
-            <Sparkles size={18} />
-            <span>AI Tools</span>
-          </NavLink>
-          <button type="button" onClick={() => setPalette(true)} className="swk-mnav-item border-0 bg-transparent cursor-pointer">
-            <Search size={18} />
-            <span>Search</span>
-          </button>
-        </nav>
+        {/* Responsive 5-Tab Mobile Bottom Navigation Bar (visible <= 768px) */}
+        {isStaff ? (
+          <nav className="swk-mobile-bottom-nav no-print" aria-label="Mobile quick navigation">
+            <NavLink to="/home" className={({ isActive }) => cls('swk-mnav-item relative', (isActive || loc.pathname === '/dashboard') && 'active')}>
+              <LayoutGrid size={18} />
+              <span>Home</span>
+            </NavLink>
+            <NavLink to="/chat" className={({ isActive }) => cls('swk-mnav-item relative', isActive && 'active')} aria-label={`Inside messenger${chatUnread > 0 ? `, ${chatUnread} unread` : ''}`}>
+              <MessagesSquare size={18} />
+              {chatUnread > 0 && (
+                <span className="absolute top-0.5 right-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[#0e9f6e] text-white text-[9.5px] font-bold grid place-items-center leading-none border border-[#121212]">
+                  {chatUnread > 99 ? '99+' : chatUnread}
+                </span>
+              )}
+              <span>Inside</span>
+            </NavLink>
+            <NavLink to={canAi ? '/ai' : '/utilities/search'} className={({ isActive }) => cls('swk-mnav-item relative', isActive && 'active')}>
+              <Sparkles size={18} />
+              <span>AI Brain</span>
+            </NavLink>
+            <NavLink to="/utilities" className={() => cls('swk-mnav-item relative', isUtilitiesPath && 'active')}>
+              <Wrench size={18} />
+              <span>Utilities</span>
+            </NavLink>
+            <button
+              type="button"
+              onClick={() => setOpsSheet(o => !o)}
+              aria-expanded={opsSheet}
+              aria-label="Field, Calling and All Company Ops"
+              className={cls('swk-mnav-item relative border-0 bg-transparent cursor-pointer', (opsSheet || isFieldOrVoicePath) && 'active')}
+            >
+              <QrCode size={18} />
+              {(sipSnap.activeCall || sipSnap.registration === 'registered') && (
+                <span className={cls('absolute top-1.5 right-3 size-2 rounded-full', sipSnap.activeCall ? 'bg-[#0e9f6e] animate-pulse' : 'bg-[#51fec0]')} />
+              )}
+              <span>Field &amp; Call</span>
+            </button>
+          </nav>
+        ) : (
+          <nav className="swk-mobile-bottom-nav no-print" aria-label="Portal quick navigation">
+            <NavLink to="/portal" className={({ isActive }) => cls('swk-mnav-item col-span-3', isActive && 'active')}>
+              <LayoutGrid size={18} />
+              <span>Service Portal</span>
+            </NavLink>
+            <button type="button" onClick={() => setPalette(true)} className="swk-mnav-item col-span-2 border-0 bg-transparent cursor-pointer">
+              <Search size={18} />
+              <span>Search</span>
+            </button>
+          </nav>
+        )}
       </div>
+
+      {/* Mobile Field / QR / SIP + Full Role-Scoped Company Ops Drawer */}
+      <AnimatePresence>
+        {isStaff && opsSheet && (
+          <motion.div
+            className="fixed inset-0 z-[75] md:hidden no-print flex flex-col justify-end bg-black/55 backdrop-blur-xs"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={e => { if (e.target === e.currentTarget) setOpsSheet(false) }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Field, Calling and Company Operations"
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="max-h-[82dvh] overflow-y-auto rounded-t-3xl border-t border-black/10 bg-white px-4 pt-4 pb-[calc(82px+env(safe-area-inset-bottom,0px))] shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0e9f6e]">SWK Field · Voice · All Ops</div>
+                  <h2 className="m-0 text-base font-bold text-[#121212]">Quick Actions &amp; Company Apps</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpsSheet(false)}
+                  aria-label="Close drawer"
+                  className="size-8 rounded-full border border-line bg-soft text-ink grid place-items-center cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <Link to="/reception-qr" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-9 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><QrCode size={17} /></span>
+                  <span className="min-w-0"><b className="block text-xs truncate">Office QR Scan</b><small className="text-[11px] text-muted">Attendance check-in</small></span>
+                </Link>
+                <Link to="/field-duty" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-9 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><Navigation size={17} /></span>
+                  <span className="min-w-0"><b className="block text-xs truncate">Field Duty GPS</b><small className="text-[11px] text-muted">Viewing tracking &amp; SOS</small></span>
+                </Link>
+                <Link to="/phone" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-9 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><PhoneCall size={17} /></span>
+                  <span className="min-w-0"><b className="block text-xs truncate">SIP Softphone</b><small className="text-[11px] text-muted">{sipSnap.configured ? `Ext ${sipSnap.extensionNo}` : 'Dialer & Vault call'}</small></span>
+                </Link>
+                <Link to="/utilities/search" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-9 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><Search size={17} /></span>
+                  <span className="min-w-0"><b className="block text-xs truncate">Unified Search</b><small className="text-[11px] text-muted">Internal, Portal &amp; Web</small></span>
+                </Link>
+                {canFieldLive && (
+                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#0e9f6e]/35 bg-[#e8fff6] p-3 flex items-center gap-2.5 no-underline text-[#121212]">
+                    <span className="size-9 rounded-xl bg-[#0e9f6e] text-white grid place-items-center shrink-0"><MapPinned size={17} /></span>
+                    <span className="min-w-0"><b className="block text-xs truncate">Leadership Live Field GPS Map</b><small className="text-[11px] text-[#0b7f58]">Real-time Dubai team pins &amp; route trails</small></span>
+                  </Link>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => { setOpsSheet(false); setPalette(true) }} className="btn outline sm flex-1 justify-center">
+                  <Search size={14} /> Quick Search
+                </button>
+                <button type="button" onClick={() => { setOpsSheet(false); lockScreenNow('manual') }} className="btn outline sm flex-1 justify-center">
+                  <Lock size={14} /> Lock Screen
+                </button>
+              </div>
+
+              <div className="space-y-2.5 pt-2 border-t border-line">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">All Permitted Company Ops</div>
+                {mobileApps.map(app => (
+                  <div key={app.key} className="rounded-2xl border border-line bg-[#fafafa] p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link to={app.landing} onClick={() => setOpsSheet(false)} className="flex items-center gap-2 text-xs font-bold text-ink no-underline">
+                        <app.icon size={15} className="text-[#0e9f6e]" /> {app.label}
+                      </Link>
+                      <span className="text-[10.5px] text-muted">{app.items.length}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {app.items.map(item => (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setOpsSheet(false)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-[11.5px] font-medium text-ink no-underline hover:border-[#0e9f6e]"
+                        >
+                          <item.icon size={12} className="text-[#0e9f6e]" />
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isStaff && <SipSoftphoneDock />}
+      {isStaff && <BiometricLockOverlay onLogout={logout} />}
       <LiveNotifications />
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>

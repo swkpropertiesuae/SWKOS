@@ -48,28 +48,32 @@ export function ocrImage(buf: Buffer): Promise<string> {
 
 async function pdfText(buf: Buffer): Promise<{ text: string; pages: number; ocrPages: number }> {
   const pdfjs: any = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  const fonts = path.join(path.dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts') + path.sep
+  const fonts = path.join(path.dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts').replace(/\\/g, '/') + '/'
   const doc = await pdfjs.getDocument({ data: new Uint8Array(buf), isEvalSupported: false, disableFontFace: true, useSystemFonts: false, standardFontDataUrl: fonts }).promise
   const out: string[] = []
   let ocrPages = 0
-  for (let n = 1; n <= doc.numPages; n++) {
-    const page = await doc.getPage(n)
-    const tc = await page.getTextContent()
-    let text = '', lastY: number | null = null
-    for (const it of tc.items as any[]) { const y = it.transform?.[5]; if (lastY !== null && Math.abs(y - lastY) > 2) text += '\n'; else if (text && !text.endsWith(' ')) text += ' '; text += it.str; lastY = y }
-    if (text.replace(/\s/g, '').length < 25 && ocrPages < MAX_OCR_PAGES) {
-      // scanned page: render it and read it with OCR
-      const viewport = page.getViewport({ scale: 2 })
-      const cc = doc.canvasFactory.create(Math.ceil(viewport.width), Math.ceil(viewport.height))
-      await page.render({ canvasContext: cc.context, viewport, canvas: cc.canvas }).promise
-      const png: Buffer = cc.canvas.toBuffer('image/png')
-      doc.canvasFactory.destroy(cc)
-      text = await ocrImage(png)
-      ocrPages++
+  try {
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n)
+      const tc = await page.getTextContent()
+      let text = '', lastY: number | null = null
+      for (const it of tc.items as any[]) { const y = it.transform?.[5]; if (lastY !== null && Math.abs(y - lastY) > 2) text += '\n'; else if (text && !text.endsWith(' ')) text += ' '; text += it.str; lastY = y }
+      if (text.replace(/\s/g, '').length < 25 && ocrPages < MAX_OCR_PAGES) {
+        // scanned page: render it and read it with OCR
+        const viewport = page.getViewport({ scale: 2 })
+        const cc = doc.canvasFactory.create(Math.ceil(viewport.width), Math.ceil(viewport.height))
+        await page.render({ canvasContext: cc.context, viewport, canvas: cc.canvas }).promise
+        const png: Buffer = cc.canvas.toBuffer('image/png')
+        doc.canvasFactory.destroy(cc)
+        text = await ocrImage(png)
+        ocrPages++
+      }
+      out.push(text.trim())
     }
-    out.push(text.trim())
+    return { text: out.join('\n\n').trim(), pages: doc.numPages, ocrPages }
+  } finally {
+    await doc.destroy().catch(() => {})
   }
-  return { text: out.join('\n\n').trim(), pages: doc.numPages, ocrPages }
 }
 
 export type Extracted = { text: string; method: 'ocr' | 'text' | 'mixed'; pages: number }

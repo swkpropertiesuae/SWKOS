@@ -1,14 +1,24 @@
 import crypto from 'node:crypto'
-import { q } from '../db'
+import { q,inDemo } from '../db'
 import type { Hooks } from '../hooks'
 import { bad,r2,todayStr,nowLocal,addDays,safeJson } from '../util'
 import { labelsFor,type Rec,type Perms } from '../engine'
-import { hashPassword,destroyUserSessions,validatePasswordStrength,newApiKey } from '../auth'
+import { hashPassword,destroyUserSessions,validatePasswordStrength,newApiKey,signRoleGrant } from '../auth'
 import { notify,notifyLeadership,notifyRole } from '../notify'
 import { checkEmployeeAndDocumentExpiries } from './compliance'
 import { MODULE_DEFS } from '../../shared/entities'
 import { ACTIONS } from '../../shared/types'
-import { isOwnerSwkUser,hardcodedAccountFor } from '../../shared/swk-staff-access'
+import {
+  isOwnerSwkUser,
+  isAdminSwkUser,
+  hardcodedAccountFor,
+  isElevatedCanonicalEmail,
+  OWNER_EMAILS,
+  ADMIN_EMAILS,
+  hasWildcardPermission,
+  NON_ELEVATED_ASSIGNABLE_ROLES,
+  type NonElevatedAssignableRole,
+} from '../../shared/swk-staff-access'
 
 // ---------------------------------------------------------------- users & roles
 /** True when everything in `target` is already held by `actor`: nobody can hand out rights they do not have themselves. */
@@ -30,18 +40,51 @@ export const userHooks: Hooks = {
     else if (isNew) throw bad('Set an initial password for the new user')
     delete rec.password
     if (rec.party_id) { const role = q.get(`SELECT name FROM roles WHERE id = ?`, rec.role_id); if (role?.name !== 'Customer Portal') throw bad('Portal company can only be set for users with the "Customer Portal" role') }
-    // SWK staff roles are fixed in code (swk-staff-access.ts); a role change here would be ignored, so refuse it plainly.
-    if (!ctx.system && old && rec.role_id !== old.role_id && hardcodedAccountFor(old.email ?? rec.email)) throw bad('The role of this SWK staff account is fixed by company policy and cannot be changed here.')
+    const oldEmail = String(old?.email || '').trim().toLowerCase()
+    const recEmail = String(rec.email || '').trim().toLowerCase()
+    const emailChanged = !old || recEmail !== oldEmail
+    const isProtectedPolicyEmail = (e: string) =>
+      Boolean(e && (hardcodedAccountFor(e) || isElevatedCanonicalEmail(e) || OWNER_EMAILS.has(e) || ADMIN_EMAILS.has(e)))
+    // SWK staff roles are fixed in code (swk-staff-access.ts); a role or email change involving policy accounts is refused plainly.
+    if (!ctx.system && old && rec.role_id !== old.role_id && (isProtectedPolicyEmail(oldEmail) || isProtectedPolicyEmail(recEmail))) {
+      throw bad('The role of this SWK staff account is fixed by company policy and cannot be changed here.')
+    }
+    if (!ctx.system && old && emailChanged && (isProtectedPolicyEmail(oldEmail) || isProtectedPolicyEmail(recEmail))) {
+      throw bad('This SWK staff e-mail address is managed automatically by company policy and cannot be assigned or changed.')
+    }
+    if (!ctx.system && isNew && isProtectedPolicyEmail(recEmail)) {
+      throw bad('This SWK staff e-mail address is managed automatically by company policy.')
+    }
+    if (!ctx.system && !rec.party_id && rec.role_id) {
+      const targetEmail = recEmail || oldEmail
+      const targetRole = q.get<{ name: string; permissions: string }>(`SELECT name, permissions FROM roles WHERE id = ?`, rec.role_id)
+      const targetPerms = targetRole ? safeJson<Perms>(targetRole.permissions, {}) : {}
+      const isElevated =
+        targetRole?.name === 'Owner' ||
+        targetRole?.name === 'Admin' ||
+        targetRole?.name === 'Manager' ||
+        hasWildcardPermission(targetPerms)
+      const allowedElevated = isElevatedCanonicalEmail(targetEmail) || (inDemo() && targetEmail === 'demo@swkpropertiesuae.com')
+      if (isElevated && !allowedElevated) {
+        throw bad('Elevated roles (Owner, Admin, Manager, or full wildcard access) cannot be assigned to non-canonical accounts.')
+      }
+    }
     if (!ctx.system && ctx.user) {
       const oldRoleName = old ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, old.role_id) : null
       const newRoleName = rec.role_id ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, rec.role_id) : null
-      const targetIsOwner = isOwnerSwkUser({ email: old?.email ?? rec.email, role_name: oldRoleName }) || newRoleName === 'Owner'
+      const targetIsOwner =
+        OWNER_EMAILS.has(oldEmail) ||
+        OWNER_EMAILS.has(recEmail) ||
+        oldRoleName === 'Owner' ||
+        newRoleName === 'Owner' ||
+        isOwnerSwkUser({ email: old?.email, role_name: oldRoleName }) ||
+        isOwnerSwkUser({ email: rec.email, role_name: newRoleName })
       if (targetIsOwner && !isOwnerSwkUser(ctx.user)) {
         throw bad('Only Owner Shabib Siraj (shabib@swk.properties) has authority to modify or assign an Owner account. The Admin account (admin@swk.properties) is under Owner control.')
       }
       if (ctx.user.permissions !== '*') {
         // A limited administrator may not touch full administrators or assign rights beyond their own.
-        if (old && rolePerms(old.role_id) === '*') throw bad('Only a full administrator can change a full administrator')
+        if (old && hasWildcardPermission(rolePerms(old.role_id))) throw bad('Only a full administrator can change a full administrator')
         if (!permissionsWithin(ctx.user.permissions, rolePerms(rec.role_id))) throw bad('You cannot assign a role with more access than you have')
       }
     }
@@ -54,14 +97,34 @@ export const userHooks: Hooks = {
   },
   beforeDelete({ rec, ctx }) {
     const rName = rec.role_id ? q.val<string>(`SELECT name FROM roles WHERE id = ?`, rec.role_id) : null
-    if (isOwnerSwkUser({ email: rec.email, role_name: rName })) {
+    const delEmail = String(rec.email || '').trim().toLowerCase()
+    if (OWNER_EMAILS.has(delEmail) || rName === 'Owner' || isOwnerSwkUser({ email: rec.email, role_name: rName })) {
       throw bad('The Owner account (shabib@swk.properties) cannot be deleted.')
     }
-    if (!ctx.system && ctx.user && String(rec.email || '').toLowerCase() === 'admin@swk.properties' && !isOwnerSwkUser(ctx.user)) {
+    if (!ctx.system && ctx.user && ADMIN_EMAILS.has(delEmail) && !isOwnerSwkUser(ctx.user)) {
       throw bad('Only Owner Shabib Siraj (shabib@swk.properties) has authority over the Admin account (admin@swk.properties).')
     }
   },
-  afterSave({ rec }) {
+  afterSave({ rec, old, isNew, ctx }) {
+    if (!ctx.system && ctx.user && !rec.party_id && !hardcodedAccountFor(rec.email)) {
+      const roleChanged = isNew || !old || rec.role_id !== old.role_id
+      const emailChanged = isNew || !old || String(rec.email || '').trim().toLowerCase() !== String(old.email || '').trim().toLowerCase()
+      if (roleChanged || emailChanged) {
+        const role = rec.role_id ? q.get<{ name: string; permissions: string }>(`SELECT name, permissions FROM roles WHERE id = ?`, rec.role_id) : null
+        const rolePermsObj = role ? safeJson<Perms>(role.permissions, {}) : {}
+        const isSignedEligible =
+          !!role &&
+          !hasWildcardPermission(rolePermsObj) &&
+          (NON_ELEVATED_ASSIGNABLE_ROLES as readonly string[]).includes(role.name) &&
+          (isOwnerSwkUser(ctx.user) || isAdminSwkUser(ctx.user))
+        if (isSignedEligible) {
+          const sig = signRoleGrant(rec.id, rec.email, role.name as NonElevatedAssignableRole)
+          q.run(`UPDATE users SET role_grant_sig = ?, role_granted_by = ? WHERE id = ?`, sig, ctx.user.id, rec.id)
+        } else if (old) {
+          q.run(`UPDATE users SET role_grant_sig = NULL, role_granted_by = NULL WHERE id = ?`, rec.id)
+        }
+      }
+    }
     if ((rec as any).__pw) {
       destroyUserSessions(rec.id)
       q.run(`UPDATE api_keys SET active = 0 WHERE user_id = ?`, rec.id)

@@ -71,7 +71,8 @@ export function Launcher() {
   const [query, setQuery] = useState('')
   const apps = useMemo(() => launcherApps(can, me), [can, me])
   const recents = useMemo(() => recentItems(can, 4, me), [can, me])
-  const unread = useQuery({ queryKey: ['chat-unread'], queryFn: () => get<{ unread: number }>('/api/chat/unread'), refetchInterval: 30000 }).data?.unread ?? 0
+  const isStaff = Boolean(me?.id && !me?.party_id)
+  const unread = useQuery({ queryKey: ['chat-unread'], enabled: isStaff, queryFn: () => get<{ unread: number }>('/api/chat/unread'), refetchInterval: 30000 }).data?.unread ?? 0
   const needle = query.trim().toLocaleLowerCase()
   const shownApps = apps.filter(a => !needle || a.label.toLocaleLowerCase().includes(needle) || a.blurb.toLocaleLowerCase().includes(needle))
   const features = needle ? apps.flatMap(a => a.items.map(i => ({ ...i, app: a.label }))).filter(i => i.label.toLocaleLowerCase().includes(needle) || (i.desc ?? '').toLocaleLowerCase().includes(needle)) : []

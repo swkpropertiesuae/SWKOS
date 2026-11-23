@@ -5,7 +5,7 @@ import { HttpError,fromCents,nowIso,nowLocal,toCents,todayStr } from '../util'
 import { notify,notifyLeadership } from '../notify'
 import { sendWhatsApp,ownerNumbers } from '../integrations/whatsapp'
 import { getSetting,setSettings } from '../settings'
-import { attemptLogin,createSession,destroyUserSessions,hashPassword } from '../auth'
+import { attemptLogin,createSession,destroyDeviceSessions,destroyUserSessions,hashPassword,loadUser } from '../auth'
 import { COOKIE } from '../app'
 import { currentQrToken,qrTokenValid,regenerateFixedQr,setQrMode,checkPasswordForCheckin,deviceGate,newChallenge,verifyDeviceProof } from '../domain/attendance-security'
 import { config } from '../config'
@@ -1467,7 +1467,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return currentQrToken()
   })
   const attendanceControl = () => ({
-    devices: q.all(`SELECT d.id, d.user_id, u.name, d.label, d.device_id, d.status, d.first_seen, d.last_seen FROM staff_devices d JOIN users u ON u.id = d.user_id ORDER BY (d.status = 'Pending') DESC, d.last_seen DESC LIMIT 100`),
+    devices: q.all(`SELECT d.id, d.user_id, u.name, d.label, d.device_id, d.status, d.platform, d.app_version, d.revoked_at, d.revoked_reason, d.first_seen, d.last_seen FROM staff_devices d JOIN users u ON u.id = d.user_id ORDER BY (d.status = 'Pending') DESC, d.last_seen DESC LIMIT 100`),
     field: q.all(`SELECT e.id, e.event_no, e.work_date, e.check_in_at, e.checkin_method, e.security_flags, e.gps_lat, e.gps_lng, e.gps_accuracy_m, emp.name FROM attendance_events e LEFT JOIN employees emp ON emp.id = e.employee_id WHERE e.field_review = 'Pending' AND e.deleted_at IS NULL ORDER BY e.id DESC LIMIT 100`),
   })
   app.get('/api/swk-ops/attendance-control', async (req) => {
@@ -1476,9 +1476,34 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
   app.post('/api/swk-ops/attendance-control/device/:id', async (req) => {
     if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can approve devices.')
+    const id = Number((req.params as any).id)
+    const dev = q.get<{ id: number; user_id: number; device_id: string }>(`SELECT id, user_id, device_id FROM staff_devices WHERE id = ?`, id)
+    if (!dev) throw new HttpError(404, 'Device not found')
     const b = (req.body ?? {}) as any
-    const status = b.approve ? 'Approved' : 'Blocked'
-    q.run(`UPDATE staff_devices SET status = ?, decided_by = ? WHERE id = ?`, status, req.user!.id, Number((req.params as any).id))
+    const approve = !!b.approve
+    if (!approve && isOwnerSwkUser(loadUser(dev.user_id)) && !isOwnerSwkUser(req.user)) {
+      throw new HttpError(403, 'Only the Owner can block an Owner device.')
+    }
+    tx(() => {
+      if (approve) {
+        q.run(
+          `UPDATE staff_devices SET status = 'Approved', decided_by = ?, revoked_at = NULL, revoked_reason = NULL WHERE id = ?`,
+          req.user!.id,
+          dev.id,
+        )
+      } else {
+        const reason = typeof b.reason === 'string' && b.reason.trim() ? b.reason.trim().slice(0, 240) : 'Blocked via Attendance Control'
+        q.run(
+          `UPDATE staff_devices SET status = 'Blocked', decided_by = ?, revoked_at = ?, revoked_reason = ? WHERE id = ?`,
+          req.user!.id,
+          nowIso(),
+          reason,
+          dev.id,
+        )
+        destroyDeviceSessions(dev.device_id)
+        q.run(`UPDATE push_subscriptions SET active = 0 WHERE device_id = ?`, dev.device_id)
+      }
+    })
     return attendanceControl()
   })
   app.post('/api/swk-ops/attendance-control/field/:id', async (req) => {

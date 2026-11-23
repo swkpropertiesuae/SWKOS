@@ -4,7 +4,7 @@ import { ENTITY_LIST } from '../shared/entities'
 import type { EntityDef,FieldDef } from '../shared/types'
 import { nowIso } from './util'
 
-const MIGRATIONS: { id: string; sql: string }[] = [
+export const MIGRATIONS: { id: string; sql: string }[] = [
   {
     id: '001_system_tables',
     sql: `
@@ -440,12 +440,153 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       last_viewed_at TEXT
     );
   ` },
+  { id: '017_swk_omni_superapp', sql: `
+    CREATE TABLE IF NOT EXISTS ai_provider_routes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      provider_key TEXT NOT NULL,
+      base_url TEXT NOT NULL DEFAULT '',
+      api_key_enc TEXT NOT NULL DEFAULT '',
+      model_id TEXT NOT NULL,
+      lanes_json TEXT NOT NULL DEFAULT '["general"]',
+      tier TEXT NOT NULL DEFAULT 'free',
+      priority INTEGER NOT NULL DEFAULT 100,
+      zero_retention INTEGER NOT NULL DEFAULT 0,
+      rpm_limit INTEGER NOT NULL DEFAULT 30,
+      rpd_limit INTEGER NOT NULL DEFAULT 1000,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      cooldown_until TEXT,
+      last_error TEXT,
+      last_ok_at TEXT,
+      req_today INTEGER NOT NULL DEFAULT 0,
+      tokens_today INTEGER NOT NULL DEFAULT 0,
+      stats_date TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_ai_routes_enabled ON ai_provider_routes(enabled, priority);
+
+    CREATE TABLE IF NOT EXISTS ai_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL DEFAULT 'New chat',
+      mode TEXT NOT NULL DEFAULT 'general',
+      pinned INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_ai_conv_user ON ai_conversations(user_id, updated_at);
+
+    CREATE TABLE IF NOT EXISTS ai_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      model_used TEXT,
+      provider_used TEXT,
+      tokens INTEGER NOT NULL DEFAULT 0,
+      pii_redacted INTEGER NOT NULL DEFAULT 0,
+      attachments_json TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_ai_msg_conv ON ai_messages(conversation_id, id);
+    CREATE INDEX IF NOT EXISTS ix_ai_msg_user ON ai_messages(user_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS ai_usage_daily (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      usage_date TEXT NOT NULL,
+      req_count INTEGER NOT NULL DEFAULT 0,
+      token_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      UNIQUE(user_id, usage_date)
+    );
+
+    CREATE TABLE IF NOT EXISTS sip_extensions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      extension_no TEXT NOT NULL UNIQUE,
+      sip_username TEXT NOT NULL,
+      sip_password_enc TEXT NOT NULL DEFAULT '',
+      display_name TEXT,
+      allow_direct_dial INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sip_vault_call_tokens (
+      token_hash TEXT PRIMARY KEY,
+      property_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      target_phone_enc TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_sip_vct_user ON sip_vault_call_tokens(user_id, expires_at);
+
+    CREATE TABLE IF NOT EXISTS staff_live_locations (
+      user_id INTEGER PRIMARY KEY,
+      employee_id INTEGER,
+      field_session_id INTEGER,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      accuracy_m REAL,
+      speed_mps REAL,
+      heading REAL,
+      battery_pct INTEGER,
+      purpose TEXT,
+      community TEXT,
+      is_flagged INTEGER NOT NULL DEFAULT 0,
+      flag_reason TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_staff_live_updated ON staff_live_locations(updated_at);
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      device_id TEXT,
+      channel TEXT NOT NULL DEFAULT 'web_push',
+      endpoint_or_token TEXT NOT NULL UNIQUE,
+      p256dh TEXT,
+      auth_secret TEXT,
+      user_agent TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      last_used_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_push_sub_user ON push_subscriptions(user_id, active);
+    CREATE INDEX IF NOT EXISTS ix_push_sub_device ON push_subscriptions(device_id);
+
+    CREATE TABLE IF NOT EXISTS word_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      html_content TEXT NOT NULL DEFAULT '',
+      rtl INTEGER NOT NULL DEFAULT 0,
+      include_letterhead INTEGER NOT NULL DEFAULT 1,
+      include_seal INTEGER NOT NULL DEFAULT 0,
+      source_template_id INTEGER,
+      linked_entity TEXT,
+      linked_id INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_word_docs_user ON word_documents(user_id, deleted_at, updated_at);
+  ` },
 ]
 
+/** Translate SQLite-dialect DDL to PostgreSQL-compatible DDL. */
+export const translateDdlForPg = (sql: string) => sql
+  .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/g, 'BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY')
+  .replace(/\bINTEGER\b/g, 'BIGINT')
+  .replace(/\bREAL\b/g, 'DOUBLE PRECISION')
+
 /** System-table DDL is written once in SQLite dialect and adapted for PostgreSQL. */
-const ddl = (sql: string) => (isPg
-  ? sql.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/g, 'BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY').replace(/\bINTEGER\b/g, 'BIGINT').replace(/\bREAL\b/g, 'DOUBLE PRECISION')
-  : sql)
+export const ddl = (sql: string, pg = isPg) => (pg ? translateDdlForPg(sql) : sql)
 /** SQLite's ROUND() accepts floats; PostgreSQL's only accepts numeric. This keeps the ~70 ROUND() calls in reports working unchanged. */
 const PG_COMPAT = `CREATE OR REPLACE FUNCTION round(double precision, integer) RETURNS double precision LANGUAGE sql IMMUTABLE AS 'SELECT round($1::numeric, $2)::double precision'`
 
@@ -476,6 +617,7 @@ export function syncSchema() {
   }
   const sig = entitySchemaSignature()
   if (isPg && done.has(sig) && tableExists('users') && tableExists('properties')) {
+    tx(() => ensureOmniSuperappColumns())
     return
   }
   tx(() => {
@@ -527,6 +669,29 @@ export function syncSchema() {
       db.exec(`CREATE INDEX IF NOT EXISTS ix_comp_exc_link ON compliance_exceptions(link_entity, link_id)`)
     }
   })
+  tx(() => ensureOmniSuperappColumns())
+}
+
+function ensureColumn(table: string, column: string, sqlDef: string) {
+  if (!tableExists(table)) return
+  const have = new Set(columnsOf(table).map(c => c.name))
+  if (!have.has(column)) {
+    db.exec(ddl(`ALTER TABLE ${qi(table)} ADD COLUMN ${qi(column)} ${sqlDef}`))
+  }
+}
+
+function ensureOmniSuperappColumns() {
+  ensureColumn('sessions', 'device_id', 'TEXT')
+  if (tableExists('sessions')) {
+    db.exec(`CREATE INDEX IF NOT EXISTS ix_sessions_device ON sessions(device_id)`)
+  }
+  ensureColumn('users', 'role_grant_sig', 'TEXT')
+  ensureColumn('users', 'role_granted_by', 'INTEGER')
+  ensureColumn('staff_devices', 'platform', 'TEXT')
+  ensureColumn('staff_devices', 'app_version', 'TEXT')
+  ensureColumn('staff_devices', 'biometric_enabled', 'INTEGER NOT NULL DEFAULT 1')
+  ensureColumn('staff_devices', 'revoked_at', 'TEXT')
+  ensureColumn('staff_devices', 'revoked_reason', 'TEXT')
 }
 
 function syncEntity(def: EntityDef) {

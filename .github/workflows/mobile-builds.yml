@@ -1,0 +1,165 @@
+name: SWK OS Mobile Builds (Android APK/AAB + iOS Xcode)
+
+on:
+  push:
+    branches: [main, 'feat/**', 'release/**']
+    paths:
+      - 'src/web/**'
+      - 'src/shared/**'
+      - 'mobile/**'
+      - 'public/**'
+      - 'package.json'
+      - '.github/workflows/mobile-builds.yml'
+  pull_request:
+    paths:
+      - 'src/web/**'
+      - 'src/shared/**'
+      - 'mobile/**'
+      - 'public/**'
+      - 'package.json'
+      - '.github/workflows/mobile-builds.yml'
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: 'HTTPS API base URL embedded into mobile/www/swk-runtime-config.js'
+        required: false
+        default: 'https://os.swk.properties'
+
+jobs:
+  web-and-mobile-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: node mobile/scripts/gen-nsc.mjs
+      - name: Sync dist/web into mobile/www with runtime config
+        env:
+          SWK_API_BASE: ${{ inputs.api_base || 'https://os.swk.properties' }}
+        run: |
+          node mobile/scripts/sync-web.mjs
+          grep -q '/swk-runtime-config.js' mobile/www/index.html
+          grep -q 'API_BASE' mobile/www/swk-runtime-config.js
+
+  android-apk-aab:
+    needs: web-and-mobile-sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+      - run: npm run build:web
+
+      - name: Install mobile Capacitor dependencies
+        working-directory: mobile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Prepare optional signing keystore & google-services.json
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "${RUNNER_TEMP}/swk-release.jks"
+            echo "SWK_KEYSTORE_FILE=${RUNNER_TEMP}/swk-release.jks" >> "$GITHUB_ENV"
+            echo "SWK_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" >> "$GITHUB_ENV"
+            echo "SWK_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> "$GITHUB_ENV"
+            echo "SWK_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> "$GITHUB_ENV"
+          fi
+          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > mobile/android/app/google-services.json
+          fi
+
+      - name: Generate NSC, sync web & Capacitor Android
+        working-directory: mobile
+        env:
+          SWK_API_BASE: ${{ inputs.api_base || 'https://os.swk.properties' }}
+        run: |
+          node scripts/gen-nsc.mjs
+          node scripts/sync-web.mjs
+          npx cap sync android
+
+      - name: Build Android Debug APK, Release APK & Play Release AAB
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug assembleRelease bundleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swk-os-android-apk-aab
+          path: |
+            mobile/android/app/build/outputs/apk/**/*.apk
+            mobile/android/app/build/outputs/bundle/**/*.aab
+          retention-days: 14
+
+  ios-xcode-build:
+    needs: web-and-mobile-sync
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build:web
+
+      - name: Install mobile Capacitor dependencies
+        working-directory: mobile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Sync web & Capacitor iOS
+        working-directory: mobile
+        env:
+          SWK_API_BASE: ${{ inputs.api_base || 'https://os.swk.properties' }}
+        run: |
+          node scripts/sync-web.mjs
+          npx cap sync ios
+
+      - name: Install CocoaPods & build unsigned iOS Release binary
+        working-directory: mobile/ios/App
+        run: |
+          pod install
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build

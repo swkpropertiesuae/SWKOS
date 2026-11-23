@@ -6,15 +6,17 @@ import { get } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { iconByName } from '../lib/icons'
 import { cls } from '../lib/format'
-import { SWK_NAV,QUICK_CREATE } from '../swk/nav'
+import { SWK_NAV,QUICK_CREATE,isNavItemVisible } from '../swk/nav'
+import { isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 
 type Item = { group: string; label: string; link: string; Icon: LucideIcon; sub: string }
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
-  const nav = useNavigate(); const { can } = useMeta()
+  const nav = useNavigate(); const { can, me } = useMeta()
   const [q, setQ] = useState(''); const [remote, setRemote] = useState<any[]>([]); const [hi, setHi] = useState(0)
-  const pages = useMemo<Item[]>(() => SWK_NAV.flatMap(s => s.items.filter(i => !i.module || can(i.module, 'view')).map(i => ({ group: 'Go to', label: i.label, link: i.to, Icon: i.icon, sub: s.label }))), [can])
-  const actions = useMemo<Item[]>(() => QUICK_CREATE.filter(a => can(a.module, 'create')).map(a => ({ group: 'Create', label: a.label, link: a.to, Icon: a.icon, sub: a.desc })), [can])
+  const restricted = isRestrictedStaffUser(me)
+  const pages = useMemo<Item[]>(() => SWK_NAV.flatMap(s => s.items.filter(i => isNavItemVisible(i, can, me)).map(i => ({ group: 'Go to', label: i.label, link: i.to, Icon: i.icon, sub: s.label }))), [can, me])
+  const actions = useMemo<Item[]>(() => QUICK_CREATE.filter(a => !me?.party_id && can(a.module, 'create') && (!restricted || isAllowedPathForRestrictedStaff(a.to.split('?')[0]!))).map(a => ({ group: 'Create', label: a.label, link: a.to, Icon: a.icon, sub: a.desc })), [can, me, restricted])
   useEffect(() => {
     if (q.trim().length < 2) { setRemote([]); return }
     const t = setTimeout(() => { get<any[]>('/api/search/global', { q }).then(setRemote).catch(() => setRemote([])) }, 160)
