@@ -24,7 +24,7 @@ type List = { rows: Row[]; total: number }
 
 const PHOTOS = ['marina-sky-penthouse-1', 'palm-garden-homes-1', 'hills-estate-golf-mansion-1', 'business-bay-executive-tower-2', 'creek-harbour-waterside-townhouse-1', 'jvc-boulevard-residences-2', 'arabian-ranches-courtyard-villa-2', 'villa-sanctuary-6', 'islands-2-1', 'river-cove-residences-1', 'raw-district-2-3', 'golf-fields-1']
 const PORTALS = [
-  { key: 'pf', name: 'Property Finder', color: '#dc2626' },
+  { key: 'pf', name: 'Property Finder', color: '#a3263a' },
   { key: 'bayut', name: 'Bayut', color: SWK.oasis },
   { key: 'dubizzle', name: 'dubizzle', color: SWK.dune },
   { key: 'web', name: 'SWK website', color: SWK.navy },
@@ -200,7 +200,7 @@ export default function ListingsStudio() {
               {gradeMix.map((g, i) => (
                 <div key={g.g}>
                   <div className="flex justify-between text-[12.5px] mb-1"><span className="font-semibold text-ink">{g.g}</span><span className="text-muted tabular-nums">{g.n}</span></div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: '#f5f5f5' }}>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: '#f4f0e8' }}>
                     <motion.div className="h-full rounded-full" style={{ background: gradeColor(g.g) }} initial={{ width: 0 }} whileInView={{ width: `${listings.length ? (g.n / listings.length) * 100 : 0}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: i * .12 }} />
                   </div>
                 </div>
@@ -213,14 +213,14 @@ export default function ListingsStudio() {
             <div className="flex flex-col">
               {noPermit.slice(0, 4).map(l => (
                 <Link key={l.p.id} to={`/e/properties/${l.p.id}`} className="swk-row">
-                  <span className="swk-row-ic" style={{ background: '#f7f7f7', color: SWK.dune }}><XCircle size={17} /></span>
+                  <span className="swk-row-ic" style={{ background: '#f8f5ef', color: SWK.dune }}><XCircle size={17} /></span>
                   <span className="min-w-0 flex-1"><span className="swk-row-t block">{l.p.title}</span><span className="swk-row-s block">{l.permitState === 'Expired' ? 'Blocked from portals — Trakheesi permit expired' : 'Blocked from portals — Trakheesi permit required'}</span></span>
                 </Link>
               ))}
             </div>
           ) : (
             <div className="flex items-center gap-4 py-2">
-              <motion.span className="swk-row-ic !w-14 !h-14 !rounded-2xl" style={{ background: '#ececec', color: SWK.oasis }} initial={{ scale: .6, rotate: -20 }} whileInView={{ scale: 1, rotate: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 260, damping: 14 }}><ShieldCheck size={26} /></motion.span>
+              <motion.span className="swk-row-ic !w-14 !h-14 !rounded-2xl" style={{ background: '#ece6da', color: SWK.oasis }} initial={{ scale: .6, rotate: -20 }} whileInView={{ scale: 1, rotate: 0 }} viewport={{ once: true }} transition={{ type: 'spring', stiffness: 260, damping: 14 }}><ShieldCheck size={26} /></motion.span>
               <div><div className="font-display text-[17px] font-semibold text-ink">All listings permitted</div><div className="text-[12.5px] text-muted">{listings.length} adverts carry a Trakheesi permit number. Verify Madmoun QR on each portal before going live.</div></div>
             </div>
           )}
@@ -301,7 +301,7 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
       whileHover={{ y: -4 }} className="swk-card overflow-hidden flex flex-col group">
       <div className="relative h-[200px] overflow-hidden">
         <motion.div className="absolute inset-0 bg-cover bg-center transition-transform duration-[1.2s] group-hover:scale-[1.06]" style={{ backgroundImage: `url(${l.img})` }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(18,18,18,.15) 0%, rgba(18,18,18,0) 40%, rgba(18,18,18,.78) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,42,51,.15) 0%, rgba(15,42,51,0) 40%, rgba(15,42,51,.78) 100%)' }} />
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           <Pill tone={statusTone(p.status)}>{p.status}</Pill>
           {p.is_off_plan && <Pill tone="sky">Off-plan</Pill>}
@@ -317,7 +317,7 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
       </div>
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
-          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#0e9f6e] underline-offset-4">{p.title}</Link>
+          <Link to={`/e/properties/${p.id}`} className="font-display text-[16px] font-semibold text-ink leading-snug hover:underline decoration-[#8a621c] underline-offset-4">{p.title}</Link>
           <div className="text-[12.5px] text-muted mt-0.5">{l.community?.name ?? p.address ?? 'Dubai'} · {p.property_type}{l.units.length ? ` · ${l.units.length} unit${l.units.length > 1 ? 's' : ''}` : ''}</div>
         </div>
         <div className="flex items-center gap-4 text-[12.5px] text-ink">
@@ -329,7 +329,7 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
         {l.permit ? (
           <div className="flex items-center gap-2 text-[11.5px] text-muted"><QrCode size={14} style={{ color: l.permitState === 'Valid' ? SWK.oasis : SWK.dune }} /> Trakheesi <b className="text-ink font-semibold">{p.rera_permit_no}</b>{l.permitState === 'Expiring' && <span> · expires {String(p.permit_expiry).slice(0, 10)}</span>}{l.permitState === 'No expiry' && <span> · add expiry date</span>}</div>
         ) : (
-          <div className="flex items-start gap-2 rounded-xl px-3 py-2 text-[12px] font-medium" style={{ background: '#f7f7f7', color: '#a33a22' }}><AlertTriangle size={15} className="flex-none mt-px" /> {l.permitState === 'Expired' ? 'Blocked from portals — Trakheesi permit expired' : 'Blocked from portals — Trakheesi permit required'}</div>
+          <div className="flex items-start gap-2 rounded-xl px-3 py-2 text-[12px] font-medium" style={{ background: '#f8f5ef', color: '#a33a22' }}><AlertTriangle size={15} className="flex-none mt-px" /> {l.permitState === 'Expired' ? 'Blocked from portals — Trakheesi permit expired' : 'Blocked from portals — Trakheesi permit required'}</div>
         )}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-wider text-muted font-semibold">Syndication <Pill tone="grey" className="!h-[18px] !text-[10px]">Trakheesi & Form A</Pill></div>
@@ -384,7 +384,7 @@ function QualityPanel({ l }: { l: Listing }) {
         <div className="flex-1 min-w-0">
           <div className="font-display text-[18px] font-semibold text-ink">{l.grade === 'Excellent' ? 'Portal-ready' : l.grade === 'Good' ? 'Almost there' : 'Needs work before publishing'}</div>
           <p className="text-[12.5px] text-muted mt-1">{missing.length ? `Fix ${missing.length} item${missing.length > 1 ? 's' : ''} to gain up to ${missing.reduce((s, c) => s + c.weight - c.earned, 0)} points.` : 'Every quality check passes.'}</p>
-          {!l.permit && <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-[12px] font-medium" style={{ background: '#f7f7f7', color: '#a33a22' }}><AlertTriangle size={15} className="flex-none mt-px" /> {l.permitState === 'Expired' ? 'Blocked from portals — Trakheesi permit expired' : 'Blocked from portals — Trakheesi permit required'}</div>}
+          {!l.permit && <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-[12px] font-medium" style={{ background: '#f8f5ef', color: '#a33a22' }}><AlertTriangle size={15} className="flex-none mt-px" /> {l.permitState === 'Expired' ? 'Blocked from portals — Trakheesi permit expired' : 'Blocked from portals — Trakheesi permit required'}</div>}
         </div>
       </div></div>
       <div className="flex flex-col gap-2">
@@ -393,7 +393,7 @@ function QualityPanel({ l }: { l: Listing }) {
           const Icon = c.icon
           return (
             <motion.div key={c.key} initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * .04 }} className="rounded-2xl bg-white px-4 py-3 flex items-start gap-3" style={{ border: `1px solid ${SWK.line}` }}>
-              <span className="swk-row-ic !w-9 !h-9" style={{ background: ok ? '#ececec' : part ? '#f7f7f7' : '#f7f7f7', color: ok ? SWK.oasis : part ? SWK.champDeep : SWK.dune }}><Icon size={16} /></span>
+              <span className="swk-row-ic !w-9 !h-9" style={{ background: ok ? '#ece6da' : part ? '#f8f5ef' : '#f8f5ef', color: ok ? SWK.oasis : part ? SWK.champDeep : SWK.dune }}><Icon size={16} /></span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2"><span className="text-[13.5px] font-semibold text-ink">{c.label}</span><span className="text-[12px] tabular-nums font-semibold" style={{ color: ok ? SWK.oasis : part ? SWK.champDeep : SWK.dune }}>{c.earned}/{c.weight}</span></div>
                 {!ok && <div className="text-[12px] text-muted mt-0.5">{c.fix}</div>}
@@ -452,7 +452,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl bg-[#0b0b0b] text-white p-4 border border-[#0e9f6e]/40 flex flex-col gap-3">
+      <div className="rounded-2xl bg-[#0b2027] text-white p-4 border border-[#8a621c]/40 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <MessageCircle size={17} className="text-[#4fd39a]" />
@@ -475,7 +475,7 @@ function CopyPanel({ l, onCopied }: { l: Listing; onCopied: (m: string) => void 
             value={waPhone}
             onChange={e => setWaPhone(e.target.value)}
             placeholder="Recipient WhatsApp (e.g. 0501234567 or +971501234567)"
-            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#0e9f6e]"
+            className="flex-1 min-w-[210px] h-10 rounded-xl px-3.5 text-[13px] bg-white/10 border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#8a621c]"
           />
           <button
             type="button"
@@ -539,10 +539,10 @@ function PortalPerformance({ listings, leads }: { listings: Listing[]; leads: Ro
       <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stats} margin={{ top: 6, right: 4, left: -18, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="#f5f5f5" />
+            <CartesianGrid vertical={false} stroke="#f4f0e8" />
             <XAxis dataKey="portal" tick={{ fontSize: 10.5, fill: SWK.muted }} axisLine={false} tickLine={false} interval={0} tickFormatter={(v: string) => v.split(' ')[0]} />
             <YAxis tick={{ fontSize: 10, fill: SWK.muted }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip cursor={{ fill: 'rgba(14,159,110,.08)' }} contentStyle={{ borderRadius: 12, border: `1px solid ${SWK.line}`, fontSize: 12 }} formatter={(v: any) => num(Number(v))} />
+            <Tooltip cursor={{ fill: 'rgba(138,98,28,.08)' }} contentStyle={{ borderRadius: 12, border: `1px solid ${SWK.line}`, fontSize: 12 }} formatter={(v: any) => num(Number(v))} />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
             <RBar dataKey="syndicated" name="Live Listings" fill={CHART[0]} radius={[6, 6, 0, 0]} animationDuration={1100} />
             <RBar dataKey="leads" name="Leads" fill={CHART[1]} radius={[6, 6, 0, 0]} animationDuration={1300} />

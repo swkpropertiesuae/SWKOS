@@ -53,8 +53,8 @@ export default function AutomationsPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {TEMPLATES.filter(t => entities.some(e => e.key === t.rule.entity)).map(t => (
               <button key={t.title} type="button" className="web-card hoverable flex flex-col gap-2 border-0 p-5 text-left" onClick={() => setEditing({ operator: 'equals', delay_minutes: 0, due_days: 1, active: true, ...t.rule })}>
-                <span className="flex size-10 items-center justify-center rounded-full bg-[#121212] text-[#51fec0]"><Zap size={17} /></span>
-                <b className="text-[15px] font-medium text-[#121212]">{t.title}</b><span className="text-[13px] text-[#737373]">{t.blurb}</span>
+                <span className="flex size-10 items-center justify-center rounded-full bg-[#0f2a33] text-[#d4a752]"><Zap size={17} /></span>
+                <b className="text-[15px] font-medium text-[#0f2a33]">{t.title}</b><span className="text-[13px] text-[#5b676e]">{t.blurb}</span>
               </button>))}
           </div>
         </section>
@@ -62,21 +62,21 @@ export default function AutomationsPage() {
 
       <section className="mb-10">
         <div className="web-eyebrow mb-3">Your automations · {rules.length}</div>
-        {!rules.length && !rulesQ.isLoading && <div className="web-card p-10 text-center text-[#737373]">No automations yet. Pick a recipe above to start.</div>}
+        {!rules.length && !rulesQ.isLoading && <div className="web-card p-10 text-center text-[#5b676e]">No automations yet. Pick a recipe above to start.</div>}
         <div className="flex flex-col gap-3">
           {rules.map(r => (
             <div key={r.id} className={`web-card flex flex-wrap items-center gap-4 p-5 ${r.active ? '' : 'opacity-60'}`}>
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#121212] text-[#51fec0]"><Workflow size={18} /></span>
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#0f2a33] text-[#d4a752]"><Workflow size={18} /></span>
               <div className="min-w-0 flex-1">
-                <b className="block text-[15px] font-medium text-[#121212]">{r.name}</b>
-                <p className="m-0 mt-1 text-[13.5px] leading-relaxed text-[#4a4a4a]">
-                  When <b className="font-medium text-[#121212]">{label(r.entity)}</b> {r.trigger === 'Record created' ? 'is created' : r.trigger === 'Record updated' ? 'is updated' : <>has <b className="font-medium text-[#121212]">{fieldLabel(r.entity, r.field)}</b> changed to <b className="font-medium text-[#121212]">{r.value}</b></>}
-                  {r.trigger !== 'Status / stage changed to' && r.field ? <>, if <b className="font-medium text-[#121212]">{fieldLabel(r.entity, r.field)}</b> {r.operator} {r.value && <b className="font-medium text-[#121212]">{r.value}</b>}</> : null}
-                  <ArrowRight size={13} className="mx-1.5 inline text-[#0e9f6e]" />{r.action.toLowerCase()}{r._labels?.assignee_id ? <> · <b className="font-medium text-[#121212]">{r._labels.assignee_id}</b></> : null}{r.delay_minutes ? ` after ${r.delay_minutes} min` : ''}
+                <b className="block text-[15px] font-medium text-[#0f2a33]">{r.name}</b>
+                <p className="m-0 mt-1 text-[13.5px] leading-relaxed text-[#3d4a51]">
+                  When <b className="font-medium text-[#0f2a33]">{label(r.entity)}</b> {r.trigger === 'Record created' ? 'is created' : r.trigger === 'Record updated' ? 'is updated' : <>has <b className="font-medium text-[#0f2a33]">{fieldLabel(r.entity, r.field)}</b> changed to <b className="font-medium text-[#0f2a33]">{r.value}</b></>}
+                  {r.trigger !== 'Status / stage changed to' && r.field ? <>, if <b className="font-medium text-[#0f2a33]">{fieldLabel(r.entity, r.field)}</b> {r.operator} {r.value && <b className="font-medium text-[#0f2a33]">{r.value}</b>}</> : null}
+                  <ArrowRight size={13} className="mx-1.5 inline text-[#8a621c]" />{r.action.toLowerCase()}{r._labels?.assignee_id ? <> · <b className="font-medium text-[#0f2a33]">{r._labels.assignee_id}</b></> : null}{r.delay_minutes ? ` after ${r.delay_minutes} min` : ''}
                 </p>
               </div>
               {canEdit && <>
-                <label className="flex items-center gap-2 text-[12.5px] text-[#4a4a4a]"><input type="checkbox" className="size-4 accent-[#0e9f6e]" checked={r.active} onChange={() => void toggle(r)} />{r.active ? 'On' : 'Off'}</label>
+                <label className="flex items-center gap-2 text-[12.5px] text-[#3d4a51]"><input type="checkbox" className="size-4 accent-[#8a621c]" checked={r.active} onChange={() => void toggle(r)} />{r.active ? 'On' : 'Off'}</label>
                 <button className="btn outline icon sm" aria-label={`Edit ${r.name}`} onClick={() => setEditing(r)}><Pencil /></button>
                 <button className="btn outline icon sm" aria-label={`Delete ${r.name}`} onClick={() => void remove(r)}><Trash2 /></button>
               </>}
@@ -86,15 +86,15 @@ export default function AutomationsPage() {
 
       <section>
         <div className="mb-3 flex items-center"><div className="web-eyebrow flex-1">Recent runs</div><Link to="/e/workflow_runs" className="link text-[13px]">All runs</Link></div>
-        <div className="web-card divide-y divide-[#e5e5e5]">
+        <div className="web-card divide-y divide-[#e6e0d4]">
           {(runsQ.data?.rows ?? []).map(r => (
-            <Link key={r.id} to={`/e/workflow_runs/${r.id}`} className="flex items-center gap-3 px-5 py-3 no-underline hover:bg-[#f8f8f8]">
-              {r.status === 'Succeeded' ? <CheckCircle2 size={17} className="text-[#0e9f6e]" /> : r.status === 'Queued' || r.status === 'Running' ? <Clock size={17} className="text-[#b45309]" /> : <XCircle size={17} className="text-[#dc2626]" />}
-              <span className="min-w-0 flex-1 truncate text-[13.5px] text-[#121212]">{r.label}</span>
-              {r.error && <span className="hidden max-w-[40%] truncate text-[12px] text-[#dc2626] md:inline">{r.error}</span>}
+            <Link key={r.id} to={`/e/workflow_runs/${r.id}`} className="flex items-center gap-3 px-5 py-3 no-underline hover:bg-[#f8f5ef]">
+              {r.status === 'Succeeded' ? <CheckCircle2 size={17} className="text-[#8a621c]" /> : r.status === 'Queued' || r.status === 'Running' ? <Clock size={17} className="text-[#b45309]" /> : <XCircle size={17} className="text-[#a3263a]" />}
+              <span className="min-w-0 flex-1 truncate text-[13.5px] text-[#0f2a33]">{r.label}</span>
+              {r.error && <span className="hidden max-w-[40%] truncate text-[12px] text-[#a3263a] md:inline">{r.error}</span>}
               <span className="web-pill">{r.status}</span>
             </Link>))}
-          {!runsQ.data?.rows.length && <div className="p-6 text-center text-[13px] text-[#737373]">Runs appear here when an automation fires.</div>}
+          {!runsQ.data?.rows.length && <div className="p-6 text-center text-[13px] text-[#5b676e]">Runs appear here when an automation fires.</div>}
         </div>
       </section>
 
@@ -121,7 +121,7 @@ function RuleBuilder({ initial, entities, onClose, onSaved }: { initial: Partial
     try { r.id ? await put(`/api/e/automation_rules/${r.id}`, body) : await post('/api/e/automation_rules', body); toast.ok('Automation saved'); onSaved() } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
   }
   const needsUser = r.action === 'Create follow-up task' || r.action === 'Notify user'
-  const sel = 'select'; const box = 'rounded-2xl border border-[#e5e5e5] bg-[#f7f7f7] p-4'
+  const sel = 'select'; const box = 'rounded-2xl border border-[#e6e0d4] bg-[#f8f5ef] p-4'
   return (
     <Modal open onClose={onClose} title={r.id ? 'Edit automation' : 'New automation'} width={680}
       footer={<><div className="flex-1" /><button className="btn outline" onClick={onClose}>Cancel</button><button className="web-btn" disabled={busy || !r.name || !r.entity || !r.trigger || !r.action} onClick={() => void save()}>Save automation</button></>}>
@@ -140,7 +140,7 @@ function RuleBuilder({ initial, entities, onClose, onSaved }: { initial: Partial
               : <input className="input" aria-label="Value" placeholder="Value" value={r.value ?? ''} onChange={e => set({ value: e.target.value })} disabled={!r.field} />}
           </div>)}
       </div>
-      <div className="my-2 flex justify-center text-[#0e9f6e]"><ArrowRight className="rotate-90" size={18} /></div>
+      <div className="my-2 flex justify-center text-[#8a621c]"><ArrowRight className="rotate-90" size={18} /></div>
       <div className={box}>
         <div className="web-eyebrow mb-2">Then</div>
         <select className={`${sel} mb-2`} aria-label="Action" value={r.action} onChange={e => set({ action: e.target.value, target: '' })}>{ACTIONS.map(a => <option key={a}>{a}</option>)}</select>
@@ -148,11 +148,11 @@ function RuleBuilder({ initial, entities, onClose, onSaved }: { initial: Partial
           {needsUser && <select className={sel} aria-label="User" value={r.assignee_id ?? ''} onChange={e => set({ assignee_id: Number(e.target.value) || null })}><option value="">{r.action === 'Notify user' ? 'Who to notify…' : 'Assign task to… (optional)'}</option>{(users ?? []).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select>}
           {r.action === 'Post to Inside group' && <select className={sel} aria-label="Inside group" value={r.target ?? ''} onChange={e => set({ target: e.target.value })}><option value="">Which group…</option>{groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}</select>}
           {['Queue e-mail to address', 'Send WhatsApp to number', 'Set field value', 'Ask an AI employee to review'].includes(r.action ?? '') && <input className="input" aria-label="Target" value={r.target ?? ''} onChange={e => set({ target: e.target.value })} placeholder={r.action === 'Queue e-mail to address' ? 'name@example.com' : r.action === 'Send WhatsApp to number' ? '+971…' : r.action === 'Set field value' ? 'field=value' : 'AI employee name, e.g. Jarvis'} />}
-          {r.action === 'Create follow-up task' && <label className="flex items-center gap-2 text-[13px]"><span className="text-[#737373]">Due in</span><input className="input" style={{ width: 80 }} type="number" min={0} value={r.due_days ?? 1} onChange={e => set({ due_days: Number(e.target.value) })} /><span className="text-[#737373]">days</span></label>}
+          {r.action === 'Create follow-up task' && <label className="flex items-center gap-2 text-[13px]"><span className="text-[#5b676e]">Due in</span><input className="input" style={{ width: 80 }} type="number" min={0} value={r.due_days ?? 1} onChange={e => set({ due_days: Number(e.target.value) })} /><span className="text-[#5b676e]">days</span></label>}
         </div>
         <label className="mt-3 block"><span className="label">Title / subject — use {'{field_name}'} for values, e.g. {'{_title}'}</span><input className="input" value={r.message ?? ''} onChange={e => set({ message: e.target.value })} /></label>
         <label className="mt-2 block"><span className="label">Message (optional)</span><textarea className="textarea" value={r.body ?? ''} onChange={e => set({ body: e.target.value })} /></label>
-        <label className="mt-2 flex items-center gap-2 text-[13px]"><span className="text-[#737373]">Wait</span><input className="input" style={{ width: 90 }} type="number" min={0} max={10080} value={r.delay_minutes ?? 0} onChange={e => set({ delay_minutes: Number(e.target.value) })} /><span className="text-[#737373]">minutes before running</span></label>
+        <label className="mt-2 flex items-center gap-2 text-[13px]"><span className="text-[#5b676e]">Wait</span><input className="input" style={{ width: 90 }} type="number" min={0} max={10080} value={r.delay_minutes ?? 0} onChange={e => set({ delay_minutes: Number(e.target.value) })} /><span className="text-[#5b676e]">minutes before running</span></label>
       </div>
     </Modal>
   )

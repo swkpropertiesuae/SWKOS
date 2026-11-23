@@ -303,7 +303,7 @@ function CalendarView({ def, field, month, rows, onMonth, onOpen, onMoved, onAdd
     try { await put(`/api/e/${def.key}/${id}`, { [field.name]: v, version: r.version }); onMoved() } catch (e: any) { toast.error(e.message) }
   }
   const statusOpts = def.statusField ? (def.fields.find(f => f.name === def.statusField)?.options ?? []).map(optValue) : []
-  const tone = (r: any) => { const i = statusOpts.indexOf(r[def.statusField ?? '']); return ['#121212', '#0e9f6e', '#1b6aa7', '#b45309', '#7c3aed', '#8b8b8b', '#dc2626'][i < 0 ? 0 : i % 7] }
+  const tone = (r: any) => { const i = statusOpts.indexOf(r[def.statusField ?? '']); return ['#0f2a33', '#8a621c', '#8a621c', '#b45309', '#7c3aed', '#5b676e', '#a3263a'][i < 0 ? 0 : i % 7] }
   const unscheduled = rows.filter(r => !r[field.name]).length
   return (
     <div className="p-3">
@@ -323,7 +323,7 @@ function CalendarView({ def, field, month, rows, onMonth, onOpen, onMoved, onAdd
             <div key={d} className={cls('group min-h-[112px] border-b border-r border-line p-1.5', !inMonth && 'bg-soft/60', over === d && 'ring-2 ring-inset ring-emerald')}
               onDragOver={e => { e.preventDefault(); setOver(d) }} onDragLeave={() => setOver(null)} onDrop={e => { e.preventDefault(); setOver(null); void move(Number(e.dataTransfer.getData('text/plain')), d) }}>
               <div className="mb-1 flex items-center">
-                <span className={cls('flex size-6 items-center justify-center rounded-full text-[12px]', d === today ? 'bg-[#121212] font-semibold text-[#51fec0]' : inMonth ? 'text-ink' : 'text-muted')}>{Number(d.slice(8))}</span>
+                <span className={cls('flex size-6 items-center justify-center rounded-full text-[12px]', d === today ? 'bg-[#0f2a33] font-semibold text-[#d4a752]' : inMonth ? 'text-ink' : 'text-muted')}>{Number(d.slice(8))}</span>
                 {onAdd && <button type="button" aria-label={`Add on ${d}`} className="ml-auto flex size-6 items-center justify-center rounded-full border-0 bg-transparent text-muted opacity-0 hover:bg-hover group-hover:opacity-100 focus-visible:opacity-100" onClick={() => onAdd(d)}><Plus size={13} /></button>}
               </div>
               <div className="flex flex-col gap-1">
@@ -356,7 +356,7 @@ function SavedViews({ storageKey, current, onApply }: { storageKey: string; curr
     <div className="relative">
       <button className={cls('btn outline sm', active && 'ring-2 ring-emerald/40')} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}><Bookmark /> {active ? active.name : 'Views'}</button>
       {open && (
-        <div role="menu" className="absolute left-0 top-[calc(100%+6px)] z-30 w-64 rounded-2xl border border-line bg-card p-1.5 shadow-[0_24px_60px_rgba(18,18,18,0.16)]">
+        <div role="menu" className="absolute left-0 top-[calc(100%+6px)] z-30 w-64 rounded-2xl border border-line bg-card p-1.5 shadow-[0_24px_60px_rgba(15,42,51,0.16)]">
           {views.length === 0 && <div className="px-3 py-2 text-xs text-muted">Save the current layout, grouping and filters as a view.</div>}
           {views.map(v => (
             <div key={v.name} className="flex items-center rounded-xl hover:bg-hover">
