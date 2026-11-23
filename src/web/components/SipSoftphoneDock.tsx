@@ -48,8 +48,11 @@ export function SipSoftphoneDock() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (!isStaff) return
-    void sipClient.init()
+    if (!isStaff || !me?.id) {
+      void sipClient.disconnect()
+      return
+    }
+    void sipClient.init(me.id)
     const stopWake = sipClient.connectWakeStream()
     return () => {
       stopWake()

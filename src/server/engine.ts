@@ -14,6 +14,8 @@ isRestrictedStaffUser,
 RESTRICTED_STAFF_PERMISSIONS,
 RESTRICTED_STAFF_ALLOWED_ENTITIES,
 RESTRICTED_STAFF_SELF_SCOPED_ENTITIES,
+RESTRICTED_HR_PII_ENTITIES,
+canViewEmployeeRecords,
 } from '../shared/swk-staff-access'
 
 export type Perms = '*' | Record<string, string[]>
@@ -278,8 +280,13 @@ function buildWhere(def: EntityDef, p: ListParams, ctx: Ctx): { where: string; a
     if (!scope) { cl.push('1=0') } else { const cols = scope.split('|'); cl.push('(' + cols.map(c => `${qi(c)} = ?`).join(' OR ') + ')'); args.push(...cols.map(() => ctx.user!.party_id)) }
   }
   if(!ctx.system&&def.key==='work_items'){
-    const sources=Object.values(ENTITIES).filter(e=>can(ctx.user,e.module,'view')).map(e=>e.key)
+    const sources=Object.values(ENTITIES).filter(e=>can(ctx.user,e.module,'view')&&!(RESTRICTED_HR_PII_ENTITIES.has(e.key)&&!canViewEmployeeRecords(ctx.user))).map(e=>e.key)
     if(!sources.length)cl.push('1=0');else{cl.push(`source_entity IN (${sources.map(()=>'?').join(',')})`);args.push(...sources)}
+  }
+  if (!ctx.system && def.key === 'attachments' && !canViewEmployeeRecords(ctx.user)) {
+    const hrEntities = [...RESTRICTED_HR_PII_ENTITIES]
+    cl.push(`(link_entity IS NULL OR link_entity = '' OR link_entity NOT IN (${hrEntities.map(() => '?').join(',')}))`)
+    args.push(...hrEntities)
   }
   if(!ctx.system&&def.key==='shift_handovers'&&!can(ctx.user,'admin','view')){cl.push('(from_user_id=? OR to_user_id=?)');args.push(ctx.user?.id??0,ctx.user?.id??0)}
   if (!ctx.system && ctx.user && !ctx.user.party_id && isRestrictedStaffUser(ctx.user)) {
@@ -360,8 +367,15 @@ function buildWhere(def: EntityDef, p: ListParams, ctx: Ctx): { where: string; a
   return { where: cl.length ? 'WHERE ' + cl.join(' AND ') : '', args }
 }
 
+function assertHrPiiAccess(def: EntityDef, ctx: Ctx) {
+  if (!ctx.system && RESTRICTED_HR_PII_ENTITIES.has(def.key) && !canViewEmployeeRecords(ctx.user)) {
+    throw forbidden('Access restricted: HR, payroll, salary, and staff visa records are only accessible to Owner, Admin, Operations Manager, and HR.')
+  }
+}
+
 // ------------------------------------------------------------------ read
 export function listRecords(def: EntityDef, p: ListParams, ctx: Ctx) {
+  assertHrPiiAccess(def, ctx)
   if (!ctx.system && ctx.user && !ctx.user.party_id && isRestrictedStaffUser(ctx.user)) {
     if (!RESTRICTED_STAFF_ALLOWED_ENTITIES.has(def.key)) {
       throw forbidden('Access restricted: Your account has access only to Attendance, Company Manual, Market Pulse, and General features.')
@@ -384,13 +398,14 @@ export function listRecords(def: EntityDef, p: ListParams, ctx: Ctx) {
 
 function redactHandover(r:Rec,ctx:Ctx){
  const snap=r.snapshot;if(!snap||typeof snap!=='object')return
- const readable=(i:Rec)=>can(ctx.user,getDef(i.source_entity).module,'view')
+ const readable=(i:Rec)=>can(ctx.user,getDef(i.source_entity).module,'view')&&!(RESTRICTED_HR_PII_ENTITIES.has(i.source_entity)&&!canViewEmployeeRecords(ctx.user))
  const items=(snap.items??[]).filter(readable),issues=(snap.critical_issues??[]).filter(readable)
  r.snapshot={...snap,items,critical_issues:issues,jobs:can(ctx.user,'sales','view')?snap.jobs:[],pending_communications:can(ctx.user,'admin','view')?snap.pending_communications:[]}
  r.snapshot.hidden_items=(snap.items??[]).length-items.length
 }
 
 export function getRecord(def: EntityDef, id: number, ctx: Ctx, opts: { children?: boolean | Record<string, boolean | object>; includeDeleted?: boolean } = {}): Rec {
+  assertHrPiiAccess(def, ctx)
   if (!ctx.system && ctx.user && !ctx.user.party_id && isRestrictedStaffUser(ctx.user)) {
     if (!RESTRICTED_STAFF_ALLOWED_ENTITIES.has(def.key)) {
       throw forbidden('Access restricted: Your account has access only to Attendance, Company Manual, Market Pulse, and General features.')
@@ -404,7 +419,10 @@ export function getRecord(def: EntityDef, id: number, ctx: Ctx, opts: { children
   if (bs && row.branch_id && row.branch_id !== bs) throw notFound()
   const scope = ctx.user?.party_id && !ctx.system ? SCOPE[def.key] : undefined
   if (ctx.user?.party_id && !ctx.system && (!scope || !scope.split('|').some(c => row[c] === ctx.user!.party_id))) throw notFound()
-  if(!ctx.system&&def.key==='work_items'&&!can(ctx.user,getDef(row.source_entity).module,'view'))throw notFound()
+  if(!ctx.system&&def.key==='work_items'&&(!can(ctx.user,getDef(row.source_entity).module,'view')||(RESTRICTED_HR_PII_ENTITIES.has(row.source_entity)&&!canViewEmployeeRecords(ctx.user))))throw notFound()
+  if (!ctx.system && def.key === 'attachments' && row.link_entity && RESTRICTED_HR_PII_ENTITIES.has(String(row.link_entity)) && !canViewEmployeeRecords(ctx.user)) {
+    throw forbidden('Access restricted: HR, payroll, salary, and staff visa records are only accessible to Owner, Admin, Operations Manager, and HR.')
+  }
   if(!ctx.system&&def.key==='shift_handovers'&&!can(ctx.user,'admin','view')&&row.from_user_id!==ctx.user?.id&&row.to_user_id!==ctx.user?.id)throw notFound()
   if (!ctx.system && ctx.user && !ctx.user.party_id && ctx.user.permissions !== '*' && !can(ctx.user, 'admin', 'view') && !can(ctx.user, 'sales_director', 'view') && /broker|advisor|consultant/i.test(ctx.user.role_name || '')) {
     const uid = ctx.user.id ?? 0
@@ -594,6 +612,7 @@ function fireHooks(phase: 'beforeSave' | 'afterSave', args: HookArgs) {
 }
 
 export function createRecord(def: EntityDef, payload: Rec, ctx: Ctx): Rec {
+  assertHrPiiAccess(def, ctx)
   if (!ctx.system && ctx.user && !ctx.user.party_id && isRestrictedStaffUser(ctx.user) && !RESTRICTED_STAFF_SELF_SCOPED_ENTITIES.has(def.key)) {
     throw forbidden('Access restricted: Your account has access only to Attendance, Company Manual, Market Pulse, and General features.')
   }
@@ -636,6 +655,7 @@ export function createRecord(def: EntityDef, payload: Rec, ctx: Ctx): Rec {
 }
 
 export function updateRecord(def: EntityDef, id: number, payload: Rec, ctx: Ctx): Rec {
+  assertHrPiiAccess(def, ctx)
   if (!ctx.system && ctx.user && !ctx.user.party_id && isRestrictedStaffUser(ctx.user) && !RESTRICTED_STAFF_SELF_SCOPED_ENTITIES.has(def.key)) {
     throw forbidden('Access restricted: Your account has access only to Attendance, Company Manual, Market Pulse, and General features.')
   }
@@ -722,6 +742,7 @@ function referencedBy(def: EntityDef, id: number): { entity: string; label: stri
 }
 
 export function deleteRecord(def: EntityDef, id: number, ctx: Ctx) {
+  assertHrPiiAccess(def, ctx)
   assertCan(ctx, def.module, 'delete')
   if ((def.noDelete || def.readonlyApi || def.child) && !ctx.system) throw forbidden(`${def.plural} cannot be deleted${def.noDelete ? ' — cancel or void them instead' : ''}`)
   const reason = String(ctx.auditReason ?? '').trim()
@@ -753,6 +774,7 @@ export function deleteRecord(def: EntityDef, id: number, ctx: Ctx) {
  * with mandatory reason & instant alerts to Owner (Shabib Siraj), Manager (Mohammad Haseeb), and IT (Talha Shabbir).
  */
 export function requestDeleteOrExecute(def: EntityDef, id: number, ctx: Ctx, explicitReason?: string): { ok: true; pending_owner_approval?: boolean; queued_for_owner_approval?: boolean; bin_request_id?: number; recycle_request?: Rec; message?: string } {
+  assertHrPiiAccess(def, ctx)
   assertCan(ctx, def.module, 'delete')
   if ((def.noDelete || def.readonlyApi || def.child) && !ctx.system) throw forbidden(`${def.plural} cannot be deleted${def.noDelete ? ' — cancel or void them instead' : ''}`)
   const rec = getRecord(def, id, ctx, { children: false })

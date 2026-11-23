@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { MessageSquare,Hand,Paperclip,Link as LinkIcon,Tag,Link2,ThumbsUp,MessageCircleWarning,Video,History,X,Trash2,Plus,Download,Send,ExternalLink,Check } from 'lucide-react'
-import { del,get,post,put,upload } from '../lib/api'
+import { del,get,openAuthFile,post,put,resolveApiUrl,upload } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { Badge,Loading,useDialogs } from '../ui/kit'
 import { RefSelect } from './RefSelect'
@@ -101,7 +101,7 @@ export function Attachments({ entity, id, refresh }: any) {
       <input type="file" multiple hidden onChange={e => { if (e.target.files) void go(e.target.files); e.target.value = '' }} />{busy ? 'Uploading…' : <><b>Drop files here</b> or click to browse<div className="text-xs text-muted mt-1">Max 25 MB per file · PDF, images, Office files, ZIP…</div></>}</label>
     <div className="mt-3">{!q.data ? <Loading /> : q.data.rows.length === 0 ? <p className="text-sm text-muted text-center py-6">No documents attached.</p> : q.data.rows.map(f => (
       <Row key={f.id} onDelete={async () => { if (await dlg.confirm({ title: 'Remove document?', message: f.file_name, danger: true, ok: 'Remove' })) { await del(`/api/files/${f.id}`); void qc.invalidateQueries({ queryKey: ['attach', entity, id] }); refresh() } }}>
-        <a className="link flex items-center gap-1.5" href={`/api/files/${f.id}/download`} target="_blank" rel="noreferrer"><Download size={14} />{f.file_name}</a>
+        <a className="link flex items-center gap-1.5" href={resolveApiUrl(`/api/files/${f.id}/download`)} onClick={e => { e.preventDefault(); void openAuthFile(`/api/files/${f.id}/download`, f.file_name).catch(err => toast.error(err.message)) }} target="_blank" rel="noreferrer"><Download size={14} />{f.file_name}</a>
         <div className="text-xs text-muted">{f.category} · v{f.doc_version} · {(f.size / 1024).toFixed(0)} KB · {fmtIsoStamp(f.created_at)}{f.expiry_date && <> · <span className={f.expiry_date < todayIso() ? 'text-signal font-bold' : ''}>expires {fmtDate(f.expiry_date)}</span></>}</div></Row>))}</div>
   </div>)
 }

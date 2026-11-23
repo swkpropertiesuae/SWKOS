@@ -6,7 +6,8 @@ import { distanceM, gpsFlags } from '../domain/attendance-security'
 import { recordEnterpriseAudit } from '../domain/enterprise'
 import { createRecord, getDef, patchRecord, SYSTEM_CTX } from '../engine'
 import { dispatchPushToUser } from '../integrations/push'
-import { liveBus, notify, notifyLeadership } from '../notify'
+import { liveBus, liveScope, notify, notifyLeadership } from '../notify'
+import { loadUser } from '../auth'
 import { getSetting } from '../settings'
 import { addDays, bad, forbidden, HttpError, notFound, nowIso, safeJson } from '../util'
 import { idOf } from './helpers'
@@ -199,7 +200,7 @@ function extractPurposeAndCommunity(session: any): { purpose: string | null; com
 }
 
 function emitLiveEvent(event: Record<string, unknown>) {
-  liveBus.emit('field-gps:live', event)
+  liveBus.emit(`field-gps:live:${liveScope()}`, event)
 }
 
 function mergeFlagReasons(...sources: Array<string | null | undefined>): string | null {
@@ -254,15 +255,28 @@ function detectRepeatedIdenticalCoords(
     if (run.length >= 5) {
       const distinctTimestamps = new Set(run.map(p => p.recorded_at))
       if (distinctTimestamps.size >= 5) {
-        const hasNonZeroOrMissingSpeed = run.some(
-          p => p.speed_mps === null || p.speed_mps === undefined || Number(p.speed_mps) > 0,
+        const hasMovingSpeed = run.some(
+          p =>
+            p.speed_mps !== null &&
+            p.speed_mps !== undefined &&
+            Number.isFinite(Number(p.speed_mps)) &&
+            Number(p.speed_mps) > 1.5,
+        )
+        const hasAnyPositiveSpeed = run.some(
+          p =>
+            p.speed_mps !== null &&
+            p.speed_mps !== undefined &&
+            Number.isFinite(Number(p.speed_mps)) &&
+            Number(p.speed_mps) > 0,
         )
         const accuracies = run.map(p => p.accuracy_m)
-        const identicalAccuracy =
+        const identicalPositiveAccuracy =
           accuracies[0] !== null &&
           accuracies[0] !== undefined &&
+          Number.isFinite(Number(accuracies[0])) &&
+          Number(accuracies[0]) > 0 &&
           accuracies.every(a => a === accuracies[0])
-        if (hasNonZeroOrMissingSpeed || identicalAccuracy) {
+        if (hasMovingSpeed || (hasAnyPositiveSpeed && identicalPositiveAccuracy)) {
           return true
         }
       }
@@ -575,8 +589,14 @@ export function purgeOldGpsBatches(now = new Date()): { purged: number } {
   const days = gpsRetentionDays()
   if (days <= 0) return { purged: 0 }
   const cutoffIso = new Date(now.getTime() - days * 86_400_000).toISOString()
-  const res = q.run(`DELETE FROM duty_location_batches WHERE received_at < ?`, cutoffIso)
-  const purged = Number((res as any)?.changes ?? 0)
+  const batchRes = q.run(`DELETE FROM duty_location_batches WHERE received_at < ?`, cutoffIso)
+  const queueRes = q.run(
+    `DELETE FROM offline_sync_queue_log WHERE action_type IN ('field_gps_ping', 'field_gps_batch') AND synced_at < ?`,
+    cutoffIso,
+  )
+  const purgedBatches = Number((batchRes as any)?.changes ?? 0)
+  const purgedQueue = Number((queueRes as any)?.changes ?? 0)
+  const purged = purgedBatches + purgedQueue
   if (purged > 0) {
     q.run(
       `INSERT INTO audit_log(at, user_id, user_name, entity, record_id, record_label, action, changes, ip)
@@ -588,7 +608,7 @@ export function purgeOldGpsBatches(now = new Date()): { purged: number } {
       0,
       'PDPL GPS Purge',
       'pdpl_gps_purge',
-      JSON.stringify({ purged_batches: purged, retention_days: days, cutoff: cutoffIso }),
+      JSON.stringify({ purged_batches: purgedBatches, purged_queue_logs: purgedQueue, retention_days: days, cutoff: cutoffIso }),
       null,
     )
   }
@@ -1097,7 +1117,7 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
           user.id,
           deviceId,
           'field_gps_ping',
-          JSON.stringify({ session_id: activeSession.id, lat: p.lat, lng: p.lng, recorded_at: p.recorded_at }),
+          JSON.stringify({ session_id: activeSession.id, recorded_at: p.recorded_at }),
           JSON.stringify(resultSummary),
           p.recorded_at,
           nowUtc,
@@ -1336,18 +1356,21 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
       updated_at: nowUtc,
     })
 
-    // Notify Leadership in-app + send high-priority SOS push channel to Owner, Admin, and Manager
-    notifyLeadership(sosTitle, sosBody, '/field-live', 'sos')
+    // Notify Leadership in-app (skip automatic generic push) + send exactly one high-priority SOS push per canonical leader
+    notifyLeadership(sosTitle, sosBody, '/field-live', 'sos', undefined, { skipPush: true })
 
     const canonicalEmails = [...CANONICAL_ELEVATED_EMAILS]
-    const leaders = q.all<{ id: number }>(
+    const rawLeaders = q.all<{ id: number }>(
       `SELECT id FROM users
        WHERE deleted_at IS NULL AND active = 1 AND party_id IS NULL
          AND lower(email) IN (${canonicalEmails.map(() => '?').join(',')})`,
       ...canonicalEmails,
     )
+    const verifiedLeaders = rawLeaders
+      .map(l => loadUser(l.id))
+      .filter((u): u is NonNullable<ReturnType<typeof loadUser>> => !!u && canAccessFieldLiveMap(u))
     await Promise.allSettled(
-      leaders.map(l =>
+      verifiedLeaders.map(l =>
         dispatchPushToUser(l.id, {
           title: sosTitle,
           body: sosBody,
@@ -1498,7 +1521,8 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
         /* closed */
       }
     }
-    liveBus.on('field-gps:live', send)
+    const gpsChannel = `field-gps:live:${liveScope()}`
+    liveBus.on(gpsChannel, send)
     const ping = setInterval(() => {
       try {
         res.write(': ping\n\n')
@@ -1511,7 +1535,7 @@ export default async function fieldGpsRoutes(app: FastifyInstance) {
       if (cleaned) return
       cleaned = true
       clearInterval(ping)
-      liveBus.off('field-gps:live', send)
+      liveBus.off(gpsChannel, send)
     }
     req.raw.on('close', cleanup)
     res.on('close', cleanup)

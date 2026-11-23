@@ -88,7 +88,7 @@ const webPushSchema = z.object({
 })
 
 const nativePushSchema = z.object({
-  channel: z.enum(['fcm', 'apns']),
+  channel: z.enum(['fcm', 'apns', 'apns_voip']),
   token: z.string().trim().min(6).max(4096),
   device_id: z.string().trim().min(2).max(80).optional(),
 })

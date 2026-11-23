@@ -1,6 +1,7 @@
 import { useEffect,useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Bath,BedDouble,CheckCircle2,ChevronLeft,ChevronRight,Expand,MapPin,Phone } from 'lucide-react'
+import { resolveApiUrl } from '../lib/api'
 
 type Item = { title: string; subtitle?: string; purpose: string; status?: string; type?: string; location?: string; developer?: string; price_label: string; beds?: number | null; baths?: number | null; area?: number | null; furnishing?: string; completion?: string; payment_plan?: string; description: string[]; features: string[]; images: string[]; reference?: string; floor_plan?: string; tour?: string }
 type Data = { title: string | null; client_name: string | null; expires_at: string; items: Item[]; agent: { name: string; title: string; phone: string; email: string; photo: string | null } | null; company: { name: string; orn: string; address: string; phone: string; website: string } }
@@ -27,10 +28,10 @@ export function PublicListing() {
   const { token = '' } = useParams()
   const [data, setData] = useState<Data | null>(null), [err, setErr] = useState('')
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '', item: '' }), [sent, setSent] = useState(false), [busy, setBusy] = useState(false)
-  useEffect(() => { fetch(`/api/public/share/${encodeURIComponent(token)}`).then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setData(j); document.title = `${j.title || 'Properties selected for you'} | SWK Properties` }).catch(e => setErr(e.message || 'Link not found')) }, [token])
+  useEffect(() => { fetch(resolveApiUrl(`/api/public/share/${encodeURIComponent(token)}`)).then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); setData(j); document.title = `${j.title || 'Properties selected for you'} | SWK Properties` }).catch(e => setErr(e.message || 'Link not found')) }, [token])
   const enquire = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true)
-    try { const r = await fetch(`/api/public/share/${encodeURIComponent(token)}/enquiry`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, consent: true }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); setSent(true) } catch (er: any) { alert(er.message) } finally { setBusy(false) }
+    try { const r = await fetch(resolveApiUrl(`/api/public/share/${encodeURIComponent(token)}/enquiry`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, consent: true }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error); setSent(true) } catch (er: any) { alert(er.message) } finally { setBusy(false) }
   }
   const bg = { background: 'linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%)' }
   if (err) return <div className="grid min-h-screen place-items-center p-6 text-center" style={bg}><div className="web-card max-w-md p-10"><img src="/brand/web/swk-logo-light.webp" alt="SWK Properties" className="mx-auto h-14" /><h1 className="web-title" style={{ fontSize: 26 }}>Link unavailable</h1><p className="text-[#4a4a4a]">{err}</p><a className="web-btn mt-4" href="https://www.swkpropertiesuae.com">Visit swkpropertiesuae.com</a></div></div>

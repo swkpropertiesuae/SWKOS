@@ -478,12 +478,16 @@ async function run() {
     assert.equal(expiredResolve.statusCode, 404, `Expired vault token must return 404, got ${expiredResolve.statusCode}`)
 
     // -------------------------------------------------------------------------
-    // Assertion 4: PBX incoming-wake triggers swk_calls_sos push & liveBus event
+    // Assertion 4: PBX incoming-wake triggers swk_calls_sos + apns_voip push & liveBus event
     // -------------------------------------------------------------------------
     const pushed: Array<{ channel: string; payload: any }> = []
+    const voipPushed: Array<{ isVoip: boolean; channel: string; payload: any }> = []
     pushMod.setPushTransportForTests({
       sendFcm: async (_sub, _fcmMessage, payload) => {
         pushed.push({ channel: payload.channel, payload })
+      },
+      sendApns: async (_sub, payload, meta) => {
+        voipPushed.push({ isVoip: meta.isVoip, channel: meta.channel, payload })
       },
     })
     q.run(
@@ -494,10 +498,18 @@ async function run() {
       'fcm-token-saifullah-001',
       now,
     )
+    q.run(
+      `INSERT INTO push_subscriptions(user_id, device_id, channel, endpoint_or_token, active, created_at) VALUES (?,?,?,?,1,?)`,
+      staffAId,
+      'saif-iphone-1',
+      'apns_voip',
+      'voip-token-saifullah-001',
+      now,
+    )
 
     const liveEvents: any[] = []
     const onSipLive = (ev: any) => liveEvents.push(ev)
-    liveBus.on(`sip:${staffAId}`, onSipLive)
+    liveBus.on(`sip:prod:${staffAId}`, onSipLive)
 
     const badWakeRes = await app.inject({
       method: 'POST',
@@ -514,13 +526,16 @@ async function run() {
       payload: { extension_no: '101', caller_id: '+971501112233', caller_name: 'VIP Buyer', call_id: 'pbx-call-77' },
     })
     assert.equal(wakeRes.statusCode, 200, `incoming-wake failed: ${wakeRes.body}`)
-    liveBus.off(`sip:${staffAId}`, onSipLive)
+    liveBus.off(`sip:prod:${staffAId}`, onSipLive)
 
     assert.equal(pushed.length, 1, `Expected 1 push dispatch, got ${pushed.length}`)
     assert.equal(pushed[0]!.channel, 'swk_calls_sos')
     assert.equal(pushed[0]!.payload.url, '/phone?incoming=1')
     assert.ok(pushed[0]!.payload.tag.startsWith('swk-sip-'))
-    assert.equal(liveEvents.length, 1, 'Expected liveBus sip:<userId> wake event')
+    assert.equal(voipPushed.length, 1, 'Expected incoming SIP wake to trigger apns_voip subscription')
+    assert.equal(voipPushed[0]!.isVoip, true)
+    assert.equal(voipPushed[0]!.payload.data?.type, 'incoming_call')
+    assert.equal(liveEvents.length, 1, 'Expected liveBus sip:prod:<userId> wake event')
     assert.equal(liveEvents[0]!.extension_no, '101')
 
     // -------------------------------------------------------------------------
@@ -713,6 +728,47 @@ async function run() {
     } finally {
       await new Promise<void>((resolve) => mockBridgeNoExt.close(() => resolve()))
     }
+
+    // [Important #11]: Non-digit bridge prefix (*99) must validate cleanly & mask inside logs, while bad chars fail 400
+    const badPrefixRes = await app.inject({
+      method: 'PUT',
+      url: '/api/sip/admin/config',
+      headers: headersFor(cookieAdmin),
+      payload: { sip_vault_bridge_prefix: 'bad@prefix!' },
+    })
+    assert.equal(badPrefixRes.statusCode, 400, `Invalid bridge prefix must return 400, got ${badPrefixRes.statusCode}`)
+
+    const starPrefixRes = await app.inject({
+      method: 'PUT',
+      url: '/api/sip/admin/config',
+      headers: headersFor(cookieAdmin),
+      payload: { sip_ws_url: 'wss://pbx.local:8089/ws', sip_vault_bridge_prefix: '*99' },
+    })
+    assert.equal(starPrefixRes.statusCode, 200)
+    const starDialRes = await app.inject({
+      method: 'POST',
+      url: `/api/sip/vault-call/${propAId}`,
+      headers: headersFor(cookieStaffA),
+      payload: {},
+    })
+    assert.equal(starDialRes.statusCode, 200)
+    const starDialJson = starDialRes.json()
+    assert.match(starDialJson.dial_target, /^\*99vt_[0-9a-f]{24}$/)
+    const starLogRes = await app.inject({
+      method: 'POST',
+      url: '/api/sip/calls/log',
+      headers: headersFor(cookieStaffA),
+      payload: {
+        call_id: 'sip-test-star99',
+        direction: 'out',
+        to_number: starDialJson.dial_uri,
+        summary: `Dialed ${starDialJson.dial_target}`,
+      },
+    })
+    assert.equal(starLogRes.statusCode, 200)
+    const starHistory = await app.inject({ method: 'GET', url: '/api/sip/calls', headers: headersFor(cookieStaffA, false) })
+    assert.equal(starHistory.statusCode, 200)
+    assert.ok(!starHistory.body.includes('vt_'), `*99vt_* vault token must be completely masked in call history`)
 
     console.log('ALL SIP SOFTPHONE & DUAL MASKED-VAULT PROTOCOL TESTS PASSED!')
   } finally {

@@ -44,6 +44,7 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
 
     private var pendingFixCall: CAPPluginCall?
     private var pendingDutyStart: (call: CAPPluginCall, sid: Int, serverUrl: String, token: String, devId: String)?
+    private var dutyGeneration: Int64 = 0
     private var isFlushing = false
     private var dutyActive = false
     private var dutySessionId = -1
@@ -330,6 +331,7 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         devId: String,
         status: CLAuthorizationStatus
     ) {
+        dutyGeneration += 1
         dutySessionId = sid
         dutyServerUrl = serverUrl
         dutyToken = token
@@ -341,7 +343,12 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         locationManager.startUpdatingLocation()
     }
 
-    private func stopDutyInternal() {
+    private func stopDutyInternal(notifyEnded: Bool = false) {
+        dutyGeneration += 1
+        if let prev = pendingDutyStart {
+            pendingDutyStart = nil
+            prev.call.resolve(["started": false, "reason": "cancelled"])
+        }
         dutyActive = false
         dutySessionId = -1
         dutyToken = ""
@@ -349,6 +356,9 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         pendingPoints.removeAll()
         locationManager.allowsBackgroundLocationUpdates = false
         locationManager.stopUpdatingLocation()
+        if notifyEnded {
+            notifyListeners("swkDutyEnded", data: ["reason": "server_ended"])
+        }
     }
 
     @objc func startDuty(_ call: CAPPluginCall) {
@@ -395,8 +405,25 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
 
     @objc func stopDuty(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            self.stopDutyInternal()
-            call.resolve()
+            let remaining = self.pendingPoints
+            let sid = self.dutySessionId
+            let srv = self.dutyServerUrl
+            let tok = self.dutyToken
+            let dev = self.dutyDeviceId
+            self.stopDutyInternal(notifyEnded: false)
+            guard !remaining.isEmpty, sid > 0, !tok.isEmpty, self.isAllowedServer(srv) else {
+                call.resolve()
+                return
+            }
+            self.flushFinalBatches(
+                ArraySlice(remaining),
+                sessionId: sid,
+                serverUrl: srv,
+                token: tok,
+                deviceId: dev
+            ) {
+                call.resolve()
+            }
         }
     }
 
@@ -485,20 +512,20 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         }
     }
 
-    private func flushDutyPoints() {
-        guard !isFlushing, dutyActive, !pendingPoints.isEmpty, isAllowedServer(dutyServerUrl), !dutyToken.isEmpty else {
-            return
-        }
-        guard let url = URL(string: dutyServerUrl + "/api/field-gps/pings") else { return }
-
+    private func buildPingRequest(
+        points: [[String: Any]],
+        sessionId: Int,
+        serverUrl: String,
+        token: String,
+        deviceId: String
+    ) -> URLRequest? {
+        guard let url = URL(string: serverUrl + "/api/field-gps/pings") else { return nil }
         let nowMs = Date().timeIntervalSince1970
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         var anyReplay = false
-        let rawSlice = Array(pendingPoints.prefix(50))
-        let batchKeys = Set(rawSlice.compactMap { $0["idempotency_key"] as? String })
-        let preparedBatch: [[String: Any]] = rawSlice.map { pt in
+        let preparedBatch: [[String: Any]] = points.map { pt in
             var copy = pt
             if let recStr = pt["recorded_at"] as? String,
                let recDate = iso.date(from: recStr),
@@ -510,26 +537,85 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
         }
 
         var payload: [String: Any] = [
-            "field_session_id": dutySessionId,
+            "field_session_id": sessionId,
             "network_type": currentNetworkType,
             "points": preparedBatch,
         ]
         if anyReplay { payload["offline_replay"] = true }
-        if !dutyDeviceId.isEmpty { payload["device_id"] = dutyDeviceId }
+        if !deviceId.isEmpty { payload["device_id"] = deviceId }
 
-        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
         var req = URLRequest(url: url, timeoutInterval: 15)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("mobile", forHTTPHeaderField: "x-swk-client")
-        req.setValue(dutyToken, forHTTPHeaderField: "x-swk-session")
+        req.setValue(token, forHTTPHeaderField: "x-swk-session")
         req.httpBody = body
+        return req
+    }
+
+    private func flushFinalBatches(
+        _ slice: ArraySlice<[String: Any]>,
+        sessionId: Int,
+        serverUrl: String,
+        token: String,
+        deviceId: String,
+        completion: @escaping () -> Void
+    ) {
+        if slice.isEmpty {
+            completion()
+            return
+        }
+        let batch = Array(slice.prefix(50))
+        let rest = slice.dropFirst(50)
+        guard let req = buildPingRequest(
+            points: batch,
+            sessionId: sessionId,
+            serverUrl: serverUrl,
+            token: token,
+            deviceId: deviceId
+        ) else {
+            completion()
+            return
+        }
+        URLSession.shared.dataTask(with: req) { [weak self] _, response, _ in
+            guard let self = self,
+                  let http = response as? HTTPURLResponse,
+                  (200..<300).contains(http.statusCode) else {
+                completion()
+                return
+            }
+            self.flushFinalBatches(
+                rest,
+                sessionId: sessionId,
+                serverUrl: serverUrl,
+                token: token,
+                deviceId: deviceId,
+                completion: completion
+            )
+        }.resume()
+    }
+
+    private func flushDutyPoints() {
+        guard !isFlushing, dutyActive, !pendingPoints.isEmpty, isAllowedServer(dutyServerUrl), !dutyToken.isEmpty else {
+            return
+        }
+        let gen = dutyGeneration
+        let rawSlice = Array(pendingPoints.prefix(50))
+        let batchKeys = Set(rawSlice.compactMap { $0["idempotency_key"] as? String })
+        guard let req = buildPingRequest(
+            points: rawSlice,
+            sessionId: dutySessionId,
+            serverUrl: dutyServerUrl,
+            token: dutyToken,
+            deviceId: dutyDeviceId
+        ) else { return }
 
         isFlushing = true
         URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
             DispatchQueue.main.async {
-                guard let self = self else { return }
+                guard let self = self, self.dutyGeneration == gen else { return }
                 self.isFlushing = false
                 guard let http = response as? HTTPURLResponse else { return }
 
@@ -542,11 +628,11 @@ public class SwkSecurePlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDele
                         self.flushDutyPoints()
                     }
                 } else if http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 404 || http.statusCode == 422 {
-                    self.stopDutyInternal()
+                    self.stopDutyInternal(notifyEnded: true)
                 } else if http.statusCode == 400 {
                     let errMsg = data.flatMap { String(data: $0, encoding: .utf8) }?.lowercased() ?? ""
                     if errMsg.contains("no active field duty") || errMsg.contains("ended") || errMsg.contains("expired") {
-                        self.stopDutyInternal()
+                        self.stopDutyInternal(notifyEnded: true)
                     } else {
                         // Drop non-retryable payload errors (e.g. coarse accuracy or timestamp skew) so new fixes flush.
                         self.pendingPoints.removeAll { pt in

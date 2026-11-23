@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plug, Save, CheckCircle2, XCircle, Copy, RefreshCw, Download, ChevronDown, ChevronRight, KeyRound, Cloud, Layers, ArrowUpRight } from 'lucide-react'
 import { canOpenEmployeeRecords } from '@shared/swk-staff-access'
-import { get, post, put, downloadUrl } from '../lib/api'
+import { downloadAuthFile, get, post, put } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { PageHeader, Loading, ErrorBox } from '../ui/kit'
 import { iconByName } from '../lib/icons'
@@ -136,7 +136,7 @@ function SectionCard({ s, open, onToggle, ready, presets, pdf, isOmniAdmin, onOp
             <button className="btn green" disabled={!dirty.length || busy === 'save'} onClick={() => void save().catch(() => {})}><Save /> {busy === 'save' ? 'Saving…' : dirty.length ? `Save ${dirty.length} change${dirty.length > 1 ? 's' : ''}` : 'Saved'}</button>
             {s.test && <button className="btn outline" disabled={!!busy} onClick={() => void test()}><RefreshCw className={busy === 'test' ? 'animate-spin' : ''} /> Save & test connection</button>}
             {s.key === 'supabase' && <>
-              <a className="btn outline" href="/api/integrations/supabase/schema.sql"><Download /> Schema SQL</a>
+              <button type="button" className="btn outline" onClick={() => void downloadAuthFile('/api/integrations/supabase/schema.sql', 'supabase-schema.sql').catch(e => toast.error(e.message))}><Download /> Schema SQL</button>
               <button className="btn outline" disabled={!!busy} onClick={() => void act('sync', async () => { const r = await post<any>('/api/integrations/supabase/sync', {}); if (!r.ok) throw new Error(r.errors.join('; ')); return `Synced ${r.rows} rows` })}><Cloud /> Sync now</button>
               <button className="btn outline" disabled={!!busy} onClick={() => void act('full', async () => { const r = await post<any>('/api/integrations/supabase/sync', { full: true }); if (!r.ok) throw new Error(r.errors.join('; ')); return `Full resync: ${r.rows} rows` })}>Full resync</button></>}
             {s.key === 'storage' && <button className="btn outline" disabled={!!busy} onClick={() => void act('bk', async () => { const r = await post<any>('/api/integrations/backup-r2'); return `Backup ${r.name} ${r.r2 ? 'uploaded to R2' : 'saved locally (R2 not configured)'}` })}><Cloud /> Backup to R2 now</button>}
@@ -160,4 +160,3 @@ function FieldInput({ f, v, onChange }: { f: Field; v: any; onChange: (v: any) =
     </div>
   )
 }
-void downloadUrl

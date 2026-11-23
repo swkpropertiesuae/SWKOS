@@ -10,23 +10,39 @@ import { emitChange } from './changefeed'
 import { dispatchPushToUser } from './integrations/push'
 export const liveBus = new EventEmitter()
 liveBus.setMaxListeners(0)
+export const liveScope = (): 'demo' | 'prod' => (inDemo() ? 'demo' : 'prod')
 
-export function notify(userId: number | null | undefined, title: string, body = '', link = '', kind = 'info', dedupe?: string) {
+export interface NotifyOptions {
+  skipPush?: boolean
+  pushTag?: string
+}
+
+export function notify(
+  userId: number | null | undefined,
+  title: string,
+  body = '',
+  link = '',
+  kind = 'info',
+  dedupe?: string,
+  opts?: NotifyOptions,
+) {
   if (!userId) return
   try {
     const r = q.run(`INSERT INTO notifications(user_id, kind, title, body, link, created_at, dedupe_key) VALUES (?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`, userId, kind, title, body, link, nowIso(), dedupe ?? null)
     if ((r as any)?.changes !== 0) {
       const row = q.get(`SELECT id, kind, title, body, link, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 1`, userId)
       if (row) {
-        liveBus.emit('u:' + userId, row)
+        liveBus.emit(`u:${liveScope()}:${userId}`, row)
         emitChange('notifications', '', row.id, 'create', userId)
-        void dispatchPushToUser(userId, {
-          title,
-          body,
-          url: link || '/home',
-          tag: 'swk-ops-' + row.id,
-          channel: kind === 'sos' || kind === 'call' ? 'swk_calls_sos' : 'swk_ops_alerts',
-        })
+        if (!opts?.skipPush) {
+          void dispatchPushToUser(userId, {
+            title,
+            body,
+            url: link || '/home',
+            tag: opts?.pushTag || 'swk-ops-' + row.id,
+            channel: kind === 'sos' || kind === 'call' ? 'swk_calls_sos' : 'swk_ops_alerts',
+          })
+        }
       }
     }
   } catch { /* never fail business logic for a notification */ }
@@ -42,7 +58,7 @@ export function notifyRole(permModule: string, title: string, body = '', link = 
 }
 
 /** Notify hardcoded leadership (Owner Shabib Siraj, Admin, and Operations Manager Mohammad Haseeb). */
-export function notifyLeadership(title: string, body = '', link = '', kind = 'audit', dedupe?: string) {
+export function notifyLeadership(title: string, body = '', link = '', kind = 'audit', dedupe?: string, opts?: NotifyOptions) {
   try {
     const users = q.all<{ id: number }>(
       `SELECT id FROM users WHERE deleted_at IS NULL AND active = 1 AND party_id IS NULL AND lower(email) IN ('shabib@swk.properties', 'admin@swk.properties', 'haseeb@swk.properties', 'demo@swkpropertiesuae.com')`,
@@ -51,7 +67,7 @@ export function notifyLeadership(title: string, body = '', link = '', kind = 'au
       const loaded = loadUser(u.id)
       if (!loaded) continue
       const ok = canAccessCrmVault(loaded) || (inDemo() && loaded.email.toLowerCase() === 'demo@swkpropertiesuae.com')
-      if (ok) notify(loaded.id, title, body, link, kind, dedupe ? `${dedupe}:${loaded.id}` : undefined)
+      if (ok) notify(loaded.id, title, body, link, kind, dedupe ? `${dedupe}:${loaded.id}` : undefined, opts)
     }
   } catch { /* ignore */ }
 }

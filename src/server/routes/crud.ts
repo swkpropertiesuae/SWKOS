@@ -4,7 +4,7 @@ import { q,qi,tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue,recordTitle,type EntityDef,type FieldDef } from '../../shared/types'
 import { attachLabels,createRecord,deleteRecord,requestDeleteOrExecute,getDef,getRecord,labelsFor,listRecords,rowToApi,updateRecord,can,assertCan,maskRecs,maskedFieldsFor,MASK,titleCols,customFieldsFor,invalidateCustomFields,type Ctx } from '../engine'
-import { canViewEmployeeRecords } from '../../shared/swk-staff-access'
+import { canViewEmployeeRecords, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
 import { bad,HttpError,forbidden,notFound,parseCsv,safeJson,toCsv,nowLocal,nowIso,todayStr } from '../util'
 import { body,idOf,parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
@@ -50,9 +50,15 @@ function referencingModules(key: string): Set<string> {
 }
 /** A reference picker may list an entity's titles only to people who can view it, or who can create or edit something that refers to it. */
 export function canLookup(user: any, def: EntityDef): boolean {
-  if (def.key === 'employees') return can(user, 'hr', 'view') || can(user, 'admin', 'view')
+  if (RESTRICTED_HR_PII_ENTITIES.has(def.key)) return canViewEmployeeRecords(user)
   if (can(user, def.module, 'view')) return true
   return [...referencingModules(def.key)].some(m => can(user, m, 'create') || can(user, m, 'edit'))
+}
+
+function assertHrPiiRouteAccess(def: EntityDef, ctx: Ctx) {
+  if (!ctx.system && RESTRICTED_HR_PII_ENTITIES.has(def.key) && !canViewEmployeeRecords(ctx.user)) {
+    throw forbidden('Only the Owner, the Admin, the Operations Manager and HR can access employee, payroll, and staff visa records.')
+  }
 }
 
 export default async function (app: FastifyInstance) {
@@ -73,6 +79,7 @@ export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------ list
   app.get('/api/e/:entity', async (req) => {
     const def = guard(getDef((req.params as any).entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     const res = listRecords(def, parseListParams(req.query as any), req.ctx)
     maskRecs(def, res.rows, req.ctx)
     return res
@@ -81,6 +88,7 @@ export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------ export / template / import
   app.get('/api/e/:entity/export.csv', async (req, reply) => {
     const def = guard(getDef((req.params as any).entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     assertCan(req.ctx, def.module, 'export')
     const p = parseListParams(req.query as any)
     const res = listRecords(def, { ...p, page: 1, pageSize: 100000 }, req.ctx)
@@ -93,6 +101,7 @@ export default async function (app: FastifyInstance) {
   })
   app.get('/api/e/:entity/template.csv', async (req, reply) => {
     const def = guard(getDef((req.params as any).entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     assertCan(req.ctx, def.module, 'create')
     const fields = def.fields.filter(f => !f.secret && !f.virtual && !f.readonly && !f.computed && f.type !== 'json' && !f.hidden)
     reply.header('content-type', 'text/csv; charset=utf-8').header('content-disposition', `attachment; filename="${def.key}-import-template.csv"`)
@@ -100,6 +109,7 @@ export default async function (app: FastifyInstance) {
   })
   app.post('/api/e/:entity/import', async (req) => {
     const def = guard(getDef((req.params as any).entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     assertCan(req.ctx, def.module, 'create')
     if (def.readonlyApi || def.children?.length) throw bad('This record type cannot be imported from CSV')
     const b = body<{ csv: string; dryRun?: boolean; force?: boolean }>(req)
@@ -154,6 +164,7 @@ export default async function (app: FastifyInstance) {
   // ------------------------------------------------------------ bulk
   app.post('/api/e/:entity/bulk', async (req) => {
     const def = guard(getDef((req.params as any).entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     const b = body<{ ids: number[]; action: 'delete' | 'set'; field?: string; value?: any; reason?: string }>(req)
     if (!Array.isArray(b.ids) || !b.ids.length) throw bad('Select at least one record')
     if (b.ids.length > 500) throw bad('Bulk actions are limited to 500 records')
@@ -173,13 +184,14 @@ export default async function (app: FastifyInstance) {
   app.get('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
-    if (def.key === 'employees' && !req.ctx.system && !canViewEmployeeRecords(req.user)) throw forbidden('Only the Owner, the Admin, the Operations Manager and HR can open employee records.')
+    assertHrPiiRouteAccess(def, req.ctx)
     return maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
   })
   // Party blocks for print documents (invoices, quotations, …): { [party_id]: { name, address… } }
   app.get('/api/print/:entity/:id/parties', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     assertCan(req.ctx, def.module, 'view')
     const cols = def.fields.filter(f => f.type === 'ref' && f.ref === 'parties').map(f => f.name)
     if (!cols.length) return {}
@@ -226,6 +238,7 @@ export default async function (app: FastifyInstance) {
 
   app.post('/api/e/:entity', async (req, reply) => {
     const def = guard(getDef((req.params as any).entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     const rec = createRecord(def, body(req), req.ctx)
     reply.status(201)
     return rec
@@ -233,6 +246,7 @@ export default async function (app: FastifyInstance) {
   app.put('/api/e/:entity/:id', async (req) => {
     const p = req.params as any
     const def = guard(getDef(p.entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     // A masked field comes back as the placeholder; sending it back must not overwrite the real value.
     const b = body<Record<string, any>>(req)
     for (const f of maskedFieldsFor(def, req.ctx)) if (b[f] === MASK) delete b[f]
@@ -243,6 +257,7 @@ export default async function (app: FastifyInstance) {
     const qs = (req.query ?? {}) as any
     const b = (req.body ?? {}) as any
     const def = guard(getDef(p.entity))
+    assertHrPiiRouteAccess(def, req.ctx)
     const reason = String(b?.reason ?? qs?.reason ?? req.ctx.auditReason ?? '').trim() || undefined
     const recycle = qs?.recycle === '1' || b?.recycle === true || req.ctx.recycleBin
     return requestDeleteOrExecute(def, idOf(p.id), { ...req.ctx, recycleBin: recycle }, reason)

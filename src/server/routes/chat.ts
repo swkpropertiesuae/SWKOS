@@ -5,25 +5,26 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { pipeline } from 'node:stream/promises'
 import { q,tx,currentDb,runInDb } from '../db'
-import { bad,forbidden,nowIso } from '../util'
-import { liveBus } from '../notify'
+import { bad,forbidden,notFound,nowIso } from '../util'
+import { liveBus,liveScope } from '../notify'
 import { idOf } from './helpers'
 import { dirs,config } from '../config'
 import { openStored,persistUpload } from '../integrations/storage'
 import { dispatchPushToUser, setActiveChatThread } from '../integrations/push'
-import { canAccessSwkAdminLogic,SWK_OWNER_ACCOUNT } from '../../shared/swk-staff-access'
+import { loadUser } from '../auth'
+import { canAccessSwkAdminLogic,isAdminSwkUser,isFullAccessSwkUser,isOwnerSwkUser } from '../../shared/swk-staff-access'
 
 /**
  * Inside — SWK's internal messenger (WhatsApp-style). Clients are reached through WhatsApp and e-mail, which have their own threads.
  * Direct chats and groups, group admins, announcement-only groups, replies, reactions, edit / delete for everyone, files, images and
  * voice notes, forwarding, sent / delivered / read ticks, typing, online presence, search, and a live event stream that drives
- * WhatsApp-style alerts across the OS. Events go out on liveBus 'chat:<userId>'.
+ * WhatsApp-style alerts across the OS. Events go out on liveBus 'chat:<scope>:<userId>'.
  */
 
 type Evt = { type: 'message' | 'update' | 'receipt' | 'typing' | 'thread' | 'presence'; thread_id?: number; [k: string]: unknown }
 const online = new Map<number, number>() // userId -> open streams
 const lastSeen = new Map<number, string>()
-const emit = (uid: number, e: Evt) => liveBus.emit('chat:' + uid, e)
+const emit = (uid: number, e: Evt) => liveBus.emit(`chat:${liveScope()}:${uid}`, e)
 const memberIds = (tid: number) => q.all<{ user_id: number }>(`SELECT user_id FROM chat_members WHERE thread_id = ?`, tid).map(r => r.user_id)
 const emitThread = (tid: number, e: Evt, except?: number) => { for (const u of memberIds(tid)) if (u !== except) emit(u, { thread_id: tid, ...e }) }
 const lastId = (r: any, table: string) => Number(r?.lastInsertRowid) || q.val<number>(`SELECT MAX(id) FROM ${table}`)!
@@ -98,14 +99,26 @@ export function postAutomationMessage(tid: number, authorId: number | null, body
 /** First start: one company-wide group with every active staff member; Owner and Admin are its admins. */
 export function ensureTeamGroup() {
   if (q.val(`SELECT 1 FROM chat_threads WHERE system_key = 'team'`)) return
-  const staff = q.all<{ id: number; email: string; role: string | null }>(`SELECT u.id, u.email, r.name AS role FROM users u LEFT JOIN roles r ON r.id = u.role_id WHERE u.active = 1 AND u.deleted_at IS NULL AND u.party_id IS NULL`)
+  const staffIds = q.all<{ id: number }>(
+    `SELECT id FROM users WHERE active = 1 AND deleted_at IS NULL AND party_id IS NULL ORDER BY id`,
+  )
+  const staff = staffIds
+    .map(r => loadUser(r.id))
+    .filter((u): u is NonNullable<ReturnType<typeof loadUser>> => !!u && !u.party_id)
   if (!staff.length) return
-  const owner = staff.find(s => s.email.toLowerCase() === SWK_OWNER_ACCOUNT.email) ?? staff[0]!
+  const owner =
+    staff.find(s => isOwnerSwkUser(s)) ??
+    staff.find(s => isAdminSwkUser(s)) ??
+    staff.find(s => isFullAccessSwkUser(s)) ??
+    staff[0]!
   tx(() => {
     const r = q.run(`INSERT INTO chat_threads (title, kind, created_by, created_at, description, announce, system_key) VALUES (?,?,?,?,?,?,?)`,
       'SWK Properties Team', 'group', owner.id, nowIso(), 'Company-wide group: announcements, daily attendance reports and team updates.', 0, 'team')
     const tid = lastId(r, 'chat_threads')
-    for (const s of staff) q.run(`INSERT INTO chat_members (thread_id, user_id, role, joined_at) VALUES (?,?,?,?)`, tid, s.id, s.role === 'Owner' || s.role === 'Admin' ? 'admin' : 'member', nowIso())
+    for (const s of staff) {
+      const role = isOwnerSwkUser(s) || isAdminSwkUser(s) ? 'admin' : 'member'
+      q.run(`INSERT INTO chat_members (thread_id, user_id, role, joined_at) VALUES (?,?,?,?)`, tid, s.id, role, nowIso())
+    }
     q.run(`INSERT INTO chat_messages (thread_id, user_id, body, kind, created_at) VALUES (?,?,?,?,?)`, tid, owner.id, 'Group created: SWK Properties Team', 'system', nowIso())
   })
 }
@@ -249,7 +262,8 @@ export default async function (app: FastifyInstance) {
         })
       }
     }
-    liveBus.on('chat:' + uid, send)
+    const chatChannel = `chat:${liveScope()}:${uid}`
+    liveBus.on(chatChannel, send)
     const wasOnline = !!online.get(uid)
     online.set(uid, (online.get(uid) ?? 0) + 1)
     if (!wasOnline) for (const u of q.all<{ user_id: number }>(`SELECT DISTINCT b.user_id FROM chat_members a JOIN chat_members b ON b.thread_id = a.thread_id WHERE a.user_id = ? AND b.user_id <> ?`, uid, uid)) emit(u.user_id, { type: 'presence', user_id: uid, online: true })
@@ -259,7 +273,7 @@ export default async function (app: FastifyInstance) {
     const cleanup = () => {
       if (cleaned) return
       cleaned = true
-      clearInterval(ping); liveBus.off('chat:' + uid, send)
+      clearInterval(ping); liveBus.off(chatChannel, send)
       const n = (online.get(uid) ?? 1) - 1
       if (n > 0) { online.set(uid, n); return }
       online.delete(uid); lastSeen.set(uid, nowIso())
@@ -493,10 +507,11 @@ export default async function (app: FastifyInstance) {
   app.get('/api/chat/files/:mid', async (req, reply) => {
     const uid = me(req), mid = idOf((req.params as any).mid)
     const m = q.get<any>(`SELECT thread_id, file_stored, file_name, file_mime FROM chat_messages WHERE id = ? AND deleted_at IS NULL`, mid)
-    if (!m?.file_stored) throw bad('File not found')
-    membership(m.thread_id, uid)
+    if (!m?.file_stored) throw notFound('File not found')
+    const mem = q.get<{ role: string }>(`SELECT role FROM chat_members WHERE thread_id = ? AND user_id = ?`, m.thread_id, uid)
+    if (!mem) throw forbidden('Access denied')
     const stream = await openStored(m.file_stored)
-    if (!stream) throw bad('File not found')
+    if (!stream) throw notFound('File not found')
     const inline = INLINE_MIME.test(m.file_mime || '') && (req.query as any).download !== '1'
     reply.header('content-type', m.file_mime || 'application/octet-stream')
     reply.header('content-disposition', `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(m.file_name || 'file')}`)

@@ -61,8 +61,13 @@ export function createSession(userId: number, ip?: string, ua?: string, deviceId
   )
   return { token, expires: exp }
 }
-export function destroySession(token: string) { q.run(`DELETE FROM sessions WHERE id = ?`, sha(token)) }
-export function destroySessionByHash(hash: string) { q.run(`DELETE FROM sessions WHERE id = ?`, hash) }
+export function destroySession(token: string) { destroySessionByHash(sha(token)) }
+export function destroySessionByHash(hash: string) {
+  for (const [k, v] of streamTickets) {
+    if (v.sessionHash === hash) streamTickets.delete(k)
+  }
+  q.run(`DELETE FROM sessions WHERE id = ?`, hash)
+}
 export function destroyUserSessions(userId: number, exceptHash?: string) {
   for (const [k, v] of streamTickets) {
     if (v.userId === userId) streamTickets.delete(k)
@@ -74,6 +79,7 @@ const STREAM_TICKET_TTL_MS = 30_000
 interface StreamTicketEntry {
   userId: number
   deviceId: string | null
+  sessionHash: string | null
   isDemo: boolean
   expiresAt: number
 }
@@ -89,7 +95,7 @@ export function destroyDeviceSessions(deviceId: string): number {
   return Number(res?.changes ?? 0)
 }
 
-export function issueStreamTicket(userId: number, deviceId?: string | null): { ticket: string; expires_in_s: number } {
+export function issueStreamTicket(userId: number, deviceId?: string | null, sessHash?: string | null): { ticket: string; expires_in_s: number } {
   const u = loadUser(userId)
   if (!u || u.party_id) throw new HttpError(403, 'Staff only')
   const now = Date.now()
@@ -101,6 +107,7 @@ export function issueStreamTicket(userId: number, deviceId?: string | null): { t
   streamTickets.set(sha(ticket), {
     userId,
     deviceId: deviceId ? String(deviceId).trim().slice(0, 80) : null,
+    sessionHash: sessHash ? String(sessHash).trim() : null,
     isDemo: inDemo(),
     expiresAt: now + STREAM_TICKET_TTL_MS,
   })
@@ -136,10 +143,44 @@ export function consumeStreamTicket(ticket: string | undefined): SessionUser | n
   streamTickets.delete(h)
   if (Date.now() > entry.expiresAt) return null
   if (entry.isDemo !== inDemo()) return null
+  if (entry.sessionHash) {
+    const sess = q.get<{ expires_at: string }>(
+      `SELECT expires_at FROM sessions WHERE id = ? AND user_id = ?`,
+      entry.sessionHash,
+      entry.userId,
+    )
+    if (!sess || new Date(sess.expires_at) < new Date()) return null
+  }
   if (entry.deviceId && !isDeviceSessionAuthorized(entry.userId, entry.deviceId)) return null
   const user = loadUser(entry.userId)
   if (!user || user.party_id) return null
   return user
+}
+
+export function findCanonicalElevatedUser(preferAdmin = true): SessionUser | null {
+  const emails = preferAdmin
+    ? ['admin@swk.properties', 'shabib@swk.properties', 'haseeb@swk.properties']
+    : ['shabib@swk.properties', 'admin@swk.properties', 'haseeb@swk.properties']
+  for (const email of emails) {
+    const row = q.get<{ id: number }>(
+      `SELECT id FROM users WHERE deleted_at IS NULL AND active = 1 AND party_id IS NULL AND lower(email) = ? LIMIT 1`,
+      email,
+    )
+    if (row) {
+      const u = loadUser(row.id)
+      if (u && !u.party_id && isElevatedCanonicalEmail(u.email)) return u
+    }
+  }
+  if (inDemo()) {
+    const demoRow = q.get<{ id: number }>(
+      `SELECT id FROM users WHERE deleted_at IS NULL AND active = 1 AND party_id IS NULL AND lower(email) = 'demo@swkpropertiesuae.com' LIMIT 1`,
+    )
+    if (demoRow) {
+      const u = loadUser(demoRow.id)
+      if (u && !u.party_id) return u
+    }
+  }
+  return null
 }
 
 export const sessionHash = sha

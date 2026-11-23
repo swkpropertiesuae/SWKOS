@@ -7,7 +7,7 @@ import { TOOLS,toolByName,type Tool } from './tools'
 import { AGENT_TEMPLATES } from './templates'
 import { AGENT_AUTONOMY } from '../../shared/entities/automation'
 import { createRecord,getDef,insertRow,SYSTEM_CTX,type SessionUser } from '../engine'
-import { loadUser } from '../auth'
+import { findCanonicalElevatedUser,loadUser } from '../auth'
 import { nowLocal,nowIso,todayStr,safeJson,bad } from '../util'
 import { notifyRole } from '../notify'
 import { queueEmail } from '../mailer'
@@ -127,7 +127,7 @@ async function deliver(agent: any, text: string, trigger: string) {
   notifyRole('ai', `${agent.avatar ?? ''} ${agent.name}: report ready`, text.slice(0, 200), '/ai?tab=activity', 'info', `ai-${agent.id}-${nowLocal()}`)
   if (trigger === 'manual') return
   if (agent.deliver_to?.includes('WhatsApp')) await messageOwners(`${agent.avatar ?? ''} ${agent.name}\n${text.slice(0, 1200)}`, 'agent', 'wa_tpl_report')
-  if (agent.deliver_to?.includes('e-mail')) { const to = q.val<string>(`SELECT u.email FROM users u JOIN roles r ON r.id = u.role_id WHERE r.name = 'Admin' AND u.deleted_at IS NULL ORDER BY u.id LIMIT 1`); if (to) queueEmail({ to, subject: `${agent.name} – report ${todayStr()}`, body: text }) }
+  if (agent.deliver_to?.includes('e-mail')) { const to = findCanonicalElevatedUser(true)?.email; if (to) queueEmail({ to, subject: `${agent.name} – report ${todayStr()}`, body: text }) }
 }
 
 /** Conversational use (web chat or WhatsApp): the caller supplies history. */

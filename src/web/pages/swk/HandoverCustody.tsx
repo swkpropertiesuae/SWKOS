@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { del, get, post, upload } from '../../lib/api'
+import { del, get, openAuthFile, post, upload } from '../../lib/api'
 import { SWK_STAFF_ACCOUNTS } from '@shared/swk-staff-access'
 import { useToast } from '../../lib/toast'
 import { Modal } from '../../ui/kit'
+import { AuthImg } from '../../components/ui/auth-media'
 import { FileText, Lock, Send, Undo2, Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react'
 
 const STAGE_TONE: Record<string, string> = {
@@ -112,7 +113,7 @@ export function HandoverCustody({ onChanged }: { onChanged?: () => void }) {
                 <td className="p-2.5">{d.recipient_name || d.staff_email || 'Management only'}</td>
                 <td className="p-2.5"><span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${STAGE_TONE[d.stage] ?? ''}`}>{d.stage}</span></td>
                 <td className="p-2.5 text-right whitespace-nowrap space-x-1.5">
-                  <a href={`/api/handover/docs/${d.id}/file`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold"><Eye className="w-3.5 h-3.5" /> View</a>
+                  <button type="button" onClick={() => void openAuthFile(`/api/handover/docs/${d.id}/file`, d.title).catch(e => toast.error(e.message))} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold border-0 cursor-pointer"><Eye className="w-3.5 h-3.5" /> View</button>
                   {d.stage === 'With Manager' && !d.contains_contacts && d.staff_email && <button disabled={busy} onClick={() => act(`/api/handover/docs/${d.id}/release-to-staff`, {}, 'Released to staff')} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#161616] text-white font-bold disabled:opacity-50"><Send className="w-3.5 h-3.5" /> Release to staff</button>}
                   {d.contains_contacts ? <span className="inline-flex items-center gap-1 text-[11px] text-slate-500"><Lock className="w-3 h-3" /> Management only</span> : null}
                   {top && d.stage !== 'Admin Custody' && <button disabled={busy} onClick={() => act(`/api/handover/docs/${d.id}/recall`, {}, 'Recalled to Admin Custody')} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold disabled:opacity-50"><Undo2 className="w-3.5 h-3.5" /> Recall</button>}
@@ -150,7 +151,7 @@ export function MyHandoverDocs() {
             <div className="relative max-h-[72vh] overflow-y-auto space-y-3 bg-slate-100 p-2 rounded-lg">
               {Array.from({ length: reading.pages }, (_, i) => (
                 <div key={i} className="relative overflow-hidden">
-                  <img src={`/api/handover/docs/${reading.id}/page/${i + 1}`} alt={`Page ${i + 1} of ${reading.pages}`} loading="lazy" draggable={false} className="block w-full h-auto bg-white shadow-sm" />
+                  <AuthImg src={`/api/handover/docs/${reading.id}/page/${i + 1}`} alt={`Page ${i + 1} of ${reading.pages}`} loading="lazy" draggable={false} className="block w-full h-auto bg-white shadow-sm" />
                   <div aria-hidden className="pointer-events-none absolute inset-0 flex flex-col justify-around items-center opacity-[0.22] mix-blend-difference text-white text-[15px] font-bold -rotate-[24deg]">{Array.from({ length: 6 }, (_, k) => <div key={k} className="whitespace-nowrap">{reading.watermark}</div>)}</div>
                 </div>
               ))}

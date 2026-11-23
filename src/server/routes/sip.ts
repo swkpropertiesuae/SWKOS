@@ -7,14 +7,14 @@ import { q, tx } from '../db'
 import { initiateMaskedBridgeCall, resolveVaultOwnerForMaskedCall } from '../domain/crm-vault'
 import { audit, getDef } from '../engine'
 import { dispatchPushToUser } from '../integrations/push'
-import { liveBus } from '../notify'
+import { liveBus, liveScope } from '../notify'
 import { decryptSecret, encryptSecret, getSetting, setSettings } from '../settings'
 import { bad, conflict, forbidden, notFound, nowIso, nowLocal, safeJson } from '../util'
 import { idOf } from './helpers'
 
 const MASKED_OWNER_LABEL = 'Masked Vault Owner'
-const VAULT_TOKEN_PATTERN = /\b\d*vt_[0-9a-f]{8,}\b/gi
-const VAULT_SIP_URI_PATTERN = /sip:\d*vt_[0-9a-f]{8,}@[^\s,;>]+/gi
+const VAULT_TOKEN_PATTERN = /(?:[0-9A-Za-z*#+_-]{0,16})?vt_[0-9a-f]{8,}/gi
+const VAULT_SIP_URI_PATTERN = /sip:[0-9A-Za-z*#+_-]{0,16}vt_[0-9a-f]{8,}@[^\s,;>]+/gi
 
 interface IceServerEntry {
   urls: string | string[]
@@ -57,7 +57,7 @@ function maskVaultStrings(input: string): string {
 }
 
 function containsVaultToken(input: string): boolean {
-  return /(?:sip:)?\d*vt_[0-9a-f]{8,}/i.test(input)
+  return /(?:sip:)?[0-9A-Za-z*#+_-]{0,16}vt_[0-9a-f]{8,}/i.test(input)
 }
 
 function requireStaff(req: FastifyRequest) {
@@ -182,7 +182,7 @@ export default async function sipRoutes(app: FastifyInstance) {
         /* closed */
       }
     }
-    const channel = `sip:${user.id}`
+    const channel = `sip:${liveScope()}:${user.id}`
     liveBus.on(channel, send)
     const ping = setInterval(() => {
       try {
@@ -508,7 +508,12 @@ export default async function sipRoutes(app: FastifyInstance) {
     sip_outbound_proxy: z.string().trim().max(500).optional(),
     sip_ice_servers: z.union([z.array(iceServerSchema), z.string().max(4000)]).optional(),
     sip_caller_id_mode: z.string().trim().max(40).optional(),
-    sip_vault_bridge_prefix: z.string().trim().max(40).optional(),
+    sip_vault_bridge_prefix: z
+      .string()
+      .trim()
+      .max(16)
+      .regex(/^[0-9A-Za-z*#+_-]{0,16}$/, 'Use up to 16 digits, letters, or * # + _ - characters')
+      .optional(),
     sip_webhook_secret: z.string().trim().max(200).optional(),
     regenerate_secret: z.boolean().optional(),
   })
@@ -781,7 +786,7 @@ export default async function sipRoutes(app: FastifyInstance) {
         ? `${b.caller_name} (${b.caller_id}) · Ext ${ext.extension_no}`
         : `${callerLabel} · Ext ${ext.extension_no}`
 
-    liveBus.emit(`sip:${ext.user_id}`, {
+    liveBus.emit(`sip:${liveScope()}:${ext.user_id}`, {
       type: 'incoming_wake',
       extension_no: ext.extension_no,
       call_id: callId,
@@ -796,6 +801,12 @@ export default async function sipRoutes(app: FastifyInstance) {
       url: '/phone?incoming=1',
       tag: 'swk-sip-' + callId,
       channel: 'swk_calls_sos',
+      data: {
+        type: 'incoming_call',
+        call_id: callId,
+        caller_id: b.caller_id || '',
+        caller_name: b.caller_name || '',
+      },
     })
 
     return {

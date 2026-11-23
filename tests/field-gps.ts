@@ -344,7 +344,8 @@ async function run() {
     assert.equal((await app.inject({ method: 'GET', url: '/api/field-gps/live', headers: { cookie: adminCookie } })).statusCode, 200)
     assert.equal((await app.inject({ method: 'GET', url: '/api/field-gps/live', headers: { cookie: haseebCookie } })).statusCode, 200)
 
-    // Verify SSE /api/field-gps/stream delivers live SOS update + swk_calls_sos push
+    // Trigger SOS -> dispatches swk_calls_sos push to Leadership (exactly 1 push per leader, zero duplicates)
+    sentFcm.length = 0
     const sseEv = await readFirstSseEvent(
       `${baseUrl}/api/field-gps/stream`,
       { cookie: ownerCookie },
@@ -361,10 +362,10 @@ async function run() {
     assert.equal(sseEv.status, 200)
     assert.match(sseEv.contentType, /text\/event-stream/)
     assert.ok(sseEv.chunk.includes('event: field_gps'), `Expected SSE field_gps event, got: ${sseEv.chunk}`)
-    assert.ok(
-      sentFcm.some(p => p.userId === ownerUser.id && p.payload?.channel === 'swk_calls_sos' && String(p.payload?.body || '').includes('25.0809')),
-      'SOS must dispatch swk_calls_sos push to Owner with exact Dubai coordinates',
-    )
+    await new Promise(r => setTimeout(r, 30))
+    const ownerSosPushes = sentFcm.filter(p => p.userId === ownerUser.id && p.payload?.channel === 'swk_calls_sos')
+    assert.equal(ownerSosPushes.length, 1, `Expected EXACTLY ONE SOS push per leader, got ${ownerSosPushes.length}`)
+    assert.ok(String(ownerSosPushes[0]!.payload?.body || '').includes('25.0809'), 'SOS push must include exact Dubai coordinates')
 
     // Stop active session cleanly before historical & expiration checks
     const stopRes = await app.inject({
@@ -420,7 +421,44 @@ async function run() {
       },
     })
     assert.equal(stationaryRes.statusCode, 200)
-    assert.equal((stationaryRes.json() as any).flags?.length, 0, 'Realistic stationary heartbeats must NOT trigger Identical coordinates repeated')
+    assert.equal(
+      ((stationaryRes.json() as any).flags || []).length,
+      0,
+      'Realistic stationary heartbeats must NOT trigger Identical coordinates repeated',
+    )
+
+    // [Important #7]: Missing speed_mps (null) even with identical accuracy must NOT false-flag stationary GPS
+    const stationaryNullSpeedRes = await app.inject({
+      method: 'POST',
+      url: '/api/field-gps/pings',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: agent2Cookie },
+      payload: {
+        offline_replay: true,
+        points: [0, 1, 2, 3, 4].map(idx => ({
+          lat: 25.198101,
+          lng: 55.275201,
+          accuracy_m: 12,
+          speed_mps: null,
+          recorded_at: new Date(baseStationaryMs + 100_000 + idx * 15_000).toISOString(),
+          idempotency_key: `stationary-null-speed-${idx}`,
+        })),
+      },
+    })
+    assert.equal(stationaryNullSpeedRes.statusCode, 200)
+    assert.equal(
+      ((stationaryNullSpeedRes.json() as any).flags || []).length,
+      0,
+      'Stationary pings with speed_mps=null must NOT false-positive Identical coordinates repeated',
+    )
+
+    // [Important #5]: offline_sync_queue_log must NOT store raw lat/lng in payload_json
+    const queueRow = q.get<{ payload_json: string }>(
+      `SELECT payload_json FROM offline_sync_queue_log WHERE idempotency_key = 'valid-ping-key-001'`,
+    )
+    assert.ok(queueRow, 'Expected offline_sync_queue_log entry for valid-ping-key-001')
+    const queuePayload = JSON.parse(queueRow.payload_json)
+    assert.equal('lat' in queuePayload, false, 'offline_sync_queue_log payload_json must omit raw lat')
+    assert.equal('lng' in queuePayload, false, 'offline_sync_queue_log payload_json must omit raw lng')
 
     const fakeRepeatRes = await app.inject({
       method: 'POST',
@@ -625,11 +663,50 @@ async function run() {
       closedOldSession.id, agent1EmpId, agent1User.id, '[]', 1, '25.19', '55.27', 10, recent10d, recent10d,
     )
 
+    // [Important #5]: Also test PDPL 90-day purge on offline_sync_queue_log GPS actions
+    q.run(
+      `INSERT INTO offline_sync_queue_log (idempotency_key, user_id, action_type, payload_json, result_json, queued_at, synced_at) VALUES (?,?,?,?,?,?,?)`,
+      'ancient-gps-queue-95d', agent1User.id, 'field_gps_ping', '{"session_id":1}', '{"ok":true}', old95d, old95d,
+    )
+    q.run(
+      `INSERT INTO offline_sync_queue_log (idempotency_key, user_id, action_type, payload_json, result_json, queued_at, synced_at) VALUES (?,?,?,?,?,?,?)`,
+      'recent-gps-queue-10d', agent1User.id, 'field_gps_ping', '{"session_id":1}', '{"ok":true}', recent10d, recent10d,
+    )
+
     const purgeOut = purgeOldGpsBatches(refNow)
-    assert.ok(purgeOut.purged >= 1, `Expected >= 1 batch purged (>90d), got ${purgeOut.purged}`)
+    assert.ok(purgeOut.purged >= 2, `Expected >= 2 records purged (>90d batches + queue logs), got ${purgeOut.purged}`)
     assert.equal(q.get(`SELECT id FROM duty_location_batches WHERE id = ?`, ancientBatchId), undefined, '>90d batch must be deleted')
     assert.ok(q.get(`SELECT id FROM duty_location_batches WHERE id = ?`, recentBatchId), '<90d batch must be preserved')
+    assert.equal(q.get(`SELECT id FROM offline_sync_queue_log WHERE idempotency_key = 'ancient-gps-queue-95d'`), undefined, '>90d offline_sync_queue_log GPS row must be deleted')
+    assert.ok(q.get(`SELECT id FROM offline_sync_queue_log WHERE idempotency_key = 'recent-gps-queue-10d'`), '<90d offline_sync_queue_log GPS row must be preserved')
     assert.ok(q.get(`SELECT id FROM field_sessions WHERE id = ?`, closedOldSession.id), 'field_sessions summary row must be retained after PDPL batch purge')
+
+    // [Important #6]: Verify liveBus channels are strictly isolated between demo and prod workspaces
+    const { openDatabase, runInDb } = await import('../src/server/db')
+    const { liveBus } = await import('../src/server/notify')
+    const { buildApp: _unused } = { buildApp }
+    void _unused
+    const fakeDemoDb = openDatabase(path.join(tmpDir, 'demo-livebus.db'))
+    try {
+      const prodHits: any[] = []
+      const demoHits: any[] = []
+      const onProd = (ev: any) => prodHits.push(ev)
+      const onDemo = (ev: any) => demoHits.push(ev)
+      liveBus.on('field-gps:live:prod', onProd)
+      liveBus.on('field-gps:live:demo', onDemo)
+      const { liveScope } = await import('../src/server/notify')
+      runInDb(fakeDemoDb, () => {
+        assert.equal(liveScope(), 'demo')
+        liveBus.emit(`field-gps:live:${liveScope()}`, { demoOnly: true })
+      })
+      assert.equal(liveScope(), 'prod')
+      assert.equal(demoHits.length, 1)
+      assert.equal(prodHits.length, 0, 'Demo liveBus emit must NEVER bleed into prod field-gps:live:prod channel')
+      liveBus.off('field-gps:live:prod', onProd)
+      liveBus.off('field-gps:live:demo', onDemo)
+    } finally {
+      fakeDemoDb.close()
+    }
 
     console.log('Field GPS anti-spoof, Control 3.10/7.03 audit & PDPL purge checks passed.')
   } finally {

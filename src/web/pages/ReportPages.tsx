@@ -2,7 +2,8 @@ import { useEffect,useMemo,useState } from 'react'
 import { Link,useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3,Download,Play,Printer,Gauge,Sigma,Check,X } from 'lucide-react'
-import { get,downloadUrl } from '../lib/api'
+import { buildApiPath, downloadAuthFile, get } from '../lib/api'
+import { useToast } from '../lib/toast'
 import { RefSelect } from '../components/RefSelect'
 import { Empty,ErrorBox,Kpi,Loading,PageHeader,Spinner } from '../ui/kit'
 import { cls,fmtDate,fmtDateTime,fmtMoney,fmtNum } from '../lib/format'
@@ -34,6 +35,7 @@ export function ReportResultView({ res }: { res: any }) {
 }
 
 export function ReportsPage({ fixed }: { fixed?: string[] }) {
+  const toast = useToast()
   const [sp, setSp] = useSearchParams()
   const cat = useQuery({ queryKey: ['report-catalog'], queryFn: () => get<any[]>('/api/reports') })
   const key = sp.get('r') ?? ''
@@ -62,7 +64,7 @@ export function ReportsPage({ fixed }: { fixed?: string[] }) {
           {!def ? <div className="card"><Empty icon={<BarChart3 size={34} />} title="Choose a report" hint="Pick a report from the list to set its filters and run it." /></div> : (
             <div className="card p-4 md:p-5">
               <div className="flex items-start gap-3 flex-wrap mb-3"><div className="flex-1 min-w-0"><h2 className="m-0 text-[19px]">{def.label}</h2><p className="text-sm text-muted m-0">{def.description}</p></div>
-                <div className="flex gap-2 no-print"><a className={cls('btn outline', !run && 'opacity-50 pointer-events-none')} href={downloadUrl(`/api/reports/${key}`, { ...(run ?? {}), format: 'csv' })}><Download /> CSV</a><button className="btn outline" onClick={() => window.print()} disabled={!res.data}><Printer /> Print</button></div></div>
+                <div className="flex gap-2 no-print"><button type="button" className={cls('btn outline', !run && 'opacity-50 pointer-events-none')} disabled={!run} onClick={() => void downloadAuthFile(buildApiPath(`/api/reports/${key}`, { ...(run ?? {}), format: 'csv' }), `${key}.csv`).catch(e => toast.error(e.message))}><Download /> CSV</button><button className="btn outline" onClick={() => window.print()} disabled={!res.data}><Printer /> Print</button></div></div>
               {def.params.length > 0 && <form className="flex gap-3 items-end flex-wrap pb-4 mb-4 border-b border-line no-print" onSubmit={e => { e.preventDefault(); setRun({ ...params }) }}>
                 {def.params.map((pd: any) => <div key={pd.name} style={{ minWidth: pd.type === 'ref' ? 260 : 150 }}><label className="label">{pd.label}</label>
                   {pd.type === 'date' ? <input className="input" type="date" value={params[pd.name] ?? ''} onChange={e => setParams(p => ({ ...p, [pd.name]: e.target.value }))} />

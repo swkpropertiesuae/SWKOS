@@ -18,6 +18,7 @@ import {
   isOwnerSwkUser,
   isAdminSwkUser,
   canOpenEmployeeRecords,
+  canViewEmployeeRecords,
   NON_ELEVATED_ASSIGNABLE_ROLES,
   hardcodedAccountFor,
   isElevatedCanonicalEmail,
@@ -284,6 +285,7 @@ export default async function (app: FastifyInstance) {
   // ---- HR payroll generation
   app.post('/api/hr/payroll/generate', async (req) => {
     need(req, 'hr', 'create')
+    if (!canViewEmployeeRecords(req.user)) throw forbidden('Payroll generation is restricted to Owner, Admin, Operations Manager, and HR.')
     const { period } = z.object({ period: z.string() }).parse(req.body)
     return generatePayroll(period, req.ctx)
   })

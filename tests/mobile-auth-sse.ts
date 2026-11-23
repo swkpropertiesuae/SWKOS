@@ -556,6 +556,69 @@ async function run() {
     assert.equal(pendingPostToggleMe.statusCode, 401, `Enabling mobile_require_device_approval must invalidate Pending mobile session, got ${pendingPostToggleMe.statusCode}`)
     assert.equal(consumeStreamTicket(pendingTicket), null, 'Enabling mobile_require_device_approval must reject Pending device stream ticket')
 
+    // -----------------------------------------------------------------------
+    // 5. [Important #2 & #9]: Logout invalidates pre-logout SSE tickets & verify-password works without rotating session
+    // -----------------------------------------------------------------------
+    setSettings({ mobile_require_device_approval: false })
+    const { jwk: jwk5 } = makeEcP256Jwk()
+    const logoutFlowLogin = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      remoteAddress: nextIp(),
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile' },
+      payload: { email: 'mobile-agent1@swk.rent', password: staffPw, device_pub: jwk5, device_name: 'Logout Drill Phone', platform: 'ios' },
+    })
+    assert.equal(logoutFlowLogin.statusCode, 200, `Logout drill login failed: ${logoutFlowLogin.body}`)
+    const flowTok = (logoutFlowLogin.json() as any).session_token as string
+
+    // verify-password verifies without rotating session token; bad password rejected with 401
+    const badVerifyRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/verify-password',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+      payload: { password: 'WrongPassword-123!' },
+    })
+    assert.equal(badVerifyRes.statusCode, 401, `Bad password verify must return 401, got ${badVerifyRes.statusCode}`)
+
+    const okVerifyRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/verify-password',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+      payload: { password: staffPw },
+    })
+    assert.equal(okVerifyRes.statusCode, 200, `Valid password verify failed: ${okVerifyRes.body}`)
+    assert.equal((okVerifyRes.json() as any).ok, true)
+    assert.equal((okVerifyRes.json() as any).session_token, undefined, 'verify-password must not issue/rotate a session token')
+
+    // Session remains usable, issue two SSE tickets before logout
+    const preLogoutTicketRes1 = await app.inject({
+      method: 'POST',
+      url: '/api/auth/stream-ticket',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+    })
+    assert.equal(preLogoutTicketRes1.statusCode, 200)
+    const preLogoutTicket1 = (preLogoutTicketRes1.json() as any).ticket as string
+
+    const preLogoutTicketRes2 = await app.inject({
+      method: 'POST',
+      url: '/api/auth/stream-ticket',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+    })
+    assert.equal(preLogoutTicketRes2.statusCode, 200)
+    const preLogoutTicket2 = (preLogoutTicketRes2.json() as any).ticket as string
+
+    // Logout destroys session and purges/invalidates pre-logout stream tickets
+    const logoutRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      headers: { 'x-swk-client': 'mobile', 'x-swk-session': flowTok },
+    })
+    assert.equal(logoutRes.statusCode, 200)
+
+    const postLogoutSse = await openSseFirstChunk(`${baseUrl}/api/notifications/stream?ticket=${encodeURIComponent(preLogoutTicket1)}`)
+    assert.equal(postLogoutSse.status, 401, `Pre-logout SSE ticket must return 401 after logout, got ${postLogoutSse.status}`)
+    assert.equal(consumeStreamTicket(preLogoutTicket2), null, 'consumeStreamTicket must reject ticket after session logout')
+
     console.log('Mobile auth, unified device binding & SSE ticket tests passed.')
   } finally {
     if (app) {

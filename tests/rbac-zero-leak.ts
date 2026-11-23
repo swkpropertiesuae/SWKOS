@@ -524,6 +524,102 @@ async function run() {
     assert.equal(loadedLimited.role_name, 'Limited admin', 'Non-wildcard Limited admin fixture must remain preserved')
     assert.deepEqual(loadedLimited.permissions, { dashboard: ['view'], admin: ['view', 'edit', 'create'] })
 
+    // -------------------------------------------------------------------------
+    // 10. [Critical #1]: Office Admin cannot list/read/lookup/create/export HR PII
+    //     or search employee/visa/payslip attachments via /api/search/unified
+    // -------------------------------------------------------------------------
+    const officeAdminRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Office Admin'`)!
+    assert.ok(officeAdminRoleId, 'Office Admin role must be seeded')
+    const officeUserId = q.insert(
+      `INSERT INTO users(name, email, password_hash, role_id, branch_id, active, must_change_password, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Signed Office Admin',
+      'office-rbac@swk.properties',
+      hashPassword('OfficeRbac-2026!'),
+      officeAdminRoleId,
+      dxbBranchId,
+      1,
+      0,
+      now,
+      now,
+    )
+    const officeSig = signRoleGrant(officeUserId, 'office-rbac@swk.properties', 'Office Admin')
+    q.run(`UPDATE users SET role_grant_sig = ?, role_granted_by = ? WHERE id = ?`, officeSig, shabibRow.id, officeUserId)
+    assert.equal(canViewEmployeeRecords(loadUser(officeUserId)), false, 'Office Admin must fail canViewEmployeeRecords')
+
+    const officeLogin = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web' },
+      payload: { email: 'office-rbac@swk.properties', password: 'OfficeRbac-2026!' },
+    })
+    assert.equal(officeLogin.statusCode, 200)
+    const officeCookie = 'swk_sid=' + officeLogin.cookies.find((c: any) => c.name === 'swk_sid')!.value
+
+    const targetEmpId = q.val<number>(`SELECT id FROM employees WHERE emp_no = 'EMP-9015'`)!
+    assert.ok(targetEmpId > 0)
+    const empAttachmentId = q.insert(
+      `INSERT INTO attachments(file_name, category, link_entity, link_id, link_label, note, stored_name, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Confidential-Passport-Visa-Scan.pdf',
+      'KYC',
+      'employees',
+      targetEmpId,
+      'Confidential Target Employee',
+      'Passport and salary annexure',
+      'dummy-passport.pdf',
+      now,
+      now,
+    )
+
+    const officeHrChecks: Array<{ method: 'GET' | 'POST'; url: string; payload?: Record<string, unknown> }> = [
+      { method: 'GET', url: '/api/e/employees' },
+      { method: 'GET', url: `/api/e/employees/${targetEmpId}` },
+      { method: 'GET', url: '/api/e/employees/lookup?q=' },
+      { method: 'POST', url: '/api/e/employees', payload: { name: 'Blocked Office Create', status: 'Active', branch_id: dxbBranchId } },
+      { method: 'GET', url: '/api/e/payslips' },
+      { method: 'GET', url: '/api/e/wps_batches' },
+      { method: 'GET', url: '/api/e/immigration_cases' },
+      { method: 'GET', url: '/api/e/hr_lifecycle_cases' },
+      { method: 'GET', url: '/api/hr/wps/2026-11' },
+      { method: 'POST', url: '/api/hr/payroll/generate', payload: { period: '2026-11' } },
+      { method: 'GET', url: `/api/files/${empAttachmentId}/download` },
+    ]
+    for (const check of officeHrChecks) {
+      const res = await server.inject({
+        method: check.method,
+        url: check.url,
+        headers: {
+          cookie: officeCookie,
+          'x-swk-client': 'web',
+          ...(check.payload ? { 'content-type': 'application/json' } : {}),
+        },
+        payload: check.payload,
+      })
+      assert.equal(res.statusCode, 403, `Office Admin must receive 403 on ${check.method} ${check.url}, got ${res.statusCode}: ${res.body}`)
+    }
+
+    const officeUnified = await app.inject({
+      method: 'POST',
+      url: '/api/search/unified',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: officeCookie },
+      payload: { q: 'Confidential', scopes: ['internal'] },
+    })
+    assert.equal(officeUnified.statusCode, 200)
+    const officeUnifiedHits = (officeUnified.json() as any).results as any[]
+    assert.equal(
+      officeUnifiedHits.filter(h => ['employees', 'payslips', 'wps_batches', 'immigration_cases', 'hr_lifecycle_cases', 'attachments'].includes(h.entity)).length,
+      0,
+      `Office Admin must see ZERO HR/visa/payslip/attachment hits in unified search, got ${JSON.stringify(officeUnifiedHits)}`,
+    )
+    assert.ok(!officeUnified.body.includes('Confidential-Passport-Visa-Scan.pdf'), 'Office Admin unified search must not leak employee passport attachment filename')
+
+    const officeAttachmentsList = await app.inject({
+      method: 'GET',
+      url: '/api/e/attachments?pageSize=50',
+      headers: { cookie: officeCookie },
+    })
+    assert.equal(officeAttachmentsList.statusCode, 200)
+    assert.ok(!officeAttachmentsList.body.includes('Confidential-Passport-Visa-Scan.pdf'), 'GET /api/e/attachments must not leak HR-linked attachment rows to Office Admin')
+
     console.log('RBAC zero-leak regression checks passed.')
   } finally {
     if (app) {

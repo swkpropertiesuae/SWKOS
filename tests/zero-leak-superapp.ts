@@ -13,6 +13,15 @@ process.env.APP_SECRET = 'test-superapp-e2e-app-secret-0123456789abcdef'
 process.env.DEMO_ENABLED = 'false'
 process.env.STARTER_DATA = 'false'
 
+async function waitFor(pred: () => boolean, timeoutMs = 1000, label = 'condition'): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (pred()) return
+    await new Promise(r => setTimeout(r, 10))
+  }
+  if (!pred()) throw new Error(`Timed out waiting for ${label} after ${timeoutMs}ms`)
+}
+
 interface LiveSseHandle {
   status: number
   contentType: string
@@ -461,6 +470,9 @@ async function run() {
     assert.equal(clampedForgedSig.role_name, 'Staff (Attendance & General)', 'Forged HR signature must clamp to Staff')
     assert.deepEqual(clampedForgedSig.permissions, RESTRICTED_STAFF_PERMISSIONS)
 
+    // Attempting to sign an elevated role grant must throw synchronously
+    assert.throws(() => signRoleGrant(staff15Id, 'staff15@swk.properties', 'Owner' as any))
+
     // Tamper Staff #15 to Owner -> clamped + security_tamper
     q.run(`UPDATE users SET role_id = ?, role_grant_sig = ? WHERE id = ?`, ownerRoleId, signRoleGrant(staff15Id, 'staff15@swk.properties', 'HR'), staff15Id)
     const clampedOwner = loadUser(staff15Id)!
@@ -562,6 +574,45 @@ async function run() {
       visa_expiry: new Date(Date.now() + 15 * 86_400_000).toISOString().slice(0, 10),
     }, SYSTEM_CTX)
     assert.ok(secretEmp.id > 0)
+
+    const secretEmpAttachId = q.insert(
+      `INSERT INTO attachments(file_name, category, link_entity, link_id, link_label, note, stored_name, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Kensington Visa Annexure Scan.pdf',
+      'KYC',
+      'employees',
+      secretEmp.id,
+      'Kensington Confidential Visa Director',
+      'Emirates ID, passport & compensation addendum',
+      'kens-visa-secret.pdf',
+      now,
+      now,
+    )
+
+    // Office Admin cannot read/list/lookup/create/export HR PII entities or payroll/WPS routes
+    for (const check of [
+      { method: 'GET' as const, url: '/api/e/employees' },
+      { method: 'GET' as const, url: '/api/e/employees/lookup?q=' },
+      { method: 'POST' as const, url: '/api/e/employees', payload: { name: 'Blocked Office Create', status: 'Active', branch_id: dxbBranchId } },
+      { method: 'GET' as const, url: '/api/e/payslips' },
+      { method: 'GET' as const, url: '/api/e/wps_batches' },
+      { method: 'GET' as const, url: '/api/e/immigration_cases' },
+      { method: 'GET' as const, url: '/api/e/hr_lifecycle_cases' },
+      { method: 'GET' as const, url: '/api/hr/wps/2026-11' },
+      { method: 'POST' as const, url: '/api/hr/payroll/generate', payload: { period: '2026-11' } },
+      { method: 'GET' as const, url: `/api/files/${secretEmpAttachId}/download` },
+    ]) {
+      const hrDenyRes = await server.inject({
+        method: check.method,
+        url: check.url,
+        headers: {
+          cookie: officeCookie,
+          'x-swk-client': 'web',
+          ...(check.payload ? { 'content-type': 'application/json' } : {}),
+        },
+        payload: check.payload,
+      })
+      assert.equal(hrDenyRes.statusCode, 403, `Office Admin must get 403 on ${check.method} ${check.url}, got ${hrDenyRes.statusCode}: ${hrDenyRes.body}`)
+    }
 
     const kensPartyId = q.insert(
       `INSERT INTO parties(code, name, is_customer, status, phone, email, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)`,
@@ -787,22 +838,17 @@ async function run() {
       assert.equal(denyConf.statusCode, 403, `${label} must get 403 for confidential=true`)
     }
 
-    // Legacy /api/ai/chat as Owner (executive agent Jarvis) also fails closed without zero_retention route
+    // Legacy /api/ai/chat as Owner (executive agent Jarvis) also fails closed with 503 without zero_retention route
     const jarvisRow = q.get<{ id: number }>(`SELECT id FROM ai_agents WHERE role_key = 'jarvis' AND deleted_at IS NULL`)!
     assert.ok(jarvisRow, 'Jarvis agent must be seeded')
-    await assert.rejects(
-      async () => {
-        const res = await server.inject({
-          method: 'POST',
-          url: '/api/ai/chat',
-          headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: ownerCookie },
-          payload: { agent_id: jarvisRow.id, message: 'Executive morning check' },
-        })
-        if (res.statusCode >= 400) throw new Error(res.body)
-      },
-      /zero[- ]retention|confidential/i,
-      'Owner calling /api/ai/chat without zero_retention route must fail closed',
-    )
+    const legacyFailRes = await server.inject({
+      method: 'POST',
+      url: '/api/ai/chat',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: ownerCookie },
+      payload: { agent_id: jarvisRow.id, message: 'Executive morning check' },
+    })
+    assert.equal(legacyFailRes.statusCode, 503, `Owner /api/ai/chat without zero_retention route must fail closed with 503, got ${legacyFailRes.statusCode}: ${legacyFailRes.body}`)
+    assert.match(legacyFailRes.body, /zero[- ]retention|confidential/i)
     assert.equal(llmHits.rFreeOk.length, hitsBeforeConfFail, 'Owner /api/ai/chat must NEVER touch zero_retention=false route')
 
     // 2b. PII Shield strips +971 phones, 784- EIDs, AE IBANs & emails before zero_retention=false route
@@ -993,6 +1039,12 @@ async function run() {
     assert.equal(officeHits.filter(h => h.entity === 'employees').length, 0)
     assert.equal(officeHits.filter(h => h.entity === 'invoices').length, 0)
     assert.equal(officeHits.filter(h => h.entity === 'crm_vault_properties').length, 0)
+    assert.equal(officeHits.filter(h => h.entity === 'attachments').length, 0, 'Office Admin must get ZERO HR attachment hits')
+    assert.ok(!officeSearch.body.includes('Kensington Visa Annexure Scan.pdf'), 'Office Admin unified search must not leak employee visa attachment')
+
+    const officeAttList = await server.inject({ method: 'GET', url: '/api/e/attachments?pageSize=50', headers: { cookie: officeCookie } })
+    assert.equal(officeAttList.statusCode, 200)
+    assert.ok(!officeAttList.body.includes('Kensington Visa Annexure Scan.pdf'), 'Office Admin /api/e/attachments must exclude HR-linked documents')
 
     // Owner/Admin/Manager see employees, invoices, vault, leads — yet Admin still NEVER sees Owner's private Word doc or DM
     const adminSearch = await server.inject({
@@ -1198,6 +1250,7 @@ async function run() {
 
     // Non-leadership cannot query Agent's trail even by session ID
     for (const [label, cookie] of [
+      ['Field Agent (Talha)', fieldAgentCookie],
       ['HR', hrCookie],
       ['Office Admin', officeCookie],
       ['Staff #15 (DB tampered Admin)', staff15Cookie],
@@ -1278,9 +1331,15 @@ async function run() {
       payload: { lat: 25.0811, lng: 55.1409, reason: 'E2E SOS emergency test' },
     })
     assert.equal(sosRes.statusCode, 200)
-    await new Promise(r => setTimeout(r, 40))
-    assert.ok(fcmDispatches.some(p => p.userId === ownerRow.id && p.payload.channel === 'swk_calls_sos'), 'SOS must dispatch swk_calls_sos push to Owner')
-    assert.ok(fcmDispatches.some(p => p.userId === managerRow.id && p.payload.channel === 'swk_calls_sos'), 'SOS must dispatch swk_calls_sos push to Manager')
+    await waitFor(
+      () =>
+        fcmDispatches.some(p => p.userId === ownerRow.id && p.payload.channel === 'swk_calls_sos') &&
+        fcmDispatches.some(p => p.userId === managerRow.id && p.payload.channel === 'swk_calls_sos'),
+      1000,
+      'SOS leadership pushes',
+    )
+    assert.equal(fcmDispatches.filter(p => p.userId === ownerRow.id && p.payload.channel === 'swk_calls_sos').length, 1, 'Owner must receive exactly 1 SOS push (no duplicate)')
+    assert.equal(fcmDispatches.filter(p => p.userId === managerRow.id && p.payload.channel === 'swk_calls_sos').length, 1, 'Manager must receive exactly 1 SOS push (no duplicate)')
 
     // Leadership GET /live writes location_access_logs & shows flagged pin
     const accessLogsBefore = q.val<number>(`SELECT COUNT(*) FROM location_access_logs`) ?? 0
@@ -1366,7 +1425,7 @@ async function run() {
       url: `/api/chat/files/${fileMsgId}`,
       headers: { cookie: staff15Cookie },
     })
-    assert.notEqual(nonMemberFileRes.statusCode, 200, 'Non-member Staff #15 must NOT download group attachment')
+    assert.equal(nonMemberFileRes.statusCode, 403, `Non-member Staff #15 must receive 403 when fetching group attachment, got ${nonMemberFileRes.statusCode}`)
     const mgrFileRes = await server.inject({
       method: 'GET',
       url: `/api/chat/files/${fileMsgId}`,
@@ -1423,13 +1482,19 @@ async function run() {
     })
     assert.equal(dmMsg2.statusCode, 200)
     const dmMsg2Id = Number((dmMsg2.json() as any).id)
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(
+      () =>
+        webPushDispatches.filter(p => p.userId === managerRow.id).length >= 1 &&
+        fcmDispatches.filter(p => p.userId === managerRow.id).length >= 1,
+      1000,
+      'offline DM push dispatches',
+    )
 
     assert.equal(webPushDispatches.filter(p => p.userId === managerRow.id).length, 1, 'Disconnected recipient must receive Web Push')
     assert.equal(fcmDispatches.filter(p => p.userId === managerRow.id).length, 1, 'Disconnected recipient must receive FCM push')
     assert.equal(webPushDispatches.find(p => p.userId === managerRow.id)!.payload.url, `/chat?t=${dmId}`)
 
-    // Lock-screen privacy preview masks body to "New message in SWK Inside"
+    // Lock-screen privacy preview masks BOTH title and body
     setSettings({ push_hide_preview_global: true })
     webPushDispatches.length = 0
     fcmDispatches.length = 0
@@ -1441,11 +1506,20 @@ async function run() {
     })
     assert.equal(dmMsg3.statusCode, 200)
     const dmMsg3Id = Number((dmMsg3.json() as any).id)
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(
+      () =>
+        Boolean(webPushDispatches.find(p => p.userId === managerRow.id)) &&
+        Boolean(fcmDispatches.find(p => p.userId === managerRow.id)),
+      1000,
+      'masked DM push dispatches',
+    )
     const privWp = webPushDispatches.find(p => p.userId === managerRow.id)!
     const privFcm = fcmDispatches.find(p => p.userId === managerRow.id)!
+    assert.equal(privWp.payload.title, 'SWK Inside')
+    assert.equal(privFcm.payload.title, 'SWK Inside')
     assert.equal(privWp.payload.body, 'New message in SWK Inside')
     assert.equal(privFcm.payload.body, 'New message in SWK Inside')
+    assert.ok(!JSON.stringify(privWp.payload).includes('Talha') && !JSON.stringify(privFcm.fcmMessage).includes('Talha'), 'Sender name title must be masked on lock screen')
     assert.ok(!JSON.stringify(privWp.payload).includes('22M') && !JSON.stringify(privFcm.fcmMessage).includes('22M'))
     setSettings({ push_hide_preview_global: false })
 
@@ -1469,7 +1543,13 @@ async function run() {
     fcmDispatches.length = 0
     notify(ownerRow.id, 'Deal Withdrawal Approval', 'DL-2600041 awaits Owner sign-off', '/withdrawals', 'approval')
     await ownerNotifStream.waitForMatch(t => t.includes('Deal Withdrawal Approval'))
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(
+      () =>
+        Boolean(webPushDispatches.find(p => p.userId === ownerRow.id)) &&
+        Boolean(fcmDispatches.find(p => p.userId === ownerRow.id)),
+      1000,
+      'owner ops push notifications',
+    )
     assert.equal(webPushDispatches.find(p => p.userId === ownerRow.id)?.payload.channel, 'swk_ops_alerts')
     assert.equal(fcmDispatches.find(p => p.userId === ownerRow.id)?.payload.url, '/withdrawals')
 

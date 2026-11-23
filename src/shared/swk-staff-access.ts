@@ -373,6 +373,15 @@ export const RESTRICTED_STAFF_SELF_SCOPED_ENTITIES = new Set<string>([
   'daily_reports',
 ])
 
+/** Sensitive HR, payroll, WPS, immigration/visa, and lifecycle entities gated strictly behind canViewEmployeeRecords(). */
+export const RESTRICTED_HR_PII_ENTITIES = new Set<string>([
+  'employees',
+  'payslips',
+  'wps_batches',
+  'immigration_cases',
+  'hr_lifecycle_cases',
+])
+
 export function isSwkCompanyEmail(email: string | null | undefined): boolean {
   const e = String(email || '').trim().toLowerCase()
   return e.endsWith('@swk.properties') || e.endsWith('@swk.property') || e.endsWith('@swkpropertiesuae.com') || e.endsWith('@swk.rent')

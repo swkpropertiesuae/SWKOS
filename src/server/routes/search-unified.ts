@@ -6,6 +6,7 @@ import {
   canViewEmployeeRecords,
   isFullAccessSwkUser,
   isRestrictedStaffUser,
+  RESTRICTED_HR_PII_ENTITIES,
   RESTRICTED_STAFF_ALLOWED_ENTITIES,
 } from '../../shared/swk-staff-access'
 import { omniChat, omniConfigured } from '../ai/omni-router'
@@ -234,7 +235,7 @@ function canAccessAttachmentLink(user: SessionUser, linkEntity: string | null | 
   if (!ent) return can(user, 'documents', 'view')
   const def = ENTITIES[ent]
   if (!def) return false
-  if (ent === 'employees' && !canViewEmployeeRecords(user)) return false
+  if (RESTRICTED_HR_PII_ENTITIES.has(ent) && !canViewEmployeeRecords(user)) return false
   if (isRestrictedStaffUser(user) && !RESTRICTED_STAFF_ALLOWED_ENTITIES.has(ent)) return false
   return can(user, def.module, 'view')
 }

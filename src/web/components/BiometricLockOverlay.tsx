@@ -4,11 +4,8 @@ import { post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import {
   clearLocalUnlockPin,
-  getMobileDeviceAuthPayload,
-  isNativeMobile,
   markScreenUnlocked,
   setLocalUnlockPin,
-  setMobileSession,
   startLockMonitors,
   unlockWithBiometric,
   unlockWithLocalPin,
@@ -89,9 +86,18 @@ export function BiometricLockOverlay({ onLogout }: BiometricLockOverlayProps) {
     }
     // Never leave the unlocked PIN-management modal open when locking transitions on
     setManageOpen(false)
-    if (lock.biometricReady) {
+    let prompted = false
+    const tryPrompt = () => {
+      if (prompted || document.hidden || !lock.biometricReady) return
+      prompted = true
       void unlockWithBiometric('Unlock SWK Properties OS')
     }
+    tryPrompt()
+    const onVisibility = () => {
+      if (!document.hidden) tryPrompt()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [lock.locked, lock.biometricReady])
 
   // 1) Locked screen UI (strictly verification-only: NO Change/Set PIN while locked)
@@ -133,20 +139,18 @@ export function BiometricLockOverlay({ onLogout }: BiometricLockOverlayProps) {
       setUnlockErr('')
       setBusy(true)
       try {
-        const mobilePayload = isNativeMobile() ? await getMobileDeviceAuthPayload() : {}
-        const r = await post<any>('/api/auth/login', {
-          email: me.email,
+        const r = await post<{ ok: boolean; needsTotp?: boolean }>('/api/auth/verify-password', {
           password: accountPw,
           ...(totpCode.trim() ? { totp: totpCode.trim() } : {}),
-          ...mobilePayload,
         })
         if (r?.needsTotp) {
           setNeedTotp(true)
           setUnlockErr('Enter the 6-digit code from your authenticator app to unlock.')
           return
         }
-        if (r?.session_token) {
-          await setMobileSession(r.session_token, r.device_id ?? (mobilePayload as any).device_id ?? null)
+        if (!r?.ok) {
+          setUnlockErr('Password verification failed.')
+          return
         }
         setAccountPw('')
         setTotpCode('')

@@ -686,6 +686,27 @@ export async function stopNativeFieldDuty(): Promise<void> {
   }
 }
 
+export function onNativeDutyEnded(cb: (data?: any) => void): () => void {
+  const swk = plugin('SwkSecure')
+  if (!isNativeMobile() || !swk || typeof swk.addListener !== 'function') return () => {}
+  let disposed = false
+  let handle: { remove?: () => Promise<void> | void } | null = null
+  void Promise.resolve(
+    swk.addListener('swkDutyEnded', (data: any) => {
+      if (!disposed) cb(data)
+    }),
+  )
+    .then(h => {
+      if (disposed) void h?.remove?.()
+      else handle = h
+    })
+    .catch(() => {})
+  return () => {
+    disposed = true
+    if (handle?.remove) void handle.remove()
+  }
+}
+
 // ------------------------------------------------------------------ Native FCM / APNs & Incoming Call Wake Bridge
 function dispatchSafeNavigate(rawUrl: unknown) {
   if (typeof window === 'undefined' || typeof rawUrl !== 'string') return
@@ -707,7 +728,7 @@ function mobileFetchHeaders(): Record<string, string> {
   }
 }
 
-async function subscribeNativePushToken(channel: 'fcm' | 'apns', rawToken: unknown): Promise<void> {
+async function subscribeNativePushToken(channel: 'fcm' | 'apns' | 'apns_voip', rawToken: unknown): Promise<void> {
   const value = String(rawToken || '').trim()
   if (!value) return
   registeredNativeTokens.add(value)
@@ -792,7 +813,7 @@ export async function registerNativePush(): Promise<() => void> {
     if (platform === 'ios' && callBridge && typeof callBridge.addListener === 'function') {
       try {
         const voipTokH = await callBridge.addListener('voipToken', async (tok: { token?: string }) => {
-          await subscribeNativePushToken('apns', tok?.token)
+          await subscribeNativePushToken('apns_voip', tok?.token)
         })
         const iosCallH = await callBridge.addListener('swkIncomingCall', (data: any) => {
           window.dispatchEvent(new CustomEvent('swk:sip-wake', { detail: data }))
@@ -839,7 +860,7 @@ export async function registerNativePush(): Promise<() => void> {
     try {
       const voipRes = await callBridge.registerVoip()
       if (voipRes?.token) {
-        await subscribeNativePushToken('apns', voipRes.token)
+        await subscribeNativePushToken('apns_voip', voipRes.token)
       }
     } catch {
       /* ignore */

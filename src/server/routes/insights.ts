@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { loadUser } from '../auth'
-import { liveBus } from '../notify'
+import { liveBus, liveScope } from '../notify'
 import { calendarEvents } from '../calendar'
 import { config } from '../config'
 import type { FastifyInstance } from 'fastify'
@@ -11,7 +11,7 @@ import { addDays,bad,daysBetween,fromCents,monthStart,r2,todayStr,toCsv,nowIso }
 import { idOf,need } from './helpers'
 import { reportCatalog,runReport,REPORTS } from '../reports'
 import { getSetting } from '../settings'
-import { canViewEmployeeRecords, isRestrictedStaffUser, RESTRICTED_STAFF_ALLOWED_ENTITIES } from '../../shared/swk-staff-access'
+import { canViewEmployeeRecords, isRestrictedStaffUser, RESTRICTED_HR_PII_ENTITIES, RESTRICTED_STAFF_ALLOWED_ENTITIES } from '../../shared/swk-staff-access'
 import { z } from 'zod'
 
 const SIGN = `CASE WHEN i.doc_type = 'Credit Note' THEN -1 ELSE 1 END`
@@ -195,7 +195,7 @@ export default async function (app: FastifyInstance) {
     const restricted = isRestrictedStaffUser(user)
     const out: any[] = []
     for (const s of specs) {
-      if (s.entity === 'employees' && !canViewEmployeeRecords(user)) continue
+      if (RESTRICTED_HR_PII_ENTITIES.has(s.entity) && !canViewEmployeeRecords(user)) continue
       if (restricted && !RESTRICTED_STAFF_ALLOWED_ENTITIES.has(s.entity)) continue
       if (!can(user, s.module, 'view')) continue
       const def = ENTITIES[s.entity]
@@ -262,14 +262,15 @@ export default async function (app: FastifyInstance) {
     })
     res.write('retry: 4000\n\n')
     const send = (n: any) => { try { res.write(`event: notification\ndata: ${JSON.stringify(n)}\n\n`) } catch { /* closed */ } }
-    liveBus.on('u:' + uid, send)
+    const channel = `u:${liveScope()}:${uid}`
+    liveBus.on(channel, send)
     const ping = setInterval(() => { try { res.write(': ping\n\n') } catch { /* closed */ } }, 20_000)
     let cleaned = false
     const cleanup = () => {
       if (cleaned) return
       cleaned = true
       clearInterval(ping)
-      liveBus.off('u:' + uid, send)
+      liveBus.off(channel, send)
     }
     req.raw.on('close', cleanup)
     res.on('close', cleanup)

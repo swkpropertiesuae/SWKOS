@@ -1,6 +1,7 @@
 import { q } from '../db'
 import { addDays,daysBetween,todayStr,fromCents,toCents,r2,nowLocal } from '../util'
 import { createRecord,getDef,SYSTEM_CTX,type SessionUser } from '../engine'
+import { findCanonicalElevatedUser } from '../auth'
 import { businessSnapshot } from '../integrations/snapshot'
 import { queueEmail } from '../mailer'
 import { sendWhatsApp,messageOwners,phonesForParty,normalizePhone,findPartyByPhone } from '../integrations/whatsapp'
@@ -20,7 +21,7 @@ const Nn = (description: string) => ({ type: 'number', description })
 const obj = (properties: Record<string, any>, required: string[] = []) => ({ type: 'object', properties, required })
 const money = (c: number | null | undefined) => r2(fromCents(c))
 const lim = (a: any, d = 15) => Math.min(Math.max(Number(a?.limit) || d, 1), 40)
-const adminId = () => q.val<number>(`SELECT u.id FROM users u JOIN roles r ON r.id = u.role_id WHERE r.name = 'Admin' AND u.deleted_at IS NULL ORDER BY u.id LIMIT 1`) ?? 1
+const adminId = () => findCanonicalElevatedUser(true)?.id ?? 1
 const dealByNo = (no: string) => q.get(`SELECT * FROM jobs WHERE deleted_at IS NULL AND job_no = ? LIMIT 1`, String(no).trim().toUpperCase())
 const partyByName = (s: string) => q.get(`SELECT * FROM parties WHERE deleted_at IS NULL AND (code = ? OR name LIKE ?) ORDER BY (name = ?) DESC, id LIMIT 1`, s, `%${s}%`, s)
 

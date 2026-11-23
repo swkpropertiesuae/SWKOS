@@ -14,6 +14,7 @@ export type PushPayload = {
   channel: PushChannel
   threadId?: number
   silent?: boolean
+  data?: Record<string, string>
 }
 
 export interface PushSubscriptionRow {
@@ -37,7 +38,11 @@ export type PushTransportForTests = {
     fcmMessage: Record<string, any>,
     payload: PushPayload,
   ) => Promise<void>
-  sendApns?: (sub: PushSubscriptionRow, payload: PushPayload) => Promise<void>
+  sendApns?: (
+    sub: PushSubscriptionRow,
+    payload: PushPayload,
+    meta: { isVoip: boolean; channel: 'apns' | 'apns_voip' },
+  ) => Promise<void>
 } | null
 
 interface FcmServiceAccount {
@@ -194,6 +199,7 @@ export function buildFcmMessage(token: string, payload: PushPayload): Record<str
         body: payload.body,
       },
       data: {
+        ...(payload.data ?? {}),
         url: payload.url,
         tag: payload.tag,
         channel: payload.channel,
@@ -227,11 +233,32 @@ function isGoneError(err: any): boolean {
   return status === 404 || status === 410
 }
 
+export function isIncomingCallWake(payload: PushPayload): boolean {
+  return payload.data?.type === 'incoming_call' || (payload.channel === 'swk_calls_sos' && payload.url.startsWith('/phone'))
+}
+
 function maskPayloadForPrivacy(payload: PushPayload): PushPayload {
   if (!getSetting('push_hide_preview_global')) return payload
+  const maskedTitle =
+    payload.channel === 'swk_messages'
+      ? 'SWK Inside'
+      : payload.channel === 'swk_calls_sos'
+        ? isIncomingCallWake(payload)
+          ? 'SWK Incoming Call'
+          : 'SWK Emergency Alert'
+        : 'SWK OS'
+  const maskedBody =
+    payload.channel === 'swk_messages'
+      ? 'New message in SWK Inside'
+      : payload.channel === 'swk_calls_sos'
+        ? isIncomingCallWake(payload)
+          ? 'Incoming SWK voice call'
+          : 'Priority SWK emergency alert'
+        : 'New SWK OS notification'
   return {
     ...payload,
-    body: payload.channel === 'swk_messages' ? 'New message in SWK Inside' : 'New SWK OS notification',
+    title: maskedTitle,
+    body: maskedBody,
   }
 }
 
@@ -346,7 +373,16 @@ export async function dispatchPushToUser(
       } else if (sub.channel === 'fcm') {
         await sendOneFcm(sub, effective)
       } else if (sub.channel === 'apns' && testTransport?.sendApns) {
-        await testTransport.sendApns(sub, effective)
+        await testTransport.sendApns(sub, effective, { isVoip: false, channel: 'apns' })
+      } else if (sub.channel === 'apns_voip') {
+        // Apple PushKit strictly requires every VoIP push to report a CallKit call; skip routine/SOS alerts here.
+        if (!isIncomingCallWake(effective)) continue
+        if (testTransport?.sendApns) {
+          await testTransport.sendApns(sub, effective, { isVoip: true, channel: 'apns_voip' })
+        } else {
+          failed++
+          continue
+        }
       } else {
         failed++
         continue

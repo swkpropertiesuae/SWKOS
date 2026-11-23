@@ -10,6 +10,15 @@ process.env.DATA_DIR = tmpDir
 process.env.DATABASE_URL = ''
 process.env.APP_SECRET = 'test-push-chat-live-secret-0123456789abcdef'
 
+async function waitFor(pred: () => boolean, timeoutMs = 1000, label = 'condition'): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (pred()) return
+    await new Promise(r => setTimeout(r, 10))
+  }
+  if (!pred()) throw new Error(`Timed out waiting for ${label} after ${timeoutMs}ms`)
+}
+
 async function collectSseChunks(url: string, minBytes = 10, timeoutMs = 1500): Promise<{ status: number; contentType: string; text: string }> {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), timeoutMs)
@@ -230,7 +239,7 @@ async function run() {
     assert.equal(msg1Res.statusCode, 200, `Send m1 failed: ${msg1Res.body}`)
     const m1 = (msg1Res.json() as any).id as number
 
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(() => webPushCalls.length === 1 && fcmCalls.length === 1, 1000, 'DM push dispatches')
     assert.equal(webPushCalls.length, 1, `Expected 1 Web Push call, got ${webPushCalls.length}`)
     assert.equal(fcmCalls.length, 1, `Expected 1 FCM call, got ${fcmCalls.length}`)
     assert.equal(webPushCalls[0]!.payload.channel, 'swk_messages')
@@ -277,7 +286,7 @@ async function run() {
     assert.equal(clearActRes.statusCode, 200)
 
     // -------------------------------------------------------------------------
-    // Scenario 3: push_hide_preview_global = true masks body to "New message in SWK Inside"
+    // Scenario 3: push_hide_preview_global = true masks title & body
     // -------------------------------------------------------------------------
     setSettings({ push_hide_preview_global: true })
     const secretDealBody = 'Confidential AED 14.5M cash offer from VIP client'
@@ -289,14 +298,27 @@ async function run() {
     })
     assert.equal(msg3Res.statusCode, 200)
     const m3 = (msg3Res.json() as any).id as number
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(() => webPushCalls.length === 1 && fcmCalls.length === 1, 1000, 'masked DM pushes')
 
     assert.equal(webPushCalls.length, 1, 'Expected push when thread no longer active')
     assert.equal(fcmCalls.length, 1, 'Expected FCM push when thread no longer active')
+    assert.equal(webPushCalls[0]!.payload.title, 'SWK Inside')
+    assert.equal(fcmCalls[0]!.payload.title, 'SWK Inside')
     assert.equal(webPushCalls[0]!.payload.body, 'New message in SWK Inside')
     assert.equal(fcmCalls[0]!.payload.body, 'New message in SWK Inside')
+    assert.ok(!JSON.stringify(webPushCalls[0]!.payload).includes('Agent Alpha'), 'Sender name title must be masked when push_hide_preview_global=true')
+    assert.ok(!JSON.stringify(fcmCalls[0]!.fcmMessage).includes('Agent Alpha'), 'Sender name title must be masked in FCM when push_hide_preview_global=true')
     assert.ok(!JSON.stringify(webPushCalls[0]!.payload).includes('14.5M'), 'Zero message body must leak when push_hide_preview_global=true')
     assert.ok(!JSON.stringify(fcmCalls[0]!.fcmMessage).includes('14.5M'), 'Zero message body must leak in FCM when push_hide_preview_global=true')
+
+    // Privacy masking also masks title & body for non-chat notify()
+    webPushCalls.length = 0
+    fcmCalls.length = 0
+    notify(userBId, 'Confidential Deal #44 AED 25M', 'VIP seller agreed', '/e/jobs/44', 'approval')
+    await waitFor(() => webPushCalls.length === 1 && fcmCalls.length === 1, 1000, 'masked ops alert')
+    assert.equal(webPushCalls[0]!.payload.title, 'SWK OS')
+    assert.equal(webPushCalls[0]!.payload.body, 'New SWK OS notification')
+    assert.ok(!JSON.stringify(fcmCalls[0]!.fcmMessage).includes('25M'), 'Ops notification title/body must be masked under privacy lock screen mode')
 
     // -------------------------------------------------------------------------
     // Scenario 4: Reconnect catch-up /api/chat/stream?ticket=<t>&since_id=<m1>
@@ -327,7 +349,7 @@ async function run() {
     fcmCalls.length = 0
 
     notify(userBId, 'Approval needed', 'Withdrawal #4', '/withdrawals', 'approval')
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(() => webPushCalls.length === 1 && fcmCalls.length === 1, 1000, 'ops approval push')
 
     assert.equal(webPushCalls.length, 1, 'notify() must trigger Web Push dispatch')
     assert.equal(fcmCalls.length, 1, 'notify() must trigger FCM push dispatch')
@@ -340,7 +362,7 @@ async function run() {
     webPushCalls.length = 0
     fcmCalls.length = 0
     notify(userBId, 'Field Duty SOS', 'Agent triggered SOS near Marina', '/field-live', 'sos')
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(() => webPushCalls.length === 1 && fcmCalls.length === 1, 1000, 'SOS push')
     assert.equal(webPushCalls[0]!.payload.channel, 'swk_calls_sos')
     assert.equal(fcmCalls[0]!.fcmMessage.message.android.notification.channel_id, 'swk_calls_sos')
 
@@ -469,7 +491,7 @@ async function run() {
     })
     const { postAutomationMessage } = await import('../src/server/routes/chat')
     postAutomationMessage(grpId, userAId, 'Automated viewing reminder at 16:00')
-    await new Promise(r => setTimeout(r, 40))
+    await waitFor(() => autoCalls.length === 1, 1000, 'automation push')
     assert.equal(autoCalls.length, 1, 'postAutomationMessage must dispatch push to non-muted recipients')
     assert.equal(autoCalls[0]!.channel, 'swk_messages')
     assert.equal(autoCalls[0]!.url, `/chat?t=${grpId}`)
@@ -562,6 +584,50 @@ async function run() {
       'bravo-dev-01',
       'Mobile sessionDeviceId must take precedence over body device_id',
     )
+
+    // [Important #10]: apns_voip channel subscribes cleanly and ONLY receives incoming call wakes
+    const apnsVoipSub = await app.inject({
+      method: 'POST',
+      url: '/api/push/subscribe',
+      headers: hB,
+      payload: { channel: 'apns_voip', token: 'voip-pushkit-token-bravo-01' },
+    })
+    assert.equal(apnsVoipSub.statusCode, 200, `apns_voip subscribe failed: ${apnsVoipSub.body}`)
+    const apnsAlerts: Array<{ channel: string; isVoip: boolean; payload: any }> = []
+    setPushTransportForTests({
+      sendWebPush: async () => {},
+      sendFcm: async () => {},
+      sendApns: async (_sub: any, payload: any, meta: { isVoip: boolean; channel: 'apns' | 'apns_voip' }) => {
+        apnsAlerts.push({ channel: meta.channel, isVoip: meta.isVoip, payload })
+      },
+    })
+    await dispatchPushToUser(userBId, {
+      title: 'Regular Message',
+      body: 'Must never wake PushKit VoIP',
+      url: '/chat',
+      tag: 'chat-skip-voip',
+      channel: 'swk_messages',
+    })
+    await dispatchPushToUser(userBId, {
+      title: 'SOS GPS Alert',
+      body: 'Not a CallKit incoming call',
+      url: '/field-live',
+      tag: 'sos-skip-voip',
+      channel: 'swk_calls_sos',
+    })
+    assert.equal(apnsAlerts.filter(a => a.channel === 'apns_voip').length, 0, 'Non-call notifications must NEVER hit apns_voip PushKit subscription')
+
+    await dispatchPushToUser(userBId, {
+      title: 'Incoming SIP Call',
+      body: 'VIP Caller · Ext 102',
+      url: '/phone?incoming=1',
+      tag: 'sip-call-voip-1',
+      channel: 'swk_calls_sos',
+      data: { type: 'incoming_call', call_id: 'call-voip-1' },
+    })
+    const voipHits = apnsAlerts.filter(a => a.channel === 'apns_voip')
+    assert.equal(voipHits.length, 1, 'Incoming call wake must dispatch to apns_voip')
+    assert.equal(voipHits[0]!.isVoip, true)
 
     console.log('Push & Inside live messaging tests passed.')
   } finally {

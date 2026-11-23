@@ -2,12 +2,13 @@ import { Fragment,useEffect,useMemo,useRef,useState,type ReactNode } from 'react
 import { useSearchParams } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { AlertCircle,ArrowLeft,Archive,BellOff,BellRing,Check,CheckCheck,ChevronDown,ClipboardList,Clock,Copy,CornerUpLeft,Crown,Download,ExternalLink,FileText,FolderOpen,Forward,Info,Loader2,LogOut,MapPin,Megaphone,MessageSquarePlus,Mic,MoreVertical,Paperclip,Pencil,Pin,RefreshCw,Search,Send,Smile,Trash2,UserPlus,Users,X } from 'lucide-react'
-import { get,post,del,api,upload } from '../lib/api'
+import { get,post,del,api,upload,downloadAuthFile,openAuthFile,resolveApiUrl } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { useMeta } from '../lib/meta'
 import { Modal,useDialogs,useClickOutside } from '../ui/kit'
 import { chatState,enqueueChatOutbox,flushChatOutbox,listQueuedChatMessages,noteSeenMessageId,parseLocationPayload,previewOf,registerWebPush,removeChatOutboxItem,subscribeChat,syncActiveThread,type ChatMessage,type QueuedChatMessage } from '../lib/chatLive'
 import { StaffPhoto } from '../components/ui/staff-photo'
+import { AuthAudio,AuthImg,AuthVideo } from '../components/ui/auth-media'
 
 type Thread = { id: number; kind: 'dm' | 'group'; title: string; peer: { id: number; email: string; online: boolean; last_seen: string | null } | null; members: number; role: string; pinned: boolean; muted: boolean; archived: boolean; announce: boolean; system: boolean; last: ChatMessage | null; unread: number }
 type Person = { id: number; name: string; email: string; designation?: string; online: boolean; last_seen: string | null }
@@ -628,10 +629,10 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
                       {m.kind === 'deleted' ? <span className="italic text-[#8b8b8b]">🚫 {mine ? 'You deleted this message' : 'This message was deleted'}</span> : m.kind === 'location' ? (
                         <LocationPinCard body={m.body} />
                       ) : <>
-                        {m.file && m.kind === 'image' && <a href={m.file.url} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-xl"><img src={m.file.url} alt={m.file.name} loading="lazy" className="max-h-[320px] w-full max-w-[320px] object-cover" /></a>}
-                        {m.file && m.kind === 'video' && <video src={m.file.url} controls className="mb-1 max-h-[320px] max-w-[320px] rounded-xl" />}
-                        {m.file && m.kind === 'voice' && <div className="flex items-center gap-2 py-1"><Mic size={16} className="text-[#0e9f6e]" /><audio src={m.file.url} controls preload="metadata" className="h-9 w-[240px] max-w-full" /></div>}
-                        {m.file && m.kind === 'file' && <a href={`${m.file.url}?download=1`} className="mb-1 flex items-center gap-3 rounded-xl bg-black/5 px-3 py-2.5 no-underline"><FileText size={26} className="text-[#dc2626]" /><span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-medium text-[#121212]">{m.file.name}</b><small className="text-[#737373]">{fmtSize(m.file.size)} · {m.file.name.split('.').pop()?.toUpperCase()}</small></span><Download size={17} className="text-[#737373]" /></a>}
+                        {m.file && m.kind === 'image' && <a href={resolveApiUrl(m.file.url)} onClick={e => { e.preventDefault(); void openAuthFile(m.file!.url, m.file!.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-xl"><AuthImg src={m.file.url} alt={m.file.name} loading="lazy" className="max-h-[320px] w-full max-w-[320px] object-cover" /></a>}
+                        {m.file && m.kind === 'video' && <AuthVideo src={m.file.url} controls className="mb-1 max-h-[320px] max-w-[320px] rounded-xl" />}
+                        {m.file && m.kind === 'voice' && <div className="flex items-center gap-2 py-1"><Mic size={16} className="text-[#0e9f6e]" /><AuthAudio src={m.file.url} controls preload="metadata" className="h-9 w-[240px] max-w-full" /></div>}
+                        {m.file && m.kind === 'file' && <a href={resolveApiUrl(`${m.file.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${m.file!.url}?download=1`, m.file!.name).catch(err => toast.error(err.message)) }} className="mb-1 flex items-center gap-3 rounded-xl bg-black/5 px-3 py-2.5 no-underline"><FileText size={26} className="text-[#dc2626]" /><span className="min-w-0 flex-1"><b className="block truncate text-[13.5px] font-medium text-[#121212]">{m.file.name}</b><small className="text-[#737373]">{fmtSize(m.file.size)} · {m.file.name.split('.').pop()?.toUpperCase()}</small></span><Download size={17} className="text-[#737373]" /></a>}
                         {m.body && <span className="whitespace-pre-wrap break-words"><Rich text={m.body} /></span>}
                       </>}
                       <span className="float-right ml-3 mt-1.5 flex translate-y-0.5 items-center gap-1 text-[11px] text-[#8b8b8b]">{m.edited && <span>Edited</span>}{timeOf(m.created_at)}{mine && m.kind !== 'deleted' && <Ticks status={m.status} pending={m.pending} failed={m.failed} />}</span>
@@ -735,7 +736,11 @@ function Conversation({ thread, typing, onBack, showInfo, setShowInfo, threads, 
             <button key={d.key} type="button" className="flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2.5 text-left hover:bg-[#f7f7f7]"
               onClick={() => {
                 setDocOpen(false)
-                const fullUrl = d.url.startsWith('http') ? d.url : `${window.location.origin}${d.url}`
+                const fullUrl = d.url.startsWith('http')
+                  ? d.url
+                  : d.url.startsWith('/api/')
+                    ? resolveApiUrl(d.url)
+                    : `${window.location.origin}${d.url}`
                 void deliverOptimistic('text', `📄 *${d.title}*\n${fullUrl}`)
               }}>
               <FileText size={20} className="shrink-0 text-[#0e9f6e]" />
@@ -795,7 +800,7 @@ function InfoPanel({ info, thread, people, onClose, onReport }: { info: Info; th
       {info.media.length > 0 && (
         <div className="mt-2 bg-white px-6 py-4">
           <div className="web-eyebrow mb-3">Media, docs & voice · {info.media.length}</div>
-          <div className="grid grid-cols-3 gap-1.5">{info.media.slice(0, 9).map(f => f.mime.startsWith('image/') ? <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg bg-[#f5f5f5]"><img src={f.url} alt={f.name} className="size-full object-cover" loading="lazy" /></a> : <a key={f.id} href={`${f.url}?download=1`} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-[#f5f5f5] p-2 text-center no-underline">{f.mime.startsWith('audio/') ? <Mic size={20} className="text-[#0e9f6e]" /> : <FileText size={20} className="text-[#dc2626]" />}<span className="line-clamp-2 text-[10px] text-[#4a4a4a]">{f.name}</span></a>)}</div>
+          <div className="grid grid-cols-3 gap-1.5">{info.media.slice(0, 9).map(f => f.mime.startsWith('image/') ? <a key={f.id} href={resolveApiUrl(f.url)} onClick={e => { e.preventDefault(); void openAuthFile(f.url, f.name).catch(err => toast.error(err.message)) }} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg bg-[#f5f5f5]"><AuthImg src={f.url} alt={f.name} className="size-full object-cover" loading="lazy" /></a> : <a key={f.id} href={resolveApiUrl(`${f.url}?download=1`)} onClick={e => { e.preventDefault(); void downloadAuthFile(`${f.url}?download=1`, f.name).catch(err => toast.error(err.message)) }} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-[#f5f5f5] p-2 text-center no-underline">{f.mime.startsWith('audio/') ? <Mic size={20} className="text-[#0e9f6e]" /> : <FileText size={20} className="text-[#dc2626]" />}<span className="line-clamp-2 text-[10px] text-[#4a4a4a]">{f.name}</span></a>)}</div>
         </div>
       )}
       {group && (

@@ -2,7 +2,10 @@ package ae.swkproperties.os;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -59,14 +62,44 @@ public class SwkSecurePlugin extends Plugin {
     private static volatile WeakReference<SwkSecurePlugin> activePluginRef = new WeakReference<>(null);
 
     private SharedPreferences prefs;
+    private boolean dutyReceiverRegistered = false;
+    private final BroadcastReceiver dutyEndedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent != null && SwkFieldLocationService.ACTION_DUTY_ENDED.equals(intent.getAction())) {
+                JSObject payload = new JSObject();
+                payload.put("ended", true);
+                emitBridgeEvent("swkDutyEnded", payload);
+            }
+        }
+    };
 
     @Override
     public void load() {
         activePluginRef = new WeakReference<>(this);
+        if (!dutyReceiverRegistered) {
+            try {
+                ContextCompat.registerReceiver(
+                    getContext(),
+                    dutyEndedReceiver,
+                    new IntentFilter(SwkFieldLocationService.ACTION_DUTY_ENDED),
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                );
+                dutyReceiverRegistered = true;
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @Override
     protected void handleOnDestroy() {
+        if (dutyReceiverRegistered) {
+            dutyReceiverRegistered = false;
+            try {
+                getContext().unregisterReceiver(dutyEndedReceiver);
+            } catch (Exception ignored) {
+            }
+        }
         SwkSecurePlugin current = activePluginRef.get();
         if (current == this) {
             activePluginRef = new WeakReference<>(null);
@@ -391,7 +424,15 @@ public class SwkSecurePlugin extends Plugin {
 
     @PluginMethod
     public void stopDuty(PluginCall call) {
-        getContext().stopService(new Intent(getContext(), SwkFieldLocationService.class));
+        Context ctx = getContext();
+        if (SwkFieldLocationService.isRunning()) {
+            ctx.startService(
+                new Intent(ctx, SwkFieldLocationService.class)
+                    .setAction(SwkFieldLocationService.ACTION_STOP_DUTY)
+            );
+        } else {
+            ctx.stopService(new Intent(ctx, SwkFieldLocationService.class));
+        }
         call.resolve();
     }
 

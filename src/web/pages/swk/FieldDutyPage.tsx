@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { get, post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
-import { getVerifiedDeviceFix, startNativeFieldDuty, stopNativeFieldDuty } from '../../lib/mobileBridge'
+import { getVerifiedDeviceFix, isNativeMobile, onNativeDutyEnded, startNativeFieldDuty, stopNativeFieldDuty } from '../../lib/mobileBridge'
 import { useToast } from '../../lib/toast'
 import { ModuleHeader, Pill } from '../../swk/ui'
 import { ErrorBox, Loading, Modal } from '../../ui/kit'
@@ -178,6 +178,7 @@ export default function FieldDutyPage() {
   const [gpsError, setGpsError] = useState('')
   const [spoofWarning, setSpoofWarning] = useState('')
   const [syncing, setSyncing] = useState(false)
+  const [nativeDutyState, setNativeDutyState] = useState<'idle' | 'starting' | 'active' | 'fallback'>('idle')
 
   const [sosModalOpen, setSosModalOpen] = useState(false)
   const [sosReason, setSosReason] = useState('')
@@ -315,19 +316,50 @@ export default function FieldDutyPage() {
 
   // Native foreground GPS service binding when active duty session starts/stops
   useEffect(() => {
+    const offEnded = onNativeDutyEnded(() => {
+      setNativeDutyState('idle')
+      void loadSession()
+    })
+    return offEnded
+  }, [loadSession])
+
+  useEffect(() => {
     if (!activeSession?.id) {
+      setNativeDutyState('idle')
       void stopNativeFieldDuty()
       return
     }
+    if (!isNativeMobile()) {
+      setNativeDutyState('fallback')
+      return
+    }
+    let cancelled = false
+    setNativeDutyState('starting')
     void startNativeFieldDuty({
       sessionId: activeSession.id,
       assignedLocation: String(activeSession.assigned_location || 'SWK Field Duty'),
+    }).then(started => {
+      if (!cancelled) {
+        setNativeDutyState(started ? 'active' : 'fallback')
+      }
     })
+    return () => {
+      cancelled = true
+    }
   }, [activeSession?.id, activeSession?.assigned_location])
 
-  // Geolocation watchPosition + 20s ping batcher when on active duty
+  // Geolocation watchPosition (Web or native-start fallback ONLY) vs 20s state refresh when native service runs
   useEffect(() => {
     if (!activeSession || !me?.id) return
+    if (isNativeMobile()) {
+      if (nativeDutyState === 'idle' || nativeDutyState === 'starting') return
+      if (nativeDutyState === 'active') {
+        const refreshTimer = window.setInterval(() => {
+          void loadSession()
+        }, 20_000)
+        return () => window.clearInterval(refreshTimer)
+      }
+    }
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setGpsError('Geolocation API is not supported on this device/browser.')
       return
@@ -405,7 +437,7 @@ export default function FieldDutyPage() {
       window.clearInterval(batchTimer)
       window.removeEventListener('online', replayOnline)
     }
-  }, [activeSession?.id, data?.config?.max_accuracy_m, flushQueue, me?.id, storageKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, data?.config?.max_accuracy_m, flushQueue, loadSession, me?.id, nativeDutyState, storageKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Own breadcrumb mini Leaflet map
   const trailPoints = useMemo(() => data?.points ?? [], [data?.points])

@@ -90,6 +90,7 @@ public class SwkFieldLocationService extends Service {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final List<BufferedPoint> pending = new ArrayList<>();
     private final AtomicLong seq = new AtomicLong(0);
+    private final AtomicLong dutyGeneration = new AtomicLong(0);
 
     private FusedLocationProviderClient fused;
     private LocationCallback callback;
@@ -134,22 +135,29 @@ public class SwkFieldLocationService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_END_DUTY.equals(action)) {
-            if (!dutyActive && hasFineLocation()) {
-                // Ensure foreground contract holds if Android invokes via getForegroundService()
-                try {
-                    Notification notification = buildNotification();
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-                    } else {
-                        startForeground(NOTIFICATION_ID, notification);
+            if (!dutyActive) {
+                if (hasFineLocation()) {
+                    // Ensure foreground contract holds if Android invokes via getForegroundService()
+                    try {
+                        Notification notification = buildNotification();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                        } else {
+                            startForeground(NOTIFICATION_ID, notification);
+                        }
+                    } catch (RuntimeException ignored) {
                     }
-                } catch (RuntimeException ignored) {
                 }
+                sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
+                stopForeground(STOP_FOREGROUND_REMOVE);
+                stopSelf();
+                return START_NOT_STICKY;
             }
             finishDuty(true);
             return START_NOT_STICKY;
         }
 
+        dutyGeneration.incrementAndGet();
         stopping = false;
         sessionId = intent.getIntExtra(EXTRA_SESSION_ID, -1);
         String loc = intent.getStringExtra(EXTRA_LOCATION);
@@ -355,8 +363,10 @@ public class SwkFieldLocationService extends Service {
             callback = null;
         }
 
+        final long gen = dutyGeneration.get();
         final int endedSession = sessionId;
-        final boolean canNotify = notifyServer && endedSession > 0 && isAllowedServer(serverUrl) && !sessionToken.isEmpty();
+        final boolean canFlush = endedSession > 0 && isAllowedServer(serverUrl) && !sessionToken.isEmpty();
+        final boolean canNotify = notifyServer && canFlush;
 
         if (io.isShutdown()) {
             stopForeground(STOP_FOREGROUND_REMOVE);
@@ -367,11 +377,13 @@ public class SwkFieldLocationService extends Service {
 
         io.execute(() -> {
             try {
-                if (canNotify) {
+                if (canFlush) {
                     try {
                         flush();
                     } catch (Exception ignored) {
                     }
+                }
+                if (canNotify) {
                     try {
                         post("/api/field-gps/sessions/stop", new JSONObject());
                     } catch (Exception ignored) {
@@ -382,6 +394,7 @@ public class SwkFieldLocationService extends Service {
                 }
             } finally {
                 mainHandler.post(() -> {
+                    if (dutyGeneration.get() != gen) return;
                     sendBroadcast(new Intent(ACTION_DUTY_ENDED).setPackage(getPackageName()));
                     stopForeground(STOP_FOREGROUND_REMOVE);
                     stopSelf();

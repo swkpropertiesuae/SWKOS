@@ -167,7 +167,66 @@ export default async function (app: FastifyInstance) {
     const u = req.user!
     if (u.party_id) throw new HttpError(403, 'Staff only')
     reply.header('cache-control', 'no-store')
-    return issueStreamTicket(u.id, req.sessionDeviceId ?? null)
+    return issueStreamTicket(u.id, req.sessionDeviceId ?? null, req.sessionHash ?? null)
+  })
+
+  app.post('/api/auth/verify-password', { config: { rateLimit: { max: 12, timeWindow: '1 minute' } } }, async (req) => {
+    const u = req.user!
+    if (u.apiKey) throw new HttpError(403, 'API keys cannot verify interactive user passwords')
+    const b = z.object({
+      password: z.string().min(1).max(200),
+      totp: z.string().max(10).optional(),
+    }).parse(req.body ?? {})
+    const row = q.get<any>(
+      `SELECT id, email, active, password_hash, totp_secret, failed_logins, locked_until FROM users WHERE id = ? AND deleted_at IS NULL`,
+      u.id,
+    )
+    const logVerify = (success: boolean, reason: string) =>
+      q.run(
+        `INSERT INTO login_events(at, email, user_id, success, reason, ip, user_agent) VALUES (?,?,?,?,?,?,?)`,
+        nowIso(),
+        String(row?.email || u.email).toLowerCase(),
+        u.id,
+        success ? 1 : 0,
+        reason,
+        req.ip ?? null,
+        String(req.headers['user-agent'] ?? '').slice(0, 200),
+      )
+    if (row?.locked_until && row.locked_until > nowIso().slice(0, 16)) {
+      logVerify(false, 'verify_locked')
+      throw new HttpError(423, 'Account temporarily locked after repeated failures. Try again in 15 minutes.')
+    }
+    const ok = verifyPassword(b.password, row?.password_hash)
+    if (!row || !ok || !row.active) {
+      if (row) {
+        const fails = (row.failed_logins ?? 0) + 1
+        q.run(
+          `UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?`,
+          fails,
+          fails >= 5 ? new Date(Date.now() + 15 * 60_000).toISOString().slice(0, 16) : null,
+          row.id,
+        )
+      }
+      logVerify(false, !row ? 'verify_unknown' : !row.active ? 'verify_inactive' : 'verify_bad_password')
+      throw new HttpError(401, 'Incorrect password')
+    }
+    if (row.totp_secret) {
+      if (!b.totp) return { ok: false, needsTotp: true }
+      if (!verifyTotp(decryptSecret(row.totp_secret), b.totp)) {
+        const fails = (row.failed_logins ?? 0) + 1
+        q.run(
+          `UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?`,
+          fails,
+          fails >= 5 ? new Date(Date.now() + 15 * 60_000).toISOString().slice(0, 16) : null,
+          row.id,
+        )
+        logVerify(false, 'verify_bad_totp')
+        throw new HttpError(401, 'Invalid authenticator code')
+      }
+    }
+    q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`, row.id)
+    logVerify(true, 'verify_ok')
+    return { ok: true }
   })
 
   app.post('/api/auth/devices/:id/revoke', async (req) => {

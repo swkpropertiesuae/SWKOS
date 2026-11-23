@@ -107,7 +107,7 @@ function writeStorage(key: string, value: string): void {
 }
 
 function isVaultTarget(raw: string): boolean {
-  return /(?:sip:)?\d*vt_[0-9a-f]{8,}/i.test(raw)
+  return /(?:sip:)?[0-9A-Za-z*#+_-]{0,16}vt_[0-9a-f]{8,}/i.test(raw)
 }
 
 class SwkSipClient {
@@ -144,6 +144,7 @@ class SwkSipClient {
   private wakeConnecting = false
   private wakeReconnectTimer: number | null = null
   private configCache: SipMyConfigResponse | null = null
+  private registeredUserId: number | null = null
 
   getSnapshot = (): SipClientSnapshot => this.snapshot
 
@@ -397,16 +398,25 @@ class SwkSipClient {
     osc.stop(now + 0.46)
   }
 
-  async init(force = false): Promise<void> {
-    if (this.initPromise && !force) return this.initPromise
-    this.initPromise = this._initInternal(force).finally(() => {
+  async init(forceOrUserId: boolean | number | null = false, forceArg = false): Promise<void> {
+    const force = typeof forceOrUserId === 'boolean' ? forceOrUserId : forceArg
+    const userId = typeof forceOrUserId === 'number' ? forceOrUserId : this.registeredUserId
+    const userSwitched = userId !== null && this.registeredUserId !== null && userId !== this.registeredUserId
+    if (userSwitched) {
+      await this.teardownAgent()
+      this.registeredUserId = null
+      this.configCache = null
+    }
+    const effectiveForce = force || userSwitched
+    if (this.initPromise && !effectiveForce) return this.initPromise
+    this.initPromise = this._initInternal(effectiveForce, userId).finally(() => {
       this.initPromise = null
     })
     return this.initPromise
   }
 
-  private async _initInternal(force: boolean): Promise<void> {
-    if (this.ua && !force && this.snapshot.registration === 'registered') return
+  private async _initInternal(force: boolean, userId: number | null): Promise<void> {
+    if (this.ua && !force && this.snapshot.registration === 'registered' && this.registeredUserId === userId) return
 
     let cfg: SipMyConfigResponse
     try {
@@ -520,6 +530,7 @@ class SwkSipClient {
 
     this.ua = ua
     this.registerer = registerer
+    if (userId !== null) this.registeredUserId = userId
 
     try {
       await ua.start()
@@ -577,6 +588,8 @@ class SwkSipClient {
   async disconnect(): Promise<void> {
     this.wakeRefCount = 0
     this.stopWakeStream()
+    this.registeredUserId = null
+    this.configCache = null
     await this.teardownAgent()
     this.emit({ registration: this.snapshot.configured ? 'disconnected' : 'unconfigured' })
   }
