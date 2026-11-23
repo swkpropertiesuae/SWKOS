@@ -47,16 +47,17 @@ export function seedCompliance(opts: { demo?: boolean } = {}) {
   }
   const cur = (k: string) => String(getSetting(k) ?? '')
   setSettings({
-    company_name: cur('company_name') || 'SWK Properties L.L.C',
+    company_name: cur('company_name') || 'SWK Properties LLC',
     company_name_ar: cur('company_name_ar') || 'إس دبليو كي العقارية ش.ذ.م.م', licence_name_en: cur('licence_name_en') || 'SWK PROPERTIES L.L.C.',
     company_legal_form: cur('company_legal_form') || 'Limited Liability Company – Single Owner (LLC – SO)',
-    licence_authority: cur('licence_authority') || 'Dubai Economy and Tourism (DET)',
+    licence_authority: cur('licence_authority') || 'Department of Economy and Tourism (DET), Dubai',
+    company_trade_license: cur('company_trade_license') || '1511391',
     company_address: cur('company_address'),
   })
   for (const [en, ar, covers, notes] of ACTIVITIES)
     if (!q.val(`SELECT 1 FROM licence_activities WHERE activity_en = ? AND deleted_at IS NULL`, en)) createRecord(getDef('licence_activities'), { activity_en: en, activity_ar: ar, covers, notes, status: 'Active', source: 'Trade licence' }, SYSTEM_CTX)
   put([
-    { type: 'Trade licence', name: 'Commercial licence (DET)', authority: 'Dubai Economy and Tourism (DET)', status: 'To verify', portal_url: 'https://www.dubaided.gov.ae', notes: 'Enter the licence number, issue and expiry dates from the DET licence. Licence conditions to check: no change of location or licence details without DET approval; separate permits for extra offices; signboard in Arabic and English; invoices must show amounts and VAT.' },
+    { type: 'Trade licence', name: 'Commercial licence (DET)', reference_no: '1511391', authority: 'Department of Economy and Tourism (DET), Dubai', status: 'To verify', portal_url: 'https://www.dubaided.gov.ae', notes: 'DET Trade Licence No. 1511391 for SWK Properties LLC. Enter issue and expiry dates from the DET licence. Licence conditions to check: no change of location or licence details without DET approval; separate permits for extra offices; signboard in Arabic and English; invoices must show amounts and VAT.' },
     { type: 'Commercial register', name: 'Commercial register certificate', authority: 'Dubai Economy and Tourism (DET)', status: 'To verify', notes: 'Enter the register number, issue and expiry dates.' },
     { type: 'Chamber of Commerce membership', name: 'Dubai Chamber of Commerce & Industry membership', authority: 'Dubai Chamber of Commerce & Industry', status: 'To verify', portal_url: 'http://www.dubaichamber.ae/verify', notes: 'Enter the membership number, issue and expiry dates.' },
     ...common(),

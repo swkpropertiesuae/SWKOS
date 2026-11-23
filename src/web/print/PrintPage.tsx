@@ -1,5 +1,5 @@
 import { documentNotice,documentRecipient,useDocumentSeal } from '@shared/document-presentation'
-import { normalizeSwkCompanyName } from '@shared/corporate-footer'
+import { corporateFooterDetails } from '@shared/corporate-footer'
 import { CorporateFooter } from '../components/CorporateFooter'
 import { DocumentPrinter } from '../components/ui/document-printer'
 import { createContext,useContext,useEffect,useRef,useState,type ReactNode } from 'react'
@@ -17,18 +17,18 @@ import { StudioDoc } from '../pages/StudioPage'
 const S = () => useMeta().meta!.settings
 export function Letterhead() {
   const s = S()
-  const companyName = normalizeSwkCompanyName(s.company_name)
+  const c = corporateFooterDetails(s)
   return (
     <header className="swk-letterhead">
       <div className="swk-letterhead-brand">
         <img src="/brand/web/swk-icon-192.webp" alt="" className="swk-letterhead-icon" />
-        <img src="/brand/web/swk-logo-light.webp" alt={companyName} className="swk-letterhead-word" />
+        <img src="/brand/web/swk-logo-light.webp" alt={c.name} className="swk-letterhead-word" />
       </div>
       <div className="swk-letterhead-details">
-        <b>{companyName}</b>
-        <span>{s.company_address}</span>
-        <span>{[s.company_phone && `T ${s.company_phone}`, s.company_info_email || s.company_email].filter(Boolean).join('  ·  ')}</span>
-        <span className="swk-letterhead-reg">RERA ORN 51517  ·  www.swkpropertiesuae.com</span>
+        <b>{c.name}</b>
+        <span>{c.address}</span>
+        <span>{[c.phone && `T ${c.phone}`, c.email].filter(Boolean).join('  ·  ')}</span>
+        <span className="swk-letterhead-reg">RERA ORN {c.orn}{c.tradeLicense ? `  ·  DET Licence ${c.tradeLicense}` : ''}  ·  www.swkpropertiesuae.com</span>
       </div>
     </header>
   )

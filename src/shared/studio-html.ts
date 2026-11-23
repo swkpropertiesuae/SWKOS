@@ -1,5 +1,5 @@
 // Helpers shared by the Document Studio server and web app. Pure string functions – no DOM needed.
-import { normalizeSwkCompanyName,normalizeSwkWebsitesText } from './corporate-footer';
+import { SWK_COMPANY_ADDRESS,SWK_COMPANY_EMAIL,SWK_COMPANY_HOURS,SWK_COMPANY_PHONE,SWK_RERA_ORN,SWK_TRADE_LICENSE,normalizeSwkCompanyName,normalizeSwkWebsitesText } from './corporate-footer';
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -15,9 +15,19 @@ export const longDate = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.
 /** Replace {{company.*}}, {{today}} and {{year}} with the company's own details. Unknown tokens are left alone. */
 export function mergeCompanyTokens(html: string, s: CompanyTokens, todayIso: string): string {
   const map: Record<string, string> = {
-    'company.name': normalizeSwkCompanyName(s.company_name), 'company.name_ar': s.company_name_ar ?? '', 'company.address': s.company_address ?? '', 'company.phone': s.company_phone ?? '',
-    'company.email': s.company_email ?? '', 'company.info_email': s.company_info_email ?? '', 'company.website': normalizeSwkWebsitesText(s.company_website),
-    'company.trn': s.company_trn ?? '', 'company.trade_license': s.company_trade_license ?? '', today: longDate(todayIso), year: todayIso.slice(0, 4),
+    'company.name': normalizeSwkCompanyName(s.company_name),
+    'company.name_ar': s.company_name_ar ?? '',
+    'company.address': (s.company_address || '').trim() || SWK_COMPANY_ADDRESS,
+    'company.phone': (s.company_phone || '').trim() || SWK_COMPANY_PHONE,
+    'company.email': (s.company_email || s.company_info_email || '').trim() || SWK_COMPANY_EMAIL,
+    'company.info_email': (s.company_info_email || s.company_email || '').trim() || SWK_COMPANY_EMAIL,
+    'company.website': normalizeSwkWebsitesText(s.company_website),
+    'company.orn': SWK_RERA_ORN,
+    'company.hours': SWK_COMPANY_HOURS,
+    'company.trn': s.company_trn ?? '',
+    'company.trade_license': (s.company_trade_license || '').trim() || SWK_TRADE_LICENSE,
+    today: longDate(todayIso),
+    year: todayIso.slice(0, 4),
   }
   for (const key of ['company_address_ar', 'dcci_no', 'commercial_register_no', 'company_legal_form', 'licence_issue_date', 'licence_expiry_date', 'establishment_card_no', 'establishment_card_expiry', 'ct_application_reference', 'ct_application_date', 'ct_application_status'] as const) map[`company.${key.replace(/^company_/, '')}`] = s[key] ?? ''
   return html.replace(/\{\{\s*([a-z_.]+)\s*\}\}/g, (m, k) => (k in map ? (map[k] ? escapeHtml(map[k]).replace(/\n/g, '<br>') : '') : m))
@@ -84,24 +94,30 @@ export function markdownToHtml(md: string): string {
 /** True when text looks like HTML (the editor/AI produced tags) rather than plain text or Markdown. */
 export const looksLikeHtml = (s: string) => /<\/?(p|div|h[1-6]|ul|ol|li|table|tr|td|br|span|strong|em)\b/i.test(s)
 
-/** English document presentation; statutory tax identifiers stay on tax documents only. */
+/** English document presentation; keeps official licence/ORN particulars while restricting Supplier VAT TRN to tax documents. */
 export function presentDocumentHtml(html: string, title = ''): string {
   const tax = /\btax invoice\b|\b(?:tax )?credit note\b|\bdebit note\b/i.test(title)
-  const identifier = /\bTRN\b|trade licen[cs]e|licen[cs]e (?:no|number)|commercial register|chamber membership|establishment card|corporate tax application|company\.(?:trn|trade_license|dcci_no|commercial_register_no|establishment_card_no|ct_application_reference)/i
-  html = html.replace(/Bur Dubai, Dubai, United Arab Emirates/g, 'Bur Dubai, Dubai, UAE')
-  let out = html.replace(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi, row => {
-    // Remove just the matching label/value pair, preserving other fields in the same row.
-    const cells = row.match(/<(?:th|td)\b[^>]*>[\s\S]*?<\/(?:th|td)>/gi)
-    if (!cells) return row
-    const kept: string[] = []
-    for (let i = 0; i < cells.length; i++) {
-      if (identifier.test(cells[i]) && !(tax && /\bTRN\b|company\.trn/i.test(cells[i]))) { if (/^<td\b/i.test(cells[i]) && kept.length && /^<th\b/i.test(kept[kept.length - 1])) kept.pop(); if (/^<th\b/i.test(cells[i]) && cells[i+1] && /^<td\b/i.test(cells[i+1])) i++; continue }
-      kept.push(cells[i])
-    }
-    return kept.length ? '<tr>' + kept.join('') + '</tr>' : ''
-  })
-  out = out.replace(/<p\b[^>]*>[\s\S]*?<\/p>/gi, p => identifier.test(p) && (!tax || /trade licen[cs]e|commercial register|chamber membership|establishment card|corporate tax application/i.test(p)) ? '' : p)
-  out = out.replace(/<li\b[^>]*>[\s\S]*?<\/li>/gi, item => !tax && identifier.test(item) ? '' : item)
+  const supplierTrn = /\bsupplier trn\b|company\.trn/i
+  html = html.replace(/Bur Dubai,\s*Dubai,\s*(?:United Arab Emirates|UAE)/gi, SWK_COMPANY_ADDRESS)
+  let out = html
+  if (!tax) {
+    out = out.replace(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi, row => {
+      const cells = row.match(/<(?:th|td)\b[^>]*>[\s\S]*?<\/(?:th|td)>/gi)
+      if (!cells) return row
+      const kept: string[] = []
+      for (let i = 0; i < cells.length; i++) {
+        if (supplierTrn.test(cells[i])) {
+          if (/^<td\b/i.test(cells[i]) && kept.length && /^<th\b/i.test(kept[kept.length - 1])) kept.pop()
+          if (/^<th\b/i.test(cells[i]) && cells[i + 1] && /^<td\b/i.test(cells[i + 1])) i++
+          continue
+        }
+        kept.push(cells[i])
+      }
+      return kept.length ? '<tr>' + kept.join('') + '</tr>' : ''
+    })
+    out = out.replace(/<p\b[^>]*>[\s\S]*?<\/p>/gi, p => (supplierTrn.test(p) ? '' : p))
+    out = out.replace(/<li\b[^>]*>[\s\S]*?<\/li>/gi, item => (supplierTrn.test(item) ? '' : item))
+  }
   out = out.replace(/\{\{\s*company\.(?:name_ar|address_ar)\s*\}\}/g, '')
   out = out.replace(/[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]+/g, '')
   return out
