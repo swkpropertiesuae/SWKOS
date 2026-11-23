@@ -41,18 +41,103 @@ export function validatePasswordStrength(pw: string) {
   }
 }
 
-// ---------------------------------------------------------------- sessions
+// ---------------------------------------------------------------- sessions & SSE stream tickets
 const sha = (s: string) => crypto.createHash('sha256').update(s).digest('hex')
-export function createSession(userId: number, ip?: string, ua?: string) {
+export function createSession(userId: number, ip?: string, ua?: string, deviceId?: string | null) {
   const token = crypto.randomBytes(32).toString('base64url')
   const now = new Date()
   const exp = new Date(now.getTime() + config.sessionHours * 3600_000)
-  q.run(`INSERT INTO sessions(id, user_id, created_at, expires_at, last_seen, ip, user_agent) VALUES (?,?,?,?,?,?,?)`, sha(token), userId, now.toISOString(), exp.toISOString(), now.toISOString(), ip ?? null, (ua ?? '').slice(0, 200))
+  const cleanDev = deviceId ? String(deviceId).trim().slice(0, 80) : null
+  q.run(
+    `INSERT INTO sessions(id, user_id, created_at, expires_at, last_seen, ip, user_agent, device_id) VALUES (?,?,?,?,?,?,?,?)`,
+    sha(token),
+    userId,
+    now.toISOString(),
+    exp.toISOString(),
+    now.toISOString(),
+    ip ?? null,
+    (ua ?? '').slice(0, 200),
+    cleanDev,
+  )
   return { token, expires: exp }
 }
 export function destroySession(token: string) { q.run(`DELETE FROM sessions WHERE id = ?`, sha(token)) }
 export function destroySessionByHash(hash: string) { q.run(`DELETE FROM sessions WHERE id = ?`, hash) }
-export function destroyUserSessions(userId: number, exceptHash?: string) { q.run(`DELETE FROM sessions WHERE user_id = ? AND id <> ?`, userId, exceptHash ?? '') }
+export function destroyUserSessions(userId: number, exceptHash?: string) {
+  for (const [k, v] of streamTickets) {
+    if (v.userId === userId) streamTickets.delete(k)
+  }
+  q.run(`DELETE FROM sessions WHERE user_id = ? AND id <> ?`, userId, exceptHash ?? '')
+}
+
+const STREAM_TICKET_TTL_MS = 30_000
+interface StreamTicketEntry {
+  userId: number
+  deviceId: string | null
+  isDemo: boolean
+  expiresAt: number
+}
+const streamTickets = new Map<string, StreamTicketEntry>()
+
+export function destroyDeviceSessions(deviceId: string): number {
+  const clean = String(deviceId || '').trim().slice(0, 80)
+  if (!clean) return 0
+  for (const [k, v] of streamTickets) {
+    if (v.deviceId === clean) streamTickets.delete(k)
+  }
+  const res = q.run(`DELETE FROM sessions WHERE device_id = ?`, clean)
+  return Number(res?.changes ?? 0)
+}
+
+export function issueStreamTicket(userId: number, deviceId?: string | null): { ticket: string; expires_in_s: number } {
+  const u = loadUser(userId)
+  if (!u || u.party_id) throw new HttpError(403, 'Staff only')
+  const now = Date.now()
+  for (const [k, v] of streamTickets) {
+    if (v.expiresAt <= now) streamTickets.delete(k)
+  }
+  if (streamTickets.size > 10_000) streamTickets.clear()
+  const ticket = crypto.randomBytes(32).toString('base64url')
+  streamTickets.set(sha(ticket), {
+    userId,
+    deviceId: deviceId ? String(deviceId).trim().slice(0, 80) : null,
+    isDemo: inDemo(),
+    expiresAt: now + STREAM_TICKET_TTL_MS,
+  })
+  return { ticket, expires_in_s: Math.floor(STREAM_TICKET_TTL_MS / 1000) }
+}
+
+export function isDemoStreamTicket(ticket: string | undefined): boolean {
+  if (!ticket || typeof ticket !== 'string') return false
+  const clean = ticket.trim()
+  if (!clean) return false
+  const entry = streamTickets.get(sha(clean))
+  return !!entry && entry.expiresAt > Date.now() && entry.isDemo
+}
+
+export function consumeStreamTicket(ticket: string | undefined): SessionUser | null {
+  if (!ticket || typeof ticket !== 'string') return null
+  const clean = ticket.trim()
+  if (!clean) return null
+  const h = sha(clean)
+  const entry = streamTickets.get(h)
+  if (!entry) return null
+  streamTickets.delete(h)
+  if (Date.now() > entry.expiresAt) return null
+  if (entry.isDemo !== inDemo()) return null
+  if (entry.deviceId) {
+    const dev = q.get<{ status: string; revoked_at: string | null }>(
+      `SELECT status, revoked_at FROM staff_devices WHERE user_id = ? AND device_id = ?`,
+      entry.userId,
+      entry.deviceId,
+    )
+    if (dev && (dev.status === 'Blocked' || !!dev.revoked_at)) return null
+  }
+  const user = loadUser(entry.userId)
+  if (!user || user.party_id) return null
+  return user
+}
+
 export const sessionHash = sha
 
 const NON_ELEVATED_SET = new Set<string>(NON_ELEVATED_ASSIGNABLE_ROLES)
@@ -218,20 +303,33 @@ export function loadUser(userId: number): SessionUser | null {
   return userObj
 }
 
-export function userFromToken(token: string | undefined): { user: SessionUser; hash: string } | null {
+export function userFromToken(token: string | undefined): { user: SessionUser; hash: string; deviceId: string | null } | null {
   if (!token) return null
   const h = sha(token)
   const s = q.get(`SELECT * FROM sessions WHERE id = ?`, h)
   if (!s) return null
   const now = new Date()
   if (new Date(s.expires_at) < now) { q.run(`DELETE FROM sessions WHERE id = ?`, h); return null }
+  const deviceId: string | null = s.device_id ? String(s.device_id) : null
+  if (deviceId) {
+    const dev = q.get<{ status: string; revoked_at: string | null }>(
+      `SELECT status, revoked_at FROM staff_devices WHERE user_id = ? AND device_id = ?`,
+      s.user_id,
+      deviceId,
+    )
+    if (dev && (dev.status === 'Blocked' || !!dev.revoked_at)) {
+      q.run(`DELETE FROM sessions WHERE id = ?`, h)
+      return null
+    }
+  }
   const user = loadUser(s.user_id)
   if (!user) return null
+  if (deviceId && user.party_id) return null
   if (now.getTime() - new Date(s.last_seen).getTime() > 60_000) {
     // sliding expiry
     q.run(`UPDATE sessions SET last_seen = ?, expires_at = ? WHERE id = ?`, now.toISOString(), new Date(now.getTime() + config.sessionHours * 3600_000).toISOString(), h)
   }
-  return { user, hash: h }
+  return { user, hash: h, deviceId }
 }
 
 export function userFromApiKey(key: string | undefined): SessionUser | null {

@@ -8,7 +8,7 @@ import rateLimit from '@fastify/rate-limit'
 import fstatic from '@fastify/static'
 import { config } from './config'
 import { HttpError } from './util'
-import { userFromToken,userFromApiKey } from './auth'
+import { userFromToken,userFromApiKey,consumeStreamTicket,isDemoStreamTicket } from './auth'
 import { enterDb,q } from './db'
 import { can } from './engine'
 import { getDemoDb } from './demo/workspace'
@@ -16,12 +16,17 @@ import type { Ctx,SessionUser } from './engine'
 import { ZodError } from 'zod'
 
 declare module 'fastify' {
-  interface FastifyRequest { user: SessionUser | null; ctx: Ctx; sessionHash?: string }
+  interface FastifyRequest { user: SessionUser | null; ctx: Ctx; sessionHash?: string; sessionDeviceId?: string | null }
 }
 
 export const COOKIE = 'swk_sid'
 export const DEMO_PREFIX = 'demo.'
 const PUBLIC = [/^\/api\/demo\/status$/, /^\/api\/health$/, /^\/api\/auth\/login$/, /^\/api\/public\//, /^\/api\/auth\/branding$/]
+const SSE_TICKET_ENDPOINTS = new Set([
+  '/api/chat/stream',
+  '/api/notifications/stream',
+  '/api/field-gps/stream',
+])
 /**
  * Everything a customer-portal user may call. The record API (/api/e) is scoped to their company by the engine; the rest read their own data only.
  * Any other endpoint is company-wide (bank balances, rate cards, other customers' open items) and stays closed to portal accounts, whatever module permissions the portal role carries.
@@ -33,9 +38,13 @@ const PORTAL_OK = [
 ]
 const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-password', '/api/auth/logout', '/api/auth/sessions', '/api/auth/login-history'])
 
+// Webhook secrets, tracking tokens, and one-time SSE tickets travel in URLs; keep them out of the request log.
+export const redactUrl = (u: string) =>
+  u
+    .replace(/^(\/api\/public\/(?:bank|voice|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
+    .replace(/([?&]ticket=)[^&#]*/gi, '$1[redacted]')
+
 export async function buildApp(): Promise<FastifyInstance> {
-  // Webhook secrets and tracking tokens travel in the URL path; keep them out of the request log.
-  const redactUrl = (u: string) => u.replace(/^(\/api\/public\/(?:bank|voice|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
   const app = Fastify({ logger, trustProxy: config.trustProxy, bodyLimit: 12 * 1024 * 1024 })
 
@@ -49,7 +58,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
 
   await app.register(helmet, {
-    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:'], objectSrc: ["'self'"], frameSrc: ["'self'"], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
+    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:', 'wss:'], objectSrc: ["'self'"], frameSrc: ["'self'"], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
     crossOriginEmbedderPolicy: false, hsts: config.isProd ? { maxAge: 15552000 } : false,
   })
   await app.register(cookie)
@@ -59,7 +68,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.decorateRequest('user', null)
   app.decorateRequest('ctx', null as any)
 
-  // Demo sessions (cookie prefix "demo.") and demo tracking links run against the isolated demo database.
+  // Demo sessions (cookie/mobile prefix "demo.") and demo tracking links run against the isolated demo database.
   app.addHook('onRequest', (req: FastifyRequest, reply, done) => {
     const origin = req.headers.origin
     if (origin && (/^https?:\/\/localhost(:\d+)?$/i.test(origin) || /^https?:\/\/([a-z0-9-]+\.)?(swkpropertiesuae\.com|swk\.properties|swk\.property)$/i.test(origin) || req.url.startsWith('/api/public/reception-qr'))) {
@@ -73,24 +82,47 @@ export async function buildApp(): Promise<FastifyInstance> {
         return
       }
     }
+    const clientHeader = String(req.headers['x-swk-client'] || '').trim().toLowerCase()
+    const mobSession = clientHeader === 'mobile' && typeof req.headers['x-swk-session'] === 'string'
+      ? req.headers['x-swk-session'].trim()
+      : undefined
     const raw = req.cookies?.[COOKIE]
     const url = req.url.split('?')[0]
     const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7).trim() : undefined
     const publicRequest = PUBLIC.some(r => r.test(url))
+    let sseTicket: string | undefined
+    if (!publicRequest && req.method === 'GET' && SSE_TICKET_ENDPOINTS.has(url)) {
+      const qIdx = req.url.indexOf('?')
+      if (qIdx !== -1) {
+        const t = new URLSearchParams(req.url.slice(qIdx + 1)).get('ticket')?.trim()
+        if (t) sseTicket = t
+      }
+    }
+    const tokSource = clientHeader === 'mobile' ? mobSession : raw
     // Public links select their workspace by the link, never by an unrelated browser cookie.
     // API keys always belong to production; a demo cookie must not change their database.
-    const demoRequest = url.startsWith('/api/public/deal/demo-') || url.startsWith('/api/public/track/demo-') || (!publicRequest && !bearer && !!raw?.startsWith(DEMO_PREFIX))
+    const demoRequest =
+      url.startsWith('/api/public/deal/demo-') ||
+      url.startsWith('/api/public/track/demo-') ||
+      (!publicRequest && !bearer && (sseTicket ? isDemoStreamTicket(sseTicket) : !!tokSource?.startsWith(DEMO_PREFIX)))
     const demoDb = demoRequest ? getDemoDb() : null
     if (demoRequest && !demoDb) return done(new HttpError(503, 'The demo workspace is unavailable'))
     enterDb(demoDb ?? undefined, () => {
       try {
         req.user = null
+        req.sessionHash = undefined
+        req.sessionDeviceId = null
         if (!publicRequest && bearer) {
           req.user = userFromApiKey(bearer)
-        } else if (!publicRequest) {
-          const tok = raw
-          const found = userFromToken(tok && tok.startsWith(DEMO_PREFIX) ? tok.slice(DEMO_PREFIX.length) : tok)
-          if (found) { req.user = found.user; req.sessionHash = found.hash }
+        } else if (!publicRequest && sseTicket) {
+          req.user = consumeStreamTicket(sseTicket)
+        } else if (!publicRequest && tokSource) {
+          const found = userFromToken(tokSource.startsWith(DEMO_PREFIX) ? tokSource.slice(DEMO_PREFIX.length) : tokSource)
+          if (found) {
+            req.user = found.user
+            req.sessionHash = found.hash
+            req.sessionDeviceId = found.deviceId
+          }
         }
         const rawReason = typeof req.headers['x-swk-audit-reason'] === 'string' ? req.headers['x-swk-audit-reason'] : undefined
         let auditReason: string | undefined
@@ -109,8 +141,11 @@ export async function buildApp(): Promise<FastifyInstance> {
     if (!url.startsWith('/api/')) return
     if (PUBLIC.some(r => r.test(url))) return
     if (!req.user) throw new HttpError(401, 'Please sign in')
-    // CSRF: cookie/session-authenticated mutations must carry the custom header
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.user.apiKey && req.headers['x-swk-client'] !== 'web') throw new HttpError(403, 'Missing client header')
+    // CSRF: cookie/session-authenticated mutations must carry the custom client header ('web' or 'mobile')
+    const clientHeader = String(req.headers['x-swk-client'] || '').trim().toLowerCase()
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.user.apiKey && clientHeader !== 'web' && clientHeader !== 'mobile') {
+      throw new HttpError(403, 'Missing client header')
+    }
     const mustChange = q.val<number>('SELECT must_change_password FROM users WHERE id = ?', req.user.id)
     if (mustChange && !(PASSWORD_SETUP.has(url) && !req.user.apiKey)) throw new HttpError(403, 'Change your temporary password before using the application')
     if (req.user.party_id && !PORTAL_OK.some(r => r.test(url))) throw new HttpError(403, 'This area is for company staff')

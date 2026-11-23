@@ -247,17 +247,32 @@ export default async function (app: FastifyInstance) {
   })
 
   // ------------------------------------------------------------------ notifications
-  // Server-sent events: one open connection per page, a message for every new notification, a ping every 20 s so proxies keep it open.
+  // Server-sent events: one open connection per page (cookie or mobile stream ticket), a message for every new notification, a ping every 20 s so proxies keep it open.
   app.get('/api/notifications/stream', async (req, reply) => {
     const uid = req.user!.id
     reply.hijack()
     const res = reply.raw
-    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' })
+    const baseHeaders = reply.getHeaders() as Record<string, string | string[] | number | undefined>
+    res.writeHead(200, {
+      ...baseHeaders,
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      'x-accel-buffering': 'no',
+    })
     res.write('retry: 4000\n\n')
     const send = (n: any) => { try { res.write(`event: notification\ndata: ${JSON.stringify(n)}\n\n`) } catch { /* closed */ } }
     liveBus.on('u:' + uid, send)
     const ping = setInterval(() => { try { res.write(': ping\n\n') } catch { /* closed */ } }, 20_000)
-    req.raw.on('close', () => { clearInterval(ping); liveBus.off('u:' + uid, send) })
+    let cleaned = false
+    const cleanup = () => {
+      if (cleaned) return
+      cleaned = true
+      clearInterval(ping)
+      liveBus.off('u:' + uid, send)
+    }
+    req.raw.on('close', cleanup)
+    res.on('close', cleanup)
   })
   app.get('/api/notifications', async (req) => {
     const rows = q.all(`SELECT id, kind, title, body, link, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 60`, req.user!.id)
