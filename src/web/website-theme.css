@@ -196,3 +196,8 @@ table.grid tbody tr:hover td { background: #f8f5ef; }
 .studio-content .contact-strip strong { color: #d4a752; }
 .studio-paper { padding: 16mm 16mm 14mm; }
 @media print { html, body, #root { background: #fff !important; } .swk-main::before { display: none !important; } }
+
+/* Docked messenger (ChatDock) header buttons */
+.dock-btn { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: transparent; color: rgba(255,255,255,.85); cursor: pointer; }
+.dock-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.dock-btn:focus-visible { outline: 2px solid #d4a752; outline-offset: 1px; }

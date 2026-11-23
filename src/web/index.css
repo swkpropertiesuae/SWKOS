@@ -672,3 +672,4 @@ table.grid td.num, table.grid th.num { white-space: nowrap; }
 .app-watermark { position: fixed; inset-inline-end: 18px; bottom: 38px; width: clamp(130px, 13vw, 210px); opacity: .055; pointer-events: none; user-select: none; z-index: 45; mix-blend-mode: multiply; }
 .brand-invert { filter: brightness(0) invert(1); }
 @media print { .app-watermark { display: none !important; } }
+@media (min-width: 768px) { .toast-stack { bottom: 76px; } }
