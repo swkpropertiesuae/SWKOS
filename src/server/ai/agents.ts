@@ -1,4 +1,5 @@
 import { toolPolicy, isToolAllowedForUser } from './policy'
+import { canAccessCrmVault } from '../../shared/swk-staff-access'
 import { q } from '../db'
 import { getSetting } from '../settings'
 import { chat,aiConfigured,type ChatMsg,type ToolDef } from './llm'
@@ -69,11 +70,25 @@ async function execTool(agent: any, runId: number | null, name: string, args: an
 }
 
 /** The agent loop: think → call tools → think … → final answer. */
-async function loop(agent: any, messages: ChatMsg[], runId: number | null, channel: string, maxSteps = MAX_STEPS, caller?: SessionUser | null): Promise<{ text: string; steps: number; tokens: number; model: string }> {
+async function loop(agent: any, messages: ChatMsg[], runId: number | null, channel: string, maxSteps = MAX_STEPS, caller?: SessionUser | null, trigger?: string): Promise<{ text: string; steps: number; tokens: number; model: string }> {
   const tools = allowed(agent, caller)
   const defs = tools.map(toDef)
+  // Executive, scheduled, WhatsApp, and Voice Receptionist runs enforce zero-retention routes.
+  const zeroRetentionOnly =
+    !caller ||
+    canAccessCrmVault(caller) ||
+    trigger === 'schedule' ||
+    trigger === 'automation' ||
+    channel === 'voice' ||
+    channel === 'whatsapp'
   // A caller is waiting on the line: keep replies short and the tool loop tight.
-  const opts = channel === 'voice' ? { maxTokens: 350, temperature: 0.3 } : {}
+  const opts = {
+    ...(channel === 'voice' ? { maxTokens: 350, temperature: 0.3 } : {}),
+    confidential: zeroRetentionOnly,
+    zeroRetentionOnly,
+    user: caller ?? undefined,
+    bypassQuota: true,
+  }
   let tokens = 0, model = '', steps = 0
   for (; steps < maxSteps; steps++) {
     const r = await chat(messages, defs, agent.model || undefined, opts)
@@ -94,7 +109,7 @@ export async function runAgent(agentId: number, task?: string, trigger = 'manual
   const prompt = task || `Run your standing routine now. Today is ${todayStr()}.`
   const runId = insertRow(getDef('ai_runs'), { agent_id: agentId, started_at: nowLocal(), trigger, status: 'running', input: prompt })
   try {
-    const res = await loop(agent, [{ role: 'system', content: systemPrompt(agent, 'report') }, { role: 'user', content: prompt }], runId, 'report', MAX_STEPS, caller)
+    const res = await loop(agent, [{ role: 'system', content: systemPrompt(agent, 'report') }, { role: 'user', content: prompt }], runId, 'report', MAX_STEPS, caller, trigger)
     q.run(`UPDATE ai_runs SET status='ok', output=?, steps=?, tokens=?, model=? WHERE id=?`, res.text, res.steps, res.tokens, res.model, runId)
     q.run(`UPDATE ai_agents SET last_run_at=?, last_status='ok' WHERE id=?`, nowLocal(), agentId)
     await deliver(agent, res.text, trigger)
@@ -125,7 +140,7 @@ export async function chatWithAgent(nameOrId: string | number, message: string, 
   const msgs: ChatMsg[] = [{ role: 'system', content: systemPrompt(agent, channel) }, ...(o.history ?? []).slice(-12).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: message }]
   const runId = insertRow(getDef('ai_runs'), { agent_id: agent.id, started_at: nowLocal(), trigger: channel, status: 'running', input: message.slice(0, 2000) })
   try {
-    const res = await loop(agent, msgs, runId, channel, o.maxSteps, caller)
+    const res = await loop(agent, msgs, runId, channel, o.maxSteps, caller, channel)
     q.run(`UPDATE ai_runs SET status='ok', output=?, steps=?, tokens=?, model=? WHERE id=?`, res.text, res.steps, res.tokens, res.model, runId)
     return res.text
   } catch (e: any) { q.run(`UPDATE ai_runs SET status='failed', error=? WHERE id=?`, String(e?.message ?? e).slice(0, 400), runId); throw e }
