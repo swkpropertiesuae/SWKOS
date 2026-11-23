@@ -243,14 +243,17 @@ export function OmniRouteAdminPanel({ compact = false }: { compact?: boolean }) 
     let tokensToday = 0
     for (const r of routes) {
       const h = healthMap.get(r.id)
-      const cdMs = (h?.cooldown_until ?? r.cooldown_until) ? Date.parse((h?.cooldown_until ?? r.cooldown_until)!) - nowTick : 0
-      const st = !r.enabled ? 'disabled' : cdMs > 0 ? 'cooldown' : (h?.last_error ?? r.last_error) ? 'degraded' : 'healthy'
+      const cdUntil = h ? h.cooldown_until : r.cooldown_until
+      const lastErr = h ? h.last_error : r.last_error
+      const isEnabled = h ? h.enabled : r.enabled
+      const cdMs = cdUntil ? Date.parse(cdUntil) - nowTick : 0
+      const st = !isEnabled ? 'disabled' : cdMs > 0 ? 'cooldown' : lastErr ? 'degraded' : 'healthy'
       if (st === 'healthy') healthy++
       else if (st === 'degraded') degraded++
       else if (st === 'cooldown') cooldown++
       else disabled++
-      reqToday += h?.req_today ?? r.req_today ?? 0
-      tokensToday += h?.tokens_today ?? r.tokens_today ?? 0
+      reqToday += h ? h.req_today : (r.req_today ?? 0)
+      tokensToday += h ? h.tokens_today : (r.tokens_today ?? 0)
     }
     return { total: routes.length, healthy, degraded, cooldown, disabled, reqToday, tokensToday }
   }, [routes, healthMap, nowTick])
@@ -618,10 +621,12 @@ export function OmniRouteAdminPanel({ compact = false }: { compact?: boolean }) 
           <div className="divide-y divide-line">
             {routes.map(route => {
               const h = healthMap.get(route.id)
-              const cdUntil = h?.cooldown_until ?? route.cooldown_until
+              const cdUntil = h ? h.cooldown_until : route.cooldown_until
               const cdRemaining = cdUntil ? Math.max(0, Math.ceil((Date.parse(cdUntil) - nowTick) / 1000)) : 0
-              const lastErr = h?.last_error ?? route.last_error
-              const status: 'healthy' | 'degraded' | 'cooldown' | 'disabled' = !route.enabled
+              const lastErr = h ? h.last_error : route.last_error
+              const lastOkAt = h ? h.last_ok_at : route.last_ok_at
+              const isEnabled = h ? h.enabled : route.enabled
+              const status: 'healthy' | 'degraded' | 'cooldown' | 'disabled' = !isEnabled
                 ? 'disabled'
                 : cdRemaining > 0
                   ? 'cooldown'
@@ -677,11 +682,21 @@ export function OmniRouteAdminPanel({ compact = false }: { compact?: boolean }) 
                         <span>
                           Key:{' '}
                           {route.has_key ? (
-                            <span className="text-[#0e9f6e] font-semibold">Encrypted</span>
+                            <span className="text-[#0e9f6e] font-semibold">
+                              Encrypted{' '}
+                              <code className="font-mono text-ink bg-soft px-1.5 py-0.5 rounded">
+                                {route.api_key_masked || '********'}
+                              </code>
+                            </span>
                           ) : (
                             <span className="text-muted">None</span>
                           )}
                         </span>
+                        {lastOkAt && (
+                          <span>
+                            Last OK: <span className="text-ink">{lastOkAt.replace('T', ' ').slice(0, 19)}</span>
+                          </span>
+                        )}
                         <span className="truncate max-w-[340px]" title={route.base_url}>
                           {route.base_url}
                         </span>

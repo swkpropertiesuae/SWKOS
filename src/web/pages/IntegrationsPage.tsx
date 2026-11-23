@@ -34,32 +34,34 @@ export function IntegrationsPage() {
       <div className="grid gap-3 max-w-5xl">
         {isOmniAdmin && (
           <div className="card overflow-hidden border border-[#0e9f6e]/35">
-            <button
-              className="w-full flex items-center gap-3 p-4 text-start bg-transparent border-0 cursor-pointer"
-              onClick={() => setOpen(open === 'omni-route' ? null : 'omni-route')}
-              aria-expanded={open === 'omni-route'}
-            >
-              <div className="w-10 h-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center flex-none">
-                <Layers size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-display font-extrabold text-ink flex items-center gap-2 flex-wrap">
-                  <span>Omni-Route AI Pool &amp; Failover</span>
-                  <span className="badge green">15 Presets · Multi-Key</span>
+            <div className="flex items-center gap-2 pr-4">
+              <button
+                type="button"
+                className="flex-1 min-w-0 flex items-center gap-3 p-4 text-start bg-transparent border-0 cursor-pointer"
+                onClick={() => setOpen(open === 'omni-route' ? null : 'omni-route')}
+                aria-expanded={open === 'omni-route'}
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center flex-none">
+                  <Layers size={20} />
                 </div>
-                <div className="text-[13px] text-muted">
-                  Manage free-tier keys, Tier-1 paid &amp; local Ollama routes, live green/amber/red health, PII Shield &amp; staff fair-share quotas.
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-extrabold text-ink flex items-center gap-2 flex-wrap">
+                    <span>Omni-Route AI Pool &amp; Failover</span>
+                    <span className="badge green">15 Presets · Multi-Key</span>
+                  </div>
+                  <div className="text-[13px] text-muted">
+                    Manage free-tier keys, Tier-1 paid &amp; local Ollama routes, live green/amber/red health, PII Shield &amp; staff fair-share quotas.
+                  </div>
                 </div>
-              </div>
+                {open === 'omni-route' ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+              </button>
               <Link
                 to="/ai?tab=omni-route"
-                onClick={e => e.stopPropagation()}
-                className="btn outline sm"
+                className="btn outline sm shrink-0"
               >
                 Full Console <ArrowUpRight size={13} />
               </Link>
-              {open === 'omni-route' ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-            </button>
+            </div>
             {open === 'omni-route' && (
               <div className="border-t border-line p-4 md:p-5">
                 <OmniRouteAdminPanel compact />
