@@ -211,10 +211,15 @@ export default async function sipRoutes(app: FastifyInstance) {
     const propertyId = idOf((req.params as any).propertyId)
 
     const sipEnabled = Boolean(getSetting('sip_enabled'))
+    const sipWsUrl = String(getSetting('sip_ws_url') || '').trim()
     const sipDomain = String(getSetting('sip_domain') || '').trim()
     const vaultPrefix = String(getSetting('sip_vault_bridge_prefix') || '').trim()
+    const callerExtension = q.get<{ id: number }>(
+      `SELECT id FROM sip_extensions WHERE user_id = ? AND active = 1`,
+      user.id,
+    )
 
-    if (sipEnabled && sipDomain && vaultPrefix) {
+    if (sipEnabled && sipWsUrl && sipDomain && vaultPrefix && callerExtension) {
       const { ownerE164 } = resolveVaultOwnerForMaskedCall(user, propertyId)
       const token = 'vt_' + crypto.randomBytes(12).toString('hex')
       const tokenHash = sha256Hex(token)

@@ -43,6 +43,7 @@ export function SipSoftphoneDock() {
   const [dialInput, setDialInput] = useState('')
   const [showDtmf, setShowDtmf] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
+  const [transferMode, setTransferMode] = useState<'blind' | 'attended'>('blind')
   const [transferTarget, setTransferTarget] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -64,6 +65,7 @@ export function SipSoftphoneDock() {
   if (!isStaff) return null
 
   const call = snap.activeCall
+  const consult = snap.consultCall
   const statusColor =
     snap.registration === 'registered'
       ? 'bg-[#0e9f6e]'
@@ -89,12 +91,45 @@ export function SipSoftphoneDock() {
     if (!transferTarget.trim() || busy) return
     setBusy(true)
     try {
-      await sipClient.transferBlind(transferTarget.trim())
-      toast.ok(`Transferred call to ${transferTarget.trim()}`)
+      if (transferMode === 'attended') {
+        await sipClient.startAttendedTransfer(transferTarget.trim())
+        toast.ok(`Dialing consultation target ${transferTarget.trim()} (primary call on hold)`)
+      } else {
+        await sipClient.transferBlind(transferTarget.trim())
+        toast.ok(`Transferred call to ${transferTarget.trim()}`)
+        setShowTransfer(false)
+        setTransferTarget('')
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Transfer failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleCompleteAttended = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await sipClient.completeAttendedTransfer()
+      toast.ok('Attended transfer completed')
       setShowTransfer(false)
       setTransferTarget('')
     } catch (e: any) {
-      toast.error(e?.message || 'Transfer failed')
+      toast.error(e?.message || 'Could not complete attended transfer')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleCancelAttended = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await sipClient.cancelAttendedTransfer()
+      toast.ok('Consultation ended — primary call resumed')
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not resume primary call')
     } finally {
       setBusy(false)
     }
@@ -261,21 +296,76 @@ export function SipSoftphoneDock() {
                   )}
 
                   {showTransfer && (
-                    <div className="flex gap-1.5 pt-1">
-                      <input
-                        value={transferTarget}
-                        onChange={(e) => setTransferTarget(e.target.value)}
-                        placeholder="Ext (e.g. 102) or SIP URI"
-                        className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-black/40 border border-white/15 text-xs text-white outline-none focus:border-[#0e9f6e]"
-                      />
-                      <button
-                        type="button"
-                        disabled={busy || !transferTarget.trim()}
-                        onClick={() => void handleTransfer()}
-                        className="px-3 py-2 rounded-lg bg-[#0e9f6e] text-white text-xs font-bold border-0 cursor-pointer disabled:opacity-40"
-                      >
-                        Go
-                      </button>
+                    <div className="space-y-2 pt-1 rounded-xl bg-white/5 border border-white/10 p-2.5">
+                      <div className="flex gap-1 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          disabled={!!consult}
+                          onClick={() => setTransferMode('blind')}
+                          className={`flex-1 py-1.5 rounded-lg border-0 cursor-pointer disabled:opacity-50 ${
+                            transferMode === 'blind' ? 'bg-[#0e9f6e] text-white' : 'bg-white/10 text-white/70'
+                          }`}
+                        >
+                          Blind
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTransferMode('attended')}
+                          className={`flex-1 py-1.5 rounded-lg border-0 cursor-pointer ${
+                            transferMode === 'attended' ? 'bg-[#0e9f6e] text-white' : 'bg-white/10 text-white/70'
+                          }`}
+                        >
+                          Attended
+                        </button>
+                      </div>
+
+                      {consult ? (
+                        <div className="space-y-2">
+                          <div className="text-[11px] text-white/80 flex items-center justify-between gap-2">
+                            <span className="truncate font-semibold">
+                              Consult: {consult.remoteDisplay}
+                            </span>
+                            <span className="font-mono text-[#51fec0] shrink-0">
+                              {consult.state === 'connected' ? fmtDuration(consult.durationSec) : 'Ringing…'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              disabled={busy || consult.state !== 'connected'}
+                              onClick={() => void handleCompleteAttended()}
+                              className="py-1.5 rounded-lg bg-[#0e9f6e] text-white text-[11px] font-bold border-0 cursor-pointer disabled:opacity-40"
+                            >
+                              Complete Transfer
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleCancelAttended()}
+                              className="py-1.5 rounded-lg bg-amber-500/20 text-amber-200 text-[11px] font-bold border-0 cursor-pointer disabled:opacity-40"
+                            >
+                              Cancel &amp; Resume
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1.5">
+                          <input
+                            value={transferTarget}
+                            onChange={(e) => setTransferTarget(e.target.value)}
+                            placeholder="Ext (e.g. 102) or SIP URI"
+                            className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-black/40 border border-white/15 text-xs text-white outline-none focus:border-[#0e9f6e]"
+                          />
+                          <button
+                            type="button"
+                            disabled={busy || !transferTarget.trim()}
+                            onClick={() => void handleTransfer()}
+                            className="px-3 py-2 rounded-lg bg-[#0e9f6e] text-white text-xs font-bold border-0 cursor-pointer disabled:opacity-40"
+                          >
+                            {transferMode === 'attended' ? 'Consult' : 'Go'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

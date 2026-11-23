@@ -639,6 +639,81 @@ async function run() {
     assert.equal(myCfgB.statusCode, 200)
     assert.equal(myCfgB.json().configured, false)
 
+    // Regression [Important #3]: When SIP trunk IS fully configured (including sip_ws_url + sip_vault_bridge_prefix),
+    // an agent with NO active sip_extensions row (or inactive extension, or missing sip_ws_url) must fall back to bridge mode!
+    setSettings({ sip_vault_bridge_prefix: '99', sip_ws_url: 'wss://pbx.local:8089/ws' })
+    const mockBridgeNoExt = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ call_sid: 'wh-no-ext-fallback-1' }))
+    })
+    await new Promise<void>((resolve) => mockBridgeNoExt.listen(0, '127.0.0.1', resolve))
+    try {
+      const addr = mockBridgeNoExt.address() as { port: number }
+      setSettings({
+        masked_call_provider: 'webhook',
+        masked_call_webhook_url: `http://127.0.0.1:${addr.port}/bridge`,
+        masked_call_caller_id: '+97144001234',
+      })
+      // Staff B's extension was deleted above, so Staff B has no active extension row
+      const noExtVaultCall = await app.inject({
+        method: 'POST',
+        url: `/api/sip/vault-call/${propBId}`,
+        headers: headersFor(cookieStaffB),
+        payload: {},
+      })
+      assert.equal(noExtVaultCall.statusCode, 200, `Agent without SIP extension must fall back to bridge: ${noExtVaultCall.body}`)
+      assert.equal(noExtVaultCall.json().mode, 'bridge', 'Agent without SIP extension must receive mode=bridge, not sip_token')
+      assert.ok(!noExtVaultCall.body.includes('971557778899'), 'Fallback bridge must never expose raw owner phone')
+
+      // Disable Staff A's extension (active: false) -> Staff A also falls back to bridge mode
+      const disableExtA = await app.inject({
+        method: 'PUT',
+        url: '/api/sip/admin/extensions',
+        headers: headersFor(cookieAdmin),
+        payload: {
+          user_id: staffAId,
+          extension_no: '101',
+          sip_username: 'ext101',
+          display_name: 'Saifullah SWK Disabled',
+          active: false,
+        },
+      })
+      assert.equal(disableExtA.statusCode, 200)
+      const inactiveExtCall = await app.inject({
+        method: 'POST',
+        url: `/api/sip/vault-call/${propAId}`,
+        headers: headersFor(cookieStaffA),
+        payload: {},
+      })
+      assert.equal(inactiveExtCall.statusCode, 200)
+      assert.equal(inactiveExtCall.json().mode, 'bridge', 'Inactive extension must fall back to bridge mode')
+
+      // Re-enable Staff A's extension, clear sip_ws_url -> also falls back to bridge mode
+      await app.inject({
+        method: 'PUT',
+        url: '/api/sip/admin/extensions',
+        headers: headersFor(cookieAdmin),
+        payload: {
+          user_id: staffAId,
+          extension_no: '101',
+          sip_username: 'ext101',
+          display_name: 'Saifullah SWK',
+          active: true,
+        },
+      })
+      setSettings({ sip_ws_url: '' })
+      const missingWsCall = await app.inject({
+        method: 'POST',
+        url: `/api/sip/vault-call/${propAId}`,
+        headers: headersFor(cookieStaffA),
+        payload: {},
+      })
+      assert.equal(missingWsCall.statusCode, 200)
+      assert.equal(missingWsCall.json().mode, 'bridge', 'Missing sip_ws_url must fall back to bridge mode')
+    } finally {
+      await new Promise<void>((resolve) => mockBridgeNoExt.close(() => resolve()))
+    }
+
     console.log('ALL SIP SOFTPHONE & DUAL MASKED-VAULT PROTOCOL TESTS PASSED!')
   } finally {
     try { pushMod.setPushTransportForTests(null) } catch {}

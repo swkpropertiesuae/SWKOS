@@ -98,6 +98,7 @@ export default function PhonePage() {
 
   const [tab, setTab] = useState<'dialer' | 'directory' | 'history' | 'admin'>('dialer')
   const [dialInput, setDialInput] = useState('')
+  const [transferMode, setTransferMode] = useState<'blind' | 'attended'>('blind')
   const [transferTarget, setTransferTarget] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -226,15 +227,47 @@ export default function PhonePage() {
     }
   }
 
-  const handleTransfer = async (target: string) => {
+  const handleTransfer = async (target: string, mode: 'blind' | 'attended' = transferMode) => {
     if (!target.trim() || busy) return
     setBusy(true)
     try {
-      await sipClient.transferBlind(target.trim())
-      toast.ok(`Transferred active call to ${target.trim()}`)
-      setTransferTarget('')
+      if (mode === 'attended') {
+        await sipClient.startAttendedTransfer(target.trim())
+        toast.ok(`Dialing consultation target ${target.trim()} (primary call on hold)`)
+      } else {
+        await sipClient.transferBlind(target.trim())
+        toast.ok(`Transferred active call to ${target.trim()}`)
+        setTransferTarget('')
+      }
     } catch (e: any) {
       toast.error(e?.message || 'Transfer failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleCompleteAttended = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await sipClient.completeAttendedTransfer()
+      toast.ok('Attended transfer completed')
+      setTransferTarget('')
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not complete attended transfer')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleCancelAttended = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await sipClient.cancelAttendedTransfer()
+      toast.ok('Consultation ended — primary call resumed')
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not resume primary call')
     } finally {
       setBusy(false)
     }
@@ -335,6 +368,7 @@ export default function PhonePage() {
   }
 
   const call = snap.activeCall
+  const consult = snap.consultCall
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://os.swk.properties'
   const regTone =
     snap.registration === 'registered'
@@ -531,21 +565,89 @@ export default function PhonePage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-1.5">
-                      <input
-                        value={transferTarget}
-                        onChange={(e) => setTransferTarget(e.target.value)}
-                        placeholder="Blind transfer to Ext or SIP URI"
-                        className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs"
-                      />
-                      <button
-                        type="button"
-                        disabled={busy || call.state !== 'connected' || !transferTarget.trim()}
-                        onClick={() => void handleTransfer(transferTarget)}
-                        className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1 border-0 cursor-pointer disabled:opacity-40"
-                      >
-                        <PhoneForwarded size={13} /> Transfer
-                      </button>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                          <PhoneForwarded size={12} /> Call Transfer
+                        </span>
+                        <div className="flex gap-1 text-[11px] font-bold">
+                          <button
+                            type="button"
+                            disabled={!!consult}
+                            onClick={() => setTransferMode('blind')}
+                            className={`px-2.5 py-1 rounded-lg border cursor-pointer disabled:opacity-50 ${
+                              transferMode === 'blind'
+                                ? 'bg-slate-900 text-white border-slate-900'
+                                : 'bg-white text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            Blind
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTransferMode('attended')}
+                            className={`px-2.5 py-1 rounded-lg border cursor-pointer ${
+                              transferMode === 'attended'
+                                ? 'bg-slate-900 text-white border-slate-900'
+                                : 'bg-white text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            Attended
+                          </button>
+                        </div>
+                      </div>
+
+                      {consult ? (
+                        <div className="space-y-2">
+                          <div className="rounded-lg bg-white border border-slate-200 px-3 py-2 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-800 truncate">
+                              Consult: {consult.remoteDisplay}
+                            </span>
+                            <span className="font-mono font-bold text-[#0e9f6e]">
+                              {consult.state === 'connected' ? fmtDuration(consult.durationSec) : 'Ringing…'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              disabled={busy || consult.state !== 'connected'}
+                              onClick={() => void handleCompleteAttended()}
+                              className="py-2 rounded-xl bg-[#0e9f6e] hover:bg-[#0a4638] text-white text-xs font-bold border-0 cursor-pointer disabled:opacity-40"
+                            >
+                              Complete Transfer
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleCancelAttended()}
+                              className="py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 text-xs font-bold border border-amber-300 cursor-pointer disabled:opacity-40"
+                            >
+                              Cancel &amp; Resume
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1.5">
+                          <input
+                            value={transferTarget}
+                            onChange={(e) => setTransferTarget(e.target.value)}
+                            placeholder={
+                              transferMode === 'attended'
+                                ? 'Consult Ext or SIP URI (holds current call)'
+                                : 'Blind transfer to Ext or SIP URI'
+                            }
+                            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs"
+                          />
+                          <button
+                            type="button"
+                            disabled={busy || call.state !== 'connected' || !transferTarget.trim()}
+                            onClick={() => void handleTransfer(transferTarget, transferMode)}
+                            className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-1 border-0 cursor-pointer disabled:opacity-40"
+                          >
+                            <PhoneForwarded size={13} /> {transferMode === 'attended' ? 'Start Consult' : 'Transfer'}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -720,14 +822,23 @@ export default function PhonePage() {
                         </div>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
-                        {call?.state === 'connected' ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleTransfer(d.extension_no)}
-                            className="px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold flex items-center gap-1 border-0 cursor-pointer"
-                          >
-                            <PhoneForwarded size={12} /> Transfer
-                          </button>
+                        {call?.state === 'connected' && !consult ? (
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void handleTransfer(d.extension_no, 'blind')}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold flex items-center gap-1 border-0 cursor-pointer"
+                            >
+                              <PhoneForwarded size={12} /> Blind
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleTransfer(d.extension_no, 'attended')}
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-100 text-amber-950 text-[11px] font-bold border border-amber-300 cursor-pointer"
+                            >
+                              Consult
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"
@@ -798,14 +909,23 @@ export default function PhonePage() {
                           >
                             <Phone size={12} /> Call
                           </button>
-                          {call?.state === 'connected' && (
-                            <button
-                              type="button"
-                              onClick={() => void handleTransfer(d.extension_no)}
-                              className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold flex items-center gap-1 border-0 cursor-pointer"
-                            >
-                              <PhoneForwarded size={12} /> Transfer
-                            </button>
+                          {call?.state === 'connected' && !consult && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void handleTransfer(d.extension_no, 'blind')}
+                                className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold flex items-center gap-1 border-0 cursor-pointer"
+                              >
+                                <PhoneForwarded size={12} /> Blind
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleTransfer(d.extension_no, 'attended')}
+                                className="px-3 py-1.5 rounded-lg bg-amber-100 text-amber-950 font-bold border border-amber-300 cursor-pointer"
+                              >
+                                Consult
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -1041,7 +1161,7 @@ export default function PhonePage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             <div className="text-sm font-bold text-slate-900">Staff SIP Extensions</div>
 
-            <div className="grid gap-3 md:grid-cols-6 items-end bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div className="grid gap-3 md:grid-cols-4 items-end bg-slate-50 p-3.5 rounded-xl border border-slate-200">
               <div className="md:col-span-2">
                 <label className="label">Staff User</label>
                 <select
@@ -1089,6 +1209,15 @@ export default function PhonePage() {
                 />
               </div>
               <div>
+                <label className="label">Display Name</label>
+                <input
+                  className="input"
+                  placeholder="Caller ID Display Name"
+                  value={extForm.display_name}
+                  onChange={(e) => setExtForm((f) => ({ ...f, display_name: e.target.value }))}
+                />
+              </div>
+              <div>
                 <label className="label">SIP Password</label>
                 <input
                   className="input"
@@ -1099,7 +1228,7 @@ export default function PhonePage() {
                   onChange={(e) => setExtForm((f) => ({ ...f, sip_password: e.target.value }))}
                 />
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5 pb-1">
                 <label className="flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer">
                   <input
                     type="checkbox"
@@ -1109,6 +1238,17 @@ export default function PhonePage() {
                   />
                   Allow Direct Dial
                 </label>
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-[#0e9f6e]"
+                    checked={extForm.active}
+                    onChange={(e) => setExtForm((f) => ({ ...f, active: e.target.checked }))}
+                  />
+                  Active Extension
+                </label>
+              </div>
+              <div>
                 <button
                   type="button"
                   disabled={busy}
