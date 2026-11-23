@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { get, post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
+import { getVerifiedDeviceFix, startNativeFieldDuty, stopNativeFieldDuty } from '../../lib/mobileBridge'
 import { useToast } from '../../lib/toast'
 import { ModuleHeader, Pill } from '../../swk/ui'
 import { ErrorBox, Loading, Modal } from '../../ui/kit'
@@ -141,24 +142,9 @@ function currentDevicePosition(timeoutMs = 8000): Promise<{
   speed_mps: number | null
   heading: number | null
   recorded_at: string
+  is_mock?: boolean
 } | null> {
-  if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null)
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy_m: Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : 25,
-          speed_mps: pos.coords.speed !== null && Number.isFinite(pos.coords.speed) && pos.coords.speed >= 0 ? pos.coords.speed : null,
-          heading: pos.coords.heading !== null && Number.isFinite(pos.coords.heading) && pos.coords.heading >= 0 ? pos.coords.heading : null,
-          recorded_at: new Date(pos.timestamp || Date.now()).toISOString(),
-        })
-      },
-      () => resolve(null),
-      { enableHighAccuracy: true, maximumAge: 15_000, timeout: timeoutMs },
-    )
-  })
+  return getVerifiedDeviceFix(timeoutMs)
 }
 
 export default function FieldDutyPage() {
@@ -327,6 +313,18 @@ export default function FieldDutyPage() {
     [loadSession, storageKey, toast],
   )
 
+  // Native foreground GPS service binding when active duty session starts/stops
+  useEffect(() => {
+    if (!activeSession?.id) {
+      void stopNativeFieldDuty()
+      return
+    }
+    void startNativeFieldDuty({
+      sessionId: activeSession.id,
+      assignedLocation: String(activeSession.assigned_location || 'SWK Field Duty'),
+    })
+  }, [activeSession?.id, activeSession?.assigned_location])
+
   // Geolocation watchPosition + 20s ping batcher when on active duty
   useEffect(() => {
     if (!activeSession || !me?.id) return
@@ -488,6 +486,11 @@ export default function FieldDutyPage() {
     setGpsError('')
     try {
       const initialFix = await currentDevicePosition(6000)
+      if (initialFix?.is_mock) {
+        setSpoofWarning('Mock GPS location detected on device. Disable mock location apps before starting duty.')
+        toast.error('Mock GPS detected')
+        return
+      }
       const maxAcc = data?.config?.max_accuracy_m || 150
       const includeCoords = initialFix && initialFix.accuracy_m <= maxAcc
       await post('/api/field-gps/sessions/start', {
@@ -520,6 +523,7 @@ export default function FieldDutyPage() {
     setBusy(true)
     try {
       await flushQueue(true)
+      await stopNativeFieldDuty()
       await post('/api/field-gps/sessions/stop', {})
       const remaining = readQueue(storageKey).filter(p => p.field_session_id !== activeSession?.id)
       writeQueue(storageKey, remaining)

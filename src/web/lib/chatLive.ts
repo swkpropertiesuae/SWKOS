@@ -1,4 +1,5 @@
-import { get, post } from './api'
+import { buildClientHeaders, get, getFetchCredentials, post, resolveApiUrl } from './api'
+import { getMobileSessionToken, isNativeMobile } from './mobileBridge'
 
 /**
  * One live connection to the Inside messenger for the whole app (/api/chat/stream).
@@ -76,17 +77,7 @@ export function getLastSeenMessageId(): number {
   return lastSeenMessageId
 }
 
-export function getMobileSessionToken(): string | null {
-  if (typeof window === 'undefined') return null
-  const winTok = (window as any).__SWK_MOBILE_SESSION__
-  if (typeof winTok === 'string' && winTok.trim()) return winTok.trim()
-  try {
-    const stored = localStorage.getItem('swk.mobile.session')
-    return stored && stored.trim() ? stored.trim() : null
-  } catch {
-    return null
-  }
-}
+export { getMobileSessionToken }
 
 export async function buildStreamUrl(
   basePath: string,
@@ -99,16 +90,12 @@ export async function buildStreamUrl(
     }
   }
   const mobileTok = getMobileSessionToken()
-  const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()
-  if (mobileTok || isCapacitor) {
+  if (mobileTok || isNativeMobile()) {
     try {
-      const headers: Record<string, string> = mobileTok
-        ? { 'x-swk-client': 'mobile', 'x-swk-session': mobileTok }
-        : { 'x-swk-client': 'web' }
-      const res = await fetch('/api/auth/stream-ticket', {
+      const res = await fetch(resolveApiUrl('/api/auth/stream-ticket'), {
         method: 'POST',
-        credentials: 'same-origin',
-        headers,
+        credentials: getFetchCredentials(),
+        headers: buildClientHeaders(),
       })
       if (res.ok) {
         const json = (await res.json()) as { ticket?: string }
@@ -119,7 +106,7 @@ export async function buildStreamUrl(
     }
   }
   const s = qs.toString()
-  return s ? `${basePath}?${s}` : basePath
+  return resolveApiUrl(s ? `${basePath}?${s}` : basePath)
 }
 
 function clearReconnectTimer() {

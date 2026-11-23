@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { canAccessCrmVault } from '@shared/swk-staff-access'
-import { post } from '../../lib/api'
+import { buildClientHeaders, getFetchCredentials, post, resolveApiUrl } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
 import { useToast } from '../../lib/toast'
 import { downloadBase64File, postForDownload, saveClientBlob } from '../../lib/utilities'
@@ -196,10 +196,10 @@ export default function TranslatorPage({ embedded = false }: { embedded?: boolea
       fd.append('confidential', isLeadership && confidential ? 'true' : 'false')
       fd.append('output_format', 'json')
 
-      const res = await fetch('/api/utilities/translate-document', {
+      const res = await fetch(resolveApiUrl('/api/utilities/translate-document'), {
         method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'x-swk-client': 'web' },
+        credentials: getFetchCredentials(),
+        headers: buildClientHeaders(),
         body: fd,
       })
       const data = (await res.json().catch(() => ({}))) as TranslateDocResponse & { error?: string }

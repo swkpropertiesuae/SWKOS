@@ -1,4 +1,4 @@
-import { ApiError } from './api'
+import { ApiError, buildClientHeaders, getFetchCredentials, resolveApiUrl } from './api'
 
 /** Extract filename from Content-Disposition header when present. */
 export function filenameFromDisposition(header: string | null, fallback: string): string {
@@ -44,12 +44,11 @@ export async function postForDownload(
   fallbackFilename: string,
 ): Promise<{ filename: string; headers: Headers }> {
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
-  const headers: Record<string, string> = { 'x-swk-client': 'web' }
-  if (!isForm) headers['content-type'] = 'application/json'
+  const headers = buildClientHeaders(isForm ? undefined : { 'content-type': 'application/json' })
 
-  const res = await fetch(path, {
+  const res = await fetch(resolveApiUrl(path), {
     method: 'POST',
-    credentials: 'same-origin',
+    credentials: getFetchCredentials(),
     headers,
     body: isForm ? body : JSON.stringify(body),
   })

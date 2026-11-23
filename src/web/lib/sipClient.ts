@@ -14,6 +14,7 @@ import {
 } from 'sip.js'
 import { get, post } from './api'
 import { buildStreamUrl } from './chatLive'
+import { clearIncomingCallWake, startNativeCallAudioService, stopNativeCallAudioService, triggerIncomingCallWake } from './mobileBridge'
 
 export type SipRegistrationState = 'unconfigured' | 'disconnected' | 'connecting' | 'registered' | 'error'
 export type SipCallState = 'idle' | 'ringing_in' | 'dialing' | 'connecting' | 'connected' | 'terminating'
@@ -738,6 +739,8 @@ class SwkSipClient {
         this.updateCall({ state: meta.direction === 'in' ? 'ringing_in' : 'connecting' })
       } else if (st === SessionState.Established) {
         this.stopRingtone()
+        void clearIncomingCallWake(meta.id)
+        void startNativeCallAudioService(meta.isMaskedVault ? 'Masked Vault Call' : meta.remoteDisplay)
         if (!this.consultSession) {
           this.attachRemoteMedia(session)
         }
@@ -749,6 +752,8 @@ class SwkSipClient {
       } else if (st === SessionState.Terminating) {
         this.updateCall({ state: 'terminating' })
       } else if (st === SessionState.Terminated) {
+        void clearIncomingCallWake(meta.id)
+        void stopNativeCallAudioService()
         if (!logged) {
           logged = true
           this.logCallEnd(meta, this.snapshot.activeCall)
@@ -854,6 +859,13 @@ class SwkSipClient {
     })
 
     this.startRingtone()
+    void triggerIncomingCallWake({
+      callId,
+      callerName: masked ? 'Masked Vault Owner' : display,
+      callerId: masked ? '' : fromUri,
+      extensionNo: this.snapshot.extensionNo || '',
+      isMaskedVault: masked,
+    })
   }
 
   async dial(

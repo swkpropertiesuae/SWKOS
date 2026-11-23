@@ -7,27 +7,10 @@ import { CheckCircle2,Eye,EyeOff,Loader2,Lock,Mail,MapPinned,ScanLine,Wifi,WifiO
 import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
 import { signProof } from '../../lib/deviceKey'
+import { ensureNativeCameraPermission } from '../../lib/mobileBridge'
 
 async function ensureLiveCameraPermission(): Promise<boolean> {
-  const cap = (window as any).Capacitor
-  const cameraPlugin = cap?.Plugins?.Camera
-  if (cap?.isNativePlatform?.() && cameraPlugin) {
-    try {
-      if (typeof cameraPlugin.checkPermissions === 'function') {
-        const current = await cameraPlugin.checkPermissions()
-        if (current?.camera === 'granted') return true
-      }
-      if (typeof cameraPlugin.requestPermissions === 'function') {
-        const res = await cameraPlugin.requestPermissions({ permissions: ['camera'] })
-        if (res?.camera && res.camera !== 'granted' && res.camera !== 'limited') {
-          return false
-        }
-      }
-    } catch {
-      /* fallback to browser WebView getUserMedia permission prompt */
-    }
-  }
-  return true
+  return ensureNativeCameraPermission()
 }
 
 type Net = { ssid: string; detected_client_ip: string; ip_matches_office: boolean; office_ip_locked?: boolean }

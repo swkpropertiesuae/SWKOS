@@ -1,20 +1,36 @@
+import { getApiBaseUrl, getMobileSessionToken, isNativeMobile, resolveApiUrl } from './mobileBridge'
+
 export class ApiError extends Error {
   status: number; details?: any
   constructor(status: number, message: string, details?: any) { super(message); this.status = status; this.details = details }
 }
 
-function buildClientHeaders(extra?: Record<string, string>): Record<string, string> {
-  return {
-    'x-swk-client': 'web',
-    ...(extra || {}),
+export { getApiBaseUrl, resolveApiUrl }
+
+export function getFetchCredentials(): RequestCredentials {
+  return getApiBaseUrl() ? 'omit' : 'same-origin'
+}
+
+export function buildClientHeaders(extra?: Record<string, string>): Record<string, string> {
+  const mobileTok = getMobileSessionToken()
+  const useMobile = isNativeMobile() || Boolean(mobileTok)
+  const headers: Record<string, string> = {
+    'x-swk-client': useMobile ? 'mobile' : 'web',
   }
+  if (mobileTok) {
+    headers['x-swk-session'] = mobileTok
+  }
+  if (extra) {
+    Object.assign(headers, extra)
+  }
+  return headers
 }
 
 async function rawApi<T = any>(method: string, path: string, body?: unknown, signal?: AbortSignal, extraHeaders?: Record<string, string>): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(resolveApiUrl(path), {
     method,
     signal,
-    credentials: 'same-origin',
+    credentials: getFetchCredentials(),
     headers: buildClientHeaders({ 'content-type': 'application/json', ...(extraHeaders || {}) }),
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -45,11 +61,11 @@ export async function upload(files: File[], fields: Record<string, string | numb
   const fd = new FormData()
   for (const [k, v] of Object.entries(fields)) if (v !== undefined && v !== '') fd.append(k, String(v))
   for (const f of files) fd.append('file', f)
-  const res = await fetch(path, {
+  const res = await fetch(resolveApiUrl(path), {
     method: 'POST',
     body: fd,
     headers: buildClientHeaders(),
-    credentials: 'same-origin',
+    credentials: getFetchCredentials(),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new ApiError(res.status, data.error || 'Upload failed')
@@ -57,5 +73,6 @@ export async function upload(files: File[], fields: Record<string, string | numb
 }
 export function downloadUrl(path: string, params?: Record<string, any>) {
   const u = new URLSearchParams(); for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined && v !== null && v !== '') u.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v))
-  const s = u.toString(); return s ? `${path}?${s}` : path
+  const s = u.toString(); const rel = s ? `${path}?${s}` : path
+  return resolveApiUrl(rel)
 }

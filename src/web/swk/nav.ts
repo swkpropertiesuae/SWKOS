@@ -4,9 +4,9 @@ LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rock
 UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText
+ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText,Languages,Search,Navigation
 } from 'lucide-react';
-import { canAccessSwkAdminLogic,canAccessCrmVault,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
+import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }
@@ -55,6 +55,7 @@ export const SWK_NAV: NavSection[] = [
   { key: 'clients', label: 'CRM', items: [
     { label: 'CRM Property Vault', to: '/crm-vault', icon: ShieldCheck, module: 'admin', isNew: true, desc: 'Leadership Vault · 3,600+ properties & masked dispatch' },
     { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Dispatched deals & hard-masked calling' },
+    { label: 'Softphone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'WebRTC SIP extension, colleague directory & Masked Vault calling' },
     { label: 'Leads', to: '/e/leads', icon: UserPlus, module: 'crm', desc: 'Step 1 · New enquiries' },
     { label: 'Phone Calls', to: '/e/voice_calls', icon: PhoneCall, module: 'crm', desc: 'Step 2 · Call log & notes' },
     { label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle, module: 'crm', desc: 'Step 3 · Live WhatsApp chat' },
@@ -140,13 +141,19 @@ export const SWK_NAV: NavSection[] = [
   ] },
   { key: 'field', label: 'Field Service', items: [
     { label: 'Reception QR', to: '/reception-qr', icon: QrCode, desc: 'Step 1 · Office QR check-in' },
-    { label: 'Gate Logs', to: '/e/attendance_events', icon: Clock, module: 'hr', desc: 'Step 2 · Arrival & exit scans' },
-    { label: 'Field Visits', to: '/e/field_sessions', icon: MapPinned, module: 'hr', desc: 'Step 3 · GPS site visits' },
-    { label: 'Daily Reports', to: '/e/daily_reports', icon: ClipboardCheck, module: 'hr', desc: 'Step 4 · End-of-day summary' },
+    { label: 'Field Duty GPS', to: '/field-duty', icon: Navigation, isNew: true, desc: 'Step 2 · Live field viewing GPS, own trail & SOS' },
+    { label: 'Live Field GPS Map', to: '/field-live', icon: MapPinned, module: 'admin', isNew: true, desc: 'Leadership · Live map of all active field staff' },
+    { label: 'Gate Logs', to: '/e/attendance_events', icon: Clock, module: 'hr', desc: 'Step 3 · Arrival & exit scans' },
+    { label: 'Field Visits', to: '/e/field_sessions', icon: MapPinned, module: 'hr', desc: 'Step 4 · GPS site visits' },
+    { label: 'Daily Reports', to: '/e/daily_reports', icon: ClipboardCheck, module: 'hr', desc: 'Step 5 · End-of-day summary' },
   ] },
-  { key: 'tools', label: 'Documents & Manual', items: [
-    { label: 'Calculators', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI & mortgage tools' },
-    { label: 'Document Tools', to: '/document-tools', icon: ScanText, module: 'documents', isNew: true, desc: 'OCR, merge & split PDFs, photos to PDF' },
+  { key: 'tools', label: 'Utilities & Documents', items: [
+    { label: 'Utility Suite Hub', to: '/utilities', icon: Wrench, isNew: true, desc: 'Word Studio, PDF/OCR, Translator, Search & Field Pack' },
+    { label: 'Word Studio (.docx)', to: '/utilities/word', icon: FileCode2, isNew: true, desc: 'Rich editor, letterhead, seal, templates & .docx/.pdf export' },
+    { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, isNew: true, desc: 'UAE real-estate glossary translation & document upload' },
+    { label: 'Unified Search', to: '/utilities/search', icon: Search, isNew: true, desc: 'Search SWK Internal, SWKPROPERTY.COM, Market & Live Web' },
+    { label: 'Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage, PDC & public QR tools' },
+    { label: 'Document Tools', to: '/document-tools', icon: ScanText, module: 'documents', isNew: true, desc: 'OCR, camera scan, PDF to Word, watermark, merge & split' },
     { label: 'Letter Studio', to: '/studio', icon: FileCode2, module: 'documents', desc: 'Contracts & letter templates' },
     { label: 'Reports', to: '/reports', icon: BarChart3, module: 'reports', desc: 'Custom business exports' },
   ] },
@@ -197,8 +204,8 @@ export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: A
   compliance: { blurb: 'KYC checks, RERA permits, broker cards & AML', icon: Gavel, tone: 'dune' },
   website: { blurb: 'Website inventory, hot offers, spotlight & deploy', icon: Globe, tone: 'oasis' },
   team: { blurb: 'Staff, brokers, visas, attendance, leave & payroll', icon: Users, tone: 'ocean' },
-  field: { blurb: 'Reception QR check-in, gate logs & field visits', icon: MapPinned, tone: 'champ' },
-  tools: { blurb: 'Deal calculators, contract studio & reports', icon: FileStack, tone: 'plum' },
+  field: { blurb: 'Reception QR check-in, gate logs, Field Duty GPS & live map', icon: MapPinned, tone: 'champ' },
+  tools: { blurb: 'Word Studio, Translator, Unified Search, calculators, OCR & reports', icon: Wrench, tone: 'plum' },
   admin: { blurb: 'Company info, branches, roles, backups & logs', icon: Settings, tone: 'navy' },
 }
 
@@ -216,13 +223,14 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   },
   {
     key: 'attendance',
-    label: 'Attendance Check-In',
-    blurb: 'Daily office scan & check-in, attendance history & leave requests',
+    label: 'Attendance & Field',
+    blurb: 'Office QR check-in, Field Duty GPS, attendance history & daily reports',
     icon: Clock,
     tone: 'champ',
     landing: '/reception-qr',
     items: [
-      { label: 'Scan & Check-In Attendance', to: '/reception-qr', icon: Clock, desc: 'Daily office attendance check-in' },
+      { label: 'Scan & Check-In Attendance', to: '/reception-qr', icon: QrCode, desc: 'Daily office attendance check-in' },
+      { label: 'Field Duty GPS', to: '/field-duty', icon: Navigation, isNew: true, desc: 'Start field viewing GPS, own trail & SOS alert' },
       { label: 'My Attendance Log', to: '/e/attendance', icon: Clock, module: 'hr', desc: 'Personal daily check-in history' },
       { label: 'Gate Scan Events', to: '/e/attendance_events', icon: Clock, module: 'hr', desc: 'Verified office Wi-Fi timestamps' },
       { label: 'Leave Requests', to: '/e/leave_requests', icon: Plane, module: 'hr', desc: 'Apply for holiday or sick leave' },
@@ -230,14 +238,18 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
     ],
   },
   {
-    key: 'manual',
-    label: 'Deal Calculators',
-    blurb: 'DLD fee, ROI & mortgage calculators',
-    icon: Calculator,
+    key: 'tools',
+    label: 'Utilities Suite',
+    blurb: 'Word Studio, Translator, Unified Search & 11 UAE deal calculators',
+    icon: Wrench,
     tone: 'navy',
-    landing: '/toolkit',
+    landing: '/utilities',
     items: [
-      { label: 'Deal Calculators', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI & mortgage calculator' },
+      { label: 'Utility Suite Hub', to: '/utilities', icon: Wrench, isNew: true, desc: 'All personal productivity & real-estate tools' },
+      { label: 'Word Studio (.docx)', to: '/utilities/word', icon: FileCode2, isNew: true, desc: 'Draft, edit & export .docx or .pdf documents' },
+      { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, isNew: true, desc: 'RERA/DLD glossary translation & document upload' },
+      { label: 'Unified Search', to: '/utilities/search', icon: Search, isNew: true, desc: 'Search permitted records, SWKPROPERTY.COM & web' },
+      { label: 'Deal Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage, PDC & public QR tools' },
     ],
   },
   {
@@ -256,20 +268,32 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   },
   {
     key: 'general',
-    label: 'General Workspace',
-    blurb: 'Company calendar, AI assistant & profile',
+    label: 'Workspace & Calling',
+    blurb: 'Assigned deals, SIP softphone, AI Brain, calendar & team profiles',
     icon: CalendarDays,
     tone: 'ocean',
-    landing: '/calendar',
+    landing: '/my-deals',
     items: [
       { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Assigned properties & hard-masked calling' },
+      { label: 'Softphone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'SIP extension, colleague directory & Masked Vault calling' },
+      { label: 'AI Brain', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Internal SWK AI assistant' },
       { label: 'Calendar', to: '/calendar', icon: CalendarDays, desc: 'Company schedule & events' },
-      { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Internal SWK AI assistant' },
+      { label: 'Team Profiles', to: '/team', icon: Contact, desc: 'Colleagues & extensions' },
     ],
   },
 ]
 
-function isAdminOnlyItem(item: NavItem): boolean {
+export type NavAccessUser = {
+  id?: number | null
+  email?: string | null
+  name?: string | null
+  role?: string | null
+  role_name?: string | null
+  party_id?: number | null
+  permissions?: any
+} | null | undefined
+
+export function isAdminOnlyItem(item: NavItem): boolean {
   const clean = item.to.split('?')[0] || ''
   return (
     item.module === 'admin' ||
@@ -279,25 +303,41 @@ function isAdminOnlyItem(item: NavItem): boolean {
     clean === '/approvals' ||
     clean === '/e/universal_approvals' ||
     clean === '/enterprise/master-os' ||
-    clean === '/crm-vault'
+    clean === '/crm-vault' ||
+    clean === '/field-live'
   )
 }
 
+export function isNavItemVisible(
+  item: NavItem,
+  can: (module: string, action?: 'view') => boolean,
+  user?: NavAccessUser,
+): boolean {
+  if (!user || user.party_id) return false
+  const clean = item.to.split('?')[0] || ''
+  if (clean === '/crm-vault' && !canAccessCrmVault(user)) return false
+  if (clean === '/field-live' && !canAccessFieldLiveMap(user)) return false
+  const adminOk = canAccessSwkAdminLogic(user)
+  if (!adminOk && isAdminOnlyItem(item)) return false
+  if (item.module && !can(item.module, 'view')) return false
+  if (isRestrictedStaffUser(user) && !isAllowedPathForRestrictedStaff(clean)) return false
+  return true
+}
+
 /** Permission-filtered apps for the launcher. An app is hidden when none of its features are permitted. */
-export function launcherApps(can: (module: string, action?: 'view') => boolean, user?: { email?: string | null; name?: string | null; role?: string | null; role_name?: string | null; permissions?: any } | null): LauncherApp[] {
+export function launcherApps(can: (module: string, action?: 'view') => boolean, user?: NavAccessUser): LauncherApp[] {
   if (user && isRestrictedStaffUser(user)) {
     return RESTRICTED_STAFF_LAUNCHER_APPS
+      .map(app => {
+        const items = app.items.filter(i => (!i.module || can(i.module, 'view')) && isAllowedPathForRestrictedStaff(i.to.split('?')[0] || ''))
+        return items.length ? { ...app, items, landing: items[0]!.to } : null
+      })
+      .filter((app): app is LauncherApp => Boolean(app))
   }
-  const adminOk = canAccessSwkAdminLogic(user)
-  const vaultOk = canAccessCrmVault(user)
   const out: LauncherApp[] = []
   for (const s of SWK_NAV) {
-    if (s.key === 'admin' && !adminOk) continue
-    const items = s.items.filter(i => {
-      if (i.to === '/crm-vault' && !vaultOk) return false
-      if (!adminOk && isAdminOnlyItem(i)) return false
-      return !i.module || can(i.module, 'view')
-    })
+    if (s.key === 'admin' && !canAccessSwkAdminLogic(user)) continue
+    const items = s.items.filter(i => isNavItemVisible(i, can, user))
     const meta = APP_META[s.key]
     if (!items.length || !meta) continue
     out.push({ key: s.key, label: s.label, ...meta, items, landing: items[0]!.to })
@@ -315,18 +355,12 @@ export function rememberVisit(pathname: string) {
     localStorage.setItem(RECENT_KEY, JSON.stringify([hit.item.to, ...list.filter(t => t !== hit.item.to)].slice(0, 8)))
   } catch { /* storage unavailable — recents are a convenience only */ }
 }
-export function recentItems(can: (module: string, action?: 'view') => boolean, limit = 4, user?: { email?: string | null; name?: string | null; role?: string | null; role_name?: string | null; permissions?: any } | null): (NavItem & { section: string })[] {
+export function recentItems(can: (module: string, action?: 'view') => boolean, limit = 4, user?: NavAccessUser): (NavItem & { section: string })[] {
   let list: string[] = []
   try { list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { /* ignore */ }
-  const restricted = !!(user && isRestrictedStaffUser(user))
-  const adminOk = canAccessSwkAdminLogic(user)
   const all = SWK_NAV.flatMap(s => s.items.map(i => ({ ...i, section: s.label })))
   return list
     .map(to => all.find(i => i.to === to))
-    .filter((i): i is NavItem & { section: string } => {
-      if (!i) return false
-      if (!adminOk && isAdminOnlyItem(i)) return false
-      return (!i.module || can(i.module, 'view')) && (!restricted || isAllowedPathForRestrictedStaff(i.to))
-    })
+    .filter((i): i is NavItem & { section: string } => Boolean(i && isNavItemVisible(i, can, user)))
     .slice(0, limit)
 }

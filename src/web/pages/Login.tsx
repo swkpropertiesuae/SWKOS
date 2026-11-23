@@ -7,6 +7,7 @@ import AppSignIn,{ type AppSignInPayload } from '@/components/ui/app-sign-in'
 import { BlockButton,BlockField } from '@/components/ui/app-sign-in-utils/app-block-kit'
 import { get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
+import { getMobileDeviceAuthPayload,isNativeMobile,setMobileSession } from '../lib/mobileBridge'
 
 /**
  * SWK OS sign-in, built on the 21st.dev "App Sign In" block. Accounts are created by invitation, so sign-up, SSO and
@@ -23,10 +24,14 @@ export function Login() {
   useEffect(() => { void get<any>('/api/demo/status').then(setDemo).catch(() => {}) }, [])
 
   const signIn = async (email: string, password: string, code?: string) => {
-    const r = await post<any>('/api/auth/login', { email, password, totp: code })
+    const mobilePayload = isNativeMobile() ? await getMobileDeviceAuthPayload() : {}
+    const r = await post<any>('/api/auth/login', { email, password, totp: code, ...mobilePayload })
     if (r.needsTotp) {
       setNeedTotp(true)
       throw new Error('Enter the 6-digit code from your authenticator app to finish signing in.')
+    }
+    if (r.session_token) {
+      await setMobileSession(r.session_token, r.device_id ?? (mobilePayload as any).device_id ?? null)
     }
     await reload()
     nav('/home', { replace: true })

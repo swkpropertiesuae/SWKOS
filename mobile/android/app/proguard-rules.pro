@@ -1,0 +1,4 @@
+-keep class ae.swkproperties.os.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keepclassmembers class * { @com.getcapacitor.PluginMethod <methods>; }
+-dontwarn com.google.errorprone.annotations.**

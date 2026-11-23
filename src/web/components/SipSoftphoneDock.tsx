@@ -136,7 +136,7 @@ export function SipSoftphoneDock() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[85] no-print flex flex-col items-end gap-2">
+    <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-4 right-3 md:right-4 z-[85] no-print flex flex-col items-end gap-2">
       {open && (
         <div className="w-[320px] rounded-2xl border border-white/15 bg-[#121212] text-white shadow-[0_24px_64px_rgba(0,0,0,0.45)] overflow-hidden">
           {/* Header */}

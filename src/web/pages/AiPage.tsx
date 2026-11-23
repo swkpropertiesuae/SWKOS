@@ -38,7 +38,7 @@ import {
   Brain,
 } from 'lucide-react'
 import { canAccessCrmVault, canOpenEmployeeRecords } from '@shared/swk-staff-access'
-import { api, del, get, post, put } from '../lib/api'
+import { api, buildClientHeaders, del, get, getFetchCredentials, post, put, resolveApiUrl } from '../lib/api'
 import { cls, fmtIsoStamp } from '../lib/format'
 import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
@@ -527,8 +527,31 @@ function AiBrainWorkbench({
   const abortRef = useRef<AbortController | null>(null)
   const streamingRef = useRef(false)
   const skipNextFetchSyncRef = useRef(false)
+  const handoffCheckedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (handoffCheckedRef.current) return
+    handoffCheckedRef.current = true
+    try {
+      const raw = sessionStorage.getItem('swk.handoff.ai')
+      if (!raw) return
+      sessionStorage.removeItem('swk.handoff.ai')
+      const parsed = JSON.parse(raw) as { prompt?: string; filename?: string }
+      if (parsed?.prompt) {
+        setComposerText(String(parsed.prompt))
+        toast.ok(
+          parsed.filename
+            ? `Loaded "${parsed.filename}" OCR text into AI Brain`
+            : 'Loaded extracted document prompt into AI Brain',
+        )
+      }
+    } catch {
+      /* ignore invalid sessionStorage handoff */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const msgsQ = useQuery({
     queryKey: ['omni-ai-messages', activeConvId],
@@ -693,8 +716,9 @@ function AiBrainWorkbench({
 
     try {
       let body: BodyInit
-      const headers: Record<string, string> = { 'x-swk-client': 'web' }
+      let headers: Record<string, string>
       if (attached.length > 0) {
+        headers = buildClientHeaders()
         const fd = new FormData()
         fd.append('message', promptText)
         fd.append('mode', mode)
@@ -705,7 +729,7 @@ function AiBrainWorkbench({
         for (const f of attached) fd.append('file', f)
         body = fd
       } else {
-        headers['content-type'] = 'application/json'
+        headers = buildClientHeaders({ 'content-type': 'application/json' })
         body = JSON.stringify({
           message: promptText,
           conversation_id: activeConvId ?? undefined,
@@ -715,9 +739,9 @@ function AiBrainWorkbench({
         })
       }
 
-      const res = await fetch('/api/omni-ai/chat/stream', {
+      const res = await fetch(resolveApiUrl('/api/omni-ai/chat/stream'), {
         method: 'POST',
-        credentials: 'same-origin',
+        credentials: getFetchCredentials(),
         headers,
         body,
         signal: ctl.signal,
