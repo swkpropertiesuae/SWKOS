@@ -1,7 +1,7 @@
 import { useEffect,useMemo,useState } from 'react'
 import { Link,useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3,Download,Play,Printer,Gauge,Sigma,Check,X,Sparkles,LayoutDashboard } from 'lucide-react'
+import { BarChart3,Download,Play,Printer,Gauge,Sigma,Check,X,LayoutDashboard } from 'lucide-react'
 import { buildApiPath, downloadAuthFile, get } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
@@ -135,8 +135,8 @@ export function KpiPage() {
             <Link to="/dashboard" className="btn outline sm">
               <LayoutDashboard size={14} /> Overview
             </Link>
-            <Link to="/command-glass" className="btn navy sm">
-              <Sparkles size={14} /> Spatial Glass
+            <Link to="/reports" className="btn navy sm">
+              <BarChart3 size={14} /> Reports
             </Link>
           </div>
         }

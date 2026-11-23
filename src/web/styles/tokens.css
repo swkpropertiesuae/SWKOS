@@ -183,9 +183,10 @@
     color: var(--body);
     background-color: var(--bg);
     background-image:
-      radial-gradient(920px 440px at 10% -8%, rgba(212, 167, 82, 0.14), transparent 60%),
-      radial-gradient(880px 420px at 90% -6%, rgba(56, 189, 248, 0.11), transparent 60%),
-      linear-gradient(180deg, #fafbfe 0%, #f3f6fb 100%);
+      radial-gradient(960px 460px at 8% -6%, rgba(244, 198, 178, 0.24), transparent 58%),
+      radial-gradient(920px 440px at 92% -4%, rgba(196, 181, 253, 0.22), transparent 58%),
+      radial-gradient(760px 380px at 50% 100%, rgba(186, 230, 253, 0.16), transparent 60%),
+      linear-gradient(180deg, #faf8fc 0%, #f3f5fa 100%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
