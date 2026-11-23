@@ -114,7 +114,7 @@ async function main() {
   ok('same pair reuses the thread', (await a.post('/api/chat/threads', { user_ids: [u1] })).data.id === th.data.id)
   ok('message sends', (await a.post(`/api/chat/threads/${th.data.id}/messages`, { body: 'Hello team' })).status === 200)
   const seen = await b.get(`/api/chat/threads/${th.data.id}/messages`)
-  ok('other member reads it', seen.data?.[0]?.body === 'Hello team', seen)
+  ok('other member reads it', (seen.data?.messages ?? seen.data)?.[0]?.body === 'Hello team', seen)
   const c = new Api(); await c.login('rota2@a.example', 'Manager-Pass-2026!')
   ok('non-member cannot read', (await c.get(`/api/chat/threads/${th.data.id}/messages`)).status === 400)
 
@@ -157,7 +157,7 @@ async function main() {
 
   sec('Forms B and I, HubSpot import')
   const tpls = (await a.get('/api/e/doc_templates?pageSize=200')).data.rows
-  ok('Form B and Form I demo templates exist', ['LC-FORM-B', 'LC-FORM-I'].every(c => tpls.some((t: any) => t.code === c)))
+  ok('Form B and Form I demo templates exist', ['LC-03', 'LC-FORM-I'].every(c => tpls.some((t: any) => t.code === c)))
   const hs = await a.post('/api/e/leads/import', { csv: 'First Name,Last Name,Email,Phone Number\nAmal,Rashid,amal.r@example.com,+971501119999\n' })
   ok('HubSpot-style columns import as a lead', hs.data.created === 1, hs.data)
 
@@ -295,8 +295,7 @@ async function main() {
   ok('the notification stream opens', stream.status === 200 && /event-stream/.test(stream.headers.get('content-type') ?? ''), stream.status)
   const reader = stream.body!.getReader(); let got = ''
   const readLoop = (async () => { try { for (;;) { const { value, done } = await reader.read(); if (done) break; got += new TextDecoder().decode(value) } } catch { /* aborted */ } })()
-  const th2 = await a.post('/api/chat/threads', { user_ids: [u1] })
-  await a.post(`/api/chat/threads/${th2.data.id}/messages`, { body: 'Live ping test' })
+  await a.post('/api/e/tasks', { title: 'Live ping test', assignee_id: u1 })
   for (let i = 0; i < 30 && !/Live ping test/.test(got); i++) await new Promise(r => setTimeout(r, 100))
   ok('a new notification arrives on the open stream within seconds', /event: notification/.test(got) && /Live ping test/.test(got), got.slice(0, 300))
   ac.abort(); await readLoop

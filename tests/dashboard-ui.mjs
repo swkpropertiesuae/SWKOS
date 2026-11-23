@@ -25,7 +25,7 @@ try {
   await signInDemo(page, base, demo)
   await page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ }).waitFor()
   assert.equal(await page.locator('.swk-side').count(), 0, 'no sidebar')
-  const tiles = page.locator('.swk-app-tile')
+  const tiles = page.locator('section[aria-label="Apps"] a')
   await tiles.first().waitFor()
   assert.ok(await tiles.count() >= 5, 'launcher shows the permitted apps')
   const capture = async name => { await page.screenshot({ path: `${out}/${name}.png` }) }
