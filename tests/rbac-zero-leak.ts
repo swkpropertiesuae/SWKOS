@@ -43,6 +43,8 @@ async function run() {
       canPrintReceptionQr,
       canAccessFieldLiveMap,
       isElevatedCanonicalEmail,
+      isOwnerSwkUser,
+      isAdminSwkUser,
       NON_ELEVATED_ASSIGNABLE_ROLES,
       CANONICAL_ELEVATED_EMAILS,
     } = staffAccess as typeof staffAccess & {
@@ -297,6 +299,230 @@ async function run() {
 
     const shabibNotifs = q.all(`SELECT * FROM notifications WHERE user_id = ? AND title = 'Security Drill'`, shabibRow.id)
     assert.equal(shabibNotifs.length, 1, 'notifyLeadership() must still notify canonical Owner Shabib')
+
+    // -------------------------------------------------------------------------
+    // 7. Fix Round 1 [Critical #1]: Downgraded alias accounts must fail isOwnerSwkUser/isAdminSwkUser and get 403
+    // -------------------------------------------------------------------------
+    assert.equal(isOwnerSwkUser({ email: 'shabib@swk.property', role_name: 'Owner' }), false, 'Raw owner alias email must fail isOwnerSwkUser')
+    assert.equal(isOwnerSwkUser({ email: 'shabib@swk.property', role_name: 'Staff (Attendance & General)' }), false, 'Downgraded owner alias must fail isOwnerSwkUser')
+    assert.equal(isOwnerSwkUser({ email: 'shabib@swkpropertiesuae.com', role_name: 'Owner' }), false, 'Legacy owner alias must fail isOwnerSwkUser')
+    assert.equal(isAdminSwkUser({ email: 'admin@swk.property', role_name: 'Admin' }), false, 'Raw admin alias email must fail isAdminSwkUser')
+    assert.equal(isAdminSwkUser({ email: 'admin@swk.property', role_name: 'Staff (Attendance & General)' }), false, 'Downgraded admin alias must fail isAdminSwkUser')
+    assert.equal(isAdminSwkUser({ email: 'admin@swkpropertiesuae.com', role_name: 'Admin' }), false, 'Legacy admin alias must fail isAdminSwkUser')
+    assert.equal(isOwnerSwkUser(shabibUser), true, 'Canonical Owner must pass isOwnerSwkUser')
+    const canonicalAdminLoaded = loadUser(adminRow.id)!
+    assert.equal(isAdminSwkUser(canonicalAdminLoaded), true, 'Canonical Admin must pass isAdminSwkUser')
+
+    const ownerRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Owner'`)!
+    const shabibAliasId = q.insert(
+      `INSERT INTO users(name, email, password_hash, role_id, branch_id, active, must_change_password, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Shabib Alias',
+      'shabib@swk.property',
+      hashPassword('AliasOwner-2026!'),
+      ownerRoleId,
+      dxbBranchId,
+      1,
+      0,
+      now,
+      now,
+    )
+    const adminAliasId = q.insert(
+      `INSERT INTO users(name, email, password_hash, role_id, branch_id, active, must_change_password, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Admin Alias',
+      'admin@swk.property',
+      hashPassword('AliasAdmin-2026!'),
+      adminRoleId,
+      dxbBranchId,
+      1,
+      0,
+      now,
+      now,
+    )
+    const loadedShabibAlias = loadUser(shabibAliasId)!
+    const loadedAdminAlias = loadUser(adminAliasId)!
+    assert.equal(loadedShabibAlias.role_name, 'Staff (Attendance & General)')
+    assert.equal(isOwnerSwkUser(loadedShabibAlias), false, 'Loaded downgraded shabib@swk.property must fail isOwnerSwkUser')
+    assert.equal(loadedAdminAlias.role_name, 'Staff (Attendance & General)')
+    assert.equal(isAdminSwkUser(loadedAdminAlias), false, 'Loaded downgraded admin@swk.property must fail isAdminSwkUser')
+
+    const shabibAliasCookie = 'swk_sid=' + authMod.createSession(shabibAliasId).token
+    const adminAliasCookie = 'swk_sid=' + authMod.createSession(adminAliasId).token
+
+    const aliasOwnerActionRes = await app.inject({
+      method: 'POST',
+      url: '/api/swk-ops/owner-admin-control/action',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: shabibAliasCookie },
+      payload: { action: 'unlock' },
+    })
+    assert.equal(
+      aliasOwnerActionRes.statusCode,
+      403,
+      `Expected 403 on /api/swk-ops/owner-admin-control/action for downgraded shabib@swk.property, got ${aliasOwnerActionRes.statusCode}: ${aliasOwnerActionRes.body}`,
+    )
+
+    const aliasWifiRes = await app.inject({
+      method: 'POST',
+      url: '/api/swk-ops/attendance-setup',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: adminAliasCookie },
+      payload: { office_wifi_ssid: 'Hijack-SSID' },
+    })
+    assert.equal(
+      aliasWifiRes.statusCode,
+      403,
+      `Expected 403 on /api/swk-ops/attendance-setup for downgraded admin@swk.property, got ${aliasWifiRes.statusCode}: ${aliasWifiRes.body}`,
+    )
+
+    // -------------------------------------------------------------------------
+    // 8. Fix Round 1 [Critical #2]: PUT /api/e/users/:id cannot switch email to a hardcoded account alias
+    // -------------------------------------------------------------------------
+    const createNormalRes = await app.inject({
+      method: 'POST',
+      url: '/api/e/users',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: adminCookie },
+      payload: {
+        name: 'Normal Non-SWK User',
+        email: 'normal-rep@a.example',
+        password: 'Normal-Pass-2026!',
+        role_id: pmRoleId,
+        branch_id: dxbBranchId,
+        active: true,
+        must_change_password: false,
+      },
+    })
+    assert.equal(createNormalRes.statusCode, 201, `Create normal user failed: ${createNormalRes.body}`)
+    const normalUserId = Number((createNormalRes.json() as any).id)
+    const server = app!
+
+    for (const protectedAlias of ['rahaba@swk.property', 'meenakshi@swk.property', 'shabib@swk.property', 'admin@swkpropertiesuae.com']) {
+      const renameRes = await server.inject({
+        method: 'PUT',
+        url: `/api/e/users/${normalUserId}`,
+        headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: adminCookie },
+        payload: { email: protectedAlias },
+      })
+      assert.equal(
+        renameRes.statusCode,
+        400,
+        `Expected 400 when renaming non-hardcoded user email to ${protectedAlias}, got ${renameRes.statusCode}: ${renameRes.body}`,
+      )
+    }
+    assert.equal(
+      q.val<string>(`SELECT email FROM users WHERE id = ?`, normalUserId),
+      'normal-rep@a.example',
+      'Protected alias email rename must never persist in DB',
+    )
+
+    // -------------------------------------------------------------------------
+    // 9. Fix Round 1 [Important #3]: Non-SWK HR/Office Admin role_grant_sig + JSON ['*'] wildcard clamping
+    // -------------------------------------------------------------------------
+    const nonSwkTamperedHrId = q.insert(
+      `INSERT INTO users(name, email, password_hash, role_id, branch_id, active, must_change_password, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Non-SWK Tampered HR',
+      'tampered-hr@a.example',
+      hashPassword('TamperHr-2026!'),
+      hrRoleId,
+      dxbBranchId,
+      1,
+      0,
+      now,
+      now,
+    )
+    const loadedNonSwkTamperedHr = loadUser(nonSwkTamperedHrId)!
+    assert.equal(loadedNonSwkTamperedHr.role_name, 'Staff (Attendance & General)', 'Unsigned non-SWK HR row must be downgraded to Staff (Attendance & General)')
+    assert.deepEqual(loadedNonSwkTamperedHr.permissions, RESTRICTED_STAFF_PERMISSIONS)
+    assert.equal(canViewEmployeeRecords(loadedNonSwkTamperedHr), false, 'Unsigned non-SWK HR must fail canViewEmployeeRecords')
+
+    // Admin creating a signed non-SWK HR user gets role_grant_sig and preserves it on unrelated edits
+    const createSignedNonSwkHr = await app.inject({
+      method: 'POST',
+      url: '/api/e/users',
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: adminCookie },
+      payload: {
+        name: 'Signed Non-SWK HR',
+        email: 'signed-hr@a.example',
+        password: 'SignedHr-Pass-2026!',
+        role_id: hrRoleId,
+        branch_id: dxbBranchId,
+        active: true,
+        must_change_password: false,
+      },
+    })
+    assert.equal(createSignedNonSwkHr.statusCode, 201, `Create signed non-SWK HR failed: ${createSignedNonSwkHr.body}`)
+    const signedNonSwkHrId = (createSignedNonSwkHr.json() as any).id
+    const sigBeforeEdit = q.val<string | null>(`SELECT role_grant_sig FROM users WHERE id = ?`, signedNonSwkHrId)
+    assert.ok(sigBeforeEdit, 'POST /api/e/users must write role_grant_sig for Admin-created non-SWK HR user')
+    assert.equal(loadUser(signedNonSwkHrId)?.role_name, 'HR')
+    assert.equal(canViewEmployeeRecords(loadUser(signedNonSwkHrId)), true)
+
+    const unrelatedEditRes = await app.inject({
+      method: 'PUT',
+      url: `/api/e/users/${signedNonSwkHrId}`,
+      headers: { 'content-type': 'application/json', 'x-swk-client': 'web', cookie: adminCookie },
+      payload: { name: 'Signed Non-SWK HR Edited', work_capacity_points: 55 },
+    })
+    assert.equal(unrelatedEditRes.statusCode, 200, `Unrelated update on signed HR failed: ${unrelatedEditRes.body}`)
+    assert.equal(
+      q.val<string | null>(`SELECT role_grant_sig FROM users WHERE id = ?`, signedNonSwkHrId),
+      sigBeforeEdit,
+      'Editing unrelated user fields must preserve existing role_grant_sig',
+    )
+    assert.equal(loadUser(signedNonSwkHrId)?.role_name, 'HR', 'Unrelated edit must not demote signed HR user')
+
+    // Custom JSON wildcard array { admin: ['*'] } must be clamped with security_tamper
+    const wildcardJsonRoleId = q.insert(
+      `INSERT INTO roles(name, description, is_system, permissions, created_at, updated_at) VALUES (?,?,?,?,?,?)`,
+      'JSON Wildcard Role',
+      'Tampered module wildcard role',
+      0,
+      JSON.stringify({ dashboard: ['view'], admin: ['*'] }),
+      now,
+      now,
+    )
+    const wildcardNonSwkId = q.insert(
+      `INSERT INTO users(name, email, password_hash, role_id, branch_id, active, must_change_password, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Wildcard Non-SWK',
+      'wildcard-non-swk@a.example',
+      hashPassword('Wildcard-2026!'),
+      wildcardJsonRoleId,
+      dxbBranchId,
+      1,
+      0,
+      now,
+      now,
+    )
+    const loadedWildcardNonSwk = loadUser(wildcardNonSwkId)!
+    assert.equal(loadedWildcardNonSwk.role_name, 'Staff (Attendance & General)', 'Custom JSON admin: ["*"] role must be clamped')
+    assert.deepEqual(loadedWildcardNonSwk.permissions, RESTRICTED_STAFF_PERMISSIONS)
+    assert.ok(
+      q.all(`SELECT id FROM audit_log WHERE entity = 'users' AND record_id = ? AND action = 'security_tamper'`, wildcardNonSwkId).length >= 1,
+      'Clamping admin: ["*"] must log security_tamper',
+    )
+
+    // Verify Limited admin fixture { dashboard: ['view'], admin: ['view', 'edit', 'create'] } still works!
+    const limitedRoleId = q.insert(
+      `INSERT INTO roles(name, description, is_system, permissions, created_at, updated_at) VALUES (?,?,?,?,?,?)`,
+      'Limited admin',
+      'Non-wildcard limited admin fixture',
+      0,
+      JSON.stringify({ dashboard: ['view'], admin: ['view', 'edit', 'create'] }),
+      now,
+      now,
+    )
+    const limitedNonSwkId = q.insert(
+      `INSERT INTO users(name, email, password_hash, role_id, branch_id, active, must_change_password, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      'Limited Admin Check',
+      'limited-check@a.example',
+      hashPassword('Limited-2026!'),
+      limitedRoleId,
+      dxbBranchId,
+      1,
+      0,
+      now,
+      now,
+    )
+    const loadedLimited = loadUser(limitedNonSwkId)!
+    assert.equal(loadedLimited.role_name, 'Limited admin', 'Non-wildcard Limited admin fixture must remain preserved')
+    assert.deepEqual(loadedLimited.permissions, { dashboard: ['view'], admin: ['view', 'edit', 'create'] })
 
     console.log('RBAC zero-leak regression checks passed.')
   } finally {

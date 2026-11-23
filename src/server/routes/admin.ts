@@ -21,6 +21,9 @@ import {
   NON_ELEVATED_ASSIGNABLE_ROLES,
   hardcodedAccountFor,
   isElevatedCanonicalEmail,
+  OWNER_EMAILS,
+  ADMIN_EMAILS,
+  hasWildcardPermission,
   type NonElevatedAssignableRole,
 } from '../../shared/swk-staff-access'
 
@@ -142,7 +145,7 @@ export default async function (app: FastifyInstance) {
       : q.get<{ id: number; name: string; permissions: string }>(`SELECT id, name, permissions FROM roles WHERE name = ? AND deleted_at IS NULL`, roleName || 'Staff (Attendance & General)')
     if (!r) throw bad('Unknown role')
     const p = safeJson(r.permissions, {})
-    if (r.name === 'Owner' || r.name === 'Admin' || r.name === 'Manager' || p === '*') {
+    if (r.name === 'Owner' || r.name === 'Admin' || r.name === 'Manager' || hasWildcardPermission(p)) {
       throw bad('Elevated roles (Owner, Admin, Manager, or wildcard *) cannot be assigned to staff accounts.')
     }
     if (!(NON_ELEVATED_ASSIGNABLE_ROLES as readonly string[]).includes(r.name)) {
@@ -167,7 +170,7 @@ export default async function (app: FastifyInstance) {
       must_change_password: z.boolean().optional(),
     }).parse(req.body ?? {})
     const email = b.email.toLowerCase()
-    if (hardcodedAccountFor(email) || isElevatedCanonicalEmail(email)) {
+    if (hardcodedAccountFor(email) || isElevatedCanonicalEmail(email) || OWNER_EMAILS.has(email) || ADMIN_EMAILS.has(email)) {
       throw bad('This SWK staff account is hardcoded by company policy.')
     }
     const role = resolveAssignableRole(b.role_id, b.role_name)
@@ -193,7 +196,8 @@ export default async function (app: FastifyInstance) {
     const existing = q.get<{ id: number; email: string; party_id: number | null }>(`SELECT id, email, party_id FROM users WHERE id = ? AND deleted_at IS NULL`, id)
     if (!existing) throw notFound('User not found')
     if (existing.party_id) throw bad('Customer portal accounts cannot be modified here')
-    if (hardcodedAccountFor(existing.email) || isElevatedCanonicalEmail(existing.email)) {
+    const existingEmail = String(existing.email || '').trim().toLowerCase()
+    if (hardcodedAccountFor(existingEmail) || isElevatedCanonicalEmail(existingEmail) || OWNER_EMAILS.has(existingEmail) || ADMIN_EMAILS.has(existingEmail)) {
       throw bad('The role of this hardcoded SWK staff account is fixed by company policy.')
     }
     const b = z.object({

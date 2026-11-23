@@ -13,6 +13,7 @@ import {
   NON_ELEVATED_ASSIGNABLE_ROLES,
   isElevatedCanonicalEmail,
   isSwkCompanyEmail,
+  hasWildcardPermission,
   type NonElevatedAssignableRole,
 } from '../shared/swk-staff-access'
 import { syncSwkStaffRoster } from './seed'
@@ -86,7 +87,7 @@ export function verifyRoleGrant(
 }
 
 function isElevatedRoleOrWildcard(roleName: string | null | undefined, perms: Perms): boolean {
-  if (perms === '*') return true
+  if (hasWildcardPermission(perms)) return true
   return ELEVATED_ROLE_NAMES.has(String(roleName || '').trim().toLowerCase())
 }
 
@@ -167,7 +168,7 @@ export function loadUser(userId: number): SessionUser | null {
   //    HR and Office Admin require a valid APP_SECRET-HMAC role_grant_sig.
   if (isSwkCompanyEmail(email)) {
     const dbRole = String(u.role_name ?? '').trim()
-    if ((dbRole === 'HR' || dbRole === 'Office Admin') && perms !== '*') {
+    if ((dbRole === 'HR' || dbRole === 'Office Admin') && !hasWildcardPermission(perms)) {
       if (verifyRoleGrant(userObj.id, email, dbRole, u.role_grant_sig)) {
         userObj.role_name = dbRole
         userObj.permissions = HARDCODED_ROLE_PERMISSIONS[dbRole] as Perms
@@ -178,12 +179,12 @@ export function loadUser(userId: number): SessionUser | null {
       userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
       return userObj
     }
-    if (dbRole === 'Staff (Attendance & General)' && perms !== '*') {
+    if (dbRole === 'Staff (Attendance & General)' && !hasWildcardPermission(perms)) {
       userObj.role_name = 'Staff (Attendance & General)'
       userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
       return userObj
     }
-    logSecurityTamper(userObj.id, email, dbRole || (perms === '*' ? '*' : 'unknown'), 'disallowed_swk_staff_role')
+    logSecurityTamper(userObj.id, email, dbRole || (hasWildcardPermission(perms) ? '*' : 'unknown'), 'disallowed_swk_staff_role')
     userObj.role_name = 'Staff (Attendance & General)'
     userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
     return userObj
@@ -192,6 +193,19 @@ export function loadUser(userId: number): SessionUser | null {
   // 3. Non-SWK non-portal accounts (e.g. test fixtures): hard-blocked from elevated roles or wildcard '*'.
   if (isElevatedRoleOrWildcard(u.role_name, perms)) {
     logSecurityTamper(userObj.id, email, u.role_name || '*', 'non_canonical_elevated_role_tamper')
+    userObj.role_name = 'Staff (Attendance & General)'
+    userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
+    return userObj
+  }
+
+  const dbRole = String(u.role_name ?? '').trim()
+  if (dbRole === 'HR' || dbRole === 'Office Admin') {
+    if (verifyRoleGrant(userObj.id, email, dbRole, u.role_grant_sig)) {
+      userObj.role_name = dbRole
+      userObj.permissions = HARDCODED_ROLE_PERMISSIONS[dbRole] as Perms
+      return userObj
+    }
+    logSecurityTamper(userObj.id, email, dbRole, 'missing_or_invalid_role_grant_sig')
     userObj.role_name = 'Staff (Attendance & General)'
     userObj.permissions = RESTRICTED_STAFF_PERMISSIONS
     return userObj

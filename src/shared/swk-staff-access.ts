@@ -201,13 +201,13 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
   },
 ] as const
 
-const OWNER_EMAILS = new Set<string>([
+export const OWNER_EMAILS = new Set<string>([
   'shabib@swk.properties',
   'shabib@swk.property',
   'shabib@swkpropertiesuae.com',
 ])
 
-const ADMIN_EMAILS = new Set<string>([
+export const ADMIN_EMAILS = new Set<string>([
   'admin@swk.properties',
   'admin@swk.property',
   'admin@swkpropertiesuae.com',
@@ -244,6 +244,13 @@ export const CANONICAL_ELEVATED_EMAILS: ReadonlySet<string> = new Set([
 
 export function isElevatedCanonicalEmail(email: string | null | undefined): boolean {
   return CANONICAL_ELEVATED_EMAILS.has(String(email || '').trim().toLowerCase())
+}
+
+/** True when a permission set grants global '*' or any module-level '*' action wildcard. */
+export function hasWildcardPermission(perms: unknown): boolean {
+  if (perms === '*') return true
+  if (!perms || typeof perms !== 'object' || Array.isArray(perms)) return false
+  return Object.values(perms as Record<string, unknown>).some(acts => Array.isArray(acts) && acts.includes('*'))
 }
 
 const QR_VIEWER_EMAILS: ReadonlySet<string> = CANONICAL_ELEVATED_EMAILS
@@ -374,18 +381,21 @@ export function isSwkCompanyEmail(email: string | null | undefined): boolean {
 export function isOwnerSwkUser(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user || user.party_id) return false
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
   const email = String(user.email || '').trim().toLowerCase()
-  return OWNER_EMAILS.has(email)
+  const role = String(user.role_name || user.role || '').trim().toLowerCase()
+  if (role && role !== 'owner') return false
+  return email === 'shabib@swk.properties'
 }
 
 export function isAdminSwkUser(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user || user.party_id) return false
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
   const email = String(user.email || '').trim().toLowerCase()
-  if (ADMIN_EMAILS.has(email)) return true
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
+  if (role && role !== 'admin') return false
+  if (email === 'admin@swk.properties') return true
   return email === 'demo@swkpropertiesuae.com' && role === 'admin'
 }
 
@@ -395,27 +405,31 @@ export function isAdminSwkUser(
 export function isFullAccessSwkUser(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
-  if (!user || user.party_id) return false
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
   const email = String(user.email || '').trim().toLowerCase()
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  if (role === 'staff (attendance & general)') return false
   if (email === 'demo@swkpropertiesuae.com') return role === 'admin'
-  if (FULL_ACCESS_EMAILS.has(email)) return true
-  return false
+  return isElevatedCanonicalEmail(email)
 }
 
 export function isRestrictedStaffUser(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
-  if (canPrintReceptionQr(user)) return false
   const email = String(user.email || '').trim().toLowerCase()
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
   if (role === 'staff (attendance & general)') return true
+  if (canPrintReceptionQr(user)) return false
   if (email === 'demo@swkpropertiesuae.com' && role === 'admin') return false
   if (isSwkCompanyEmail(email)) {
     const fixed = hardcodedAccountFor(email)
-    if (fixed) return fixed.roleName === 'Staff (Attendance & General)'
+    if (fixed) {
+      const fixedIsElevated = fixed.roleName === 'Owner' || fixed.roleName === 'Admin' || fixed.roleName === 'Manager'
+      if (fixedIsElevated && !isElevatedCanonicalEmail(email) && !(email === 'manager@swkpropertiesuae.com' && role === 'manager')) {
+        return true
+      }
+      return fixed.roleName === 'Staff (Attendance & General)'
+    }
     if (role === 'hr' || role === 'office admin') return false
     return true
   }
