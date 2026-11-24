@@ -11,9 +11,7 @@ import {
   Loader2,
   Lock,
   Mail,
-  MapPin,
   MapPinned,
-  RefreshCw,
   ScanLine,
   ShieldAlert,
   Wifi,
@@ -28,45 +26,21 @@ async function ensureLiveCameraPermission(): Promise<boolean> {
   return ensureNativeCameraPermission()
 }
 
-function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const rad = (d: number) => (d * Math.PI) / 180
-  const R = 6371000
-  const dLat = rad(lat2 - lat1)
-  const dLng = rad(lng2 - lng1)
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
-  return Math.round(2 * R * Math.asin(Math.sqrt(h)))
-}
-
 type Net = {
   ssid: string
   detected_client_ip: string
   ip_matches_office: boolean
   office_ip_locked?: boolean
-  office_gps_name?: string
-  office_gps_lat?: number
-  office_gps_lng?: number
-  office_gps_radius_m?: number
-  gps_max_accuracy_m?: number
-  office_gps_enforce?: boolean
   qr_mode?: 'rotating' | 'fixed'
   qr_step_s?: number
   qr_require_live_camera?: boolean
 }
 type Step = 'scan' | 'signin' | 'done'
-type GpsState = {
-  status: 'loading' | 'ready' | 'error'
-  lat?: number
-  lng?: number
-  accuracy_m?: number
-  distance_m?: number
-  inside?: boolean
-  error?: string
-}
 
 /**
- * Locked-down office check-in terminal.
- * Enforces: Office Wi-Fi lock + Rotating Short-TTL Reception QR + Live Browser Camera Capture
- * + Tight GPS Radius (Al Saqr Business Tower) + Hardware P-256 Device Proof.
+ * Office check-in terminal.
+ * Check-in works only on the locked office Wi-Fi, scanning the rotating short-TTL code
+ * on the reception display with the live browser camera from this person's own registered device.
  */
 export default function ReceptionQrPage() {
   const { me } = useMeta()
@@ -76,7 +50,6 @@ export default function ReceptionQrPage() {
   const [captureSource, setCaptureSource] = useState<'live_camera' | 'link_hash'>('live_camera')
   const [capturedAt, setCapturedAt] = useState('')
   const [camErr, setCamErr] = useState('')
-  const [gps, setGps] = useState<GpsState>({ status: 'loading' })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [totp, setTotp] = useState('')
@@ -89,7 +62,7 @@ export default function ReceptionQrPage() {
   const canvas = useRef<HTMLCanvasElement>(null)
   const canSetup = canPrintReceptionQr(me)
 
-  // Opened from a phone camera link (#c=…): extract code and clear URL hash immediately
+  // Opened from a phone camera link (#c=…): extract code and strip hash from URL immediately
   useEffect(() => {
     const code = qrCodeFrom(window.location.hash)
     if (code) {
@@ -106,53 +79,15 @@ export default function ReceptionQrPage() {
   }, [])
   useEffect(loadNet, [loadNet])
 
-  const fetchGps = useCallback((cfg?: Net | null) => {
-    const activeCfg = cfg ?? net
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGps({ status: 'error', error: 'Geolocation API unavailable in this browser.' })
-      return
-    }
-    setGps((prev) => ({ ...prev, status: 'loading', error: undefined }))
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        const accuracy_m = Math.round(pos.coords.accuracy || 0)
-        const targetLat = activeCfg?.office_gps_lat ?? 25.2131
-        const targetLng = activeCfg?.office_gps_lng ?? 55.2768
-        const radiusM = activeCfg?.office_gps_radius_m ?? 75
-        const maxAcc = activeCfg?.gps_max_accuracy_m ?? 65
-        const distance_m = haversineMeters(targetLat, targetLng, lat, lng)
-        const inside = distance_m <= radiusM && accuracy_m > 0 && accuracy_m <= maxAcc
-        setGps({ status: 'ready', lat, lng, accuracy_m, distance_m, inside })
-      },
-      (err) => {
-        setGps({
-          status: 'error',
-          error:
-            err.code === 1
-              ? 'Location permission denied. Allow precise GPS to verify Al Saqr Business Tower presence.'
-              : 'Could not lock live GPS fix. Ensure High Accuracy Location is enabled and retry.',
-        })
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 },
-    )
-  }, [net])
-
-  useEffect(() => {
-    if (net) fetchGps(net)
-  }, [net]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Signed in already on this phone: auto-check-in once live camera code, office Wi-Fi, and Al Saqr GPS are verified
+  // Signed in already on this phone: check in as soon as the live code is read and office Wi-Fi is confirmed
   const autoTried = useRef(false)
   useEffect(() => {
-    const gpsOk = !net?.office_gps_enforce || (gps.status === 'ready' && gps.inside)
     const camOk = net?.qr_mode !== 'rotating' || !net?.qr_require_live_camera || captureSource === 'live_camera'
-    if (step === 'signin' && me && !me.party_id && payload && net?.office_ip_locked && net.ip_matches_office && gpsOk && camOk && !autoTried.current) {
+    if (step === 'signin' && me && !me.party_id && payload && net?.office_ip_locked && net.ip_matches_office && camOk && !autoTried.current) {
       autoTried.current = true
       void submit()
     }
-  }, [step, me, payload, net, gps, captureSource]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, me, payload, net, captureSource]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Live camera only: frames go straight from the video element to jsQR, nothing is saved or uploaded
   useEffect(() => {
@@ -232,9 +167,6 @@ export default function ReceptionQrPage() {
           qr_payload: payload,
           capture_source: captureSource,
           captured_at: capturedAt || new Date().toISOString(),
-          gps_lat: gps.lat,
-          gps_lng: gps.lng,
-          gps_accuracy_m: gps.accuracy_m,
           challenge,
           device_pub: proof.pub,
           device_sig: proof.sig,
@@ -260,11 +192,6 @@ export default function ReceptionQrPage() {
   }
 
   const onOffice = Boolean(net?.office_ip_locked && net?.ip_matches_office)
-  const officeName = net?.office_gps_name || 'Al Saqr Business Tower, Sheikh Zayed Road'
-  const radiusM = net?.office_gps_radius_m ?? 75
-  const maxAcc = net?.gps_max_accuracy_m ?? 65
-  const gpsEnforced = net?.office_gps_enforce !== false
-  const gpsOk = !gpsEnforced || (gps.status === 'ready' && Boolean(gps.inside))
   const linkBlockedInRotating = net?.qr_mode === 'rotating' && net?.qr_require_live_camera !== false && captureSource !== 'live_camera'
   const stepS = net?.qr_step_s ?? 20
 
@@ -273,81 +200,37 @@ export default function ReceptionQrPage() {
       className="min-h-screen text-[#0f2a33] flex items-center justify-center p-4"
       style={{ background: 'linear-gradient(135deg, #fbf9f4 0%, #f3eee3 48%, #faf8f2 100%)' }}
     >
-      <div className="w-full max-w-[440px] rounded-3xl bg-white border border-black/5 p-6 shadow-[0_24px_60px_rgba(15,42,51,0.12)]">
-        <div className="flex flex-col items-center text-center mb-4">
+      <div className="w-full max-w-[420px] rounded-3xl bg-white border border-black/5 p-6 shadow-[0_24px_60px_rgba(15,42,51,0.12)]">
+        <div className="flex flex-col items-center text-center mb-5">
           <img src="/brand/web/swk-logo-light.webp" alt="SWK Properties OS" className="h-14 w-auto" />
           <h1 className="font-display font-bold text-xl m-0 mt-2">{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
           <p className="text-[11.5px] text-[#55636a] m-0 mt-0.5">
-            {net?.qr_mode === 'rotating'
-              ? `Rotating ${stepS}s QR · Live Camera · ${radiusM}m Al Saqr GPS`
-              : `Office Wi-Fi · ${radiusM}m Al Saqr Business Tower GPS`}
+            {net?.qr_mode === 'rotating' ? `Rotating ${stepS}s QR · Live Camera · Office Wi-Fi` : 'Office Wi-Fi · Live Camera Check-In'}
           </p>
         </div>
 
-        {/* Factor 1: Office Wi-Fi IP Lock */}
         <div
-          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-[12px] mb-2.5 ${
+          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-[12.5px] mb-4 ${
             onOffice ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-700'
           }`}
         >
           {onOffice ? <Wifi size={16} className="shrink-0" /> : <WifiOff size={16} className="shrink-0" />}
           <div className="leading-snug">
             {!net ? (
-              'Checking office network…'
+              'Checking your network…'
             ) : !net.office_ip_locked ? (
               'Check-in is not set up yet. The Admin must lock the office network.'
             ) : onOffice ? (
               <>
-                Office network verified (<b>{net.ssid}</b>)
+                Connected to the office network (<b>{net.ssid}</b>)
               </>
             ) : (
               <>
-                Not on office Wi-Fi. Connect to <b>{net.ssid}</b>. Mobile data is refused.
+                Not on the office Wi-Fi. Connect to <b>{net.ssid}</b> to check in. Mobile data is not accepted.
               </>
             )}
           </div>
         </div>
-
-        {/* Factor 2: Al Saqr Business Tower Strict GPS Radius */}
-        {gpsEnforced && (
-          <div
-            className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl border text-[12px] mb-4 ${
-              gps.status === 'ready' && gps.inside
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : gps.status === 'loading'
-                  ? 'bg-amber-50 border-amber-200 text-amber-800'
-                  : 'bg-rose-50 border-rose-200 text-rose-700'
-            }`}
-          >
-            <div className="flex items-center gap-2 leading-snug">
-              <MapPin size={16} className="shrink-0" />
-              <div>
-                {gps.status === 'loading' && `Locking precise GPS for ${officeName}…`}
-                {gps.status === 'error' && gps.error}
-                {gps.status === 'ready' && gps.inside && (
-                  <>
-                    Inside <b>Al Saqr Business Tower</b> ({gps.distance_m}m / {radiusM}m max · ±{gps.accuracy_m}m)
-                  </>
-                )}
-                {gps.status === 'ready' && !gps.inside && (
-                  <>
-                    {gps.distance_m! > radiusM
-                      ? `Outside Al Saqr Business Tower perimeter (${gps.distance_m}m away; max ${radiusM}m).`
-                      : `GPS accuracy too coarse (±${gps.accuracy_m}m; max ±${maxAcc}m). Move near reception.`}
-                  </>
-                )}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => fetchGps()}
-              aria-label="Refresh GPS"
-              className="p-1.5 rounded-lg bg-white/70 border border-black/10 text-current cursor-pointer shrink-0"
-            >
-              <RefreshCw size={13} />
-            </button>
-          </div>
-        )}
 
         {error && (
           <div role="alert" className="mb-4 px-3.5 py-2.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
@@ -368,7 +251,7 @@ export default function ReceptionQrPage() {
             </div>
             <p className="text-xs text-[#3d4a51] m-0">
               {camErr ||
-                `Point your live camera at the rotating ${stepS}s reception display inside Al Saqr Business Tower. Screenshots, gallery uploads, and forwarded links are blocked.`}
+                `Point your live camera at the rotating ${stepS}s reception display. Screenshots, gallery uploads, and forwarded links are blocked.`}
             </p>
           </div>
         )}
@@ -402,7 +285,7 @@ export default function ReceptionQrPage() {
             </p>
             <button
               type="button"
-              disabled={busy || !onOffice || !gpsOk || linkBlockedInRotating}
+              disabled={busy || !onOffice || linkBlockedInRotating}
               onClick={() => void submit()}
               className="w-full h-12 rounded-full border-0 bg-[#0f2a33] text-white font-semibold uppercase tracking-[0.14em] text-[12px] cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
@@ -478,7 +361,7 @@ export default function ReceptionQrPage() {
             )}
             <button
               type="submit"
-              disabled={busy || !onOffice || !gpsOk || linkBlockedInRotating}
+              disabled={busy || !onOffice || linkBlockedInRotating}
               className="w-full h-12 rounded-full border-0 bg-[#0f2a33] text-white font-semibold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
               {busy ? (
@@ -521,12 +404,6 @@ export default function ReceptionQrPage() {
                 k="Network"
                 v={`${result.verification_summary?.office_wifi_ssid} · ${result.verification_summary?.client_ip}`}
               />
-              {result.verification_summary?.gps_verified && (
-                <Row
-                  k="GPS Perimeter"
-                  v={`${result.verification_summary.distance_m}m from Al Saqr (±${result.verification_summary.gps_accuracy_m}m)`}
-                />
-              )}
             </div>
             <a
               href="/home"
@@ -582,7 +459,7 @@ function SetupPanel({ onChange }: { onChange: () => void }) {
   return (
     <div className="mt-5 rounded-2xl border border-[#e6e0d4] bg-[#f8f5ef] p-3 text-xs text-[#3d4a51] space-y-2">
       <div className="font-semibold text-[#0f2a33]">Attendance control (Owner / Manager)</div>
-      <div>Office Wi-Fi &amp; Al Saqr Business Tower GPS perimeter are locked in Settings → Attendance.</div>
+      <div>The office network is locked by the Admin in Settings, Attendance Wi-Fi.</div>
       {msg && <div>{msg}</div>}
       <a href="/reception-display" className="inline-block text-[#8a621c] underline">
         Open the reception code screen

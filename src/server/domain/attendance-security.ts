@@ -30,10 +30,10 @@ export function regenerateFixedQr() { setSettings({ qr_fixed_version: (Number(ge
 export function setQrMode(mode: string) { setSettings({ qr_mode: mode === 'fixed' ? 'fixed' : 'rotating' }) }
 /** The rotating code is AES-256-GCM encrypted, so it looks like random text and cannot be read, edited or made up. */
 export function currentQrToken(now = Date.now()) {
-  const officeName = String(getSetting('office_gps_name') || 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai')
-  const radiusM = Number(getSetting('office_gps_radius_m') ?? 75) || 75
+  const officeName = String(getSetting('office_gps_name') || 'SWK Properties HQ')
+  const radiusM = Number(getSetting('office_gps_radius_m') ?? 200) || 200
   const requireLiveCamera = Boolean(getSetting('qr_require_live_camera') ?? true)
-  const enforceGps = Boolean(getSetting('office_gps_enforce') ?? true)
+  const enforceGps = Boolean(getSetting('office_gps_enforce') ?? false)
   if (qrMode() === 'fixed') {
     return {
       token: fixedToken(),

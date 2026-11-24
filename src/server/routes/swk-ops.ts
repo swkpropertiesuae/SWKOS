@@ -1378,12 +1378,12 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   }
 
   const officeGps = () => ({
-    name: String(getSetting('office_gps_name') || 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai'),
+    name: String(getSetting('office_gps_name') || 'SWK Properties HQ'),
     lat: Number(getSetting('office_gps_lat') ?? 25.2131),
     lng: Number(getSetting('office_gps_lng') ?? 55.2768),
-    radius: Number(getSetting('office_gps_radius_m') ?? 75) || 75,
-    max_accuracy_m: Number(getSetting('gps_max_accuracy_m') ?? 65) || 65,
-    enforce_gps: Boolean(getSetting('office_gps_enforce') ?? true),
+    radius: Number(getSetting('office_gps_radius_m') ?? 200) || 200,
+    max_accuracy_m: Number(getSetting('gps_max_accuracy_m') ?? 150) || 150,
+    enforce_gps: Boolean(getSetting('office_gps_enforce') ?? false),
     qr_mode: qrMode(),
     qr_step_s: Number(getSetting('qr_step_seconds') ?? 20) || 20,
     require_live_camera: Boolean(getSetting('qr_require_live_camera') ?? true),
@@ -1618,10 +1618,9 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const reuse = q.get<any>(`SELECT id FROM attendance_events WHERE device_id = ? AND work_date = ? AND user_id <> ? AND deleted_at IS NULL LIMIT 1`, deviceId, todayStr(), authUser.id)
     if (reuse) throw new HttpError(403, 'This device has already checked in another person today. One device, one person.')
 
-    // Enforce tight Al Saqr Business Tower GPS perimeter before committing attendance
-    const enforceGps = Boolean(getSetting('office_gps_enforce') ?? true)
-    const hasGpsInput = b.gps_lat !== undefined && b.gps_lat !== null && b.gps_lng !== undefined && b.gps_lng !== null
-    const gpsVerified = enforceGps || hasGpsInput
+    // Office check-in relies on locked Office Wi-Fi + rotating live camera QR + device key (GPS only if explicitly enabled by Admin)
+    const enforceGps = Boolean(getSetting('office_gps_enforce') ?? false)
+    const gpsVerified = enforceGps
       ? verifyOfficeGeofence(authUser.id, { lat: b.gps_lat, lng: b.gps_lng, accuracy_m: b.gps_accuracy_m })
       : null
 

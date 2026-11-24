@@ -63,7 +63,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   sip_turn_urls: '', sip_turn_secret: '', sip_turn_ttl_s: 3600, sip_turn_region: 'UAE / Dubai (me-central-1)', sip_ice_transport_policy: 'all',
   // --- Push Notifications (Web Push VAPID & FCM)
   vapid_public_key: '', vapid_private_key: '', fcm_service_account_json: '', push_hide_preview_global: false,
-  // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security (Al Saqr Business Tower HQ)
+  // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security
   office_wifi_ssid: 'XAVIER BUSINESS',
   office_wifi_bssid: '',
   office_wifi_public_ips: '',
@@ -72,15 +72,15 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   office_gps_name: 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai',
   office_gps_lat: '25.2131',
   office_gps_lng: '55.2768',
-  office_gps_radius_m: 75,
-  office_gps_enforce: true,
+  office_gps_radius_m: 200,
+  office_gps_enforce: false,
   qr_token_secret: '',
   qr_mode: 'rotating',
   qr_step_seconds: 20,
   qr_require_live_camera: true,
   qr_fixed_version: 1,
   device_binding_enforce: true,
-  gps_max_accuracy_m: 65,
+  gps_max_accuracy_m: 150,
   mobile_require_device_approval: false, gps_retention_days: 90, field_duty_auto_stop_hour: 21,
   // --- tracking
   tracking_provider: 'none', tracking_api_key: '', tracking_webhook_secret: '',

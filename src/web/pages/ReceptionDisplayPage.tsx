@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { MapPin, QrCode, RefreshCw, ShieldCheck, Timer } from 'lucide-react'
+import { QrCode, RefreshCw, ShieldCheck, Timer, Wifi } from 'lucide-react'
 import { get, post } from '../lib/api'
 import { PageHeader, ErrorBox } from '../ui/kit'
 import { qrLink } from '@shared/qr-payload'
@@ -11,16 +11,13 @@ type Tok = {
   step_s?: number
   max_ttl_s?: number
   mode: 'fixed' | 'rotating'
-  office_name?: string
-  office_gps_radius_m?: number
-  enforce_gps?: boolean
   require_live_camera?: boolean
 }
 
 /**
  * Reception check-in monitor display.
  * Rotating mode (locked default): short-TTL AES-256-GCM encrypted code rotating every 20 seconds
- * (max ~40s validity), paired with live browser camera scanning and tight Al Saqr Business Tower GPS perimeter.
+ * (max ~40s validity), paired with live browser camera scanning and locked Office Wi-Fi.
  */
 export function ReceptionDisplayPage() {
   const [img, setImg] = useState('')
@@ -85,8 +82,6 @@ export function ReceptionDisplayPage() {
   const stepS = tokInfo?.step_s || 20
   const maxTtlS = tokInfo?.max_ttl_s || stepS * 2
   const pct = mode === 'rotating' ? Math.max(0, Math.min(100, Math.round((left / stepS) * 100))) : 100
-  const officeName = tokInfo?.office_name || 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai'
-  const radiusM = tokInfo?.office_gps_radius_m || 75
 
   return (
     <div className="space-y-4">
@@ -95,7 +90,7 @@ export function ReceptionDisplayPage() {
         title="Reception check-in display"
         subtitle={
           mode === 'rotating'
-            ? `Anti-spoof short-TTL rotating QR (${stepS}s cycle). Staff must scan live with their browser camera inside ${officeName}.`
+            ? `Anti-spoof short-TTL rotating QR (${stepS}s cycle). Staff scan live with their browser camera on the locked office Wi-Fi.`
             : 'Fixed wall QR mode is active. Switch back to rotating short-TTL mode for anti-screenshot protection.'
         }
       />
@@ -115,8 +110,8 @@ export function ReceptionDisplayPage() {
               : 'Static Wall QR Mode (Unrotated)'}
           </span>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
-            <MapPin size={14} />
-            {officeName} · {radiusM}m Strict GPS Radius
+            <Wifi size={14} />
+            Office Wi-Fi Locked · Live Camera Required
           </span>
         </div>
 
@@ -139,7 +134,7 @@ export function ReceptionDisplayPage() {
                 <Timer size={14} className="text-[#047857] shrink-0" />
                 Next code in <span className="font-mono font-bold">{left}s</span>
               </span>
-              <span className="text-muted whitespace-nowrap">Max {maxTtlS}s TTL · Live camera + GPS required</span>
+              <span className="text-muted whitespace-nowrap">Max {maxTtlS}s TTL · Office Wi-Fi + Live Camera</span>
             </div>
             <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
               <div
