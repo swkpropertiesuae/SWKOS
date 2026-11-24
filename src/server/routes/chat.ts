@@ -32,12 +32,29 @@ const lastId = (r: any, table: string) => Number(r?.lastInsertRowid) || q.val<nu
 const ALLOWED_MIME = /^(image\/(png|jpe?g|gif|webp|heic|heif)|audio\/[\w.+-]+|video\/(mp4|webm|quicktime)|application\/(pdf|zip|msword|vnd\.openxmlformats-officedocument\.[\w.]+|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/(plain|csv))$/i
 const INLINE_MIME = /^(image\/(png|jpe?g|gif|webp)|audio\/|video\/)/i
 
+/**
+ * Clock time of a stored check-in/out. Attendance times are saved as Dubai wall-clock text without a zone
+ * ('2026-11-24T10:11', see nowLocal); `new Date()` would read that as server time (UTC) and add 4 hours.
+ * Only a value carrying its own zone ('Z' or '+04:00') is converted.
+ */
+export function attendanceClock(s: string): string {
+  const v = String(s).trim()
+  if (/(Z|[+-]\d{2}:?\d{2})$/i.test(v)) {
+    const d = new Date(v)
+    if (!Number.isNaN(d.getTime())) return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit', hour12: true }).format(d).toUpperCase()
+  }
+  const m = /(\d{1,2}):(\d{2})/.exec(v.includes('T') ? v.split('T')[1]! : v.includes(' ') ? v.split(' ').pop()! : v)
+  if (!m) return v
+  const h = Number(m[1])
+  return `${String(h % 12 || 12).padStart(2, '0')}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`
+}
+
 /** Today's office attendance as a message, Dubai date. Staff without a check-in are listed so the Owner sees gaps. */
 export function attendanceReportText(day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date())) {
   const staff = q.all<{ id: number; name: string }>(`SELECT id, name FROM employees WHERE deleted_at IS NULL AND (status IS NULL OR status = 'Active') ORDER BY name`)
   const att = q.all<{ employee_id: number; status: string; check_in: string | null; check_out: string | null }>(`SELECT employee_id, status, check_in, check_out FROM attendance WHERE deleted_at IS NULL AND att_date = ?`, day)
   const byEmp = new Map(att.map(a => [a.employee_id, a]))
-  const t = (s: string | null) => (s ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(s)).toUpperCase() : '')
+  const t = (s: string | null) => (s ? attendanceClock(s) : '')
   const groups: Record<string, string[]> = { Present: [], Late: [], 'Field / remote': [], 'On leave': [], 'Not checked in': [] }
   for (const e of staff) {
     const a = byEmp.get(e.id)

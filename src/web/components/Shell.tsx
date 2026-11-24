@@ -411,6 +411,9 @@ export function Shell() {
   const isPrint = loc.pathname.startsWith('/print')
   const here = findNav(loc.pathname)
   const isHome = loc.pathname === '/home'
+  // Same visibility rule as AppSidebar: it renders nothing when the user can see none of the section's items,
+  // so the sidebar grid column must not be reserved either (otherwise the page is squeezed into 248px).
+  const showSidebar = !isHome && !!here && here.section.items.length > 1 && here.section.items.some(i => isNavItemVisible(i, can, me))
   const pageTitle = isHome ? 'All apps' : here?.item.label ?? titleFromPath(loc.pathname)
   if (isPrint) {
     return (
@@ -589,7 +592,7 @@ export function Shell() {
           </div>
         )}
 
-        <div className={cls('swk-body', drawer && 'sb-open', !isHome && (here?.section.items.length ?? 0) > 1 && 'has-sidebar', !isHome && (here?.section.items.length ?? 0) > 1 && collapsed && 'is-collapsed')}>
+        <div className={cls('swk-body', drawer && 'sb-open', showSidebar && 'has-sidebar', showSidebar && collapsed && 'is-collapsed')}>
           {drawer && <div className="swk-sb-scrim" onClick={() => setDrawer(false)} />}
           {!isHome && <AppSidebar pathname={loc.pathname} collapsed={collapsed} onToggle={toggleSidebar} onCloseMobile={() => setDrawer(false)} />}
           <main className="swk-main" id="main">
