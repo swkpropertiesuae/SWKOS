@@ -7,7 +7,7 @@ Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calcula
 ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText,Languages,Search,Navigation,
 MessageCircleMore,SquareCheckBig,Gauge,UsersRound,Handshake,Settings2
 } from 'lucide-react';
-import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
+import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,canAccessDocumentTemplates,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }
@@ -16,16 +16,21 @@ export type NavSection = { key: string; label: string; items: NavItem[] }
   * Simple English, workflow-ordered navigation for SWK Properties Business Workspace.
   * Every section orders its app icons step-by-step according to daily real estate workflow.
   */
+export const SWK_CORE_SUITE_KEYS = new Set(['messages', 'work', 'phone'])
+
 export const SWK_NAV: NavSection[] = [
-  { key: 'messages', label: 'Inside', items: [
-    { label: 'Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, groups & announcements' },
+  { key: 'messages', label: 'SWK Inside', items: [
+    { label: 'SWK Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, groups & announcements' },
   ] },
-  { key: 'work', label: 'Work', items: [
+  { key: 'work', label: 'SWK Work', items: [
     { label: 'My Work', to: '/my-work', icon: ListChecks, module: 'projects', isNew: true, desc: 'Everything assigned to me, by due date' },
     { label: 'Tasks', to: '/e/tasks', icon: ListChecks, module: 'projects', desc: 'Table, board & calendar of all tasks' },
     { label: 'Projects', to: '/e/projects', icon: FolderKanban, module: 'projects', desc: 'Projects with owners, budgets & dates' },
     { label: 'Automations', to: '/automations', icon: Zap, module: 'admin', isNew: true, desc: 'When this happens, do that — no code' },
     { label: 'Automation Runs', to: '/e/workflow_runs', icon: Workflow, module: 'admin', desc: 'History of every automation run' },
+  ] },
+  { key: 'phone', label: 'SWK Phone', items: [
+    { label: 'SWK Phone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'WebRTC SIP extension, colleague directory & Masked Vault calling' },
   ] },
   { key: 'command', label: 'Dashboards', items: [
     { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, module: 'dashboard', desc: 'Daily business summary' },
@@ -194,6 +199,7 @@ export type AppTone = 'navy' | 'champ' | 'oasis' | 'ocean' | 'dune' | 'plum'
 export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: AppTone }> = {
   messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessageCircleMore, tone: 'oasis' },
   work: { blurb: 'My work, tasks & projects on boards, calendars and no-code automations', icon: SquareCheckBig, tone: 'champ' },
+  phone: { blurb: 'WebRTC SIP extension, colleague directory & Masked Vault calling', icon: PhoneCall, tone: 'dune' },
   command: { blurb: 'Overview, deal pipeline, approvals & calendar', icon: Gauge, tone: 'navy' },
   inventory: { blurb: 'Submissions, owner permits, units & listings', icon: Building2, tone: 'champ' },
   clients: { blurb: 'Leads, calls, WhatsApp, email & follow-ups', icon: UsersRound, tone: 'oasis' },
@@ -214,12 +220,21 @@ export type LauncherApp = { key: string; label: string; blurb: string; icon: Luc
 export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   {
     key: 'messages',
-    label: 'Inside',
+    label: 'SWK Inside',
     blurb: 'Team chats, project groups, announcements & attendance reports',
     icon: MessageCircleMore,
     tone: 'oasis',
     landing: '/chat',
-    items: [{ label: 'Inside Messenger', to: '/chat', icon: MessagesSquare, desc: 'Team chats, groups & announcements' }],
+    items: [{ label: 'SWK Inside Messenger', to: '/chat', icon: MessagesSquare, desc: 'Team chats, groups & announcements' }],
+  },
+  {
+    key: 'phone',
+    label: 'SWK Phone',
+    blurb: 'SIP softphone extension, colleague directory & Masked Vault calling',
+    icon: PhoneCall,
+    tone: 'dune',
+    landing: '/phone',
+    items: [{ label: 'SWK Phone & Dialer', to: '/phone', icon: PhoneCall, desc: 'SIP extension, colleague directory & Masked Vault calling' }],
   },
   {
     key: 'attendance',
@@ -317,6 +332,7 @@ export function isNavItemVisible(
   const clean = item.to.split('?')[0] || ''
   if (clean === '/crm-vault' && !canAccessCrmVault(user)) return false
   if (clean === '/field-live' && !canAccessFieldLiveMap(user)) return false
+  if ((clean === '/studio' || clean === '/e/doc_templates') && !canAccessDocumentTemplates(user)) return false
   const adminOk = canAccessSwkAdminLogic(user)
   if (!adminOk && isAdminOnlyItem(item)) return false
   if (item.module && !can(item.module, 'view')) return false

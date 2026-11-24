@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bg-in" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0a2e26"/>
+      <stop offset="52%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#064e3b"/>
+    </linearGradient>
+    <linearGradient id="gold-in" x1="20" y1="16" x2="112" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fff0bc"/>
+      <stop offset="48%" stop-color="#e5be67"/>
+      <stop offset="100%" stop-color="#b78328"/>
+    </linearGradient>
+    <linearGradient id="accent-in" x1="24" y1="24" x2="104" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#bg-in)"/>
+  <!-- Art Deco geometric frame -->
+  <rect x="9" y="9" width="110" height="110" rx="22" stroke="url(#gold-in)" stroke-opacity="0.45" stroke-width="1.8"/>
+  <path d="M64 14L114 64L64 114L14 64Z" stroke="url(#gold-in)" stroke-opacity="0.18" stroke-width="1.4"/>
+  <!-- Outer SWK chat crest -->
+  <path d="M30 44C30 34.059 38.059 26 48 26H80C89.941 26 98 34.059 98 44V68C98 77.941 89.941 86 80 86H55L37 101V86H48C38.059 86 30 77.941 30 68V44Z" fill="#071a16" fill-opacity="0.72" stroke="url(#gold-in)" stroke-width="3.2" stroke-linejoin="round"/>
+  <!-- Luminous emerald inner wave + gold SWK skyscraper pulse bars -->
+  <rect x="46" y="48" width="7" height="18" rx="3.5" fill="url(#accent-in)"/>
+  <rect x="60.5" y="38" width="7" height="34" rx="3.5" fill="url(#gold-in)"/>
+  <rect x="75" y="45" width="7" height="22" rx="3.5" fill="#fb7185"/>
+  <!-- Crown star -->
+  <circle cx="94" cy="32" r="7" fill="#34d399" stroke="#071a16" stroke-width="2.5"/>
+</svg>

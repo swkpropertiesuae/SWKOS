@@ -568,6 +568,7 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       rtl INTEGER NOT NULL DEFAULT 0,
       include_letterhead INTEGER NOT NULL DEFAULT 1,
       include_seal INTEGER NOT NULL DEFAULT 0,
+      include_signature INTEGER NOT NULL DEFAULT 0,
       source_template_id INTEGER,
       linked_entity TEXT,
       linked_id INTEGER,
@@ -576,6 +577,32 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       deleted_at TEXT
     );
     CREATE INDEX IF NOT EXISTS ix_word_docs_user ON word_documents(user_id, deleted_at, updated_at);
+  ` },
+  { id: '012_document_seal_approvals', sql: `
+    CREATE TABLE IF NOT EXISTS document_seal_approvals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      requester_user_id INTEGER NOT NULL,
+      requester_name TEXT NOT NULL,
+      requester_email TEXT NOT NULL,
+      requester_role TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      source_id INTEGER,
+      document_title TEXT NOT NULL,
+      recipient_name TEXT,
+      reason TEXT NOT NULL,
+      include_seal INTEGER NOT NULL DEFAULT 1,
+      include_signature INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      decided_by_user_id INTEGER,
+      decided_by_name TEXT,
+      decision_note TEXT,
+      decided_at TEXT,
+      expires_at TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_seal_app_req ON document_seal_approvals(requester_user_id, status, created_at);
+    CREATE INDEX IF NOT EXISTS ix_seal_app_src ON document_seal_approvals(source_type, source_id, status);
+    CREATE INDEX IF NOT EXISTS ix_seal_app_status ON document_seal_approvals(status, created_at);
   ` },
 ]
 
@@ -692,6 +719,7 @@ function ensureOmniSuperappColumns() {
   ensureColumn('staff_devices', 'biometric_enabled', 'INTEGER NOT NULL DEFAULT 1')
   ensureColumn('staff_devices', 'revoked_at', 'TEXT')
   ensureColumn('staff_devices', 'revoked_reason', 'TEXT')
+  ensureColumn('word_documents', 'include_signature', 'INTEGER NOT NULL DEFAULT 0')
 }
 
 function syncEntity(def: EntityDef) {

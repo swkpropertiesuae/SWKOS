@@ -77,12 +77,13 @@ export default async function (app: FastifyInstance) {
       patch.invoice_no_pattern = pat
     }
     if ('document_seal' in patch) patch.document_seal = validateDocumentSeal(patch.document_seal)
+    if ('document_signature' in patch) patch.document_signature = validateDocumentSeal(patch.document_signature)
     if ('document_seal_default' in patch && typeof patch.document_seal_default !== 'boolean') throw bad('Document seal default must be true or false')
     const before = publicSettings()
     setSettings(patch)
     const after = publicSettings()
     const changes: Record<string, [any, any]> = {}
-    for (const k of Object.keys(patch)) if (k in SETTING_DEFAULTS && JSON.stringify(before[k]) !== JSON.stringify(after[k])) changes[k] = SECRET_SETTINGS.has(k) ? ['***', '***'] : k === 'document_seal' ? [before[k] ? 'Image configured' : 'No image', after[k] ? 'Image configured' : 'No image'] : [before[k], after[k]]
+    for (const k of Object.keys(patch)) if (k in SETTING_DEFAULTS && JSON.stringify(before[k]) !== JSON.stringify(after[k])) changes[k] = SECRET_SETTINGS.has(k) ? ['***', '***'] : (k === 'document_seal' || k === 'document_signature') ? [before[k] ? 'Image configured' : 'No image', after[k] ? 'Image configured' : 'No image'] : [before[k], after[k]]
     if (Object.keys(changes).length) audit(req.ctx, getDef('branches'), 0, 'settings', changes, 'Company settings')
     return publicSettings()
   })

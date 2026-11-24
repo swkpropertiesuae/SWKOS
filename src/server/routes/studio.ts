@@ -9,9 +9,13 @@ import { aiConfigured,chat } from '../ai/llm'
 import { cleanStudioHtml,htmlToText } from '../studio/sanitize'
 import { looksLikeHtml,markPlaceholders,markdownToHtml,mergeCompanyTokens,presentDocumentHtml } from '../../shared/studio-html'
 import { SWK_COMPANY_ADDRESS,SWK_COMPANY_EMAIL,SWK_COMPANY_HOURS,SWK_COMPANY_PHONE,SWK_RERA_ORN,SWK_TRADE_LICENSE } from '../../shared/corporate-footer'
+import { canAccessDocumentTemplates } from '../../shared/swk-staff-access'
 
 const company = () => publicSettings()
-const staffOnly = (req: any) => { if (req.user?.party_id) throw forbidden('Customer accounts cannot use the Document Studio') }
+const staffOnly = (req: any) => {
+  if (req.user?.party_id) throw forbidden('Customer accounts cannot use the Document Studio')
+  if (!canAccessDocumentTemplates(req.user)) throw forbidden('Document Templates & Letter Studio are restricted to Owner, Admin, HR, and Office Admin only.')
+}
 
 /** Facts from a customer and job that fit the common placeholders, keyed by the lower-case label inside the brackets. */
 function fillValues(partyId?: number, jobId?: number): Record<string, string> {

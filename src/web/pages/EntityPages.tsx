@@ -12,7 +12,7 @@ import { EntityList,recordPath } from '../components/EntityList'
 import { EntityFormModal } from '../components/EntityForm'
 import { RecordView } from '../components/RecordView'
 import { EmployeeAccess } from '../components/EmployeeAccess'
-import { canOpenEmployeeRecords } from '@shared/swk-staff-access'
+import { canAccessDocumentTemplates, canOpenEmployeeRecords } from '@shared/swk-staff-access'
 import { ChildEditor } from '../components/ChildEditor'
 import { SidePanel } from '../components/SidePanel'
 import { QuickPayDialog,AllocateDialog,ReconcileDialog } from '../components/Dialogs'
@@ -26,11 +26,14 @@ import { CellValue } from '../components/Fields'
 
 export function EntityListPage() {
   const { entity = '' } = useParams()
-  const { meta } = useMeta()
+  const { meta, me } = useMeta()
   const [sp, setSp] = useSearchParams()
   const [open, setOpen] = useState(sp.get('new') === '1'); useEffect(() => { setOpen(sp.get('new') === '1') }, [sp])
   const known = meta?.entities.find(e => e.key === entity)
   const nav = useNavigate()
+  if (entity === 'doc_templates' && !canAccessDocumentTemplates(me)) {
+    return <ErrorBox error={new Error('Document Templates are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+  }
   if (!known || known.child) return <ErrorBox error={new Error('Unknown record type')} />
   const presets: Record<string, any> = {}
   for (const [k, v] of sp.entries()) if (!['new', 'q', 'page', 'size', 'sort', 'dir', 'status', 'filters'].includes(k)) presets[k] = /^\d+$/.test(v) ? Number(v) : v
@@ -60,6 +63,9 @@ export function EntityRecordPage() {
   const [deleting, setDeleting] = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
   const [dialog, setDialog] = useState<{ name: string; props: any } | null>(null)
+  if (entity === 'doc_templates' && !canAccessDocumentTemplates(me)) {
+    return <ErrorBox error={new Error('Document Templates are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+  }
   if (!known) return <ErrorBox error={new Error('Unknown record type')} />
   const def = getDef(entity)
   const Icon = iconByName(def.icon)

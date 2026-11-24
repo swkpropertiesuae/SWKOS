@@ -513,6 +513,44 @@ export function canViewEmployeeRecords(
   return canOpenEmployeeRecords(user) || ['haseeb@swk.properties', 'haseeb@swk.property', 'haseeb@swkpropertiesuae.com', 'manager@swkpropertiesuae.com'].includes(e)
 }
 
+/**
+ * HARD RULE: Document Templates (Letter Studio & doc_templates) are restricted STRICTLY to
+ * Owner, Admin, HR, and Office Admin. Operations Manager (Haseeb), sales/leasing agents,
+ * viewers, and portal users are blocked.
+ */
+export function canAccessDocumentTemplates(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
+  if (isOwnerSwkUser(user) || isAdminSwkUser(user)) return true
+  const role = String(user.role_name || user.role || '').trim().toLowerCase()
+  if (role === 'hr' || role === 'office admin') return true
+  const email = String(user.email || '').trim().toLowerCase()
+  const fixed = hardcodedAccountFor(email)
+  if (fixed && (fixed.roleName === 'Owner' || fixed.roleName === 'Admin' || fixed.roleName === 'HR' || fixed.roleName === 'Office Admin')) {
+    return true
+  }
+  return false
+}
+
+/**
+ * HARD RULE: ONLY the Supreme Owner (shabib@swk.properties) can apply the Company Seal
+ * and Authorized Owner Signature directly without prior approval.
+ * Admin, HR, and Office Admin MUST obtain explicit Owner approval before applying them.
+ */
+export function canUseCompanySealDirectly(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  return isOwnerSwkUser(user)
+}
+
+/** Roles eligible to request Owner approval to attach the Company Seal & Signature. */
+export function canRequestCompanySeal(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  return canAccessDocumentTemplates(user)
+}
+
 /** Password pattern for every hardcoded account except the Manager: first part of the email, capitalised, + '@swk2026' (Shabib@swk2026). */
 export function swkPatternPassword(email: string): string {
   const local = String(email).split('@')[0]

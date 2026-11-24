@@ -4,7 +4,7 @@ import { q,qi,tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue,recordTitle,type EntityDef,type FieldDef } from '../../shared/types'
 import { attachLabels,createRecord,deleteRecord,requestDeleteOrExecute,getDef,getRecord,labelsFor,listRecords,rowToApi,updateRecord,can,assertCan,maskRecs,maskedFieldsFor,MASK,titleCols,customFieldsFor,invalidateCustomFields,type Ctx } from '../engine'
-import { canViewEmployeeRecords, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
+import { canAccessDocumentTemplates, canViewEmployeeRecords, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
 import { bad,HttpError,forbidden,notFound,parseCsv,safeJson,toCsv,nowLocal,nowIso,todayStr } from '../util'
 import { body,idOf,parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
@@ -51,6 +51,7 @@ function referencingModules(key: string): Set<string> {
 /** A reference picker may list an entity's titles only to people who can view it, or who can create or edit something that refers to it. */
 export function canLookup(user: any, def: EntityDef): boolean {
   if (RESTRICTED_HR_PII_ENTITIES.has(def.key)) return canViewEmployeeRecords(user)
+  if (def.key === 'doc_templates') return canAccessDocumentTemplates(user)
   if (can(user, def.module, 'view')) return true
   return [...referencingModules(def.key)].some(m => can(user, m, 'create') || can(user, m, 'edit'))
 }
@@ -58,6 +59,9 @@ export function canLookup(user: any, def: EntityDef): boolean {
 function assertHrPiiRouteAccess(def: EntityDef, ctx: Ctx) {
   if (!ctx.system && RESTRICTED_HR_PII_ENTITIES.has(def.key) && !canViewEmployeeRecords(ctx.user)) {
     throw forbidden('Only the Owner, the Admin, the Operations Manager and HR can access employee, payroll, and staff visa records.')
+  }
+  if (!ctx.system && def.key === 'doc_templates' && !canAccessDocumentTemplates(ctx.user)) {
+    throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
   }
 }
 

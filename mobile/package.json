@@ -1,6 +1,6 @@
 {
   "name": "swk-os-mobile",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "private": true,
   "type": "module",
   "description": "SWK Properties OS unified Capacitor 7 Android (APK/AAB) & iOS mobile shell wrapping SWKOS/dist/web",

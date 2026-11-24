@@ -11,7 +11,16 @@ import { addDays,bad,daysBetween,fromCents,monthStart,r2,todayStr,toCsv,nowIso }
 import { idOf,need } from './helpers'
 import { reportCatalog,runReport,REPORTS } from '../reports'
 import { getSetting } from '../settings'
-import { canViewEmployeeRecords, isRestrictedStaffUser, RESTRICTED_HR_PII_ENTITIES, RESTRICTED_STAFF_ALLOWED_ENTITIES } from '../../shared/swk-staff-access'
+import {
+  canAccessCrmVault,
+  canRequestCompanySeal,
+  canViewEmployeeRecords,
+  isAdminSwkUser,
+  isOwnerSwkUser,
+  isRestrictedStaffUser,
+  RESTRICTED_HR_PII_ENTITIES,
+  RESTRICTED_STAFF_ALLOWED_ENTITIES,
+} from '../../shared/swk-staff-access'
 import { z } from 'zod'
 
 const SIGN = `CASE WHEN i.doc_type = 'Credit Note' THEN -1 ELSE 1 END`
@@ -53,7 +62,29 @@ export default async function (app: FastifyInstance) {
     }
 
     const can_ = (mod: string) => can(user, mod, 'view')
-    const data: any = { portal: false, kpis: {}, charts: {}, lists: {}, alerts: [] }
+    const roleLower = String(user.role_name || '').trim().toLowerCase()
+    const roleProfile: 'owner' | 'admin' | 'manager' | 'hr' | 'office_admin' | 'agent' =
+      isOwnerSwkUser(user)
+        ? 'owner'
+        : isAdminSwkUser(user)
+          ? 'admin'
+          : roleLower === 'manager'
+            ? 'manager'
+            : roleLower === 'hr'
+              ? 'hr'
+              : roleLower === 'office admin'
+                ? 'office_admin'
+                : 'agent'
+    const data: any = {
+      portal: false,
+      role_profile: roleProfile,
+      role_label: user.role_name || 'Staff',
+      kpis: {},
+      charts: {},
+      lists: {},
+      alerts: [],
+      role_data: {},
+    }
     const k = data.kpis
 
     if (can_('sales')) {
@@ -167,6 +198,133 @@ export default async function (app: FastifyInstance) {
     if (Number(k.maintenance_exceptions ?? 0) > 0) a.push({ level: 'danger', text: `${k.maintenance_exceptions} urgent / emergency maintenance request${k.maintenance_exceptions === 1 ? '' : 's'} still open`, link: '/e/maintenance' })
     if (Number(k.renewals_due ?? 0) > 0) a.push({ level: 'info', text: `${k.renewals_due} leases end within 90 days – open the renewal conversation`, link: '/e/leases' })
     if (Number(k.offers_pending ?? 0) > 0) a.push({ level: 'info', text: `${k.offers_pending} offer${k.offers_pending === 1 ? '' : 's'} waiting for a decision`, link: '/e/offers' })
+
+    // -------- Pinpoint Role-Based Dashboard Payloads (Zero-Leak Scoped) --------
+    const safeVal = (sql: string, ...args: any[]) => { try { return q.val<number>(sql, ...args) ?? 0 } catch { return 0 } }
+    const safeAll = (sql: string, ...args: any[]) => { try { return q.all<any>(sql, ...args) } catch { return [] } }
+    const safeGet = (sql: string, ...args: any[]) => { try { return q.get<any>(sql, ...args) } catch { return null } }
+
+    if (canRequestCompanySeal(user)) {
+      const isOwner = roleProfile === 'owner'
+      const sealRows = isOwner
+        ? safeAll(`SELECT id, requester_name, requester_role, source_type, source_id, document_title, recipient_name, reason, include_seal, include_signature, status, created_at FROM document_seal_approvals WHERE status = 'Pending' ORDER BY id DESC LIMIT 12`)
+        : safeAll(`SELECT id, requester_name, requester_role, source_type, source_id, document_title, recipient_name, reason, include_seal, include_signature, status, decision_note, decided_by_name, expires_at, created_at FROM document_seal_approvals WHERE requester_user_id = ? ORDER BY id DESC LIMIT 10`, user.id)
+      const sealPending = isOwner
+        ? safeVal(`SELECT COUNT(*) FROM document_seal_approvals WHERE status = 'Pending'`)
+        : safeVal(`SELECT COUNT(*) FROM document_seal_approvals WHERE requester_user_id = ? AND status = 'Pending'`, user.id)
+      data.role_data.seal_approvals = sealRows.map((r: any) => ({ ...r, include_seal: Boolean(r.include_seal), include_signature: Boolean(r.include_signature) }))
+      data.role_data.seal_approvals_pending = sealPending
+      if (isOwner && sealPending > 0) {
+        a.unshift({ level: 'warn', text: `${sealPending} Company Seal & Signature approval request${sealPending === 1 ? '' : 's'} awaiting your Owner sign-off`, link: '#seal-approvals' })
+      }
+    }
+
+    if (roleProfile === 'owner' || roleProfile === 'admin' || roleProfile === 'manager') {
+      data.role_data.agent_leaderboard = safeAll(
+        `SELECT a.id, a.name, a.brn,
+                (SELECT COUNT(*) FROM jobs j WHERE (j.agent_id = a.id OR j.buyer_agent_id = a.id) AND j.deleted_at IS NULL AND j.job_status <> 'Cancelled') AS deals_count,
+                (SELECT COALESCE(SUM(j.deal_value),0) FROM jobs j WHERE (j.agent_id = a.id OR j.buyer_agent_id = a.id) AND j.deleted_at IS NULL AND j.job_status <> 'Cancelled') AS deals_volume,
+                (SELECT COUNT(*) FROM viewings v WHERE v.agent_id = a.id AND v.deleted_at IS NULL AND substr(v.scheduled_at, 1, 10) >= ?) AS viewings_month
+         FROM agents a
+         WHERE a.deleted_at IS NULL AND COALESCE(a.active, 1) = 1
+         ORDER BY deals_volume DESC, deals_count DESC, viewings_month DESC
+         LIMIT 8`,
+        mStart,
+      ).map((r: any) => ({ ...r, deals_volume: m(r.deals_volume ?? 0) }))
+
+      data.role_data.governance = {
+        seal_pending: data.role_data.seal_approvals_pending ?? 0,
+        recycle_pending: safeVal(`SELECT COUNT(*) FROM delete_requests WHERE status = 'Pending'`),
+        withdrawals_pending: safeVal(`SELECT COUNT(*) FROM deal_withdrawals WHERE status = 'Pending'`),
+        active_field_staff: safeVal(`SELECT COUNT(*) FROM staff_live_locations WHERE updated_at >= ?`, new Date(Date.now() - 4 * 3600_000).toISOString()),
+        present_today: safeVal(`SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE date = ? AND deleted_at IS NULL`, today),
+      }
+      if (canAccessCrmVault(user)) {
+        data.role_data.vault = {
+          total: safeVal(`SELECT COUNT(*) FROM crm_vault_properties WHERE deleted_at IS NULL`),
+          dispatched: safeVal(`SELECT COUNT(*) FROM crm_vault_properties WHERE deleted_at IS NULL AND assigned_agent_user_id IS NOT NULL`),
+          unassigned: safeVal(`SELECT COUNT(*) FROM crm_vault_properties WHERE deleted_at IS NULL AND assigned_agent_user_id IS NULL`),
+        }
+      }
+    }
+
+    if (roleProfile === 'hr' || roleProfile === 'owner' || roleProfile === 'admin') {
+      if (canViewEmployeeRecords(user)) {
+        data.role_data.hr = {
+          total_employees: safeVal(`SELECT COUNT(*) FROM employees WHERE deleted_at IS NULL AND COALESCE(status, 'Active') <> 'Terminated'`),
+          present_today: safeVal(`SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE date = ? AND deleted_at IS NULL`, today),
+          late_today: safeVal(`SELECT COUNT(*) FROM attendance WHERE date = ? AND status = 'Late' AND deleted_at IS NULL`, today),
+          pending_leaves: safeVal(`SELECT COUNT(*) FROM leave_requests WHERE status = 'Pending' AND deleted_at IS NULL`),
+          expiring_visas_30d: safeVal(`SELECT COUNT(*) FROM immigration_cases WHERE deleted_at IS NULL AND expiry_date BETWEEN ? AND ?`, today, addDays(today, 30)),
+          open_lifecycle: safeVal(`SELECT COUNT(*) FROM hr_lifecycle_cases WHERE deleted_at IS NULL AND status NOT IN ('Completed','Closed')`),
+        }
+        data.lists.pending_leaves = safeAll(
+          `SELECT lr.id, e.name AS employee_name, lr.leave_type, lr.start_date, lr.end_date, lr.days, lr.status
+           FROM leave_requests lr
+           LEFT JOIN employees e ON e.id = lr.employee_id
+           WHERE lr.status = 'Pending' AND lr.deleted_at IS NULL
+           ORDER BY lr.start_date ASC LIMIT 8`,
+        )
+        data.lists.expiring_visas = safeAll(
+          `SELECT ic.id, e.name AS employee_name, ic.document_type, ic.expiry_date, ic.status
+           FROM immigration_cases ic
+           LEFT JOIN employees e ON e.id = ic.employee_id
+           WHERE ic.deleted_at IS NULL AND ic.expiry_date IS NOT NULL AND ic.expiry_date <= ?
+           ORDER BY ic.expiry_date ASC LIMIT 8`,
+          addDays(today, 45),
+        )
+      }
+    }
+
+    if (roleProfile === 'office_admin') {
+      data.role_data.office = {
+        open_tickets: safeVal(`SELECT COUNT(*) FROM tickets WHERE status NOT IN ('Resolved','Closed') AND deleted_at IS NULL`),
+        sla_breached: safeVal(`SELECT COUNT(*) FROM tickets WHERE status NOT IN ('Resolved','Closed') AND due_at < ? AND deleted_at IS NULL`, nowIso().slice(0, 16)),
+        walkin_leads_today: safeVal(`SELECT COUNT(*) FROM leads WHERE substr(created_at, 1, 10) = ? AND deleted_at IS NULL`, today),
+        total_leads_new: safeVal(`SELECT COUNT(*) FROM leads WHERE status = 'New' AND deleted_at IS NULL`),
+        studio_docs_month: safeVal(`SELECT COUNT(*) FROM studio_documents WHERE substr(created_at, 1, 10) >= ? AND deleted_at IS NULL`, mStart),
+      }
+      data.lists.open_tickets = safeAll(
+        `SELECT id, ticket_no, subject, priority, status, due_at FROM tickets WHERE status NOT IN ('Resolved','Closed') AND deleted_at IS NULL ORDER BY id DESC LIMIT 8`,
+      )
+      data.lists.recent_studio_docs = safeAll(
+        `SELECT id, doc_no, title, category, status, updated_at FROM studio_documents WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 8`,
+      )
+    }
+
+    if (roleProfile === 'agent') {
+      const empId = safeGet(`SELECT id FROM employees WHERE (user_id = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`, user.id, String(user.email || '').toLowerCase())?.id ?? null
+      const todayAtt = empId
+        ? safeGet(`SELECT id, date, check_in, check_out, status FROM attendance WHERE employee_id = ? AND date = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`, empId, today)
+        : null
+      const assignedDeals = safeAll(
+        `SELECT id, community, building_name, unit_number, unit_type, bedrooms, asking_price_aed, lead_status, updated_at
+         FROM crm_vault_properties
+         WHERE assigned_agent_user_id = ? AND deleted_at IS NULL
+         ORDER BY updated_at DESC LIMIT 8`,
+        user.id,
+      )
+      const myReports = safeAll(
+        `SELECT id, report_date, status, summary FROM daily_reports WHERE created_by = ? AND deleted_at IS NULL ORDER BY report_date DESC, id DESC LIMIT 6`,
+        user.id,
+      )
+      const myAttRecent = empId
+        ? safeAll(`SELECT id, date, check_in, check_out, status FROM attendance WHERE employee_id = ? AND deleted_at IS NULL ORDER BY date DESC LIMIT 6`, empId)
+        : []
+      data.role_data.agent_desk = {
+        assigned_vault_deals: safeVal(`SELECT COUNT(*) FROM crm_vault_properties WHERE assigned_agent_user_id = ? AND deleted_at IS NULL`, user.id),
+        checked_in_today: Boolean(todayAtt?.check_in),
+        check_in_time: todayAtt?.check_in ?? null,
+        attendance_status: todayAtt?.status ?? 'Not checked in',
+        reports_month: safeVal(`SELECT COUNT(*) FROM daily_reports WHERE created_by = ? AND report_date >= ? AND deleted_at IS NULL`, user.id, mStart),
+        unread_inside: safeVal(`SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL`, user.id),
+        open_tasks: safeVal(`SELECT COUNT(*) FROM tasks WHERE assignee_id = ? AND status <> 'Done' AND deleted_at IS NULL`, user.id),
+      }
+      data.lists.my_assigned_deals = assignedDeals
+      data.lists.my_daily_reports = myReports
+      data.lists.my_attendance = myAttRecent
+    }
+
     return data
   })
 

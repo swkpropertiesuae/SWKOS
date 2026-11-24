@@ -20,7 +20,8 @@ import {
   Trash2,
   Wand2,
 } from 'lucide-react'
-import { canAccessCrmVault } from '@shared/swk-staff-access'
+import { canAccessDocumentTemplates, canRequestCompanySeal } from '@shared/swk-staff-access'
+import { SealApprovalPanel } from '../../components/SealApprovalPanel'
 import { looksLikeHtml, markPlaceholders, markdownToHtml, mergeCompanyTokens, presentDocumentHtml } from '@shared/studio-html'
 import { del, get, post, put, upload } from '../../lib/api'
 import { fmtDate, todayIso } from '../../lib/format'
@@ -43,6 +44,7 @@ export interface WordDocumentRecord {
   rtl: boolean
   include_letterhead: boolean
   include_seal: boolean
+  include_signature?: boolean
   source_template_id: number | null
   linked_entity: string | null
   linked_id: number | null
@@ -97,8 +99,8 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
   const qc = useQueryClient()
   const [sp, setSp] = useSearchParams()
 
-  const canSeal = Boolean(me && !me.party_id && (can('documents', 'create') || canAccessCrmVault(me)))
-  const canViewTemplates = can('documents', 'view')
+  const canSeal = canRequestCompanySeal(me)
+  const canViewTemplates = canAccessDocumentTemplates(me)
 
   const editorRef = useRef<RichEditorHandle>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -110,6 +112,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
   const [rtl, setRtl] = useState(false)
   const [includeLetterhead, setIncludeLetterhead] = useState(true)
   const [includeSeal, setIncludeSeal] = useState(false)
+  const [includeSignature, setIncludeSignature] = useState(false)
   const [sourceTemplateId, setSourceTemplateId] = useState<number | null>(null)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -147,6 +150,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
     rtl?: boolean
     include_letterhead?: boolean
     include_seal?: boolean
+    include_signature?: boolean
     source_template_id?: number | null
     dirty?: boolean
   }) => {
@@ -158,6 +162,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
     setRtl(Boolean(rec.rtl))
     setIncludeLetterhead(rec.include_letterhead !== false)
     setIncludeSeal(canSeal && Boolean(rec.include_seal))
+    setIncludeSignature(canSeal && Boolean(rec.include_signature))
     setSourceTemplateId(rec.source_template_id ?? null)
     setDirty(Boolean(rec.dirty))
     setAiResult(null)
@@ -271,6 +276,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
         rtl,
         include_letterhead: includeLetterhead,
         include_seal: canSeal ? includeSeal : false,
+        include_signature: canSeal ? includeSignature : false,
         source_template_id: sourceTemplateId,
       }
       const saved = docId
@@ -381,6 +387,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
           rtl,
           include_letterhead: includeLetterhead,
           include_seal: canSeal ? includeSeal : false,
+          include_signature: canSeal ? includeSignature : false,
         },
         `${baseName}.${format}`,
       )
@@ -462,16 +469,27 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
   }
 
   const paperTop = includeLetterhead && meta?.settings ? <Letterhead /> : undefined
-  const paperBottom = includeLetterhead || (canSeal && includeSeal) ? (
+  const paperBottom = includeLetterhead || (canSeal && (includeSeal || includeSignature)) ? (
     <div>
-      {canSeal && includeSeal && (
-        <div className={`mt-6 flex ${rtl ? 'justify-start' : 'justify-end'}`}>
-          {meta?.settings?.document_seal ? (
-            <img src={meta.settings.document_seal} alt="SWK Company Seal" className="h-20 w-20 object-contain" />
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#0e9f6e]/40 bg-[#e8fff6] px-3 py-1.5 text-xs font-semibold text-[#121212]">
-              <Shield size={14} className="text-[#0e9f6e]" /> SWK Seal attached on export
-            </span>
+      {canSeal && (includeSeal || includeSignature) && (
+        <div className={`mt-6 flex items-end gap-4 ${rtl ? 'justify-start' : 'justify-end'}`}>
+          {includeSignature && (
+            meta?.settings?.document_signature ? (
+              <img src={meta.settings.document_signature} alt="SWK Owner Signature" className="h-14 max-w-[160px] object-contain" />
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-ink">
+                Owner Signature attached on export
+              </span>
+            )
+          )}
+          {includeSeal && (
+            meta?.settings?.document_seal ? (
+              <img src={meta.settings.document_seal} alt="SWK Company Seal" className="h-20 w-20 object-contain" />
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#0e9f6e]/40 bg-[#e8fff6] px-3 py-1.5 text-xs font-semibold text-[#121212]">
+                <Shield size={14} className="text-[#0e9f6e]" /> SWK Seal attached on export
+              </span>
+            )
           )}
         </div>
       )}
@@ -642,10 +660,16 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
               <span>Letterhead</span>
             </label>
             {canSeal && (
-              <label className="swk-toggle text-xs">
-                <input type="checkbox" checked={includeSeal} onChange={e => { setIncludeSeal(e.target.checked); setDirty(true) }} />
-                <span className="inline-flex items-center gap-1"><Shield size={13} className="text-[#0e9f6e]" /> Company Seal</span>
-              </label>
+              <SealApprovalPanel
+                compact
+                sourceType="word"
+                sourceId={docId}
+                documentTitle={title}
+                includeSeal={includeSeal}
+                includeSignature={includeSignature}
+                onToggleSeal={v => { setIncludeSeal(v); setDirty(true) }}
+                onToggleSignature={v => { setIncludeSignature(v); setDirty(true) }}
+              />
             )}
           </div>
 

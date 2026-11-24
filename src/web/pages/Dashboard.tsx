@@ -1,63 +1,122 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'motion/react'
 import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   BadgeCheck,
-  BedDouble,
-  Bot,
+  Briefcase,
   Building2,
   CalendarCheck,
   CalendarDays,
-  Clock,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock3,
   FileBarChart,
+  FileCode2,
   FileSignature,
   HandCoins,
   KeyRound,
+  Landmark,
+  Layers,
   MapPin,
-  Maximize2,
-  MessageCircle,
+  Navigation,
+  PenTool,
+  PhoneCall,
+  Plane,
+  QrCode,
   Scale,
+  ShieldAlert,
   ShieldCheck,
+  Stamp,
+  Ticket,
   Trash2,
+  TrendingUp,
+  Trophy,
+  UserCheck,
   UserPlus,
   Users,
+  Wallet,
+  XCircle,
 } from 'lucide-react'
 import { AnalyticsBento } from '@/components/ui/analytics-bento'
-import { UiBadge } from '@/components/ui/badge'
-import { JourneyWorkflowCanvas } from '../components/JourneyWorkflowCanvas'
 import { get, post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
 import { fmtDate, fmtDateTime } from '../lib/format'
 import { ErrorBox } from '../ui/kit'
-import { AnimatedNumber, Card, EmptyState, Pill, ProgressRing, Reveal, RevealItem, Sparkline, aed, num } from '../swk/ui'
+import { aed, num } from '../swk/ui'
 import { COMMUNITIES } from '../swk/uae'
 import { buildSwkAnalyticsBentoProps } from '../swk/executive-analytics'
-import { canAccessSwkAdminLogic, isRestrictedStaffUser } from '@shared/swk-staff-access'
+import { canAccessCrmVault, canAccessDocumentTemplates, canAccessSwkAdminLogic, isOwnerSwkUser, isRestrictedStaffUser } from '@shared/swk-staff-access'
 
-const PHOTOS = [
-  'marina-sky-penthouse-1',
-  'palm-garden-homes-1',
-  'hills-estate-golf-mansion-1',
-  'business-bay-executive-tower-2',
-  'creek-harbour-waterside-townhouse-1',
-  'jvc-boulevard-residences-2',
-  'arabian-ranches-courtyard-villa-2',
-  'villa-sanctuary-6',
-]
-const photoFor = (id: number) => `/media/properties/${PHOTOS[Math.abs(id) % PHOTOS.length]}.webp`
+type RoleProfile = 'owner' | 'admin' | 'manager' | 'hr' | 'office_admin' | 'agent'
+type QueueTab = 'leads' | 'offers' | 'closes' | 'renewals'
 
-function dubaiHour() {
-  return Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', hour12: false }).format(new Date()))
+const STAGE_PROB: Record<string, number> = {
+  Inquiry: 0.1,
+  Viewing: 0.2,
+  Offer: 0.4,
+  Negotiation: 0.55,
+  Contract: 0.75,
+  'DLD Process': 0.9,
+  Handover: 0.95,
+  Closed: 1,
 }
-function greeting() {
-  const h = dubaiHour()
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+
+const ROLE_META: Record<RoleProfile, { badge: string; title: string; subtitle: string; accent: string }> = {
+  owner: {
+    badge: 'TIER 1 · SUPREME OWNER COMMAND',
+    title: 'Executive Governance & Treasury',
+    subtitle: 'Full company oversight — live AED liquidity, broker performance, seal & signature sign-offs, and RERA compliance.',
+    accent: 'from-[#0b1f2a] via-[#132f3f] to-[#1a3e52]',
+  },
+  admin: {
+    badge: 'TIER 2 · SYSTEM & OPERATIONS ADMIN',
+    title: 'Corporate Operations Console',
+    subtitle: 'Real-time brokerage pipeline, inventory health, compliance tracking, and Owner-supervised seal governance.',
+    accent: 'from-[#0f172a] via-[#172554] to-[#1e3a8a]',
+  },
+  manager: {
+    badge: 'TIER 3 · OPERATIONS MANAGER DESK',
+    title: 'Brokerage Execution & Field Command',
+    subtitle: 'Deal velocity, CRM Vault dispatch coverage, live broker leaderboard, viewings, and closing milestones.',
+    accent: 'from-[#0b2722] via-[#113f36] to-[#155e4f]',
+  },
+  hr: {
+    badge: 'HUMAN RESOURCES & PAYROLL COMMAND',
+    title: 'Workforce, Attendance & Immigration',
+    subtitle: 'Live daily attendance, leave approvals, UAE visa & Emirates ID expiries, payroll readiness, and HR document templates.',
+    accent: 'from-[#28163a] via-[#3c1f57] to-[#4c1d95]',
+  },
+  office_admin: {
+    badge: 'FRONT OFFICE & DOCUMENT OPERATIONS',
+    title: 'Reception, Tickets & Document Desk',
+    subtitle: 'Walk-in enquiry routing, SLA support tickets, office calendar, and company templates with Owner seal workflow.',
+    accent: 'from-[#1e293b] via-[#27364d] to-[#334155]',
+  },
+  agent: {
+    badge: 'ADVISOR & FIELD EXECUTION DESK',
+    title: 'My Assigned Deals & Daily Operations',
+    subtitle: 'Your dispatched CRM Vault deals, masked SWK Phone outreach, office QR attendance, Field Duty GPS, and Dubai benchmarks.',
+    accent: 'from-[#0b1f2a] via-[#14303e] to-[#1e4356]',
+  },
 }
+
+function dubaiNowLabel() {
+  return new Intl.DateTimeFormat('en-AE', {
+    timeZone: 'Asia/Dubai',
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date())
+}
+
 function buildWeekStrip() {
   const now = new Date()
   const day = now.getDay() || 7
@@ -75,37 +134,27 @@ function buildWeekStrip() {
   })
 }
 
-const STAGE_PROB: Record<string, number> = {
-  Inquiry: 0.1,
-  Closed: 1,
-  Lead: 0.1,
-  Viewing: 0.2,
-  Offer: 0.4,
-  Negotiation: 0.55,
-  Contract: 0.75,
-  'DLD Process': 0.9,
-  Handover: 0.95,
-}
-
-type QueueTab = 'leads' | 'offers' | 'closes'
-
 export function Dashboard() {
   const { me, can } = useMeta()
   const toast = useToast()
+  const qc = useQueryClient()
   const adminOk = canAccessSwkAdminLogic(me)
   const restricted = isRestrictedStaffUser(me)
-  const [sendingBrief, setSendingBrief] = useState<string | null>(null)
-  const [queueTab, setQueueTab] = useState<QueueTab>('leads')
-  const [heroCommunity, setHeroCommunity] = useState<string>('All Dubai')
-  const [heroSegment, setHeroSegment] = useState<'All' | 'Off-Plan' | 'Ready'>('All')
+  const isOwner = isOwnerSwkUser(me)
+  const canVault = canAccessCrmVault(me)
+  const canDocs = canAccessDocumentTemplates(me)
 
-  const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<any>('/api/dashboard'), refetchInterval: 120000 })
-  const props = useQuery({ queryKey: ['dash-props'], queryFn: () => get<any>('/api/e/properties', { pageSize: 12, sort: 'listed_date', dir: 'desc' }), enabled: can('properties', 'view') && !restricted })
-  const units = useQuery({ queryKey: ['dash-units'], queryFn: () => get<any>('/api/e/units', { pageSize: 500 }), enabled: can('properties', 'view') && !restricted })
-  const pulse = useQuery({ queryKey: ['pulse'], queryFn: () => get<any>('/api/dashboard/pulse'), refetchInterval: 20000, retry: false })
-  const brief = useQuery({ queryKey: ['ai-brief'], queryFn: () => get<{ output: string; started_at: string; name: string }>('/api/ai/brief'), retry: false, enabled: can('ai', 'view') && adminOk })
-  const binQ = useQuery({ queryKey: ['dash-bin'], queryFn: () => get<any>('/api/swk-ops/recycle-bin'), enabled: adminOk })
-  const withQ = useQuery({ queryKey: ['dash-withdrawals'], queryFn: () => get<any>('/api/swk-ops/withdrawals'), enabled: adminOk })
+  const [sendingBrief, setSendingBrief] = useState<string | null>(null)
+  const [decidingId, setDecidingId] = useState<number | null>(null)
+  const [queueTab, setQueueTab] = useState<QueueTab>('leads')
+
+  const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<any>('/api/dashboard'), refetchInterval: 90_000 })
+  const propsQ = useQuery({
+    queryKey: ['dash-props'],
+    queryFn: () => get<any>('/api/e/properties', { pageSize: 16, sort: 'listed_date', dir: 'desc' }),
+    enabled: can('properties', 'view') && !restricted,
+  })
+  const pulse = useQuery({ queryKey: ['pulse'], queryFn: () => get<any>('/api/dashboard/pulse'), refetchInterval: 30_000, retry: false })
 
   const triggerBrief = async (kind: 'morning' | 'attendance-1030') => {
     setSendingBrief(kind)
@@ -113,8 +162,8 @@ export function Dashboard() {
       const r = await post<any>(`/api/swk-ops/briefings/${kind}`, {})
       toast.ok(
         kind === 'morning'
-          ? 'Owner Morning Briefing sent to Shabib Siraj (WhatsApp & Notification)'
-          : `10:30 AM Attendance Report generated (${r.summary?.lateAfter1005?.length ?? 0} late, ${r.summary?.continuousContemptors?.length ?? 0} contemptors)`,
+          ? 'Owner Morning Briefing dispatched to Shabib Siraj'
+          : `10:30 AM Attendance Report generated (${r.summary?.lateAfter1005?.length ?? 0} late)`,
       )
     } catch (e: any) {
       toast.error(e.message)
@@ -123,22 +172,39 @@ export function Dashboard() {
     }
   }
 
+  const decideSeal = async (id: number, decision: 'Approved' | 'Rejected') => {
+    setDecidingId(id)
+    try {
+      await post(`/api/seal-approvals/${id}/decide`, {
+        decision,
+        valid_days: 7,
+        note: decision === 'Approved' ? 'Approved from Owner Executive Dashboard' : 'Declined by Owner',
+      })
+      toast.ok(decision === 'Approved' ? 'Seal & signature usage approved for 7 days' : 'Seal request declined')
+      await qc.invalidateQueries({ queryKey: ['dashboard'] })
+      await qc.invalidateQueries({ queryKey: ['seal-approvals'] })
+      await qc.invalidateQueries({ queryKey: ['seal-approval-check'] })
+    } catch (e: any) {
+      toast.error(e?.message || 'Action failed')
+    } finally {
+      setDecidingId(null)
+    }
+  }
+
   const d = q.data ?? {}
   const k = d.kpis ?? {}
   const ch = d.charts ?? {}
   const ls = d.lists ?? {}
-  const propRows: any[] = props.data?.rows ?? []
-  const unitRows: any[] = units.data?.rows ?? []
-  const occupied = unitRows.filter(u => /leased|occupied|rented|sold/i.test(u.status ?? '')).length
-  const rawOcc = unitRows.length ? (occupied / unitRows.length) * 100 : 0
+  const rd = d.role_data ?? {}
+  const propRows: any[] = propsQ.data?.rows ?? []
+  const roleProfile: RoleProfile = (d.role_profile as RoleProfile) || (isOwner ? 'owner' : adminOk ? 'admin' : 'agent')
+  const roleInfo = ROLE_META[roleProfile] ?? ROLE_META.agent
   const funnel: any[] = ch.pipeline_funnel ?? []
   const pipelineTotal = funnel.filter(f => f.stage !== 'Closed').reduce((s, f) => s + (Number(f.value) || 0), 0)
   const activeDealCount = funnel.filter(f => f.stage !== 'Closed').reduce((s, f) => s + (Number(f.count) || 0), 0)
-  const dailyProgressPct = rawOcc > 0
-    ? rawOcc
-    : Math.min(96, Math.max(24, Math.round(32 + activeDealCount * 9 + Number(k.viewings_week ?? 0) * 8 + Number(k.offers_pending ?? 0) * 10)))
-  const weighted = funnel.filter(f => f.stage !== 'Closed').reduce((s, f) => s + (Number(f.value) || 0) * (STAGE_PROB[f.stage] ?? 0.3), 0)
+  const weightedForecast = funnel.filter(f => f.stage !== 'Closed').reduce((s, f) => s + (Number(f.value) || 0) * (STAGE_PROB[f.stage] ?? 0.3), 0)
   const weekDays = useMemo(() => buildWeekStrip(), [])
+
   const analyticsSig = [
     k.received_month ?? 0,
     k.leads_today ?? 0,
@@ -146,9 +212,7 @@ export function Dashboard() {
     pipelineTotal,
     activeDealCount,
     Array.isArray(ch.revenue_trend) ? ch.revenue_trend.length : 0,
-    pulse.data?.leads?.total ?? 0,
-    pulse.data?.viewings?.total ?? 0,
-    pulse.data?.calls?.total ?? 0,
+    pulse.data?.leads?.length ?? 0,
     propRows.length,
   ].join('|')
   const analyticsProps = useMemo(
@@ -157,670 +221,934 @@ export function Dashboard() {
     [analyticsSig],
   )
 
-  const filteredSpotlight = useMemo(() => {
-    const match = propRows.find(p => {
-      const segOk = heroSegment === 'All' || (heroSegment === 'Off-Plan' ? Boolean(p.is_off_plan) : !p.is_off_plan)
-      const commOk = heroCommunity === 'All Dubai' || String(p.address || p.title || '').toLowerCase().includes(heroCommunity.toLowerCase())
-      return segOk && commOk
-    })
-    return match ?? propRows[0] ?? null
-  }, [propRows, heroCommunity, heroSegment])
-
-  const agenda = useMemo(
-    () =>
-      [
-        ...(ls.upcoming_viewings ?? []).map((v: any) => ({ id: `v${v.id}`, kind: 'Viewing', tone: 'blue', at: v.scheduled_at, title: v.property_title || 'Property viewing', sub: [v.contact, v.agent].filter(Boolean).join(' · '), to: `/e/viewings/${v.id}`, Icon: CalendarCheck })),
-        ...(ls.target_closes ?? []).map((j: any) => ({ id: `j${j.id}`, kind: 'Target close', tone: 'green', at: j.target_close, title: j.property || j.job_no, sub: j.client, to: `/e/jobs/${j.id}`, Icon: FileSignature })),
-        ...(ls.renewals ?? []).map((l: any) => ({ id: `l${l.id}`, kind: 'Lease renewal', tone: 'amber', at: l.end_date, title: l.unit_title || 'Lease', sub: l.tenant, to: `/e/leases/${l.id}`, Icon: KeyRound })),
-      ]
-        .sort((a, b) => String(a.at ?? '').localeCompare(String(b.at ?? '')))
-        .slice(0, 4),
-    [ls],
-  )
-
   if (q.error) return <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
   if (!q.data) return <DashboardSkeleton />
 
-  const firstName = (me?.name || '').split(' ')[0] || 'there'
-  const summary = [
-    k.viewings_week !== undefined && `${k.viewings_week} viewing${k.viewings_week === 1 ? '' : 's'} this week`,
-    k.offers_pending !== undefined && `${k.offers_pending} offer${k.offers_pending === 1 ? '' : 's'} awaiting decision`,
-    k.leads_today !== undefined && `${k.leads_today} new lead${k.leads_today === 1 ? '' : 's'} today`,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  // Customer Portal simplified corporate view
+  if (d.portal) {
+    return (
+      <div className="mx-auto max-w-[1380px] grid gap-5 pb-10">
+        <div className="rounded-3xl bg-gradient-to-br from-[#0b1f2a] to-[#153547] p-6 sm:p-8 text-white shadow-xl">
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#e5c07b]">SWK PROPERTIES · CLIENT PORTAL</div>
+          <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-white">Welcome, {me?.name}</h1>
+          <p className="mt-1 text-sm text-slate-300">Live view of your active property transactions, completed handovers, and account balance.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <KpiCard label="Active Files" value={num(k.open_jobs ?? 0)} hint="In progress with SWK" icon={<Briefcase size={18} />} tone="navy" />
+          <KpiCard label="Completed Handovers" value={num(k.delivered ?? 0)} hint="Title deed / keys delivered" icon={<CheckCircle2 size={18} />} tone="emerald" />
+          <KpiCard label="Outstanding Balance" value={aed(k.outstanding ?? 0)} hint="Posted invoices due" icon={<Wallet size={18} />} tone="amber" />
+        </div>
+        <div className="card p-5">
+          <h2 className="text-base font-bold text-ink m-0 mb-3">Recent Files</h2>
+          <div className="table-wrap">
+            <table className="grid">
+              <thead>
+                <tr><th>Ref</th><th>Property</th><th>Type</th><th>Stage</th><th>Status</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                {(d.recent_jobs ?? []).map((j: any) => (
+                  <tr key={j.id}>
+                    <td className="font-mono font-semibold"><Link to={`/e/jobs/${j.id}`} className="link">{j.job_no}</Link></td>
+                    <td>{j.property || j.deal_name || '—'}</td>
+                    <td>{j.deal_type || '—'}</td>
+                    <td>{j.operational_status || '—'}</td>
+                    <td><span className="pill pill-slate">{j.job_status}</span></td>
+                    <td>{fmtDate(j.deal_date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  const heroImage = filteredSpotlight ? photoFor(filteredSpotlight.id) : '/brand/web/uae-skyline-flagship.webp'
-  const mandatesCompliant = Math.max(0, Number(k.mandates_active ?? 0) - Number(k.mandates_expiring ?? 0))
-  const totalMandates = Math.max(1, Number(k.mandates_active ?? 0))
-  const compliancePct = Math.round((mandatesCompliant / totalMandates) * 100)
-
+  const gov = rd.governance ?? {}
+  const hr = rd.hr ?? {}
+  const office = rd.office ?? {}
+  const vault = rd.vault ?? {}
+  const agentDesk = rd.agent_desk ?? {}
+  const sealApprovals: any[] = rd.seal_approvals ?? []
+  const leaderboard: any[] = rd.agent_leaderboard ?? []
+  const alerts: any[] = d.alerts ?? []
   const leadRows: any[] = ls.lead_queue ?? []
   const offerRows: any[] = ls.offers_pipeline ?? []
   const closeRows: any[] = ls.target_closes ?? []
+  const renewalRows: any[] = ls.renewals ?? []
+  const isExecRole = roleProfile === 'owner' || roleProfile === 'admin' || roleProfile === 'manager'
+
+  const agenda = [
+    ...(ls.upcoming_viewings ?? []).map((v: any) => ({ id: `v-${v.id}`, kind: 'Viewing', at: v.scheduled_at, title: v.property_title || 'Property Viewing', sub: [v.contact, v.agent].filter(Boolean).join(' · '), to: `/e/viewings/${v.id}`, tone: 'blue' as const })),
+    ...(ls.target_closes ?? []).map((j: any) => ({ id: `j-${j.id}`, kind: 'Target Close', at: j.target_close, title: j.property || j.job_no, sub: j.client, to: `/e/jobs/${j.id}`, tone: 'emerald' as const })),
+    ...(ls.renewals ?? []).map((l: any) => ({ id: `l-${l.id}`, kind: 'Ejari Renewal', at: l.end_date, title: l.unit_title || l.lease_no, sub: l.tenant, to: `/e/leases/${l.id}`, tone: 'amber' as const })),
+  ].sort((a, b) => String(a.at ?? '').localeCompare(String(b.at ?? ''))).slice(0, 6)
+
+  // Build pinpoint 4-card KPIs per role
+  const kpiCards = (() => {
+    if (roleProfile === 'owner') {
+      const govTotal = Number(gov.seal_pending ?? 0) + Number(gov.recycle_pending ?? 0) + Number(gov.withdrawals_pending ?? 0)
+      return [
+        { label: 'Liquid Treasury (Cash)', value: aed(k.cash ?? 0), hint: `AR ${aed(k.ar_outstanding ?? 0)} · AP ${aed(k.ap_outstanding ?? 0)}`, icon: <Landmark size={18} />, tone: 'navy' as const, to: '/finance/statements' },
+        { label: 'MTD Revenue & Receipts', value: aed(k.revenue_month ?? 0), hint: `Collected ${aed(k.received_month ?? 0)} · Unbilled ${aed(k.commission_expected ?? 0)}`, icon: <TrendingUp size={18} />, tone: 'emerald' as const, to: '/e/invoices' },
+        { label: 'Active Pipeline Volume', value: aed(pipelineTotal), hint: `${activeDealCount} live deals · Weighted ${aed(weightedForecast)}`, icon: <Briefcase size={18} />, tone: 'gold' as const, to: '/pipeline' },
+        { label: 'Owner Approvals Queue', value: num(govTotal), hint: `${gov.seal_pending ?? 0} Seal · ${gov.recycle_pending ?? 0} Delete Bin · ${gov.withdrawals_pending ?? 0} Withdrawals`, icon: <ShieldCheck size={18} />, tone: govTotal > 0 ? 'rose' as const : 'slate' as const, to: gov.seal_pending > 0 ? '#seal-approvals' : '/recycle-bin' },
+      ]
+    }
+    if (roleProfile === 'admin') {
+      return [
+        { label: 'MTD Collected Revenue', value: aed(k.received_month ?? 0), hint: `Invoiced ${aed(k.revenue_month ?? 0)} · Overdue AR ${aed(k.ar_overdue ?? 0)}`, icon: <Wallet size={18} />, tone: 'navy' as const, to: '/e/receipts' },
+        { label: 'Active Deals & Pipeline', value: aed(pipelineTotal), hint: `${activeDealCount} open deals · ${k.offers_pending ?? 0} live offers`, icon: <Briefcase size={18} />, tone: 'emerald' as const, to: '/pipeline' },
+        { label: 'Live Portfolio & Mandates', value: num(k.properties_available ?? 0), hint: `${k.mandates_active ?? 0} active Form A · ${k.viewings_week ?? 0} viewings (7d)`, icon: <Building2 size={18} />, tone: 'gold' as const, to: '/e/properties' },
+        { label: 'Compliance & Seal Requests', value: num((k.compliance_issues ?? 0) + (rd.seal_approvals_pending ?? 0)), hint: `${k.compliance_issues ?? 0} expiring permits · ${rd.seal_approvals_pending ?? 0} pending seal sign-offs`, icon: <ShieldAlert size={18} />, tone: 'rose' as const, to: '/compliance' },
+      ]
+    }
+    if (roleProfile === 'manager') {
+      return [
+        { label: 'Active Brokerage Pipeline', value: aed(pipelineTotal), hint: `${activeDealCount} active files · Weighted ${aed(weightedForecast)}`, icon: <Briefcase size={18} />, tone: 'navy' as const, to: '/pipeline' },
+        { label: 'CRM Vault Dispatch', value: num(vault.dispatched ?? 0), hint: `${vault.total ?? 0} vaulted properties · ${vault.unassigned ?? 0} ready to assign`, icon: <Layers size={18} />, tone: 'emerald' as const, to: '/crm-vault' },
+        { label: 'Viewings & Active Offers', value: num(k.viewings_week ?? 0), hint: `${k.offers_pending ?? 0} active offers · ${k.leads_today ?? 0} new leads today`, icon: <CalendarCheck size={18} />, tone: 'gold' as const, to: '/e/viewings' },
+        { label: 'Field & Office Staff Live', value: num(gov.present_today ?? 0), hint: `${gov.active_field_staff ?? 0} active on Field Duty GPS now`, icon: <Navigation size={18} />, tone: 'slate' as const, to: '/field-live' },
+      ]
+    }
+    if (roleProfile === 'hr') {
+      return [
+        { label: 'Active Headcount', value: num(hr.total_employees ?? 0), hint: `${hr.open_lifecycle ?? 0} onboarding / lifecycle cases open`, icon: <Users size={18} />, tone: 'navy' as const, to: '/e/employees' },
+        { label: 'Checked In Today', value: num(hr.present_today ?? 0), hint: `${hr.late_today ?? 0} arrived after 10:05 GST cutoff`, icon: <UserCheck size={18} />, tone: 'emerald' as const, to: '/e/attendance' },
+        { label: 'Pending Leave Approvals', value: num(hr.pending_leaves ?? 0), hint: 'Awaiting HR verification & decision', icon: <Plane size={18} />, tone: 'gold' as const, to: '/e/leave_requests' },
+        { label: 'Visas & IDs Expiring (30d)', value: num(hr.expiring_visas_30d ?? 0), hint: `${rd.seal_approvals_pending ?? 0} pending Owner seal requests`, icon: <ShieldAlert size={18} />, tone: (hr.expiring_visas_30d ?? 0) > 0 ? 'rose' as const : 'slate' as const, to: '/e/immigration_cases' },
+      ]
+    }
+    if (roleProfile === 'office_admin') {
+      return [
+        { label: 'Open Support Tickets', value: num(office.open_tickets ?? 0), hint: `${office.sla_breached ?? 0} past SLA threshold`, icon: <Ticket size={18} />, tone: (office.sla_breached ?? 0) > 0 ? 'rose' as const : 'navy' as const, to: '/e/tickets' },
+        { label: 'Walk-In & New Leads', value: num(office.total_leads_new ?? 0), hint: `${office.walkin_leads_today ?? 0} captured today`, icon: <UserPlus size={18} />, tone: 'emerald' as const, to: '/e/leads' },
+        { label: 'Company Documents (MTD)', value: num(office.studio_docs_month ?? 0), hint: 'Drafted in Letter & Document Studio', icon: <FileCode2 size={18} />, tone: 'gold' as const, to: '/studio' },
+        { label: 'Owner Seal Requests', value: num(rd.seal_approvals_pending ?? 0), hint: 'Pending Owner Shabib Siraj sign-off', icon: <Stamp size={18} />, tone: 'slate' as const, to: '/studio' },
+      ]
+    }
+    return [
+      { label: 'My Assigned Vault Deals', value: num(agentDesk.assigned_vault_deals ?? 0), hint: 'Dispatched with hard-masked outreach', icon: <Briefcase size={18} />, tone: 'navy' as const, to: '/my-deals' },
+      { label: 'Today’s Attendance', value: agentDesk.checked_in_today ? 'Checked In' : 'Pending', hint: agentDesk.check_in_time ? `In at ${String(agentDesk.check_in_time).slice(0, 5)} · ${agentDesk.attendance_status}` : 'Scan office QR on arrival', icon: <QrCode size={18} />, tone: agentDesk.checked_in_today ? 'emerald' as const : 'rose' as const, to: '/reception-qr' },
+      { label: 'Daily Reports (MTD)', value: num(agentDesk.reports_month ?? 0), hint: 'End-of-day field & call summaries', icon: <ClipboardCheck size={18} />, tone: 'gold' as const, to: '/e/daily_reports' },
+      { label: 'Open Tasks & Alerts', value: num((agentDesk.open_tasks ?? 0) + (agentDesk.unread_inside ?? 0)), hint: `${agentDesk.open_tasks ?? 0} tasks · ${agentDesk.unread_inside ?? 0} unread alerts`, icon: <Clock3 size={18} />, tone: 'slate' as const, to: '/chat' },
+    ]
+  })()
 
   return (
-    <div className="grid gap-5 max-w-[1540px] mx-auto pb-10">
-      {/* ============================================================ SECTION 1: ORIZON REAL ESTATE HERO + PRODUCTIVITY SCHEDULE */}
+    <div className="mx-auto max-w-[1560px] grid gap-6 pb-12">
+      {/* ============================================================ 1. CORPORATE EXECUTIVE HEADER BAR */}
       <motion.section
-        className="grid gap-5 xl:grid-cols-12 items-stretch"
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className={`relative overflow-hidden rounded-[26px] bg-gradient-to-br ${roleInfo.accent} p-6 sm:p-7 text-white shadow-[0_24px_60px_-28px_rgba(11,31,42,0.55)] border border-white/10`}
       >
-        {/* Left 8 cols: Orizon-Inspired Architectural Luxury Real Estate Hero Card */}
-        <div className="xl:col-span-8 relative overflow-hidden rounded-[30px] bg-[#0b1f2a] min-h-[420px] sm:min-h-[450px] p-4 sm:p-6 flex flex-col justify-between gap-5 shadow-[0_24px_60px_-24px_rgba(11,31,42,0.38)]">
-          {/* Background Property Photography + Legible Atmospheric Gradient Scrim */}
-          <img
-            src={heroImage}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover object-center scale-[1.01]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(180deg, rgba(11,31,42,0.52) 0%, rgba(11,31,42,0.38) 42%, rgba(11,31,42,0.82) 100%)',
-            }}
-          />
-
-          {/* Top Floating Filter Pill Bar (Image 5 carved capsule aesthetic) */}
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-2.5">
-            <Link
-              to="/e/properties"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-4 py-2 text-[12.5px] font-bold text-[#0f172a] no-underline shadow-sm hover:bg-[#d4a752] transition-colors"
-            >
-              Sales <ArrowUpRight size={14} />
-            </Link>
-
-            <div className="hidden md:flex items-center gap-3 rounded-full bg-white/95 px-4 py-1.5 text-[12px] text-[#0f172a] shadow-md backdrop-blur-md">
-              <label className="flex items-center gap-1.5">
-                <MapPin size={13} className="text-[#2563eb] shrink-0" />
-                <select
-                  aria-label="Filter spotlight community"
-                  value={heroCommunity}
-                  onChange={e => setHeroCommunity(e.target.value)}
-                  className="bg-transparent border-0 text-[12px] font-semibold text-[#0f172a] outline-none cursor-pointer pr-1"
-                >
-                  <option value="All Dubai">All Dubai</option>
-                  <option value="Marina">Dubai Marina</option>
-                  <option value="Downtown">Downtown</option>
-                  <option value="Palm">Palm Jumeirah</option>
-                  <option value="Creek">Creek Harbour</option>
-                </select>
-              </label>
-              <span className="h-4 w-px bg-[#e2e8f0]" aria-hidden="true" />
-              <div className="flex items-center gap-1">
-                {(['All', 'Off-Plan', 'Ready'] as const).map(seg => (
-                  <button
-                    key={seg}
-                    type="button"
-                    onClick={() => setHeroSegment(seg)}
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border-0 cursor-pointer transition-colors ${
-                      heroSegment === seg ? 'bg-[#0f172a] text-white' : 'bg-transparent text-[#475569] hover:text-[#0f172a]'
-                    }`}
-                  >
-                    {seg}
-                  </button>
-                ))}
-              </div>
-              <span className="h-4 w-px bg-[#e2e8f0]" aria-hidden="true" />
-              <span className="font-mono text-[11.5px] font-bold text-[#047857]">
-                {aed(pipelineTotal, { compact: true })}
+        {/* Subtle Art Deco geometric corner lines */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.14]"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 86% 18%, rgba(212,167,82,0.55), transparent 44%), linear-gradient(125deg, transparent 58%, rgba(212,167,82,0.22) 58.3%, transparent 59%), linear-gradient(125deg, transparent 64%, rgba(212,167,82,0.16) 64.3%, transparent 65%)',
+          }}
+        />
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d4a752]/40 bg-[#d4a752]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#f3d27a]">
+                <BadgeCheck size={13} /> {roleInfo.badge}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11.5px] font-medium text-slate-200 font-mono">
+                <Clock3 size={12} className="text-[#f3d27a]" /> {dubaiNowLabel()} GST
               </span>
             </div>
-
-            <Link
-              to="/e/leases"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-4 py-2 text-[12.5px] font-bold text-[#0f172a] no-underline shadow-sm hover:bg-[#d4a752] transition-colors"
-            >
-              Leasing <ArrowUpRight size={14} />
-            </Link>
-          </div>
-
-          {/* Center Editorial Greeting */}
-          <div className="relative z-10 max-w-[600px] py-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-[#0b1f2a]/55 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#fde68a] backdrop-blur-md">
-              <span className="size-1.5 rounded-full bg-[#34d399]" />
-              SWK Properties Dubai · {new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())}
-            </div>
-            <h1 className="mt-3 mb-0 text-[32px] sm:text-[42px] font-bold tracking-[-0.035em] text-white leading-[1.05] drop-shadow-sm">
-              {greeting()}, <span className="text-[#fde68a]">{firstName}</span>
+            <h1 className="mt-3 text-2xl sm:text-[30px] font-bold tracking-[-0.025em] text-white leading-tight">
+              {roleInfo.title}
             </h1>
-            <p className="mt-2 mb-0 text-[13.5px] sm:text-[14.5px] text-white/90 font-medium">
-              {summary || 'Live Dubai brokerage pipeline, verified listings, viewings & commission health.'}
+            <p className="mt-1.5 max-w-3xl text-[14.5px] text-slate-200/90 leading-relaxed">
+              Signed in as <strong className="text-white">{me?.name}</strong> ({me?.role || d.role_label || roleProfile}) — {roleInfo.subtitle}
             </p>
           </div>
 
-          {/* Bottom Split: Left Solid White Portfolio Notch Card + Right Frosted Glass Featured Listing Card (Image 5) */}
-          <div className="relative z-10 grid gap-3.5 md:grid-cols-12 items-end">
-            {/* Bottom-Left Solid White Carved Portfolio Card */}
-            <div className="md:col-span-5 rounded-[24px] bg-white p-4 text-[#0f172a] shadow-[0_14px_34px_-14px_rgba(15,23,42,0.32)]">
-              <div className="text-[14px] font-bold tracking-[-0.02em] text-[#0f172a]">Active Dubai Portfolio</div>
-              <p className="m-0 mt-1 text-[11.5px] leading-snug text-[#526273]">
-                Verified Form A listings, off-plan launches &amp; managed units ready to close.
-              </p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <div>
-                  <div className="font-display text-[24px] font-extrabold leading-none text-[#0f172a] tabular-nums">
-                    <AnimatedNumber value={Number(k.properties_available ?? propRows.length ?? 0)} />+
-                  </div>
-                  <div className="mt-0.5 text-[10.5px] font-semibold text-[#526273]">
-                    Weighted GCI {aed(weighted * 0.02, { compact: true })}
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="flex -space-x-2 mr-2">
-                    {[1, 2, 3].map(idx => (
-                      <img
-                        key={idx}
-                        src={photoFor(idx)}
-                        alt=""
-                        aria-hidden="true"
-                        className="size-8 rounded-full object-cover ring-2 ring-white"
-                      />
-                    ))}
-                  </div>
-                  <Link
-                    to="/listings"
-                    aria-label="Open Listing Studio"
-                    className="flex size-9 items-center justify-center rounded-full bg-[#0f172a] text-white no-underline hover:bg-[#2563eb] transition-colors"
-                  >
-                    <ArrowUpRight size={15} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom-Right Frosted Glass Spotlight Property Card */}
-            <div className="md:col-span-7 rounded-[24px] border border-white/25 bg-[#0b1f2a]/68 p-4 text-white backdrop-blur-xl shadow-[0_16px_36px_-14px_rgba(11,31,42,0.5)]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                    <span className="rounded-full bg-white/18 px-2.5 py-0.5 text-[10.5px] font-bold text-white">
-                      {filteredSpotlight?.is_off_plan ? 'Off-Plan Launch' : 'Ready Flagship'}
-                    </span>
-                    {filteredSpotlight?.rera_permit_no && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[#047857] px-2 py-0.5 text-[10px] font-bold text-white">
-                        <BadgeCheck size={11} /> RERA Verified
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-[16px] font-bold text-white">
-                    {filteredSpotlight?.title || 'Dubai Marina Sky Residence'}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-white/80 truncate">
-                    <MapPin size={12} className="text-[#fde68a] shrink-0" />
-                    <span className="truncate">{filteredSpotlight?.address || 'Dubai Marina, UAE'}</span>
-                  </div>
-                </div>
-                <Link
-                  to={filteredSpotlight ? `/e/properties/${filteredSpotlight.id}` : '/listings'}
-                  aria-label="View featured property"
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0f172a] no-underline hover:bg-[#fde68a] transition-colors"
+          {/* Role-Pinpoint Executive Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {roleProfile === 'owner' && (
+              <>
+                <button
+                  type="button"
+                  disabled={sendingBrief !== null}
+                  onClick={() => void triggerBrief('morning')}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] border-0 cursor-pointer hover:bg-[#e5be6d] transition-colors"
                 >
-                  <ArrowUpRight size={16} />
-                </Link>
-              </div>
-
-              <div className="mt-3 pt-2.5 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 text-[12px]">
-                <div className="flex items-center gap-3 text-white/85">
-                  <span className="inline-flex items-center gap-1">
-                    <BedDouble size={13} className="text-[#fde68a]" />
-                    {filteredSpotlight?.bedrooms ? `${filteredSpotlight.bedrooms} BR` : '2 BR'}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Maximize2 size={12} className="text-[#fde68a]" />
-                    {num(filteredSpotlight?.area_sqft || 1840)} sqft
-                  </span>
-                </div>
-                <div className="font-mono text-[15px] font-bold text-[#fde68a] tabular-nums">
-                  {filteredSpotlight?.price
-                    ? aed(filteredSpotlight.price, { compact: true })
-                    : filteredSpotlight?.rent_annual
-                      ? `${aed(filteredSpotlight.rent_annual, { compact: true })}/yr`
-                      : aed(pipelineTotal || 3450000, { compact: true })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right 4 cols: Image 1 Productivity Dark Progress Card + White Task Schedule Card */}
-        <div className="xl:col-span-4 flex flex-col gap-4">
-          {/* Dark Today's Progress Card (Exact Image 1 black card with lime ring) */}
-          <div className="rounded-[26px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-5 text-white shadow-[0_18px_40px_-20px_rgba(11,31,42,0.48)]">
-            <div className="flex items-center justify-between gap-2 mb-3.5">
-              <span className="text-[13px] font-semibold text-white/90">Today&apos;s Progress</span>
-              {!restricted && (
-                <Link
-                  to="/pipeline"
-                  className="inline-flex items-center gap-1 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-[#c5e86c] no-underline hover:bg-white/20 transition-colors"
+                  <FileBarChart size={15} /> {sendingBrief === 'morning' ? 'Dispatching…' : 'Owner Morning Brief'}
+                </button>
+                <button
+                  type="button"
+                  disabled={sendingBrief !== null}
+                  onClick={() => void triggerBrief('attendance-1030')}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white cursor-pointer hover:bg-white/20 transition-colors"
                 >
-                  Pipeline <ArrowUpRight size={12} />
+                  <Clock3 size={15} /> {sendingBrief === 'attendance-1030' ? 'Running…' : '10:30 Attendance'}
+                </button>
+                <Link to="/crm-vault" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <ShieldCheck size={15} /> CRM Vault
                 </Link>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <ProgressRing
-                value={dailyProgressPct}
-                size={92}
-                stroke={9}
-                color="#c5e86c"
-                track="rgba(255,255,255,0.14)"
-                label={<span className="text-white text-[18px] font-bold">{dailyProgressPct.toFixed(0)}%</span>}
-                sub={<span className="text-white/65 text-[10px]">target</span>}
-              />
-              <div className="flex-1 grid gap-2 text-[12px]">
-                <Link to="/e/leads" className="flex items-center justify-between rounded-xl bg-white/[0.07] px-3 py-1.5 text-white no-underline hover:bg-white/[0.13] transition-colors">
-                  <span className="text-white/75 flex items-center gap-1.5"><UserPlus size={12} className="text-[#c5e86c]" /> Leads today</span>
-                  <b className="font-mono text-[13px]">{num(k.leads_today ?? 0)}</b>
+              </>
+            )}
+            {roleProfile === 'admin' && (
+              <>
+                <Link to="/e/properties" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <Building2 size={15} /> Inventory
                 </Link>
-                <Link to="/e/viewings" className="flex items-center justify-between rounded-xl bg-white/[0.07] px-3 py-1.5 text-white no-underline hover:bg-white/[0.13] transition-colors">
-                  <span className="text-white/75 flex items-center gap-1.5"><CalendarCheck size={12} className="text-[#38bdf8]" /> Viewings 7d</span>
-                  <b className="font-mono text-[13px]">{num(k.viewings_week ?? 0)}</b>
+                <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <FileCode2 size={15} /> Document Templates
                 </Link>
-                <Link to="/e/offers" className="flex items-center justify-between rounded-xl bg-white/[0.07] px-3 py-1.5 text-white no-underline hover:bg-white/[0.13] transition-colors">
-                  <span className="text-white/75 flex items-center gap-1.5"><HandCoins size={12} className="text-[#fde68a]" /> Pending offers</span>
-                  <b className="font-mono text-[13px]">{num(k.offers_pending ?? 0)}</b>
+                <Link to="/crm-vault" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <ShieldCheck size={15} /> CRM Vault
                 </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Task Schedule Card (Exact Image 1 capsule day strip + agenda items) */}
-          <div className="flex-1 rounded-[26px] border border-line bg-card/95 p-5 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.12)] flex flex-col justify-between gap-3.5">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h2 className="m-0 text-[16px] font-bold text-ink">Task Schedule</h2>
-                <p className="m-0 text-[11.5px] text-muted">Viewings, closes &amp; renewals</p>
-              </div>
-              <Link
-                to="/calendar"
-                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-soft px-3 py-1.5 text-[11.5px] font-semibold text-ink no-underline hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <CalendarDays size={13} /> Calendar
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1.5">
-              {weekDays.map(wd => (
-                <div
-                  key={wd.key}
-                  className={`flex flex-col items-center justify-center rounded-full py-2 text-center ${
-                    wd.isToday
-                      ? 'bg-[#0f172a] text-white dark:bg-[#c5e86c] dark:text-[#0b1f2a] shadow-sm'
-                      : 'bg-soft text-body'
-                  }`}
-                >
-                  <span className={`text-[9.5px] font-semibold ${wd.isToday ? 'text-[#c5e86c] dark:text-[#0b1f2a]/75' : 'text-muted'}`}>{wd.wk}</span>
-                  <span className="mt-0.5 text-[12.5px] font-bold">{wd.num}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-2 max-h-[156px] overflow-y-auto pr-0.5">
-              {agenda.length === 0 ? (
-                <div className="rounded-2xl bg-soft p-3.5 text-center text-xs text-muted">
-                  Clear schedule for the next few days.
-                </div>
-              ) : (
-                agenda.slice(0, 3).map(a => (
-                  <Link
-                    key={a.id}
-                    to={a.to}
-                    className="flex items-center gap-2.5 rounded-2xl border border-line bg-soft px-3 py-2 no-underline hover:border-ink hover:bg-card transition-colors"
-                  >
-                    <span
-                      className={`size-8 rounded-xl grid place-items-center shrink-0 ${
-                        a.tone === 'blue'
-                          ? 'bg-[#eff6ff] text-[#1d4ed8]'
-                          : a.tone === 'green'
-                            ? 'bg-[#ecfdf5] text-[#047857]'
-                            : 'bg-[#fef7e6] text-[#92400e]'
-                      }`}
-                    >
-                      <a.Icon size={15} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[12.5px] font-bold text-ink">{a.title}</div>
-                      <div className="truncate text-[11px] text-muted">
-                        {a.kind} · {a.kind === 'Viewing' ? fmtDateTime(a.at) : fmtDate(a.at)}
-                      </div>
-                    </div>
-                    <ArrowUpRight size={13} className="text-muted shrink-0" />
-                  </Link>
-                ))
-              )}
-            </div>
+              </>
+            )}
+            {roleProfile === 'manager' && (
+              <>
+                <Link to="/crm-vault" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <ShieldCheck size={15} /> Dispatch CRM Vault
+                </Link>
+                <Link to="/field-live" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Navigation size={15} /> Live Field Map
+                </Link>
+                <Link to="/pipeline" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Briefcase size={15} /> Pipeline
+                </Link>
+              </>
+            )}
+            {roleProfile === 'hr' && (
+              <>
+                <Link to="/e/leave_requests" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <Plane size={15} /> Leave Approvals
+                </Link>
+                <Link to="/e/attendance" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Clock3 size={15} /> Attendance Log
+                </Link>
+                <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <FileCode2 size={15} /> HR Templates
+                </Link>
+              </>
+            )}
+            {roleProfile === 'office_admin' && (
+              <>
+                <Link to="/e/leads?new=1" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <UserPlus size={15} /> Log Walk-In Lead
+                </Link>
+                <Link to="/e/tickets" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Ticket size={15} /> Support Desk
+                </Link>
+                <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <FileCode2 size={15} /> Letter Studio
+                </Link>
+              </>
+            )}
+            {roleProfile === 'agent' && (
+              <>
+                <Link to="/reception-qr?scan=1" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <QrCode size={15} /> Scan Office QR
+                </Link>
+                <Link to="/my-deals" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Briefcase size={15} /> My Deals
+                </Link>
+                <Link to="/phone" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <PhoneCall size={15} /> SWK Phone
+                </Link>
+                <Link to="/field-duty" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Navigation size={15} /> Field GPS
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </motion.section>
 
-      {/* Attention Alerts (only shown when live alerts exist) */}
-      {d.alerts?.length > 0 && (
-        <Reveal className="grid gap-2.5 sm:grid-cols-2">
-          {d.alerts.slice(0, 4).map((a: any, i: number) => (
-            <RevealItem key={i}>
-              <Link
-                to={a.link}
-                className="flex items-center gap-3 rounded-2xl border px-4 py-3 text-[13px] font-semibold no-underline transition-all hover:-translate-y-0.5"
-                style={{
-                  background: a.level === 'danger' ? '#fef2f2' : a.level === 'warn' ? '#fffbeb' : '#eff6ff',
-                  borderColor: a.level === 'danger' ? '#fecaca' : a.level === 'warn' ? '#fde68a' : '#bfdbfe',
-                  color: '#0f172a',
-                }}
-              >
-                <AlertTriangle size={16} color={a.level === 'danger' ? '#dc2626' : a.level === 'warn' ? '#d97706' : '#2563eb'} />
-                <span className="flex-1 min-w-0 truncate" dir="auto">{a.text}</span>
-                <ArrowRight size={14} className="shrink-0" />
-              </Link>
-            </RevealItem>
-          ))}
-        </Reveal>
-      )}
-
-      {/* ============================================================ SECTION 2: CONNECTED DEAL & CUSTOMER JOURNEYS (Image 2 + 3 + 4) */}
-      <JourneyWorkflowCanvas kpis={k} dealCount={activeDealCount} adminOk={adminOk} restricted={restricted} />
-
-      {/* ============================================================ SECTION 3: LIVE EXECUTIVE ANALYTICS BENTO (Single Unified Suite) */}
-      <section aria-label="Executive Analytics Bento" className="grid gap-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <div className="swk-eyebrow">Executive Intelligence</div>
-            <h2 className="m-0 text-[20px] font-bold text-ink">Live Brokerage Revenue, Divisions &amp; Seasonality</h2>
-          </div>
-          {can('reports', 'view') && !restricted && (
-            <Link to="/reports" className="btn navy sm">
-              <FileBarChart size={14} /> Reports &amp; Statements
-            </Link>
-          )}
-        </div>
-        <AnalyticsBento
-          currency="AED "
-          credit={false}
-          revenue={analyticsProps.revenue}
-          sessions={analyticsProps.sessions}
-          categories={analyticsProps.categories}
-          seasonality={analyticsProps.seasonality}
-        />
+      {/* ============================================================ 2. 21ST.DEV 4-CARD ROLE KPI BENTO */}
+      <section aria-label="Key role metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpiCards.map(c => (
+          <KpiCard key={c.label} {...c} />
+        ))}
       </section>
 
-      {/* ============================================================ SECTION 4: IMAGE 2 BOTTOM SPLIT (TABLE + RADIAL JOURNEY METRICS) */}
-      <Reveal className="grid gap-5 xl:grid-cols-12 items-stretch">
-        {/* Left 7 cols: Tabbed Active Queues Table + Live Pipeline Stage Breakdown (Symmetric height) */}
-        <div className="xl:col-span-7 rounded-[28px] border border-line bg-card/95 p-5 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)] flex flex-col justify-between gap-4">
-          <div>
+      {/* ============================================================ 3. OWNER SEAL & SIGNATURE GOVERNANCE DESK */}
+      {roleProfile === 'owner' && (
+        <section id="seal-approvals" className="card p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                <Stamp size={20} />
+              </div>
+              <div>
+                <h2 className="m-0 text-[17px] font-bold text-ink">Owner Sign-Off Desk — Company Seal, Signature &amp; Governance</h2>
+                <p className="m-0 text-[13px] text-muted">
+                  Admin, HR, and Office Admin require your explicit approval before applying the SWK Company Seal or Owner Signature.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/recycle-bin" className="btn outline sm">
+                <Trash2 size={14} /> Delete Bin ({gov.recycle_pending ?? 0})
+              </Link>
+              <Link to="/withdrawals" className="btn outline sm">
+                <Scale size={14} /> Withdrawals ({gov.withdrawals_pending ?? 0})
+              </Link>
+              <Link to="/admin/settings" className="btn outline sm">
+                <PenTool size={14} /> Seal &amp; Signature Settings
+              </Link>
+            </div>
+          </div>
+
+          {sealApprovals.length === 0 ? (
+            <div className="rounded-2xl border border-line bg-soft/70 px-4 py-4 flex items-center gap-3 text-sm text-muted">
+              <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+              <span>All clear — no pending Company Seal or Owner Signature approval requests from Admin, HR, or Office Admin.</span>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {sealApprovals.map((reqItem: any) => (
+                <div key={reqItem.id} className="rounded-2xl border border-amber-500/35 bg-amber-500/[0.06] p-4 flex flex-col gap-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-[15px] text-ink truncate">{reqItem.document_title}</div>
+                      <div className="text-xs text-muted mt-0.5">
+                        Requested by <strong className="text-ink">{reqItem.requester_name}</strong> ({reqItem.requester_role})
+                        {reqItem.recipient_name ? ` · For ${reqItem.recipient_name}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {reqItem.include_seal && <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Seal</span>}
+                      {reqItem.include_signature && <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">Signature</span>}
+                    </div>
+                  </div>
+                  <p className="m-0 text-[13px] text-body leading-relaxed">{reqItem.reason}</p>
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-line">
+                    <span className="text-[11.5px] text-muted font-mono">{fmtDateTime(reqItem.created_at)}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={decidingId === reqItem.id}
+                        onClick={() => void decideSeal(reqItem.id, 'Rejected')}
+                        className="btn outline sm"
+                      >
+                        <XCircle size={14} /> Decline
+                      </button>
+                      <button
+                        type="button"
+                        disabled={decidingId === reqItem.id}
+                        onClick={() => void decideSeal(reqItem.id, 'Approved')}
+                        className="btn emerald sm"
+                      >
+                        <CheckCircle2 size={14} /> Approve (7d)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ============================================================ 4. EXECUTIVE LIVE ANALYTICS BENTO (OWNER / ADMIN / MANAGER) */}
+      {isExecRole && (
+        <section className="grid gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3 px-1">
             <div>
-              <h2 className="m-0 text-[18px] font-bold text-ink">Active Pipeline &amp; Queues</h2>
-              <p className="m-0 text-[12px] text-muted">Click any row to open the full record immediately</p>
+              <div className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-muted">EXECUTIVE INTELLIGENCE</div>
+              <h2 className="m-0 mt-0.5 text-[20px] font-bold tracking-tight text-ink">
+                Live Brokerage Revenue, Divisions &amp; Seasonality
+              </h2>
             </div>
-            <div className="inline-flex items-center rounded-full border border-line bg-soft p-1">
-              {(
-                [
-                  { id: 'leads', label: `Leads (${leadRows.length})` },
-                  { id: 'offers', label: `Offers (${offerRows.length})` },
-                  { id: 'closes', label: `Closing (${closeRows.length})` },
-                ] as { id: QueueTab; label: string }[]
-              ).map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setQueueTab(t.id)}
-                  className={`rounded-full px-3 py-1 text-[11.5px] font-semibold border-0 cursor-pointer transition-colors ${
-                    queueTab === t.id ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted hover:text-ink'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {queueTab === 'leads' && (
-            leadRows.length === 0 ? (
-              <EmptyState title="Inbox zero" hint="New portal, WhatsApp and website enquiries land here." />
-            ) : (
-              <div className="divide-y divide-line">
-                {leadRows.slice(0, 6).map((l: any) => (
-                  <Link
-                    key={l.id}
-                    to={`/e/leads/${l.id}`}
-                    className="flex items-center justify-between gap-3 py-3 px-2 -mx-2 rounded-2xl no-underline hover:bg-hover transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#eff6ff] text-[#1d4ed8]">
-                        <Users size={15} />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate text-[13.5px] font-bold text-ink">{l.contact_name || l.company}</div>
-                        <div className="truncate text-[11.5px] text-muted">{[l.source, l.phone].filter(Boolean).join(' · ') || 'Direct inquiry'}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="font-mono text-[12.5px] font-bold text-ink tabular-nums">
-                        {l.est_value ? aed(l.est_value, { compact: true }) : '—'}
-                      </span>
-                      <UiBadge variant={/new/i.test(l.status) ? 'destructive' : 'secondary'}>{l.status}</UiBadge>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )
-          )}
-
-          {queueTab === 'offers' && (
-            offerRows.length === 0 ? (
-              <EmptyState title="No pending offers" hint="Submitted and negotiating offers appear here." />
-            ) : (
-              <div className="divide-y divide-line">
-                {offerRows.slice(0, 6).map((o: any) => (
-                  <Link
-                    key={o.id}
-                    to={`/e/offers/${o.id}`}
-                    className="flex items-center justify-between gap-3 py-3 px-2 -mx-2 rounded-2xl no-underline hover:bg-hover transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#fef7e6] text-[#92400e]">
-                        <HandCoins size={15} />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate text-[13.5px] font-bold text-ink">{o.property_title}</div>
-                        <div className="truncate text-[11.5px] text-muted">{o.buyer} · {fmtDate(o.offer_date)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="font-mono text-[12.5px] font-bold text-ink tabular-nums">
-                        {aed(o.offer_price, { compact: true })}
-                      </span>
-                      <UiBadge variant="warning">{o.status}</UiBadge>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )
-          )}
-
-          {queueTab === 'closes' && (
-            closeRows.length === 0 ? (
-              <EmptyState title="No target closes this week" hint="Active deal closing folders with target transfer dates appear here." />
-            ) : (
-              <div className="divide-y divide-line">
-                {closeRows.slice(0, 6).map((j: any) => (
-                  <Link
-                    key={j.id}
-                    to={`/e/jobs/${j.id}`}
-                    className="flex items-center justify-between gap-3 py-3 px-2 -mx-2 rounded-2xl no-underline hover:bg-hover transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#ecfdf5] text-[#047857]">
-                        <FileSignature size={15} />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate text-[13.5px] font-bold text-ink">{j.property || j.job_no}</div>
-                        <div className="truncate text-[11.5px] text-muted">{j.client} · Target {fmtDate(j.target_close)}</div>
-                      </div>
-                    </div>
-                    <UiBadge variant="success">Closing</UiBadge>
-                  </Link>
-                ))}
-              </div>
-            )
-          )}
-          </div>
-
-          {/* Live Pipeline Stage Summary Footer inside Left Card */}
-          <div className="border-t border-line pt-4">
-            <div className="flex items-center justify-between gap-2 mb-2.5">
-              <span className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-muted">Sales Pipeline by Stage</span>
-              <Link to="/pipeline" className="text-[12px] font-semibold text-[#1d4ed8] dark:text-[#93c5fd] no-underline hover:underline">
-                Open Pipeline →
-              </Link>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {(funnel.length > 0 ? funnel.slice(0, 6) : [{ stage: 'Lead', count: 0, value: 0 }, { stage: 'Viewing', count: Number(k.viewings_week ?? 0), value: 0 }, { stage: 'Offer', count: Number(k.offers_pending ?? 0), value: pipelineTotal }]).map(s => (
-                <Link
-                  key={s.stage}
-                  to="/pipeline"
-                  className="flex items-center justify-between rounded-2xl border border-line bg-soft px-3 py-2 no-underline hover:border-ink transition-colors"
-                >
-                  <span className="truncate text-[12px] font-semibold text-body">{s.stage}</span>
-                  <span className="font-mono text-[12px] font-bold text-ink tabular-nums">
-                    {Number(s.count) || 0} · {aed(Number(s.value) || 0, { compact: true })}
-                  </span>
+            <div className="flex items-center gap-2">
+              {can('reports', 'view') && (
+                <Link to="/reports" className="btn outline sm">
+                  <FileBarChart size={14} /> Reports &amp; Statements
                 </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right 5 cols: Pastel Journey Health Rings (Image 2 bottom-right) + Live Dubai Market Pulse */}
-        <div className="xl:col-span-5 grid gap-4">
-          <div className="rounded-[28px] border border-line bg-card/95 p-5 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)]">
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <div>
-                <h2 className="m-0 text-[18px] font-bold text-ink">Brokerage Health</h2>
-                <p className="m-0 text-[12px] text-muted">Deals, units &amp; RERA compliance</p>
-              </div>
-              <Link to="/rera" className="btn outline sm">RERA Centre</Link>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Active Deals', val: activeDealCount, pct: Math.min(100, Math.max(25, activeDealCount * 12)), bg: '#eff6ff', ring: '#2563eb', text: '#1e3a8a', to: '/pipeline' },
-                { label: 'Managed', val: unitRows.length || Number(k.properties_available ?? 0), pct: dailyProgressPct, bg: '#fff1f2', ring: '#e11d48', text: '#881337', to: '/e/units' },
-                { label: 'RERA OK', val: `${compliancePct}%`, pct: compliancePct, bg: '#ecfdf5', ring: '#047857', text: '#064e3b', to: '/compliance' },
-              ].map(m => (
-                <Link
-                  key={m.label}
-                  to={m.to}
-                  className="flex flex-col items-center justify-center rounded-[22px] p-3.5 text-center no-underline transition-transform hover:-translate-y-0.5"
-                  style={{ background: m.bg }}
-                >
-                  <ProgressRing
-                    value={m.pct}
-                    size={68}
-                    stroke={6}
-                    color={m.ring}
-                    track="rgba(15,23,42,0.09)"
-                    label={<span className="font-mono text-[14px] font-bold" style={{ color: m.text }}>{m.val}</span>}
-                  />
-                  <span className="mt-2 text-[11.5px] font-bold" style={{ color: m.text }}>{m.label}</span>
+              )}
+              {canVault && (
+                <Link to="/crm-vault" className="btn green sm">
+                  <ShieldCheck size={14} /> Open Vault
                 </Link>
-              ))}
+              )}
             </div>
           </div>
-
-          <div className="rounded-[28px] border border-line bg-card/95 p-5 shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)]">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div>
-                <h2 className="m-0 text-[16px] font-bold text-ink">Dubai Market Pulse</h2>
-                <p className="m-0 text-[11.5px] text-muted">Price per sq ft · YoY growth</p>
-              </div>
-              <Link to="/market" className="no-underline"><Pill tone="oasis">Live Index</Pill></Link>
-            </div>
-            <div className="grid gap-1">
-              {COMMUNITIES.slice(0, 4).map(c => {
-                const yoy = ((c.ppsf - c.ppsfLY) / c.ppsfLY) * 100
-                return (
-                  <Link key={c.id} to="/market" className="flex items-center gap-3 py-1.5 rounded-2xl hover:bg-hover px-2 -mx-2 transition-colors no-underline">
-                    <span className="w-9 h-9 rounded-xl bg-cover bg-center flex-none" style={{ backgroundImage: `url(${c.image.replace('.webp', '-640.webp')}), url(${c.image})` }} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-bold text-ink truncate">{c.name}</span>
-                      <span className="block text-[11.5px] text-muted">AED {num(c.ppsf)}/sqft · {c.yieldPct}% yield</span>
-                    </span>
-                    <Sparkline data={c.trend} width={58} height={22} color="#047857" />
-                    <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[11px] font-bold text-[#047857] shrink-0">+{yoy.toFixed(1)}%</span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* ============================================================ LEADERSHIP GOVERNANCE & AI BRIEFING */}
-      {adminOk && (
-        <Reveal className="rounded-[24px] border border-line bg-card/95 p-5 shadow-2xs">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="space-y-0.5 min-w-0">
-              <div className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                <ShieldCheck size={15} className="text-[#047857] dark:text-[#34d399]" /> Leadership Governance &amp; Briefings
-              </div>
-              <div className="text-xs text-muted">
-                Mon–Fri 10am–7pm · Sat 10am–4pm · 10:05 Grace · Owner: Shabib Siraj · Operations: Mohammad Haseeb
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button type="button" className="btn outline sm" disabled={sendingBrief !== null} onClick={() => void triggerBrief('morning')}>
-                <MessageCircle size={13} /> {sendingBrief === 'morning' ? 'Sending…' : 'Morning Briefing'}
-              </button>
-              <button type="button" className="btn outline sm" disabled={sendingBrief !== null} onClick={() => void triggerBrief('attendance-1030')}>
-                <Clock size={13} /> {sendingBrief === 'attendance-1030' ? 'Running…' : '10:30 Attendance'}
-              </button>
-              <Link to="/recycle-bin" className="btn red sm">
-                <Trash2 size={13} /> Bin ({binQ.data?.counts?.pending ?? 0})
-              </Link>
-              <Link to="/withdrawals" className="btn emerald sm">
-                <Scale size={13} /> Withdrawals ({(withQ.data?.items ?? []).length})
-              </Link>
-            </div>
-          </div>
-        </Reveal>
+          <AnalyticsBento
+            {...analyticsProps}
+            fontFamily="'Manrope Variable', 'Manrope', system-ui, sans-serif"
+            monoFamily="'JetBrains Mono Variable', 'JetBrains Mono', monospace"
+            credit={false}
+          />
+        </section>
       )}
 
-      {brief.data?.output && (
-        <Reveal>
-          <Card
-            title={<span className="inline-flex items-center gap-2"><Bot size={18} className="text-[#d4a752]" />{brief.data.name} · today&apos;s briefing</span>}
-            subtitle={String(brief.data.started_at).replace('T', ' ').slice(0, 16)}
-            to="/ai"
-            tone="navy"
-          >
-            <div dir="auto" className="text-[13.5px] whitespace-pre-line leading-relaxed text-[#e2e8f0] max-h-[220px] overflow-auto">
-              {brief.data.output}
-            </div>
-          </Card>
-        </Reveal>
+      {/* ============================================================ 5. ROLE-SPECIFIC WORKSPACE SECTIONS */}
+      {isExecRole && (
+        <div className="grid gap-5 xl:grid-cols-12 items-start">
+          {/* Left 8 cols: Pipeline Funnel + Tabbed Action Queue */}
+          <div className="xl:col-span-8 grid gap-5">
+            {/* Deal Pipeline Stage Funnel */}
+            <section className="card p-5 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <h2 className="m-0 text-[17px] font-bold text-ink">Deal Stage Funnel &amp; Weighted Forecast</h2>
+                  <p className="m-0 text-[13px] text-muted">
+                    Live RERA transaction stages · Weighted closing forecast <strong className="text-ink font-mono">{aed(weightedForecast)}</strong>
+                  </p>
+                </div>
+                <Link to="/pipeline" className="btn outline sm">
+                  Full Pipeline <ArrowRight size={14} />
+                </Link>
+              </div>
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                {(funnel.length ? funnel : [
+                  { stage: 'Inquiry', count: 0, value: 0 },
+                  { stage: 'Viewing', count: 0, value: 0 },
+                  { stage: 'Offer', count: 0, value: 0 },
+                  { stage: 'Negotiation', count: 0, value: 0 },
+                  { stage: 'Contract', count: 0, value: 0 },
+                  { stage: 'DLD Process', count: 0, value: 0 },
+                  { stage: 'Handover', count: 0, value: 0 },
+                  { stage: 'Closed', count: 0, value: 0 },
+                ]).map((st: any) => {
+                  const pct = pipelineTotal > 0 ? Math.min(100, Math.round(((Number(st.value) || 0) / pipelineTotal) * 100)) : 0
+                  return (
+                    <div key={st.stage} className="rounded-2xl border border-line bg-soft/65 p-3.5">
+                      <div className="flex items-center justify-between gap-1 text-[12px] font-bold text-muted uppercase tracking-wider">
+                        <span>{st.stage}</span>
+                        <span className="font-mono text-ink">{st.count}</span>
+                      </div>
+                      <div className="mt-1.5 font-mono text-[16px] font-bold text-ink">{aed(st.value ?? 0)}</div>
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-line overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#0e9f6e] to-[#d4a752]" style={{ width: `${Math.max(st.count > 0 ? 12 : 0, pct)}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            {/* Tabbed Operational Action Queue */}
+            <section className="card p-5 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="m-0 text-[17px] font-bold text-ink">Active Commercial Desk</h2>
+                  <p className="m-0 text-[13px] text-muted">Direct drill-down into open leads, client offers, target closings, and Ejari renewals.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-soft p-1 border border-line">
+                  {([
+                    ['leads', `Leads (${leadRows.length})`],
+                    ['offers', `Offers (${offerRows.length})`],
+                    ['closes', `Closings (${closeRows.length})`],
+                    ['renewals', `Renewals (${renewalRows.length})`],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setQueueTab(key)}
+                      className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold border-0 cursor-pointer transition-colors ${
+                        queueTab === key ? 'bg-[#0b1f2a] text-white dark:bg-[#d4a752] dark:text-[#0b1f2a]' : 'bg-transparent text-muted hover:text-ink'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                {queueTab === 'leads' && (
+                  <table className="grid">
+                    <thead><tr><th>Client / Company</th><th>Source</th><th>Status</th><th className="num">Budget / Est.</th></tr></thead>
+                    <tbody>
+                      {leadRows.length === 0 ? (
+                        <tr><td colSpan={4} className="text-muted text-center py-6">No open leads in queue.</td></tr>
+                      ) : leadRows.map((r: any) => (
+                        <tr key={r.id}>
+                          <td><Link to={`/e/leads/${r.id}`} className="link">{r.company || r.contact_name || `Lead #${r.id}`}</Link></td>
+                          <td>{r.source || 'Direct'}</td>
+                          <td><span className="rounded-full bg-soft border border-line px-2.5 py-0.5 text-xs font-semibold text-ink">{r.status}</span></td>
+                          <td className="num font-mono">{r.est_value ? aed(r.est_value / 100) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {queueTab === 'offers' && (
+                  <table className="grid">
+                    <thead><tr><th>Offer</th><th>Property</th><th>Buyer</th><th>Status</th><th className="num">Offer Price</th></tr></thead>
+                    <tbody>
+                      {offerRows.length === 0 ? (
+                        <tr><td colSpan={5} className="text-muted text-center py-6">No pending offers right now.</td></tr>
+                      ) : offerRows.map((r: any) => (
+                        <tr key={r.id}>
+                          <td className="font-mono"><Link to={`/e/offers/${r.id}`} className="link">{r.offer_no || `#${r.id}`}</Link></td>
+                          <td>{r.property_title || '—'}</td>
+                          <td>{r.buyer || '—'}</td>
+                          <td><span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">{r.status}</span></td>
+                          <td className="num font-mono font-semibold">{r.offer_price ? aed(r.offer_price / 100) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {queueTab === 'closes' && (
+                  <table className="grid">
+                    <thead><tr><th>Deal Ref</th><th>Property</th><th>Client</th><th>Type</th><th>Target Close</th></tr></thead>
+                    <tbody>
+                      {closeRows.length === 0 ? (
+                        <tr><td colSpan={5} className="text-muted text-center py-6">No target closings in the next 10 days.</td></tr>
+                      ) : closeRows.map((r: any) => (
+                        <tr key={r.id}>
+                          <td className="font-mono"><Link to={`/e/jobs/${r.id}`} className="link">{r.job_no}</Link></td>
+                          <td>{r.property || '—'}</td>
+                          <td>{r.client || '—'}</td>
+                          <td>{r.deal_type || '—'}</td>
+                          <td className="font-mono">{fmtDate(r.target_close)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {queueTab === 'renewals' && (
+                  <table className="grid">
+                    <thead><tr><th>Lease</th><th>Unit</th><th>Tenant</th><th className="num">Annual Rent</th><th>Ends</th></tr></thead>
+                    <tbody>
+                      {renewalRows.length === 0 ? (
+                        <tr><td colSpan={5} className="text-muted text-center py-6">No leases expiring in the next 90 days.</td></tr>
+                      ) : renewalRows.map((r: any) => (
+                        <tr key={r.id}>
+                          <td className="font-mono"><Link to={`/e/leases/${r.id}`} className="link">{r.lease_no}</Link></td>
+                          <td>{r.unit_title || '—'}</td>
+                          <td>{r.tenant || '—'}</td>
+                          <td className="num font-mono">{r.annual_rent ? aed(r.annual_rent / 100) : '—'}</td>
+                          <td className="font-mono">{fmtDate(r.end_date)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* Right 4 cols: Broker Leaderboard + Priority Alerts + 7-Day Operating Schedule */}
+          <div className="xl:col-span-4 grid gap-5">
+            {/* Broker Leaderboard */}
+            <section className="card p-5">
+              <div className="flex items-center justify-between gap-2 mb-3.5">
+                <h2 className="m-0 text-[16px] font-bold text-ink flex items-center gap-2">
+                  <Trophy size={17} className="text-amber-500" /> Broker Leaderboard
+                </h2>
+                <Link to="/agents" className="text-xs font-semibold link">All Brokers</Link>
+              </div>
+              {leaderboard.length === 0 ? (
+                <p className="text-sm text-muted m-0">No active broker deal activity recorded yet.</p>
+              ) : (
+                <div className="grid gap-2.5">
+                  {leaderboard.slice(0, 6).map((ag: any, idx: number) => (
+                    <div key={ag.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-soft/60 px-3.5 py-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold font-mono ${idx === 0 ? 'bg-amber-500 text-[#0b1f2a]' : 'bg-card border border-line text-ink'}`}>
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-[14px] text-ink">{ag.name}</div>
+                          <div className="text-[11.5px] text-muted">{ag.deals_count} deals · {ag.viewings_month} viewings (MTD)</div>
+                        </div>
+                      </div>
+                      <div className="font-mono text-[13px] font-bold text-ink shrink-0">{aed(ag.deals_volume ?? 0)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Priority Governance & Risk Alerts */}
+            <section className="card p-5">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="m-0 text-[16px] font-bold text-ink flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-amber-500" /> Priority Alerts
+                </h2>
+                <span className="font-mono text-xs font-bold text-muted">{alerts.length}</span>
+              </div>
+              {alerts.length === 0 ? (
+                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 px-3 py-2.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  Zero critical alerts — all compliance, SLA, and billing checks are clean.
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  {alerts.slice(0, 6).map((al: any, i: number) => (
+                    <Link
+                      key={i}
+                      to={al.link.startsWith('#') ? '/dashboard' : al.link}
+                      className={`flex items-start justify-between gap-2 rounded-xl border px-3 py-2.5 text-[13px] font-medium no-underline transition-colors ${
+                        al.level === 'danger'
+                          ? 'border-rose-500/35 bg-rose-500/10 text-rose-900 dark:text-rose-200'
+                          : al.level === 'warn'
+                            ? 'border-amber-500/35 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                            : 'border-line bg-soft text-ink'
+                      }`}
+                    >
+                      <span className="leading-snug">{al.text}</span>
+                      <ArrowUpRight size={14} className="shrink-0 mt-0.5 opacity-70" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Weekly Operating Strip & Agenda */}
+            <section className="card p-5">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="m-0 text-[16px] font-bold text-ink flex items-center gap-2">
+                  <CalendarDays size={16} className="text-emerald-600" /> Operating Week
+                </h2>
+                <Link to="/calendar" className="text-xs font-semibold link">Full Calendar</Link>
+              </div>
+              <div className="grid grid-cols-7 gap-1.5 mb-3.5">
+                {weekDays.map(wd => (
+                  <div
+                    key={wd.key}
+                    className={`rounded-xl py-2 text-center border ${
+                      wd.isToday
+                        ? 'bg-[#0b1f2a] text-white border-[#d4a752] dark:bg-[#d4a752] dark:text-[#0b1f2a]'
+                        : 'bg-soft/70 text-ink border-line'
+                    }`}
+                  >
+                    <div className="text-[10px] font-semibold uppercase opacity-75">{wd.wk}</div>
+                    <div className="text-[13px] font-bold font-mono mt-0.5">{wd.num}</div>
+                  </div>
+                ))}
+              </div>
+              {agenda.length === 0 ? (
+                <p className="m-0 text-xs text-muted">No upcoming viewings, closings, or renewals scheduled this week.</p>
+              ) : (
+                <div className="grid gap-2">
+                  {agenda.map(ev => (
+                    <Link key={ev.id} to={ev.to} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-soft/60 px-3 py-2 no-underline hover:bg-hover transition-colors">
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-semibold text-ink">{ev.title}</div>
+                        <div className="truncate text-[11.5px] text-muted">{ev.kind}{ev.sub ? ` · ${ev.sub}` : ''}</div>
+                      </div>
+                      <span className="font-mono text-[11.5px] text-muted shrink-0">{fmtDate(ev.at)}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
       )}
+
+      {/* ============================================================ 5B. ADMIN / HR / OFFICE ADMIN SEAL APPROVAL TRACKER */}
+      {canDocs && roleProfile !== 'owner' && (
+        <section className="card p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+                <Stamp size={18} />
+              </div>
+              <div>
+                <h2 className="m-0 text-[16.5px] font-bold text-ink">Document Templates &amp; Owner Seal Approval Status</h2>
+                <p className="m-0 text-[13px] text-muted">Your role has authorized access to Company Document Templates. Applying the Company Seal or Owner Signature requires Owner Shabib Siraj’s approval.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link to="/studio" className="btn green sm"><FileCode2 size={14} /> Open Letter Studio</Link>
+              <Link to="/utilities/word" className="btn outline sm">Word Studio</Link>
+            </div>
+          </div>
+          {sealApprovals.length === 0 ? (
+            <div className="rounded-xl border border-line bg-soft/60 px-4 py-3 text-sm text-muted">
+              You have no active Company Seal or Signature requests. Request approval from inside any Letter Studio or Word Studio document.
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Document</th><th>Requested Items</th><th>Status</th><th>Owner Note</th><th>Expires</th></tr></thead>
+                <tbody>
+                  {sealApprovals.map((s: any) => (
+                    <tr key={s.id}>
+                      <td className="font-semibold">{s.document_title}</td>
+                      <td>{[s.include_seal && 'Company Seal', s.include_signature && 'Owner Signature'].filter(Boolean).join(' + ')}</td>
+                      <td>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          s.status === 'Approved' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                          s.status === 'Rejected' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' :
+                          'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                        }`}>{s.status}</span>
+                      </td>
+                      <td className="text-muted">{s.decision_note || '—'}</td>
+                      <td className="font-mono text-xs">{s.expires_at ? fmtDate(s.expires_at) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ============================================================ 5C. HR PINPOINT WORKSPACE */}
+      {roleProfile === 'hr' && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <section className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="m-0 text-[16.5px] font-bold text-ink">Pending Leave Approvals</h2>
+              <Link to="/e/leave_requests" className="text-xs font-semibold link">Manage All</Link>
+            </div>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th className="num">Days</th></tr></thead>
+                <tbody>
+                  {(ls.pending_leaves ?? []).length === 0 ? (
+                    <tr><td colSpan={4} className="text-muted text-center py-5">No pending leave requests.</td></tr>
+                  ) : (ls.pending_leaves ?? []).map((r: any) => (
+                    <tr key={r.id}>
+                      <td><Link to={`/e/leave_requests/${r.id}`} className="link">{r.employee_name || `Leave #${r.id}`}</Link></td>
+                      <td>{r.leave_type}</td>
+                      <td className="font-mono text-xs">{fmtDate(r.start_date)} → {fmtDate(r.end_date)}</td>
+                      <td className="num font-mono">{r.days ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="m-0 text-[16.5px] font-bold text-ink">Visa &amp; Emirates ID Expiry Watchlist (45d)</h2>
+              <Link to="/e/immigration_cases" className="text-xs font-semibold link">Open Immigration</Link>
+            </div>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Employee</th><th>Document</th><th>Expiry Date</th><th>Status</th></tr></thead>
+                <tbody>
+                  {(ls.expiring_visas ?? []).length === 0 ? (
+                    <tr><td colSpan={4} className="text-muted text-center py-5">No staff visas or IDs expiring within 45 days.</td></tr>
+                  ) : (ls.expiring_visas ?? []).map((r: any) => (
+                    <tr key={r.id}>
+                      <td><Link to={`/e/immigration_cases/${r.id}`} className="link">{r.employee_name || `#${r.id}`}</Link></td>
+                      <td>{r.document_type || 'Visa / EID'}</td>
+                      <td className="font-mono text-rose-600 dark:text-rose-300 font-semibold">{fmtDate(r.expiry_date)}</td>
+                      <td>{r.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* ============================================================ 5D. OFFICE ADMIN PINPOINT WORKSPACE */}
+      {roleProfile === 'office_admin' && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <section className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="m-0 text-[16.5px] font-bold text-ink">Open Support Tickets &amp; Reception Queue</h2>
+              <Link to="/e/tickets" className="text-xs font-semibold link">All Tickets</Link>
+            </div>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Ref</th><th>Subject</th><th>Priority</th><th>Status</th></tr></thead>
+                <tbody>
+                  {(ls.open_tickets ?? []).length === 0 ? (
+                    <tr><td colSpan={4} className="text-muted text-center py-5">All support tickets are resolved.</td></tr>
+                  ) : (ls.open_tickets ?? []).map((t: any) => (
+                    <tr key={t.id}>
+                      <td className="font-mono"><Link to={`/e/tickets/${t.id}`} className="link">{t.ticket_no || `#${t.id}`}</Link></td>
+                      <td>{t.subject}</td>
+                      <td>{t.priority || 'Normal'}</td>
+                      <td>{t.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="m-0 text-[16.5px] font-bold text-ink">Recent Company Documents</h2>
+              <Link to="/studio" className="text-xs font-semibold link">Letter Studio</Link>
+            </div>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Doc No</th><th>Title</th><th>Category</th><th>Status</th></tr></thead>
+                <tbody>
+                  {(ls.recent_studio_docs ?? []).length === 0 ? (
+                    <tr><td colSpan={4} className="text-muted text-center py-5">No documents drafted yet.</td></tr>
+                  ) : (ls.recent_studio_docs ?? []).map((doc: any) => (
+                    <tr key={doc.id}>
+                      <td className="font-mono"><Link to={`/studio/${doc.id}`} className="link">{doc.doc_no}</Link></td>
+                      <td>{doc.title}</td>
+                      <td>{doc.category}</td>
+                      <td>{doc.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* ============================================================ 5E. AGENT / FIELD ADVISOR PINPOINT WORKSPACE */}
+      {roleProfile === 'agent' && (
+        <div className="grid gap-5 lg:grid-cols-12">
+          <section className="card p-5 lg:col-span-7">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="m-0 text-[16.5px] font-bold text-ink">My Dispatched Vault Deals</h2>
+                <p className="m-0 text-xs text-muted">Hard-masked owner privacy — place calls directly through SWK Phone.</p>
+              </div>
+              <Link to="/my-deals" className="btn green sm">Open All Deals <ArrowRight size={14} /></Link>
+            </div>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Community / Building</th><th>Unit</th><th>Status</th><th className="num">Asking Price</th></tr></thead>
+                <tbody>
+                  {(ls.my_assigned_deals ?? []).length === 0 ? (
+                    <tr><td colSpan={4} className="text-muted text-center py-6">No CRM Vault deals currently dispatched to your desk.</td></tr>
+                  ) : (ls.my_assigned_deals ?? []).map((deal: any) => (
+                    <tr key={deal.id}>
+                      <td>
+                        <Link to="/my-deals" className="link">{deal.building_name || deal.community || `Deal #${deal.id}`}</Link>
+                        <div className="text-xs text-muted">{deal.community}</div>
+                      </td>
+                      <td className="font-mono">{deal.unit_number || '—'} · {deal.bedrooms || deal.unit_type || ''}</td>
+                      <td><span className="rounded-full bg-soft border border-line px-2.5 py-0.5 text-xs font-semibold">{deal.lead_status || 'Assigned'}</span></td>
+                      <td className="num font-mono font-semibold">{deal.asking_price_aed ? aed(deal.asking_price_aed) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section className="card p-5 lg:col-span-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="m-0 text-[16.5px] font-bold text-ink">Recent Daily Reports &amp; Attendance</h2>
+              <Link to="/e/daily_reports?new=1" className="btn outline sm">New Report</Link>
+            </div>
+            <div className="grid gap-2.5">
+              {(ls.my_daily_reports ?? []).slice(0, 4).map((rep: any) => (
+                <Link key={rep.id} to={`/e/daily_reports/${rep.id}`} className="rounded-xl border border-line bg-soft/65 p-3 no-underline hover:bg-hover transition-colors">
+                  <div className="flex items-center justify-between text-xs font-mono text-muted">
+                    <span>{fmtDate(rep.report_date)}</span>
+                    <span className="font-semibold text-ink">{rep.status || 'Submitted'}</span>
+                  </div>
+                  <div className="mt-1 text-[13px] text-ink line-clamp-2">{rep.summary || 'Daily activity report'}</div>
+                </Link>
+              ))}
+              {(ls.my_daily_reports ?? []).length === 0 && (
+                <div className="rounded-xl border border-line bg-soft/65 p-4 text-sm text-muted">
+                  No daily reports submitted yet this month. Submit your end-of-day field summary before 19:00 GST.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* ============================================================ 6. DUBAI DLD MARKET BENCHMARKS STRIP */}
+      <section className="card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">DUBAI LAND DEPARTMENT BENCHMARKS</div>
+            <h2 className="m-0 mt-0.5 text-[17px] font-bold text-ink">Prime Dubai Community PSF &amp; Gross Yield Reference</h2>
+          </div>
+          <Link to="/market" className="btn outline sm">
+            Open Full Market Pulse <ArrowRight size={14} />
+          </Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {COMMUNITIES.slice(0, 6).map(c => (
+            <Link
+              key={c.name}
+              to="/market"
+              className="rounded-2xl border border-line bg-soft/65 p-3.5 no-underline hover:border-line-strong hover:bg-hover transition-colors"
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[13px] font-bold text-ink truncate">{c.name}</span>
+                <MapPin size={13} className="text-[#b78328] shrink-0" />
+              </div>
+              <div className="mt-2 font-mono text-[16px] font-bold text-ink">
+                AED {c.ppsf.toLocaleString('en-US')}<span className="text-[11px] font-normal text-muted">/sf</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[12px]">
+                <span className="text-emerald-700 dark:text-emerald-300 font-semibold">{c.yieldPct}% yield</span>
+                <span className="text-muted">{c.segment}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   )
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+  icon,
+  tone,
+  to,
+}: {
+  label: string
+  value: string
+  hint: string
+  icon: React.ReactNode
+  tone: 'navy' | 'emerald' | 'gold' | 'rose' | 'slate' | 'amber'
+  to?: string
+}) {
+  const iconBg: Record<string, string> = {
+    navy: 'bg-[#0b1f2a] text-[#f3d27a]',
+    emerald: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-300',
+    gold: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    amber: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    rose: 'bg-rose-600/15 text-rose-700 dark:text-rose-300',
+    slate: 'bg-soft text-ink',
+  }
+  const inner = (
+    <div className="card p-5 h-full flex flex-col justify-between gap-3 hover:border-line-strong transition-all">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[12.5px] font-semibold uppercase tracking-[0.06em] text-muted">{label}</span>
+        <span className={`grid h-9 w-9 place-items-center rounded-xl shrink-0 ${iconBg[tone]}`}>{icon}</span>
+      </div>
+      <div>
+        <div className="font-mono text-[24px] sm:text-[26px] font-bold tracking-[-0.03em] text-ink leading-tight">
+          {value}
+        </div>
+        <div className="mt-1.5 text-[12.5px] text-muted leading-snug">{hint}</div>
+      </div>
+    </div>
+  )
+  if (to && !to.startsWith('#')) {
+    return <Link to={to} className="no-underline text-inherit block h-full">{inner}</Link>
+  }
+  if (to && to.startsWith('#')) {
+    return <a href={to} className="no-underline text-inherit block h-full">{inner}</a>
+  }
+  return inner
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="grid gap-5 max-w-[1540px] mx-auto" aria-busy="true" aria-label="Loading dashboard">
-      <div className="grid gap-5 xl:grid-cols-12">
-        <div className="xl:col-span-8 h-[420px] rounded-[30px] bg-[#0b1f2a]/90 animate-pulse" />
-        <div className="xl:col-span-4 grid gap-4">
-          <div className="h-[175px] rounded-[26px] bg-[#12161d] animate-pulse" />
-          <div className="h-[225px] rounded-[26px] bg-card border border-line animate-pulse" />
-        </div>
+    <div className="mx-auto max-w-[1560px] grid gap-5 pb-10">
+      <div className="h-[150px] rounded-[26px] bg-soft animate-pulse" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map(i => <div key={i} className="h-[136px] rounded-[26px] bg-soft animate-pulse" />)}
       </div>
-      <div className="h-[320px] rounded-[30px] bg-card border border-line animate-pulse" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="h-[340px] rounded-[26px] bg-soft animate-pulse" />
+        <div className="h-[340px] rounded-[26px] bg-soft animate-pulse" />
+      </div>
     </div>
   )
 }
-void Building2

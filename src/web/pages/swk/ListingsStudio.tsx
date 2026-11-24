@@ -5,16 +5,18 @@
  */
 import { useMemo,useState } from 'react'
 import { permitStatus,permitUsable,type PermitStatus } from '@shared/uae-rules'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { AnimatePresence,motion } from 'motion/react'
 import { Bar as RBar,BarChart,CartesianGrid,Legend,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import {
 AlertTriangle,ArrowUpRight,BadgeCheck,Bath,BedDouble,Camera,CheckCircle2,Clock,Copy,FileSignature,Globe2,LayoutGrid,
-ListChecks,Maximize2,MessageCircle,QrCode,Rows3,Send,ShieldAlert,ShieldCheck,Sparkles,Wand2,XCircle,
+ListChecks,Maximize2,MessageCircle,QrCode,Rows3,Send,Share2,ShieldAlert,ShieldCheck,Sparkles,Upload,Wand2,XCircle,
 } from 'lucide-react'
 import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
+import { ShareWithClient } from '../../components/ShareWithClient'
+import { BulkInventoryModal } from '../../components/BulkInventoryModal'
 import { Card,CHART,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,RevealItem,Segmented,StatTile,SWK,aed,num } from '../../swk/ui'
 import { communityByName,type Community } from '../../swk/uae'
 import { copyText,daysBetween,Drawer,hash,parseDate,SearchField,SelectField,useToasts } from './kit3/parts'
@@ -146,6 +148,7 @@ function buildCopy(l: Listing, tone: Tone) {
 // ------------------------------------------------------------------ page
 export default function ListingsStudio() {
   const { can } = useMeta()
+  const qc = useQueryClient()
   const { listings, mandates, leads, loading, error, today } = useListings()
   const toasts = useToasts()
   const [view, setView] = useState<'gallery' | 'table'>('gallery')
@@ -156,6 +159,8 @@ export default function ListingsStudio() {
   const [stage, setStage] = useState<'all' | 'offplan' | 'ready'>('all')
   const [sort, setSort] = useState<'score' | 'newest' | 'price'>('score')
   const [panel, setPanel] = useState<{ id: number; tab: 'quality' | 'copy' } | null>(null)
+  const [shareItem, setShareItem] = useState<{ id: number; title: string } | null>(null)
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -181,6 +186,7 @@ export default function ListingsStudio() {
         subtitle="Score every listing like Property Finder & Bayut do, clear the Trakheesi gate, and syndicate with confidence."
         actions={<>
           <button className="swk-btn swk-btn-ghost" disabled={!listings.length} onClick={() => filtered[0] && setPanel({ id: filtered[0].p.id, tab: 'copy' })}><Sparkles size={16} /> AI listing copy</button>
+          {can('properties', 'create') && <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setBulkOpen(true)}><Upload size={16} /> Bulk Upload Inventory</button>}
           {can('properties', 'create') && <Link to="/e/properties?new=1" className="swk-btn swk-btn-primary"><Rows3 size={16} /> New listing</Link>}
         </>} />
 
@@ -256,13 +262,13 @@ export default function ListingsStudio() {
             : view === 'gallery' ? (
               <motion.div layout className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 <AnimatePresence mode="popLayout">
-                  {filtered.map((l, i) => <ListingCard key={l.p.id} l={l} i={i} onQuality={() => setPanel({ id: l.p.id, tab: 'quality' })} onCopy={() => setPanel({ id: l.p.id, tab: 'copy' })} />)}
+                  {filtered.map((l, i) => <ListingCard key={l.p.id} l={l} i={i} onQuality={() => setPanel({ id: l.p.id, tab: 'quality' })} onCopy={() => setPanel({ id: l.p.id, tab: 'copy' })} onShare={() => setShareItem({ id: l.p.id, title: l.p.title })} />)}
                 </AnimatePresence>
               </motion.div>
             ) : <ListingTable rows={filtered} onOpen={id => setPanel({ id, tab: 'quality' })} />}
 
       <Drawer open={!!selected} onClose={() => setPanel(null)} eyebrow={selected ? `${selected.p.property_no ?? ''} · ${selected.community?.name ?? 'Dubai'}` : ''} title={selected?.p.title ?? ''} width={620}
-        footer={selected && <Link to={`/e/properties/${selected.p.id}`} className="swk-btn swk-btn-primary"><ArrowUpRight size={16} /> Open property record</Link>}>
+        footer={selected && <div className="flex items-center gap-2 flex-wrap"><button type="button" className="swk-btn swk-btn-gold" onClick={() => setShareItem({ id: selected.p.id, title: selected.p.title })}><Share2 size={15} /> Share Watermarked Brochure</button><Link to={`/e/properties/${selected.p.id}`} className="swk-btn swk-btn-primary"><ArrowUpRight size={16} /> Open property record</Link></div>}>
         {selected && panel && (
           <div className="flex flex-col gap-5">
             <Segmented layoutId="ls-panel" value={panel.tab} onChange={t => setPanel({ ...panel, tab: t })} options={[{ value: 'quality', label: 'Quality & fixes' }, { value: 'copy', label: 'AI listing copy' }]} />
@@ -270,6 +276,8 @@ export default function ListingsStudio() {
           </div>
         )}
       </Drawer>
+      {shareItem && <ShareWithClient entity="properties" ids={[shareItem.id]} label={shareItem.title} onClose={() => setShareItem(null)} />}
+      {bulkOpen && <BulkInventoryModal onClose={() => setBulkOpen(false)} onDone={() => { void qc.invalidateQueries({ queryKey: ['swk-ls'] }) }} />}
       {toasts.node}
     </div>
   )
@@ -294,7 +302,7 @@ function PortalChips({ l }: { l: Listing }) {
   )
 }
 
-function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQuality: () => void; onCopy: () => void }) {
+function ListingCard({ l, i, onQuality, onCopy, onShare }: { l: Listing; i: number; onQuality: () => void; onCopy: () => void; onShare: () => void }) {
   const p = l.p
   return (
     <motion.article layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .45, delay: Math.min(i, 8) * .04, ease: [0.16, 1, 0.3, 1] }}
@@ -337,7 +345,8 @@ function ListingCard({ l, i, onQuality, onCopy }: { l: Listing; i: number; onQua
         </div>
         <div className="mt-auto pt-2 flex gap-2">
           <button className="swk-btn swk-btn-ghost !h-9 flex-1 text-[12.5px]" onClick={onQuality}><ListChecks size={15} /> {l.checks.filter(c => c.earned < c.weight).length} fixes</button>
-          <button className="swk-btn swk-btn-gold !h-9 flex-1 text-[12.5px]" onClick={onCopy}><MessageCircle size={15} /> WhatsApp / Copy</button>
+          <button className="swk-btn swk-btn-gold !h-9 flex-1 text-[12.5px]" onClick={onShare}><Share2 size={15} /> Share Brochure</button>
+          <button className="swk-btn swk-btn-ghost !h-9 !w-9 !p-0" onClick={onCopy} aria-label={`Copy listing text for ${p.title}`} title="AI listing copy"><MessageCircle size={15} /></button>
           <Link to={`/e/properties/${p.id}`} className="swk-btn swk-btn-ghost !h-9 !w-9 !p-0" aria-label={`Open ${p.title}`}><ArrowUpRight size={16} /></Link>
         </div>
       </div>

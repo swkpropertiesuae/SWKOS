@@ -8,6 +8,7 @@ import { useToast } from '../lib/toast'
 import { Badge,Empty,ErrorBox,Loading,Modal,PageHeader,useDialogs } from '../ui/kit'
 import { RefSelect } from '../components/RefSelect'
 import { PdfDownload,DocumentPrinter } from '../components/ui/document-printer'
+import { SealApprovalPanel } from '../components/SealApprovalPanel'
 import { EmailPdfDialog } from './EntityPages'
 import { Letterhead } from '../print/PrintPage'
 import { CorporateFooter } from '../components/CorporateFooter'
@@ -223,6 +224,7 @@ export function StudioEditor() {
               <div className="flex gap-2 mt-2 flex-wrap"><button className="btn green sm" onClick={() => applyAi('replace')}>{aiOut.scope === 'selection' ? 'Replace selection' : 'Replace document'}</button><button className="btn outline sm" onClick={() => applyAi('insert')}>Insert at cursor</button><button className="btn ghost sm" onClick={() => setAiOut(null)}>Discard</button></div></div>}
             <p className="text-xs text-muted mb-0 mt-3">AI can make mistakes. Check names, amounts, dates and legal wording.</p>
           </section>}
+          <SealApprovalPanel sourceType="studio" sourceId={f.id} documentTitle={f.title || f.doc_no || 'Studio Document'} recipientName={f._labels?.party_id} />
           <section className="card">
             <h3>More</h3>
             <div className="flex gap-2 flex-wrap">
@@ -242,13 +244,18 @@ export function StudioEditor() {
 }
 
 /** The document as printed: used by the print page and the PDF export. */
-export function StudioDoc({ r, seal, sealImage }: { r: any; seal: boolean; sealImage?: string }) {
+export function StudioDoc({ r, seal, sealImage, signature, signatureImage }: { r: any; seal: boolean; sealImage?: string; signature?: boolean; signatureImage?: string }) {
   const { meta } = useMeta()
   const body = useMemo(() => safeHtml(mergeCompanyTokens(presentDocumentHtml(r.content ?? '', r.title ?? ''), meta?.settings ?? {}, todayIso())), [r.content, meta?.settings])
   return <>
     {r.orientation === 'Landscape' && <style>{'@page { size: A4 landscape; }'}</style>}
     <div className="studio-content" dangerouslySetInnerHTML={{ __html: body }} />
-    {seal && sealImage && <div className="document-issuance"><img className="document-seal" src={sealImage} alt="Company seal" /></div>}
+    {((seal && sealImage) || (signature && signatureImage)) && (
+      <div className="document-issuance" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: 18 }}>
+        {signature && signatureImage && <img className="document-signature" src={signatureImage} alt="Owner authorized signature" style={{ maxHeight: 62, maxWidth: 180, objectFit: 'contain' }} />}
+        {seal && sealImage && <img className="document-seal" src={sealImage} alt="Company seal" />}
+      </div>
+    )}
     <CorporateFooter note={r.footer_text || undefined} />
   </>
 }

@@ -1,9 +1,10 @@
 import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
-import { Suspense,lazy,type ReactNode } from 'react'
+import { Suspense,lazy,useCallback,useState,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
+import { BrandSplashScreen } from './components/BrandSplashScreen'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Launcher } from './pages/Launcher'
@@ -98,12 +99,32 @@ function FieldLiveGuard({ children }: { children: ReactNode }) {
     ? <>{children}</>
     : <ErrorBox error={new Error('Live Field GPS Map is restricted exclusively to Owner Shabib, Admin, and Operations Manager Haseeb.')} />
 }
+function DocTemplateGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessDocumentTemplates(me)
+    ? <>{children}</>
+    : <ErrorBox error={new Error('Document Templates & Letter Studio are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+}
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
 export default function App() {
   const { me, loading } = useMeta()
   const loc = useLocation()
   const defaultLanding = '/home'
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === 'undefined') return false
+    if (loc.pathname.startsWith('/l/') || loc.pathname.startsWith('/t/') || loc.pathname.startsWith('/print/')) return false
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false
+      if (sessionStorage.getItem('swk.splash.shown') === '1') return false
+    } catch { /* ignore storage restrictions */ }
+    return true
+  })
+  const handleSplashDone = useCallback(() => {
+    try { sessionStorage.setItem('swk.splash.shown', '1') } catch { /* ignore */ }
+    setShowSplash(false)
+  }, [])
   if (loc.pathname === '/accept-invite') return <AcceptInvite />
   if (loc.pathname.startsWith('/t/')) return <Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes>
   if (loc.pathname.startsWith('/l/')) return <Routes><Route path="/l/:token" element={<PublicListing />} /></Routes>
@@ -123,6 +144,7 @@ export default function App() {
       </Suspense>
     )
   }
+  if (showSplash) return <BrandSplashScreen ready={!loading} onDone={handleSplashDone} />
   if (loading) return <div className="h-full grid place-items-center"><Loading label="Starting SWK OS…" /></div>
   if (!me) return <Routes><Route path="/login" element={<Login />} /><Route path="*" element={<Navigate to="/login" replace state={{ from: loc.pathname }} />} /></Routes>
   if (me.mustChangePassword && !loc.pathname.startsWith('/profile') && !loc.pathname.startsWith('/print')) return <Navigate to="/profile" replace />
@@ -138,7 +160,7 @@ export default function App() {
                   <div className="text-xs font-extrabold uppercase tracking-widest text-[#f8f5ef] mb-2">
                     Staff Access Policy · SWK Properties OS
                   </div>
-                  <h2 className="text-xl font-bold mb-2">Restricted Module — Attendance, Manual, Market Pulse &amp; General Only</h2>
+                  <h2 className="text-xl font-bold mb-2 !text-white">Restricted Module — Attendance, Manual, Market Pulse &amp; General Only</h2>
                   <p className="text-sm text-slate-300 leading-relaxed mb-6">
                     Signed in as <b>{me.name}</b> (<code className="text-[#f8f5ef]">{me.email}</code>). Per company security policy, full OS operational modules are restricted exclusively to <b>Owner Shabib Siraj (shabib@swk.properties)</b>, <b>Full-Access Admin (admin@swk.properties)</b>, and <b>Mohammad Haseeb (Haseeb@swk.property)</b>. Your account is authorised for <b>Attendance &amp; QR Check-In</b>, <b>Company Manual</b>, <b>Market Pulse</b>, and <b>General Workspace</b>.
                   </p>
@@ -214,8 +236,8 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/reports" element={<Guard module="reports"><ReportsPage /></Guard>} />
           <Route path="/finance/statements" element={<Guard module="finance"><Statements /></Guard>} />
-          <Route path="/studio" element={<Guard module="documents"><StudioHome /></Guard>} />
-          <Route path="/studio/:id" element={<Guard module="documents"><StudioEditor /></Guard>} />
+          <Route path="/studio" element={<DocTemplateGuard><Guard module="documents"><StudioHome /></Guard></DocTemplateGuard>} />
+          <Route path="/studio/:id" element={<DocTemplateGuard><Guard module="documents"><StudioEditor /></Guard></DocTemplateGuard>} />
           <Route path="/finance/new-invoice" element={<Guard module="finance"><NewInvoicePage /></Guard>} />
           <Route path="/documents" element={<Guard module="documents"><DocumentsPage /></Guard>} />
           <Route path="/tools" element={<ToolsPage />} />

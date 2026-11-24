@@ -106,7 +106,7 @@ async function main() {
   r = await a.post('/api/e/users', { name: 'Read Only', email: 'viewer@studio.example', password: 'Viewer-Pass-2026!', role_id: role.id, branch_id: dxb, active: true, must_change_password: false })
   const v = new Api(); const logged = await v.login('viewer@studio.example', 'Viewer-Pass-2026!')
   ok('a read-only user signs in', logged, r.data)
-  r = await v.get('/api/e/doc_templates?pageSize=3'); ok('a read-only user can browse templates', r.status === 200 && r.data.total > 40)
+  r = await v.get('/api/e/doc_templates?pageSize=3'); ok('non-authorized viewer cannot browse document templates (Owner/Admin/HR/Office Admin only)', r.status === 403, r.data)
   r = await v.post('/api/studio/documents', { template_id: code('LC-02').id }); ok('a read-only user cannot create documents', r.status === 403, r.data)
   r = await v.post('/api/studio/ai', { action: 'draft', request: 'x' }); ok('a read-only user cannot use AI writing', r.status === 403)
 

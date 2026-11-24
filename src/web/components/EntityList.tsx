@@ -4,6 +4,7 @@ import { useNavigate,useSearchParams,Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X,CalendarDays,ChevronLeft,ChevronRight,Bookmark,Check,Share2,ScanText } from 'lucide-react'
 import { SmartImport } from './SmartImport'
+import { BulkInventoryModal } from './BulkInventoryModal'
 import { ShareWithClient,SHAREABLE_ENTITIES } from './ShareWithClient'
 import type { FieldDef } from '@shared/types'
 import { optValue } from '@shared/types'
@@ -68,6 +69,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showBulkInventory, setShowBulkInventory] = useState(false)
   const filters: Flt[] = useMemo(() => { try { return param('filters') ? JSON.parse(param('filters')) : [] } catch { return [] } }, [param('filters')])
   const status = param('status')
   useEffect(() => { const t = setTimeout(() => { if (search !== param('q')) setParam({ q: search, page: null }) }, 280); return () => clearTimeout(t) }, [search])
@@ -112,7 +114,8 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
         <PageHeader icon={<Icon size={20} />} title={title ?? def.plural} subtitle={def.description ?? `${(query.data?.total ?? 0).toLocaleString()} records`} actions={<>
           {headerExtra}
           {can(def.module, 'export') && <button type="button" className="btn outline" onClick={() => void downloadAuthFile(buildApiPath(`/api/e/${entity}/export.csv`, { q: param('q'), filters: allFilters.length ? JSON.stringify(allFilters) : undefined, sort, dir }), `${entity}.csv`).catch(e => toast.error(e.message))}><Download /> Export</button>}
-          {canCreate && !def.children?.length && <button className="btn outline" onClick={() => setShowImport(true)}><Upload /> Import</button>}
+          {canCreate && entity === 'properties' && <button type="button" className="btn outline" onClick={() => setShowBulkInventory(true)}><Upload /> Bulk Upload Inventory</button>}
+          {canCreate && entity !== 'properties' && !def.children?.length && <button className="btn outline" onClick={() => setShowImport(true)}><Upload /> Import</button>}
           {canCreate && !def.children?.length && <button className="btn outline" onClick={() => setSmart(true)}><ScanText /> Smart import (OCR)</button>}
           {canCreate && <button className="btn green" onClick={() => setEditing('new')}><Plus /> New {def.label}</button>}
         </>} />
@@ -176,6 +179,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
       {sharing && <ShareWithClient entity={entity} ids={sharing} label={`${sharing.length} ${sharing.length === 1 ? def.label : def.plural} selected for you`} onClose={() => setSharing(null)} />}
       {smart && <SmartImport def={def} onClose={() => setSmart(false)} onDone={refresh} />}
       {showImport && <ImportModal def={def} onClose={() => setShowImport(false)} onDone={() => { refresh(); }} />}
+      {showBulkInventory && <BulkInventoryModal onClose={() => setShowBulkInventory(false)} onDone={refresh} />}
     </div>
   )
   return content

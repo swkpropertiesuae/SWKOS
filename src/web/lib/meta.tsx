@@ -17,6 +17,11 @@ export function MetaProvider({ children }: { children: ReactNode }) {
   const [meta, setMeta] = useState<Meta | null>(null)
   const [loading, setLoading] = useState(true)
   const reload = useCallback(async () => {
+    const p = typeof window !== 'undefined' ? window.location.pathname : ''
+    if (p.startsWith('/l/') || p.startsWith('/t/') || p === '/accept-invite') {
+      setLoading(false)
+      return
+    }
     try {
       await hydrateMobileSession()
       const m = await get<Me>('/api/auth/me')

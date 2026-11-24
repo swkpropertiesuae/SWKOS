@@ -12,7 +12,9 @@ import { useMeta } from '../lib/meta'
 import { ErrorBox } from '../ui/kit'
 import { fmtDate,fmtMoney,fmtNum,fmtRoe,todayIso } from '../lib/format'
 import { amountInWords } from '@shared/words'
+import { canRequestCompanySeal, canUseCompanySealDirectly } from '@shared/swk-staff-access'
 import { StudioDoc } from '../pages/StudioPage'
+import { SealApprovalPanel, type SealApprovalStatus } from '../components/SealApprovalPanel'
 
 const S = () => useMeta().meta!.settings
 export function Letterhead() {
@@ -39,14 +41,17 @@ const Grid = ({ cols = 3, children }: { cols?: number; children: ReactNode }) =>
 const Kv = ({ items }: { items: [string, ReactNode][] }) => <div className="box" style={{ padding: 0 }}><table style={{ margin: 0 }}><tbody>{items.filter(([, v]) => v !== null && v !== undefined && v !== '').map(([k, v]) => <tr key={k}><td className="lbl" style={{ width: '42%', border: 0, padding: '3px 10px' }}>{k}</td><td style={{ border: 0, padding: '3px 10px', fontWeight: 600 }}>{v}</td></tr>)}</tbody></table></div>
 const R = ({ children }: { children: ReactNode }) => <td style={{ textAlign: 'right' }}>{children}</td>
 function Sign({ labels }: { labels: string[] }) { labels = labels.filter(l => !['For SWK Properties L.L.C.', 'Prepared by', 'Reviewed by', 'Approved by', 'Received by'].includes(l)); if (!labels.length) return null; return <div style={{ display: 'grid', gridTemplateColumns: `repeat(${labels.length}, 1fr)`, gap: 28, marginTop: 46 }}>{labels.map(l => <div key={l} style={{ borderTop: '1px solid #444', paddingTop: 4, fontSize: 10, textAlign: 'center' }}>{l}</div>)}</div> }
-const Presentation = createContext<{ entity: string; record?: any; seal: boolean }>({ entity: '', seal: false })
+const Presentation = createContext<{ entity: string; record?: any; seal: boolean; signature: boolean }>({ entity: '', seal: false, signature: false })
 function Foot({ children }: { children?: ReactNode }) {
   const settings = S(), presentation = useContext(Presentation)
   const footer = children ?? settings.invoice_footer
   return <footer className="document-footer">
     {footer && footer !== 'This is a computer-generated document.' && <div>{footer}</div>}
     <div className="document-issuance"><div><strong>{documentNotice(presentation.entity, presentation.record)}</strong></div>
-      {presentation.seal && settings.document_seal && <img className="document-seal" src={settings.document_seal} alt="SWK Properties L.L.C. company seal" />}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+        {presentation.signature && settings.document_signature && <img className="document-signature" src={settings.document_signature} alt="SWK Properties L.L.C. owner signature" style={{ maxHeight: 58, maxWidth: 168, objectFit: 'contain' }} />}
+        {presentation.seal && settings.document_seal && <img className="document-seal" src={settings.document_seal} alt="SWK Properties L.L.C. company seal" />}
+      </div>
     </div>
     <CorporateFooter />
   </footer>
@@ -150,26 +155,40 @@ function StatementDoc({ partyId }: { partyId: string }) {
 
 export function PrintPage() {
   const { entity = '', id = '' } = useParams(); const [sp, setSp] = useSearchParams(); const nav = useNavigate()
-  const { meta } = useMeta()
-  const seal = useDocumentSeal(sp.get('seal'), !!meta?.settings.document_seal_default)
+  const { meta, me } = useMeta()
+  const rid = Number(id) || undefined
+  const srcType: 'studio' | 'print' = entity === 'studio_documents' ? 'studio' : 'print'
+  const isDemoAdmin = String(me?.email || '').trim().toLowerCase() === 'demo@swkpropertiesuae.com'
+  const directSeal = canUseCompanySealDirectly(me) || isDemoAdmin
+  const sealCheckQ = useQuery({
+    queryKey: ['seal-approval-check', srcType, rid ?? 'none'],
+    enabled: Boolean(me && !me.party_id && !directSeal && canRequestCompanySeal(me)),
+    queryFn: () => get<SealApprovalStatus>('/api/seal-approvals/check', { source_type: srcType, ...(rid ? { source_id: rid } : {}) }),
+  })
+  const canApplySeal = directSeal || Boolean(sealCheckQ.data?.approvedSeal)
+  const canApplySig = directSeal || Boolean(sealCheckQ.data?.approvedSignature)
+  const rawSeal = useDocumentSeal(sp.get('seal'), !!meta?.settings.document_seal_default)
+  const seal = canApplySeal && rawSeal
+  const signature = canApplySig && (sp.get('sig') === '1' || sp.get('sig') === 'true')
   const sheet = useRef<HTMLDivElement>(null), [ready, setReady] = useState(false)
   const fetching = useIsFetching({ predicate: query => /^(print|statement)/.test(String(query.queryKey[0])) })
   useEffect(() => {
     setReady(false)
     const timer = window.setTimeout(() => setReady(!!sheet.current && !sheet.current.querySelector('.document-loading, [role=alert]') && fetching === 0), 0)
     return () => window.clearTimeout(timer)
-  }, [fetching, entity, id, sp.toString(), meta])
+  }, [fetching, entity, id, sp.toString(), meta, seal, signature])
   const ids = entity === 'jobs' ? id.split(',') : [id]
   const q = useQuery({ queryKey: ['print-all', entity, id], enabled: entity !== 'statement' && entity !== 'parties', queryFn: () => Promise.all(ids.map(i => get<any>(`/api/e/${entity}/${i}`))) })
   if (!meta) return <DocumentPrinter />
+  const docTitle = q.data?.[0]?.title || q.data?.[0]?._title || `${entity} #${id}`
   const body = (() => {
-    if (entity === 'statement' || entity === 'parties') return <Presentation.Provider value={{ entity, seal }}><Letterhead /><StatementDoc partyId={id} /></Presentation.Provider>
+    if (entity === 'statement' || entity === 'parties') return <Presentation.Provider value={{ entity, seal, signature }}><Letterhead /><StatementDoc partyId={id} /></Presentation.Provider>
     if (q.error) return <ErrorBox error={q.error} />
     if (!q.data) return <DocumentPrinter />
     const rs = q.data
     return rs.map((r, i) => {
-      const e = <Presentation.Provider key={r.id} value={{ entity, record: r, seal }}><div className="print-document" style={{ pageBreakAfter: i < rs.length - 1 ? 'always' : 'auto' }}>{entity === 'studio_documents' ? (r.letterhead ? <Letterhead /> : null) : <><Letterhead /><Recipient record={r} /></>}{(() => { switch (entity) {
-        case 'studio_documents': return <StudioDoc r={r} seal={seal} sealImage={meta.settings.document_seal} />
+      const e = <Presentation.Provider key={r.id} value={{ entity, record: r, seal, signature }}><div className="print-document" style={{ pageBreakAfter: i < rs.length - 1 ? 'always' : 'auto' }}>{entity === 'studio_documents' ? (r.letterhead ? <Letterhead /> : null) : <><Letterhead /><Recipient record={r} /></>}{(() => { switch (entity) {
+        case 'studio_documents': return <StudioDoc r={r} seal={seal} sealImage={meta.settings.document_seal} signature={signature} signatureImage={meta.settings.document_signature} />
         case 'invoices': return <InvoiceDoc r={r} />
         case 'quotations': return <QuoteDoc r={r} />
         case 'receipts': return <VoucherDoc r={r} kind="receipt" />
@@ -184,7 +203,37 @@ export function PrintPage() {
   })()
   return (
     <div>
-      <div className="no-print flex gap-2 mb-4 items-center flex-wrap"><button className="btn grey" onClick={() => nav(-1)}><ArrowLeft /> Back</button><button className="btn green" disabled={!ready} onClick={() => window.print()}><Printer /> Print / Save as PDF</button><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={seal} disabled={!meta.settings.document_seal} onChange={e => setSp(p => { p.set('seal', e.target.checked ? '1' : '0'); return p }, { replace: true })} />Include company seal</label>{!meta.settings.document_seal && <span className="text-xs text-muted">Upload the seal in Company settings → Document text.</span>}<span className="text-xs text-muted">In the print dialog choose “Save as PDF” to create a file.</span></div>
+      <div className="no-print flex gap-2 mb-4 items-center flex-wrap">
+        <button className="btn grey" onClick={() => nav(-1)}><ArrowLeft /> Back</button>
+        <button className="btn green" disabled={!ready} onClick={() => window.print()}><Printer /> Print / Save as PDF</button>
+        {directSeal ? (
+          <>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={seal} disabled={!meta.settings.document_seal} onChange={e => setSp(p => { p.set('seal', e.target.checked ? '1' : '0'); return p }, { replace: true })} />
+              Include company seal
+            </label>
+            {meta.settings.document_signature && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={signature} onChange={e => setSp(p => { p.set('sig', e.target.checked ? '1' : '0'); return p }, { replace: true })} />
+                Include owner signature
+              </label>
+            )}
+          </>
+        ) : (
+          <SealApprovalPanel
+            compact
+            sourceType={srcType}
+            sourceId={rid}
+            documentTitle={docTitle}
+            includeSeal={seal}
+            includeSignature={signature}
+            onToggleSeal={v => setSp(p => { p.set('seal', v ? '1' : '0'); return p }, { replace: true })}
+            onToggleSignature={v => setSp(p => { p.set('sig', v ? '1' : '0'); return p }, { replace: true })}
+          />
+        )}
+        {!meta.settings.document_seal && <span className="text-xs text-muted">Upload the seal in Company settings → Document text.</span>}
+        <span className="text-xs text-muted">In the print dialog choose “Save as PDF” to create a file.</span>
+      </div>
       <div className="print-preview"><div ref={sheet} className={`print-sheet${entity === 'studio_documents' && q.data?.[0]?.orientation === 'Landscape' ? ' studio-landscape' : ''}`} data-print-ready={ready ? "true" : "false"}>{body}</div></div>
     </div>
   )

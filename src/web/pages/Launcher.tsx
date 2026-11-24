@@ -21,9 +21,10 @@ import {
 } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get } from '../lib/api'
-import { launcherApps, recentItems, type LauncherApp } from '../swk/nav'
+import { launcherApps, recentItems, SWK_CORE_SUITE_KEYS, type LauncherApp } from '../swk/nav'
 import { aed, num } from '../swk/ui'
 import { isRestrictedStaffUser } from '@shared/swk-staff-access'
+import { useSipClient } from '../lib/sipClient'
 
 const ease = [0.22, 1, 0.36, 1] as const
 let entrancePlayed = false
@@ -50,12 +51,57 @@ const todayLabel = () =>
 
 const CATEGORY_FILTERS: { id: string; label: string; keys: string[] }[] = [
   { id: 'all', label: 'All Apps', keys: [] },
-  { id: 'core', label: 'Core Ops', keys: ['command', 'messages', 'work'] },
+  { id: 'core', label: 'Command', keys: ['command'] },
   { id: 'deals', label: 'Sales & CRM', keys: ['clients', 'sales', 'inventory', 'website'] },
   { id: 'leasing', label: 'Leasing & Owners', keys: ['leasing', 'owners'] },
   { id: 'finance', label: 'Finance & Legal', keys: ['finance', 'compliance', 'admin'] },
   { id: 'field', label: 'Team & Field', keys: ['team', 'field', 'attendance', 'tools', 'market_pulse', 'general'] },
 ]
+
+const CORE_SUITE_BRANDING: Record<
+  string,
+  {
+    brandName: string
+    tagline: string
+    iconSrc: string
+    cardBg: string
+    border: string
+    pillBg: string
+    pillFg: string
+    ctaLabel: string
+  }
+> = {
+  messages: {
+    brandName: 'SWK Inside',
+    tagline: 'Encrypted team chats, project rooms, broadcasts & instant share',
+    iconSrc: '/brand/apps/swk-inside.svg',
+    cardBg: 'from-[#063228] via-[#064e3b] to-[#0a1f1c]',
+    border: 'border-[#34d399]/35 hover:border-[#f3d27a]/70',
+    pillBg: 'bg-[#34d399]/18 border-[#34d399]/35',
+    pillFg: 'text-[#a7f3d0]',
+    ctaLabel: 'Open SWK Inside',
+  },
+  work: {
+    brandName: 'SWK Work',
+    tagline: 'Tasks, projects, team boards, calendars & visual flow automations',
+    iconSrc: '/brand/apps/swk-work.svg',
+    cardBg: 'from-[#17204d] via-[#1d4ed8] to-[#0f172a]',
+    border: 'border-[#60a5fa]/35 hover:border-[#f3d27a]/70',
+    pillBg: 'bg-[#60a5fa]/18 border-[#60a5fa]/35',
+    pillFg: 'text-[#bfdbfe]',
+    ctaLabel: 'Open SWK Work',
+  },
+  phone: {
+    brandName: 'SWK Phone',
+    tagline: 'WebRTC SIP dialer, office directory & zero-leak Masked Vault calls',
+    iconSrc: '/brand/apps/swk-phone.svg',
+    cardBg: 'from-[#420c1d] via-[#9f1239] to-[#1a0b14]',
+    border: 'border-[#fb7185]/35 hover:border-[#f3d27a]/70',
+    pillBg: 'bg-[#fb7185]/18 border-[#fb7185]/35',
+    pillFg: 'text-[#fecdd3]',
+    ctaLabel: 'Open SWK Phone',
+  },
+}
 
 const TONE_ACCENT: Record<string, { bg: string; fg: string; pill: string }> = {
   navy: { bg: '#eff6ff', fg: '#1d4ed8', pill: 'bg-[#eff6ff] text-[#1d4ed8]' },
@@ -105,15 +151,15 @@ function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
       </div>
       <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-2">
-          <span className="truncate text-[15px] font-semibold tracking-[-0.02em] text-ink transition-colors group-hover:text-[#2563eb] dark:group-hover:text-[#93c5fd]">
+          <span className="truncate text-[16px] font-bold tracking-[-0.02em] text-ink transition-colors group-hover:text-[#2563eb] dark:group-hover:text-[#93c5fd]">
             {app.label}
           </span>
           {badge}
         </span>
-        <span className="line-clamp-1 text-[12.5px] text-muted">{app.blurb}</span>
+        <span className="line-clamp-1 text-[13.5px] text-muted">{app.blurb}</span>
         {app.items.length > 1 && (
           <span className="mt-1 inline-flex items-center gap-1.5">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${accent.pill}`}>
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${accent.pill}`}>
               {app.items.length} workflow steps
             </span>
           </span>
@@ -130,6 +176,7 @@ function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
 
 export function Launcher() {
   const { me, can } = useMeta()
+  const sipSnap = useSipClient()
   const nav = useNavigate()
   const reduce = useReducedMotion()
   const [animate] = useState(() => !entrancePlayed)
@@ -143,6 +190,13 @@ export function Launcher() {
   const restricted = isRestrictedStaffUser(me)
 
   const apps = useMemo(() => launcherApps(can, me), [can, me])
+  const coreSuiteApps = useMemo(() => {
+    const order = ['messages', 'work', 'phone']
+    return order
+      .map(k => apps.find(a => a.key === k))
+      .filter((a): a is LauncherApp => Boolean(a))
+  }, [apps])
+  const workspaceApps = useMemo(() => apps.filter(a => !SWK_CORE_SUITE_KEYS.has(a.key)), [apps])
   const recents = useMemo(() => recentItems(can, 4, me), [can, me])
   const lastVisit = recents[0] ?? null
 
@@ -169,10 +223,20 @@ export function Launcher() {
 
   const needle = query.trim().toLocaleLowerCase()
   const activeCat = CATEGORY_FILTERS.find(c => c.id === cat) ?? CATEGORY_FILTERS[0]!
-  const shownApps = apps.filter(a => {
+  const shownApps = workspaceApps.filter(a => {
     const matchText = !needle || a.label.toLocaleLowerCase().includes(needle) || a.blurb.toLocaleLowerCase().includes(needle)
     const matchCat = Boolean(needle) || cat === 'all' || activeCat.keys.includes(a.key)
     return matchText && matchCat
+  })
+  const shownSuiteApps = coreSuiteApps.filter(a => {
+    if (!needle) return true
+    const brand = CORE_SUITE_BRANDING[a.key]
+    return (
+      a.label.toLocaleLowerCase().includes(needle) ||
+      a.blurb.toLocaleLowerCase().includes(needle) ||
+      (brand?.brandName.toLocaleLowerCase().includes(needle) ?? false) ||
+      (brand?.tagline.toLocaleLowerCase().includes(needle) ?? false)
+    )
   })
   const features = needle
     ? apps
@@ -182,7 +246,7 @@ export function Launcher() {
 
   const firstName = (me?.name || '').split(' ')[0]
   const openFirst = () => {
-    const target = features[0]?.to ?? shownApps[0]?.landing
+    const target = features[0]?.to ?? shownApps[0]?.landing ?? shownSuiteApps[0]?.landing
     if (target) nav(target)
   }
 
@@ -229,15 +293,15 @@ export function Launcher() {
                 </span>
                 <div className="min-w-0">
                   <div className="truncate text-[13.5px] font-semibold text-white">
-                    {lastVisit ? lastVisit.label : 'Executive Dashboard'}
+                    {lastVisit ? lastVisit.label : restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
                   </div>
                   <div className="truncate text-[11px] text-[#94a3b8]">
-                    {lastVisit ? `Recently Visited · ${lastVisit.section}` : 'Live Pipeline, Journeys & Analytics'}
+                    {lastVisit ? `Recently Visited · ${lastVisit.section}` : restricted ? 'Dispatched Vault Deals & Hard-Masked Calling' : 'Live Pipeline, Journeys & Analytics'}
                   </div>
                 </div>
               </div>
               <Link
-                to={lastVisit ? lastVisit.to : '/dashboard'}
+                to={lastVisit ? lastVisit.to : restricted ? '/my-deals' : '/dashboard'}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-[#c5e86c] hover:border-[#c5e86c] hover:text-[#0f172a]"
               >
                 <Clock3 size={12} />
@@ -469,8 +533,8 @@ export function Launcher() {
                 Every app opens with a step-by-step workflow bar so you never hunt through sidebars.
               </p>
             </div>
-            <span className="rounded-full bg-card border border-line px-3 py-1 text-[11.5px] font-semibold text-body">
-              {shownApps.length} apps
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-card border border-line px-3 py-1 text-[11.5px] font-semibold text-body">
+              {shownApps.length} {shownApps.length === 1 ? 'app' : 'apps'}
             </span>
           </div>
           <motion.section
@@ -507,20 +571,109 @@ export function Launcher() {
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <Link to="/reception-qr" className="rounded-[22px] bg-gradient-to-br from-[#0b1f2a] to-[#163a4f] p-5 text-white no-underline shadow-md flex items-center gap-3.5">
             <span className="size-12 rounded-2xl bg-white/10 text-[#d4a752] grid place-items-center shrink-0"><QrCode size={22} /></span>
-            <div><b className="block text-[15px]">Office QR Check-In</b><span className="text-xs text-[#cbd5e1]">Daily office attendance scan</span></div>
+            <div><b className="block text-[15.5px]">Office QR Check-In</b><span className="text-[13px] text-[#cbd5e1]">Daily office attendance scan</span></div>
           </Link>
           <Link to="/field-duty" className="rounded-[22px] bg-gradient-to-br from-[#047857] to-[#0e9f6e] p-5 text-white no-underline shadow-md flex items-center gap-3.5">
             <span className="size-12 rounded-2xl bg-white/15 text-white grid place-items-center shrink-0"><CalendarCheck size={22} /></span>
-            <div><b className="block text-[15px]">Field Duty GPS</b><span className="text-xs text-white/85">Start property viewing tracking</span></div>
+            <div><b className="block text-[15.5px]">Field Duty GPS</b><span className="text-[13px] text-white/85">Start property viewing tracking</span></div>
           </Link>
           <Link to="/market" className="rounded-[22px] bg-gradient-to-br from-[#1d4ed8] to-[#2563eb] p-5 text-white no-underline shadow-md flex items-center gap-3.5">
             <span className="size-12 rounded-2xl bg-white/15 text-white grid place-items-center shrink-0"><LineChart size={22} /></span>
-            <div><b className="block text-[15px]">Dubai Market Pulse</b><span className="text-xs text-white/85">Live PSF prices &amp; rental yields</span></div>
+            <div><b className="block text-[15.5px]">Dubai Market Pulse</b><span className="text-[13px] text-white/85">Live PSF prices &amp; rental yields</span></div>
           </Link>
         </section>
       )}
 
-      {needle && !shownApps.length && !features.length && (
+      {/* Dedicated Bottom SWK Core Suite Dock: SWK Inside, SWK Work, SWK Phone (Branded Separately!) */}
+      {shownSuiteApps.length > 0 && (
+        <section
+          aria-label="SWK Core Suite"
+          className="rounded-[30px] border border-[#d4a752]/35 bg-gradient-to-br from-[#0b1622] via-[#101e2e] to-[#0a131d] p-5 sm:p-6 shadow-[0_24px_60px_-24px_rgba(11,20,30,0.58)] text-white"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src="/brand/swk-app-icon-rounded.png"
+                alt="SWK Suite"
+                className="size-10 rounded-xl ring-1 ring-[#f3d27a]/45 shadow-md shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f3d27a]">
+                  SWK Communications &amp; Productivity Suite
+                </div>
+                <h2 className="m-0 text-[20px] font-bold tracking-[-0.025em] text-white">
+                  SWK Inside · SWK Work · SWK Phone
+                </h2>
+              </div>
+            </div>
+            <span className="rounded-full border border-[#f3d27a]/35 bg-[#f3d27a]/12 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.12em] text-[#f5dfb0]">
+              Dedicated SWK Apps
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {shownSuiteApps.map(app => {
+              const brand = CORE_SUITE_BRANDING[app.key]
+              if (!brand) return null
+              const statusText =
+                app.key === 'messages'
+                  ? unread > 0
+                    ? `${unread} unread message${unread === 1 ? '' : 's'}`
+                    : 'Encrypted Team Messenger'
+                  : app.key === 'work'
+                    ? Number(kpis.my_tasks ?? 0) > 0
+                      ? `${kpis.my_tasks} open task${Number(kpis.my_tasks) === 1 ? '' : 's'}`
+                      : `${app.items.length} execution tools`
+                    : sipSnap.configured
+                      ? `Ext ${sipSnap.extensionNo} · ${sipSnap.registration === 'registered' ? 'Online' : 'Ready'}`
+                      : 'WebRTC SIP & Masked Vault'
+              return (
+                <Link
+                  key={app.key}
+                  to={app.landing}
+                  className={`group relative flex flex-col justify-between gap-4 overflow-hidden rounded-[24px] border bg-gradient-to-br p-5 no-underline text-white transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_22px_48px_-18px_rgba(0,0,0,0.65)] ${brand.cardBg} ${brand.border}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <img
+                      src={brand.iconSrc}
+                      alt={brand.brandName}
+                      className="size-[62px] rounded-[18px] shadow-[0_12px_28px_-10px_rgba(0,0,0,0.6)] ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105 shrink-0"
+                    />
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${brand.pillBg} ${brand.pillFg}`}
+                    >
+                      {app.key === 'messages' && unread > 0 && <span className="size-1.5 rounded-full bg-[#34d399]" />}
+                      {statusText}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="m-0 text-[19px] font-bold tracking-[-0.025em] text-white">
+                        {brand.brandName}
+                      </h3>
+                      <ArrowUpRight
+                        size={18}
+                        className="text-[#f3d27a] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 shrink-0"
+                      />
+                    </div>
+                    <p className="m-0 mt-1.5 text-[13.5px] leading-relaxed text-white/80">
+                      {brand.tagline}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/12 flex items-center justify-between text-[12px] font-bold text-[#f3d27a]">
+                    <span>{brand.ctaLabel}</span>
+                    <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {needle && !shownApps.length && !shownSuiteApps.length && !features.length && (
         <div className="rounded-[24px] border border-line bg-card p-10 text-center shadow-sm">
           <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-soft text-muted">
             <Building2 size={22} />

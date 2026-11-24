@@ -28,6 +28,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   invoice_footer: '',
   invoice_no_pattern: '{prefix}{YY}{seq:5}',
   document_seal: '',
+  document_signature: '',
   document_seal_default: false,
   bank_details: '',
   smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', smtp_from: '', smtp_secure: false,

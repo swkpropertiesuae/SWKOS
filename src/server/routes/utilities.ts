@@ -19,7 +19,8 @@ import sanitizeHtml from 'sanitize-html'
 import { z } from 'zod'
 import { corporateFooterDetails } from '../../shared/corporate-footer'
 import { looksLikeHtml, markdownToHtml } from '../../shared/studio-html'
-import { canAccessCrmVault } from '../../shared/swk-staff-access'
+import { canAccessCrmVault, canAccessDocumentTemplates } from '../../shared/swk-staff-access'
+import { assertSealOrSignatureAuthorized } from './seal-approvals'
 import { omniChat, omniConfigured, recordAdditionalUserTokens } from '../ai/omni-router'
 import { scrubSensitivePii } from '../ai/pii-shield'
 import { inDemo, q } from '../db'
@@ -138,14 +139,19 @@ function requireStaff(req: FastifyRequest): SessionUser {
   return req.user
 }
 
-function canAttachSeal(user: SessionUser): boolean {
-  return can(user, 'documents', 'create') || canAccessCrmVault(user)
-}
-
-function assertSealAllowed(user: SessionUser, includeSeal: boolean | undefined): void {
-  if (includeSeal && !canAttachSeal(user)) {
-    throw forbidden('Only authorized staff with document creation access or leadership can attach the SWK company seal.')
-  }
+function assertSealAllowed(
+  user: SessionUser,
+  includeSeal: boolean | undefined,
+  includeSignature: boolean | undefined,
+  sourceId?: number | null,
+): void {
+  if (!includeSeal && !includeSignature) return
+  assertSealOrSignatureAuthorized(user, {
+    sourceType: 'word',
+    sourceId: sourceId ?? null,
+    needSeal: Boolean(includeSeal),
+    needSignature: Boolean(includeSignature),
+  })
 }
 
 function safeFilename(title: string, ext: string): string {
@@ -157,8 +163,8 @@ function safeFilename(title: string, ext: string): string {
   return `${base}.${ext.replace(/^\./, '')}`
 }
 
-function parseSealImage(): { type: 'png' | 'jpg'; buf: Buffer } | null {
-  const raw = String(publicSettings(true).document_seal || '')
+function parseDataImageSetting(key: 'document_seal' | 'document_signature'): { type: 'png' | 'jpg'; buf: Buffer } | null {
+  const raw = String(publicSettings(true)[key] || '')
   const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw)
   if (!m) return null
   try {
@@ -170,6 +176,14 @@ function parseSealImage(): { type: 'png' | 'jpg'; buf: Buffer } | null {
   }
 }
 
+function parseSealImage(): { type: 'png' | 'jpg'; buf: Buffer } | null {
+  return parseDataImageSetting('document_seal')
+}
+
+function parseSignatureImage(): { type: 'png' | 'jpg'; buf: Buffer } | null {
+  return parseDataImageSetting('document_signature')
+}
+
 function shapeWordRow(r: any) {
   return {
     id: r.id,
@@ -179,6 +193,7 @@ function shapeWordRow(r: any) {
     rtl: Boolean(r.rtl),
     include_letterhead: Boolean(r.include_letterhead),
     include_seal: Boolean(r.include_seal),
+    include_signature: Boolean(r.include_signature),
     source_template_id: r.source_template_id ?? null,
     linked_entity: r.linked_entity ?? null,
     linked_id: r.linked_id ?? null,
@@ -204,6 +219,7 @@ async function buildDocxBuffer(opts: {
   rtl: boolean
   include_letterhead: boolean
   include_seal: boolean
+  include_signature?: boolean
 }): Promise<Buffer> {
   const sanitized = cleanWordHtml(opts.html_content)
   const normalizedHtml = sanitized
@@ -221,23 +237,40 @@ async function buildDocxBuffer(opts: {
         }),
       ]
 
+  const stampRuns: any[] = []
+  if (opts.include_signature) {
+    const sig = parseSignatureImage()
+    if (sig) {
+      stampRuns.push(
+        new ImageRun({
+          type: sig.type,
+          data: sig.buf,
+          transformation: { width: 140, height: 56 },
+        }),
+      )
+      stampRuns.push(new TextRun({ text: '    ' }))
+    }
+  }
   if (opts.include_seal) {
     const seal = parseSealImage()
     if (seal) {
-      children.push(
-        new Paragraph({
-          spacing: { before: 320 },
-          alignment: opts.rtl ? AlignmentType.LEFT : AlignmentType.RIGHT,
-          children: [
-            new ImageRun({
-              type: seal.type,
-              data: seal.buf,
-              transformation: { width: 92, height: 92 },
-            }),
-          ],
+      stampRuns.push(
+        new ImageRun({
+          type: seal.type,
+          data: seal.buf,
+          transformation: { width: 92, height: 92 },
         }),
       )
     }
+  }
+  if (stampRuns.length) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 320 },
+        alignment: opts.rtl ? AlignmentType.LEFT : AlignmentType.RIGHT,
+        children: stampRuns,
+      }),
+    )
   }
 
   const company = corporateFooterDetails(publicSettings())
@@ -390,6 +423,7 @@ async function renderDocumentToPdfBuffer(opts: {
   rtl: boolean
   include_letterhead: boolean
   include_seal: boolean
+  include_signature?: boolean
 }): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create()
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -488,16 +522,26 @@ async function renderDocumentToPdfBuffer(opts: {
     y -= b.kind === 'h1' ? 8 : b.kind === 'h2' ? 6 : 4
   }
 
-  if (opts.include_seal) {
-    const seal = parseSealImage()
-    if (seal) {
-      ensureSpace(85)
-      try {
-        const embedded = seal.type === 'png' ? await pdfDoc.embedPng(seal.buf) : await pdfDoc.embedJpg(seal.buf)
-        const x = opts.rtl ? marginX : pageWidth - marginX - 78
-        page.drawImage(embedded, { x, y: y - 78, width: 78, height: 78 })
-      } catch {
-        /* ignore invalid seal image bytes */
+  if (opts.include_seal || opts.include_signature) {
+    const seal = opts.include_seal ? parseSealImage() : null
+    const sig = opts.include_signature ? parseSignatureImage() : null
+    if (seal || sig) {
+      ensureSpace(90)
+      if (sig) {
+        try {
+          const embeddedSig = sig.type === 'png' ? await pdfDoc.embedPng(sig.buf) : await pdfDoc.embedJpg(sig.buf)
+          const sigX = opts.rtl ? marginX + (seal ? 90 : 0) : pageWidth - marginX - (seal ? 210 : 120)
+          page.drawImage(embeddedSig, { x: sigX, y: y - 58, width: 118, height: 48 })
+        } catch { /* ignore invalid signature bytes */ }
+      }
+      if (seal) {
+        try {
+          const embedded = seal.type === 'png' ? await pdfDoc.embedPng(seal.buf) : await pdfDoc.embedJpg(seal.buf)
+          const x = opts.rtl ? marginX : pageWidth - marginX - 78
+          page.drawImage(embedded, { x, y: y - 78, width: 78, height: 78 })
+        } catch {
+          /* ignore invalid seal image bytes */
+        }
       }
     }
   }
@@ -670,7 +714,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const term = String((req.query as any)?.q ?? '').trim().toLowerCase()
     const rows = term
       ? q.all<any>(
-          `SELECT id, user_id, title, html_content, rtl, include_letterhead, include_seal, source_template_id, linked_entity, linked_id, created_at, updated_at
+          `SELECT id, user_id, title, html_content, rtl, include_letterhead, include_seal, include_signature, source_template_id, linked_entity, linked_id, created_at, updated_at
            FROM word_documents
            WHERE user_id = ? AND deleted_at IS NULL
              AND (lower(title) LIKE ? ESCAPE '\\' OR lower(html_content) LIKE ? ESCAPE '\\')
@@ -681,7 +725,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
           `%${term.replace(/[\\%_]/g, c => '\\' + c)}%`,
         )
       : q.all<any>(
-          `SELECT id, user_id, title, html_content, rtl, include_letterhead, include_seal, source_template_id, linked_entity, linked_id, created_at, updated_at
+          `SELECT id, user_id, title, html_content, rtl, include_letterhead, include_seal, include_signature, source_template_id, linked_entity, linked_id, created_at, updated_at
            FROM word_documents
            WHERE user_id = ? AND deleted_at IS NULL
            ORDER BY updated_at DESC, id DESC
@@ -696,7 +740,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const user = requireStaff(req)
     const id = idOf((req.params as any).id)
     const row = q.get<any>(
-      `SELECT id, user_id, title, html_content, rtl, include_letterhead, include_seal, source_template_id, linked_entity, linked_id, created_at, updated_at
+      `SELECT id, user_id, title, html_content, rtl, include_letterhead, include_seal, include_signature, source_template_id, linked_entity, linked_id, created_at, updated_at
        FROM word_documents
        WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
       id,
@@ -712,6 +756,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     rtl: z.boolean().optional(),
     include_letterhead: z.boolean().optional(),
     include_seal: z.boolean().optional(),
+    include_signature: z.boolean().optional(),
     source_template_id: z.number().int().positive().nullable().optional(),
     linked_entity: z.string().trim().max(64).nullable().optional(),
     linked_id: z.number().int().positive().nullable().optional(),
@@ -720,7 +765,10 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
   app.post('/api/utilities/word', async (req, reply) => {
     const user = requireStaff(req)
     const b = wordCreateSchema.parse(req.body ?? {})
-    assertSealAllowed(user, b.include_seal)
+    if (b.source_template_id && !canAccessDocumentTemplates(user)) {
+      throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
+    }
+    assertSealAllowed(user, b.include_seal, b.include_signature, null)
 
     let rawHtml = b.html_content ?? ''
     if (!rawHtml && b.source_template_id) {
@@ -735,15 +783,16 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const now = nowIso()
     const id = q.insert(
       `INSERT INTO word_documents (
-        user_id, title, html_content, rtl, include_letterhead, include_seal,
+        user_id, title, html_content, rtl, include_letterhead, include_seal, include_signature,
         source_template_id, linked_entity, linked_id, created_at, updated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       user.id,
       b.title,
       cleanHtml,
       b.rtl ? 1 : 0,
       b.include_letterhead !== false ? 1 : 0,
       b.include_seal ? 1 : 0,
+      b.include_signature ? 1 : 0,
       b.source_template_id ?? null,
       b.linked_entity ?? null,
       b.linked_id ?? null,
@@ -767,7 +816,10 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     )
     if (!existing) throw notFound('Word document not found')
     const b = wordUpdateSchema.parse(req.body ?? {})
-    assertSealAllowed(user, b.include_seal)
+    if (b.source_template_id && !canAccessDocumentTemplates(user)) {
+      throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
+    }
+    assertSealAllowed(user, b.include_seal, b.include_signature, id)
 
     const title = b.title ?? existing.title
     const htmlContent = b.html_content !== undefined ? cleanWordHtml(b.html_content) : existing.html_content
@@ -775,13 +827,15 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const includeLetterhead =
       b.include_letterhead !== undefined ? (b.include_letterhead ? 1 : 0) : existing.include_letterhead
     const includeSeal = b.include_seal !== undefined ? (b.include_seal ? 1 : 0) : existing.include_seal
+    const includeSignature =
+      b.include_signature !== undefined ? (b.include_signature ? 1 : 0) : Boolean(existing.include_signature) ? 1 : 0
     const linkedEntity = b.linked_entity !== undefined ? b.linked_entity : existing.linked_entity
     const linkedId = b.linked_id !== undefined ? b.linked_id : existing.linked_id
     const now = nowIso()
 
     q.run(
       `UPDATE word_documents
-       SET title = ?, html_content = ?, rtl = ?, include_letterhead = ?, include_seal = ?,
+       SET title = ?, html_content = ?, rtl = ?, include_letterhead = ?, include_seal = ?, include_signature = ?,
            linked_entity = ?, linked_id = ?, updated_at = ?
        WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
       title,
@@ -789,6 +843,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
       rtl,
       includeLetterhead,
       includeSeal,
+      includeSignature,
       linkedEntity,
       linkedId,
       now,
@@ -855,6 +910,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     rtl: z.boolean().optional(),
     include_letterhead: z.boolean().optional(),
     include_seal: z.boolean().optional(),
+    include_signature: z.boolean().optional(),
   })
 
   function resolveExportPayload(user: SessionUser, rawBody: unknown) {
@@ -878,13 +934,16 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
           ? Boolean(saved.include_letterhead)
           : true
     const includeSeal = b.include_seal !== undefined ? b.include_seal : Boolean(saved?.include_seal)
-    assertSealAllowed(user, includeSeal)
+    const includeSignature =
+      b.include_signature !== undefined ? b.include_signature : Boolean(saved?.include_signature)
+    assertSealAllowed(user, includeSeal, includeSignature, saved?.id ?? b.id ?? null)
     return {
       title,
       html_content: htmlContent,
       rtl,
       include_letterhead: includeLetterhead,
       include_seal: includeSeal,
+      include_signature: includeSignature,
     }
   }
 

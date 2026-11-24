@@ -21,11 +21,13 @@ export function ShareWithClient({ entity, ids, label, onClose }: { entity: strin
       footer={url ? <><div className="flex-1" /><button className="btn outline" onClick={onClose}>Done</button></> : <><div className="flex-1" /><button className="btn outline" onClick={onClose}>Cancel</button><button className="web-btn" disabled={busy} onClick={() => void create()}><Share2 size={14} /> Create link</button></>}>
       {!url ? (
         <div className="grid gap-3">
-          <p className="m-0 text-[13.5px] text-[#3d4a51]">The client sees a branded SWK listing page with photos, price, size and features, and can enquire. Owner details, internal notes and commission never appear.</p>
+          <p className="m-0 text-[13.5px] text-body leading-relaxed">
+            Generates a world-class SWK luxury client brochure where <strong>every photo is strictly watermarked with the SWK Logo &amp; App Icon</strong>, complete with an interactive <strong>3D architectural model</strong>, <strong>voice-narrated cinema video tour</strong>, and UAE mortgage / DLD calculator. Owner PII, internal notes, and commission never leave the OS.
+          </p>
           <label><span className="label">Client name (optional)</span><input className="input" value={client} onChange={e => setClient(e.target.value)} placeholder="e.g. Mr Ahmed" /></label>
-          <label><span className="label">Page title</span><input className="input" value={title} onChange={e => setTitle(e.target.value)} maxLength={120} /></label>
+          <label><span className="label">Brochure title</span><input className="input" value={title} onChange={e => setTitle(e.target.value)} maxLength={120} /></label>
           <label><span className="label">Link valid for</span><select className="select" value={days} onChange={e => setDays(Number(e.target.value))}>{[7, 14, 30, 60, 90].map(d => <option key={d} value={d}>{d} days</option>)}</select></label>
-          <p className="m-0 text-[12px] text-[#5b676e]">{ids.length} {ids.length === 1 ? 'listing' : 'listings'} selected. You can revoke the link any time.</p>
+          <p className="m-0 text-[12px] text-muted">{ids.length} {ids.length === 1 ? 'listing' : 'listings'} selected. Watermark protection &amp; expiry are enforced server-side.</p>
         </div>
       ) : (
         <div className="grid gap-3">

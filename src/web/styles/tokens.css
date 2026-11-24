@@ -4,9 +4,9 @@
    ===================================================================================== */
 
 :root {
-  --font-sans: 'Switzer', 'Geist Variable', 'Plus Jakarta Sans', 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Noto Sans Arabic', sans-serif;
-  --font-display: 'Switzer', 'Plus Jakarta Sans', 'Geist Variable', system-ui, 'Noto Sans Arabic', sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: 'Manrope Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Core Porcelain & Obsidian Surfaces */
   --bg: #f5f7fb;
@@ -184,8 +184,9 @@
   }
   body {
     font-family: var(--font-sans);
-    font-size: 14.5px;
-    line-height: 1.5;
+    font-size: 15.5px;
+    font-weight: 500;
+    line-height: 1.58;
     color: var(--body);
     background-color: var(--bg);
     background-image:
@@ -196,8 +197,9 @@
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.008em;
     caret-color: var(--focus);
   }
   :root[data-theme='dark'] body {

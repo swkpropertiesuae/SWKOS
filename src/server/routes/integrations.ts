@@ -22,6 +22,7 @@ import { AGENT_TEMPLATES } from '../ai/templates'
 import { TOOLS } from '../ai/tools'
 import { isToolAllowedForUser } from '../ai/policy'
 import { canAccessCrmVault,canOpenEmployeeRecords,canViewEmployeeRecords } from '../../shared/swk-staff-access'
+import { assertSealOrSignatureAuthorized } from './seal-approvals'
 import { buildEinvoiceXml,submitEinvoice } from '../integrations/einvoice'
 import { buildWps } from '../integrations/wps'
 import { closeYear,reopenYear,yearEndPreview } from '../integrations/yearend'
@@ -231,7 +232,7 @@ export default async function (app: FastifyInstance) {
   // =================================================================== PDF rendering
   app.get('/api/pdf/status', async () => ({ available: pdfAvailable() }))
   /** Render one record's print view to PDF with the caller's own session; studio documents carry their own page settings. */
-  const renderRecordPdf = async (req: any, def: ReturnType<typeof getDef>, rec: any, seal?: string) => {
+  const renderRecordPdf = async (req: any, def: ReturnType<typeof getDef>, rec: any, seal?: string, sig?: string) => {
     const rawCookie = req.cookies?.[COOKIE]
     const clientHeader = String(req.headers['x-swk-client'] || '').trim().toLowerCase()
     const mobileSession =
@@ -240,16 +241,36 @@ export default async function (app: FastifyInstance) {
         : ''
     const sid = rawCookie || mobileSession
     if (!req.user || !sid) throw forbidden('PDF generation requires a signed-in user session')
-    const sealQuery = seal !== undefined ? `?seal=${encodeURIComponent(seal)}` : ''
+    const wantSeal = seal === '1' || seal === 'true'
+    const wantSig = sig === '1' || sig === 'true'
+    if (wantSeal || wantSig) {
+      assertSealOrSignatureAuthorized(req.user, {
+        sourceType: def.key === 'studio_documents' ? 'studio' : 'print',
+        sourceId: rec.id,
+        needSeal: wantSeal,
+        needSignature: wantSig,
+        allowDemoBypass: true,
+      })
+    }
+    const params = new URLSearchParams()
+    if (seal !== undefined) params.set('seal', seal)
+    if (sig !== undefined) params.set('sig', sig)
+    const qStr = params.toString() ? `?${params.toString()}` : ''
     // Studio documents choose their own page orientation, footer line and page numbering.
     const opts = def.key === 'studio_documents' ? { landscape: rec.orientation === 'Landscape', pageNumbers: rec.page_numbers !== false && rec.page_numbers !== 0, footerText: String(rec.footer_text ?? '') } : {}
-    return renderPrintPdf(`/print/${def.key}/${rec.id}${sealQuery}`, { name: COOKIE, value: sid }, opts)
+    return renderPrintPdf(`/print/${def.key}/${rec.id}${qStr}`, { name: COOKIE, value: sid }, opts)
   }
   app.get('/api/pdf/:entity/:id', async (req, reply) => {
     const p = req.params as any, qs = req.query as any
     const def = getDef(p.entity)
     const rec = getRecord(def, idOf(p.id), req.ctx, { children: false })
-    const buf = await renderRecordPdf(req, def, rec, qs.seal !== undefined ? String(qs.seal) : undefined)
+    const buf = await renderRecordPdf(
+      req,
+      def,
+      rec,
+      qs.seal !== undefined ? String(qs.seal) : undefined,
+      qs.sig !== undefined ? String(qs.sig) : undefined,
+    )
     const disp = qs.download === '1' ? 'attachment' : 'inline'
     reply.header('content-type', 'application/pdf').header('content-disposition', `${disp}; filename="${def.key}-${rec.id}.pdf"`)
     return buf
@@ -258,8 +279,14 @@ export default async function (app: FastifyInstance) {
     const p = req.params as any
     const def = getDef(p.entity)
     const rec = getRecord(def, idOf(p.id), req.ctx, { children: false })
-    const b = z.object({ from: z.string().max(200).optional(), to: z.string().trim().min(3).max(500), cc: z.string().max(500).optional(), subject: z.string().trim().min(1).max(300), body: z.string().max(20000), seal: z.union([z.boolean(), z.string()]).optional() }).parse(req.body ?? {})
-    const buf = await renderRecordPdf(req, def, rec, b.seal === undefined ? undefined : (b.seal === true || b.seal === '1' || b.seal === 'true') ? '1' : '0')
+    const b = z.object({ from: z.string().max(200).optional(), to: z.string().trim().min(3).max(500), cc: z.string().max(500).optional(), subject: z.string().trim().min(1).max(300), body: z.string().max(20000), seal: z.union([z.boolean(), z.string()]).optional(), sig: z.union([z.boolean(), z.string()]).optional() }).parse(req.body ?? {})
+    const buf = await renderRecordPdf(
+      req,
+      def,
+      rec,
+      b.seal === undefined ? undefined : (b.seal === true || b.seal === '1' || b.seal === 'true') ? '1' : '0',
+      b.sig === undefined ? undefined : (b.sig === true || b.sig === '1' || b.sig === 'true') ? '1' : '0',
+    )
     const id = queueEmail({ from: b.from, to: b.to, cc: b.cc, subject: b.subject, body: b.body, link_entity: def.key, link_id: rec.id, userId: req.user!.id, attachments: [{ filename: `${def.key}-${rec.id}.pdf`, contentBase64: buf.toString('base64'), contentType: 'application/pdf' }] })
     return { ok: true, id }
   })
