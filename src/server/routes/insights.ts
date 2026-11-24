@@ -200,6 +200,12 @@ export default async function (app: FastifyInstance) {
     if (Number(k.offers_pending ?? 0) > 0) a.push({ level: 'info', text: `${k.offers_pending} offer${k.offers_pending === 1 ? '' : 's'} waiting for a decision`, link: '/e/offers' })
 
     // -------- Pinpoint Role-Based Dashboard Payloads (Zero-Leak Scoped) --------
+    // Every visa / ID expiry HR tracks: employee visa, Emirates ID, passport, plus open work-permit cases.
+    const ID_EXPIRY_SQL = `
+      SELECT id, name AS employee_name, 'Visa' AS document_type, visa_expiry AS expiry_date, status FROM employees WHERE deleted_at IS NULL AND visa_expiry IS NOT NULL AND visa_expiry <> ''
+      UNION ALL SELECT id, name, 'Emirates ID', eid_expiry, status FROM employees WHERE deleted_at IS NULL AND eid_expiry IS NOT NULL AND eid_expiry <> ''
+      UNION ALL SELECT id, name, 'Passport', passport_expiry, status FROM employees WHERE deleted_at IS NULL AND passport_expiry IS NOT NULL AND passport_expiry <> ''
+      UNION ALL SELECT ic.id, e.name, COALESCE(ic.case_type, 'Work permit'), ic.permit_expiry_date, ic.status FROM immigration_cases ic LEFT JOIN employees e ON e.id = ic.employee_id WHERE ic.deleted_at IS NULL AND ic.permit_expiry_date IS NOT NULL AND ic.permit_expiry_date <> ''`
     const safeVal = (sql: string, ...args: any[]) => { try { return q.val<number>(sql, ...args) ?? 0 } catch { return 0 } }
     const safeAll = (sql: string, ...args: any[]) => { try { return q.all<any>(sql, ...args) } catch { return [] } }
     const safeGet = (sql: string, ...args: any[]) => { try { return q.get<any>(sql, ...args) } catch { return null } }
@@ -234,10 +240,10 @@ export default async function (app: FastifyInstance) {
 
       data.role_data.governance = {
         seal_pending: data.role_data.seal_approvals_pending ?? 0,
-        recycle_pending: safeVal(`SELECT COUNT(*) FROM delete_requests WHERE status = 'Pending'`),
-        withdrawals_pending: safeVal(`SELECT COUNT(*) FROM deal_withdrawals WHERE status = 'Pending'`),
+        recycle_pending: safeVal(`SELECT COUNT(*) FROM recycle_bin_requests WHERE status = 'Pending Owner Approval' AND deleted_at IS NULL`),
+        withdrawals_pending: safeVal(`SELECT COUNT(*) FROM deal_withdrawals WHERE status IN ('Pending Manager Review','Pending Owner (Shabib Siraj) Approval') AND deleted_at IS NULL`),
         active_field_staff: safeVal(`SELECT COUNT(*) FROM staff_live_locations WHERE updated_at >= ?`, new Date(Date.now() - 4 * 3600_000).toISOString()),
-        present_today: safeVal(`SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE date = ? AND deleted_at IS NULL`, today),
+        present_today: safeVal(`SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE att_date = ? AND deleted_at IS NULL`, today),
       }
       if (canAccessCrmVault(user)) {
         data.role_data.vault = {
@@ -252,25 +258,21 @@ export default async function (app: FastifyInstance) {
       if (canViewEmployeeRecords(user)) {
         data.role_data.hr = {
           total_employees: safeVal(`SELECT COUNT(*) FROM employees WHERE deleted_at IS NULL AND COALESCE(status, 'Active') <> 'Terminated'`),
-          present_today: safeVal(`SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE date = ? AND deleted_at IS NULL`, today),
-          late_today: safeVal(`SELECT COUNT(*) FROM attendance WHERE date = ? AND status = 'Late' AND deleted_at IS NULL`, today),
+          present_today: safeVal(`SELECT COUNT(DISTINCT employee_id) FROM attendance WHERE att_date = ? AND deleted_at IS NULL`, today),
+          late_today: safeVal(`SELECT COUNT(*) FROM attendance WHERE att_date = ? AND status = 'Late' AND deleted_at IS NULL`, today),
           pending_leaves: safeVal(`SELECT COUNT(*) FROM leave_requests WHERE status = 'Pending' AND deleted_at IS NULL`),
-          expiring_visas_30d: safeVal(`SELECT COUNT(*) FROM immigration_cases WHERE deleted_at IS NULL AND expiry_date BETWEEN ? AND ?`, today, addDays(today, 30)),
+          expiring_visas_30d: safeVal(`SELECT COUNT(*) FROM (${ID_EXPIRY_SQL}) x WHERE expiry_date BETWEEN ? AND ?`, today, addDays(today, 30)),
           open_lifecycle: safeVal(`SELECT COUNT(*) FROM hr_lifecycle_cases WHERE deleted_at IS NULL AND status NOT IN ('Completed','Closed')`),
         }
         data.lists.pending_leaves = safeAll(
-          `SELECT lr.id, e.name AS employee_name, lr.leave_type, lr.start_date, lr.end_date, lr.days, lr.status
+          `SELECT lr.id, e.name AS employee_name, lr.type AS leave_type, lr.from_date AS start_date, lr.to_date AS end_date, lr.days, lr.status
            FROM leave_requests lr
            LEFT JOIN employees e ON e.id = lr.employee_id
            WHERE lr.status = 'Pending' AND lr.deleted_at IS NULL
-           ORDER BY lr.start_date ASC LIMIT 8`,
+           ORDER BY lr.from_date ASC LIMIT 8`,
         )
         data.lists.expiring_visas = safeAll(
-          `SELECT ic.id, e.name AS employee_name, ic.document_type, ic.expiry_date, ic.status
-           FROM immigration_cases ic
-           LEFT JOIN employees e ON e.id = ic.employee_id
-           WHERE ic.deleted_at IS NULL AND ic.expiry_date IS NOT NULL AND ic.expiry_date <= ?
-           ORDER BY ic.expiry_date ASC LIMIT 8`,
+          `SELECT * FROM (${ID_EXPIRY_SQL}) x WHERE expiry_date <= ? ORDER BY expiry_date ASC LIMIT 8`,
           addDays(today, 45),
         )
       }
@@ -295,7 +297,7 @@ export default async function (app: FastifyInstance) {
     if (roleProfile === 'agent') {
       const empId = safeGet(`SELECT id FROM employees WHERE (user_id = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`, user.id, String(user.email || '').toLowerCase())?.id ?? null
       const todayAtt = empId
-        ? safeGet(`SELECT id, date, check_in, check_out, status FROM attendance WHERE employee_id = ? AND date = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`, empId, today)
+        ? safeGet(`SELECT id, att_date AS date, check_in, check_out, status FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`, empId, today)
         : null
       const assignedDeals = safeAll(
         `SELECT id, community, building_name, unit_number, unit_type, bedrooms, asking_price_aed, lead_status, updated_at
@@ -309,7 +311,7 @@ export default async function (app: FastifyInstance) {
         user.id,
       )
       const myAttRecent = empId
-        ? safeAll(`SELECT id, date, check_in, check_out, status FROM attendance WHERE employee_id = ? AND deleted_at IS NULL ORDER BY date DESC LIMIT 6`, empId)
+        ? safeAll(`SELECT id, att_date AS date, check_in, check_out, status FROM attendance WHERE employee_id = ? AND deleted_at IS NULL ORDER BY att_date DESC LIMIT 6`, empId)
         : []
       data.role_data.agent_desk = {
         assigned_vault_deals: safeVal(`SELECT COUNT(*) FROM crm_vault_properties WHERE assigned_agent_user_id = ? AND deleted_at IS NULL`, user.id),
