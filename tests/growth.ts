@@ -190,38 +190,40 @@ async function main() {
   ok('results and signature save', sv.status === 200, sv)
   ok('results read back', JSON.parse((await a.get(`/api/e/inspections/${ins.data.id}`)).data.results)[1].note === 'Cracked tile')
 
-  sec('Attendance: office Wi-Fi only, live camera code, device keys')
+  sec('Attendance: office Wi-Fi, rotating short-TTL QR, live camera, Al Saqr GPS & device keys')
   const cfg = (await a.get('/api/public/reception-qr/wifi-config')).data
-  ok('office Wi-Fi is hardcoded to the XAVIER BUSINESS network', cfg.ssid === 'XAVIER BUSINESS' && cfg.gateway_ip === '192.168.0.1', cfg)
+  ok('office Wi-Fi is hardcoded to the XAVIER BUSINESS network with Al Saqr 75m GPS lockdown', cfg.ssid === 'XAVIER BUSINESS' && cfg.gateway_ip === '192.168.0.1' && cfg.office_gps_radius_m === 75 && cfg.qr_mode === 'rotating', cfg)
   const hm = new Api(); await hm.login('haseeb@swk.properties', 'SWK@Manager2026')
   const PW = 'Manager-Pass-2026!'
   const mkKey = () => { const kp = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }); const j = kp.publicKey.export({ format: 'jwk' }) as any; return { priv: kp.privateKey, pub: { kty: j.kty, crv: j.crv, x: j.x, y: j.y } } }
   const keyA = mkKey(), keyB = mkKey()
+  const AL_SAQR_GPS = { gps_lat: 25.21315, gps_lng: 55.27685, gps_accuracy_m: 14, capture_source: 'live_camera' }
   const checkin = async (email: string, key: ReturnType<typeof mkKey>, payload: string, extra: any = {}, headers: Record<string, string> = {}) => {
     const ch = extra.challenge ?? (await (await fetch(BASE + '/api/public/reception-qr/challenge', { headers })).json()).challenge
     const sig = crypto.sign('sha256', Buffer.from(`${ch}.${payload}`), { key: key.priv, dsaEncoding: 'ieee-p1363' }).toString('base64url')
-    const res = await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ email, password: PW, qr_payload: payload, challenge: ch, device_pub: key.pub, device_sig: sig, device_name: 'Test phone', ...extra.body }) })
+    const res = await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ email, password: PW, qr_payload: payload, challenge: ch, device_pub: key.pub, device_sig: sig, device_name: 'Test phone', ...AL_SAQR_GPS, captured_at: new Date().toISOString(), ...extra.body }) })
     return { status: res.status, data: await res.json().catch(() => ({})), challenge: ch }
   }
   const code = async () => (await hm.get('/api/swk-ops/reception-token')).data.token as string
-  // fixed code (default): the same every time, printable, and the Owner or Manager can replace it
-  const tf = await code()
-  ok('the default code is fixed: same every time and not a link', /^SWK2\.[A-Za-z0-9_-]{43}$/.test(tf) && !/https?:/.test(tf) && (await code()) === tf, tf)
-  ok('the check-in page camera accepts the fixed code the server issues', QR_PAYLOAD_RE.test(tf), tf)
-  ok('the QR is a link a normal phone camera can open, and the page reads the code back from it', qrLink('https://os.swk.properties', tf) === `https://os.swk.properties/reception-qr#c=${tf}` && qrCodeFrom(qrLink('https://os.swk.properties/', tf)) === tf && qrCodeFrom(tf) === tf && qrCodeFrom('#c=' + tf) === tf)
+  // rotating code (locked default): encrypted, short-TTL (20s), unique per request
+  const t1 = await code()
+  ok('the default code is rotating encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
+  ok('the check-in page camera accepts the rotating code the server issues', QR_PAYLOAD_RE.test(t1), t1)
+  ok('every rotating code is unique', (await code()) !== t1)
+  ok('the QR is a link a normal phone camera can open, and the page reads the code back from it', qrLink('https://os.swk.properties', t1) === `https://os.swk.properties/reception-qr#c=${t1}` && qrCodeFrom(qrLink('https://os.swk.properties/', t1)) === t1 && qrCodeFrom(t1) === t1 && qrCodeFrom('#c=' + t1) === t1)
   ok('anything that is not a reception code is ignored by the page', qrCodeFrom('https://example.com/#c=abc') === '' && qrCodeFrom('SWK2.short') === '' && qrCodeFrom('') === '')
   ok('other staff cannot regenerate the reception code', (await b.post('/api/swk-ops/reception-token/regenerate', {})).status === 403)
+  // fixed mode can still be enabled explicitly by Owner/Manager and regenerated if leaked
+  ok('fixed mode can be switched on explicitly', (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'fixed' })).data.mode === 'fixed')
+  const tf = await code()
+  ok('in fixed mode the code is stable until regenerated', /^SWK2\.[A-Za-z0-9_-]{43}$/.test(tf) && (await code()) === tf, tf)
   const regen = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
   ok('regenerating gives a different fixed code', regen !== tf && (await code()) === regen && regen.startsWith('SWK2.'))
-  ok('the rotating mode can be switched on', (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).data.mode === 'rotating')
-  const t1 = await code()
-  ok('the check-in page camera accepts the rotating code the server issues', QR_PAYLOAD_RE.test(t1), t1)
-  ok('the rotating code is encrypted text, not a link', /^SWK1\.[A-Za-z0-9_-]{40,200}$/.test(t1) && !/https?:/.test(t1), t1)
-  ok('every code is different', (await code()) !== t1)
+  ok('switching back to rotating mode works', (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).data.mode === 'rotating')
   ok('other staff cannot open the reception code', (await b.get('/api/swk-ops/reception-token')).status === 403)
   ok('the administrator (admin@swk.properties) can open the reception code', (await a.get('/api/swk-ops/reception-token')).status === 200)
   const pubCur = JSON.stringify((await a.get('/api/public/reception-qr/current')).data) + JSON.stringify(cfg)
-  ok('public pages never carry the code, the stand code or the office address', !/SWK[12]\.|STAND|lifelong|allowed_public_ips|"public_ips"/.test(pubCur), pubCur.slice(0, 200))
+  ok('public pages never carry the code, the stand code or the office IP', !/SWK[12]\.|STAND|lifelong|allowed_public_ips|"public_ips"/.test(pubCur), pubCur.slice(0, 200))
   const imp = (await a.post('/api/e/users', { name: 'Mohammad Haseeb', email: 'imposter@a.example', password: PW, role_id: salesRole, branch_id: dxb, active: true })).data
   const impApi = new Api(); await impApi.login('imposter@a.example', PW)
   ok('a person with the Manager name but another email cannot open, regenerate or switch the code', !!imp.id && (await impApi.get('/api/swk-ops/reception-token')).status === 403 && (await impApi.post('/api/swk-ops/reception-token/regenerate', {})).status === 403 && (await impApi.post('/api/swk-ops/reception-token/mode', { mode: 'rotating' })).status === 403)
@@ -235,10 +237,12 @@ async function main() {
   ok('the Manager cannot clear the locked network through the general settings either', String((await a.get('/api/swk-ops/attendance-setup')).data.public_ips ?? '') !== '')
   const off = await checkin('rota1@a.example', keyA, await code(), {}, { 'cf-connecting-ip': '203.0.113.77' })
   ok('any other network is refused (mobile data, other Wi-Fi)', off.status === 403 && /office/i.test(off.data.error ?? ''), off)
+  const noCam = await checkin('rota1@a.example', keyA, await code(), { body: { capture_source: 'link_hash' } })
+  ok('forwarded links / static screenshots without live camera are refused in rotating mode', noCam.status === 403 && /screenshot|camera/i.test(noCam.data.error ?? ''), noCam)
   ok('a made-up code is refused', (await checkin('rota1@a.example', keyA, 'SWK1.' + 'A'.repeat(60))).status === 400)
   ok('a plain link or text is refused', (await checkin('rota1@a.example', keyA, 'https://os.swk.properties')).status === 400)
   const ch0 = (await (await fetch(BASE + '/api/public/reception-qr/challenge')).json()).challenge
-  const noProof = await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'rota1@a.example', password: PW, qr_payload: await code(), challenge: ch0 }) })
+  const noProof = await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'rota1@a.example', password: PW, qr_payload: await code(), challenge: ch0, ...AL_SAQR_GPS }) })
   ok('a request without a device proof is refused', noProof.status === 400)
   const newDev = await checkin('rota1@a.example', keyA, await code())
   ok('a new device must be approved first', newDev.status === 403 && /device/i.test(newDev.data.error ?? ''), newDev)
@@ -246,13 +250,18 @@ async function main() {
   ok('the manager sees the waiting device', !!pend)
   ok('other staff cannot approve devices', (await b.post(`/api/swk-ops/attendance-control/device/${pend.id}`, { approve: true })).status === 403)
   await hm.post(`/api/swk-ops/attendance-control/device/${pend.id}`, { approve: true })
-  const good = await checkin('rota1@a.example', keyA, await code())
-  ok('office network + live code + own device + password works', good.status === 200 && good.data.verification_summary?.verified_by === 'Office Wi-Fi', good.data)
+  const outsideGps = await checkin('rota1@a.example', keyA, await code(), { body: { gps_lat: 25.0805, gps_lng: 55.1403, gps_accuracy_m: 10 } })
+  ok('remote GPS outside Al Saqr Business Tower 75m perimeter is refused', outsideGps.status === 403 && /Al Saqr|perimeter/i.test(outsideGps.data.error ?? ''), outsideGps)
+  const goodTok = await code()
+  const good = await checkin('rota1@a.example', keyA, goodTok)
+  ok('office network + rotating live camera code + Al Saqr GPS + own device + password works', good.status === 200 && good.data.verification_summary?.verified_by === 'Office Wi-Fi' && good.data.verification_summary?.gps_verified === true, good.data)
+  const replaySameQr = await checkin('rota1@a.example', keyA, goodTok)
+  ok('replaying the exact same rotating QR token frame is refused', replaySameQr.status === 400 && /already been used|expired/i.test(replaySameQr.data.error ?? ''), replaySameQr)
   const dubaiNow = Date.parse(new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dubai' }).slice(0, 16).replace(' ', 'T') + 'Z')
   ok('the check-in time is the Dubai wall clock, not UTC', Math.abs(Date.parse(String(good.data.event?.check_in_at) + 'Z') - dubaiNow) < 3 * 60_000 && Math.abs(Date.parse(String(good.data.verification_summary?.timestamp_gst) + 'Z') - dubaiNow) < 3 * 60_000, [good.data.event?.check_in_at, good.data.verification_summary?.timestamp_gst])
-  ok('the connection IP is recorded', !!good.data.event?.client_ip && !!good.data.event?.device_id, good.data.event)
+  ok('the connection IP and GPS are recorded', !!good.data.event?.client_ip && !!good.data.event?.device_id && !!good.data.event?.gps_lat, good.data.event)
   const again = await checkin('rota1@a.example', keyA, await code())
-  ok('checking in twice does not duplicate the record', again.status === 200 && again.data.already_checked_in === true && again.data.event.id === good.data.event.id, again.data)
+  ok('checking in twice with a fresh code does not duplicate the record', again.status === 200 && again.data.already_checked_in === true && again.data.event.id === good.data.event.id, again.data)
   const stolen = await checkin('rota2@a.example', keyA, await code())
   ok('one device cannot be used by two people', stolen.status === 403 && /another person|one device/i.test(stolen.data.error ?? ''), stolen)
   const replay = await checkin('rota1@a.example', keyA, await code(), { challenge: good.challenge })
@@ -263,6 +272,7 @@ async function main() {
   for (const d of toApprove) await hm.post(`/api/swk-ops/attendance-control/device/${d.id}`, { approve: true })
   const second = await checkin('rota1@a.example', keyB, await code())
   ok('even when approved, a person checks in from one device per day', second.status === 403 && /different device/i.test(second.data.error ?? ''), second)
+  await new Promise(r => setTimeout(r, 62_000)) // the check-in route allows 20 requests a minute per IP
   for (let i = 0; i < 6; i++) await fetch(BASE + '/api/public/reception-qr/scan-login-checkin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'rota2@a.example', password: 'wrong-' + i }) })
   const still = new Api(); ok('wrong check-in passwords never lock the person out', await still.login('rota2@a.example', PW))
   ok('check-in does not sign the phone in to the OS', (await fetch(BASE + '/api/auth/me')).status === 401)
@@ -270,8 +280,7 @@ async function main() {
   const keyC = mkKey()
   const mc = await checkin('fresh@a.example', keyC, await code())
   ok('a temporary password cannot check in until it is changed', !!fresh.id && mc.status === 403 && /password/i.test(mc.data.error ?? ''), mc)
-  // back to the fixed code: a person can check in with it, the old rotating and replaced fixed codes no longer work
-  await new Promise(r => setTimeout(r, 62_000)) // the check-in route allows 20 requests a minute per IP
+  // fixed code mode: a person can check in with it when explicitly enabled, the old rotating and replaced fixed codes no longer work
   const fx = (await hm.post('/api/swk-ops/reception-token/mode', { mode: 'fixed' })).data.token as string
   const u3 = (await a.post('/api/e/users', { name: 'Rota Three', email: 'rota3@a.example', password: PW, role_id: salesRole, branch_id: dxb, active: true })).data
   const keyD = mkKey()
@@ -279,7 +288,7 @@ async function main() {
   await checkin('rota3@a.example', keyD, fx)
   for (const d of (await hm.get('/api/swk-ops/attendance-control')).data.devices.filter((x: any) => x.status === 'Pending')) await hm.post(`/api/swk-ops/attendance-control/device/${d.id}`, { approve: true })
   const fxIn = await checkin('rota3@a.example', keyD, fx)
-  ok('the fixed code works with the office network, own device and password', fxIn.status === 200 && fxIn.data.verification_summary?.verified_by === 'Office Wi-Fi', fxIn.data)
+  ok('the fixed code works with the office network, Al Saqr GPS, own device and password', fxIn.status === 200 && fxIn.data.verification_summary?.verified_by === 'Office Wi-Fi', fxIn.data)
   const fx2 = (await hm.post('/api/swk-ops/reception-token/regenerate', {})).data.token as string
   ok('after regenerating, the old printed code is refused', fx2 !== fx && (await checkin('rota3@a.example', keyD, fx)).status === 400)
   const cleared = await a.post('/api/swk-ops/attendance-setup', { clear_ips: true })

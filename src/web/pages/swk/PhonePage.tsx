@@ -122,8 +122,16 @@ export default function PhonePage() {
     sip_vault_bridge_prefix: '',
     sip_webhook_secret: '',
     sip_webhook_secret_set: false,
+    sip_ws_token_ttl_s: 900,
+    sip_turn_urls: '',
+    sip_turn_secret: '',
+    sip_turn_secret_set: false,
+    sip_turn_ttl_s: 3600,
+    sip_turn_region: 'UAE / Dubai (me-central-1)',
+    sip_ice_transport_policy: 'all' as 'all' | 'relay',
   })
   const [generatedSecret, setGeneratedSecret] = useState('')
+  const [generatedTurnSecret, setGeneratedTurnSecret] = useState('')
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [extRows, setExtRows] = useState<AdminExtensionRow[]>([])
   const [staffOptions, setStaffOptions] = useState<StaffUserOption[]>([])
@@ -178,6 +186,13 @@ export default function PhonePage() {
         sip_vault_bridge_prefix: cfg.sip_vault_bridge_prefix || '',
         sip_webhook_secret: cfg.sip_webhook_secret || '',
         sip_webhook_secret_set: Boolean(cfg.sip_webhook_secret_set),
+        sip_ws_token_ttl_s: Number(cfg.sip_ws_token_ttl_s || 900),
+        sip_turn_urls: cfg.sip_turn_urls || '',
+        sip_turn_secret: cfg.sip_turn_secret || '',
+        sip_turn_secret_set: Boolean(cfg.sip_turn_secret_set),
+        sip_turn_ttl_s: Number(cfg.sip_turn_ttl_s || 3600),
+        sip_turn_region: cfg.sip_turn_region || 'UAE / Dubai (me-central-1)',
+        sip_ice_transport_policy: cfg.sip_ice_transport_policy === 'relay' ? 'relay' : 'all',
       })
       setExtRows(exts.rows || [])
       setStaffOptions(exts.staff || [])
@@ -273,7 +288,7 @@ export default function PhonePage() {
     }
   }
 
-  const saveTrunkConfig = async (regenerateSecret = false) => {
+  const saveTrunkConfig = async (regenerateSecret = false, regenerateTurnSecret = false) => {
     let parsedIce: SipIceServer[] = []
     try {
       const raw = JSON.parse(cfgForm.sip_ice_servers_text || '[]')
@@ -295,13 +310,23 @@ export default function PhonePage() {
         sip_vault_bridge_prefix: cfgForm.sip_vault_bridge_prefix.trim(),
         sip_webhook_secret: cfgForm.sip_webhook_secret,
         regenerate_secret: regenerateSecret,
+        sip_ws_token_ttl_s: Number(cfgForm.sip_ws_token_ttl_s || 900),
+        sip_turn_urls: cfgForm.sip_turn_urls.trim(),
+        sip_turn_secret: cfgForm.sip_turn_secret,
+        regenerate_turn_secret: regenerateTurnSecret,
+        sip_turn_ttl_s: Number(cfgForm.sip_turn_ttl_s || 3600),
+        sip_turn_region: cfgForm.sip_turn_region.trim() || 'UAE / Dubai (me-central-1)',
+        sip_ice_transport_policy: cfgForm.sip_ice_transport_policy,
       })
       if (res.generated_webhook_secret) {
         setGeneratedSecret(res.generated_webhook_secret)
         setCopiedSecret(false)
         toast.ok('New SIP PBX webhook secret generated — copy it below')
+      } else if (res.generated_turn_secret) {
+        setGeneratedTurnSecret(res.generated_turn_secret)
+        toast.ok('New coturn TURN shared secret generated — copy it to turnserver.conf')
       } else {
-        toast.ok('SIP trunk configuration saved')
+        toast.ok('SIP trunk & regional TURN configuration saved')
       }
       await loadAdmin()
       await sipClient.init(true)
@@ -406,6 +431,14 @@ export default function PhonePage() {
                       : 'Disconnected'
                 : 'Not Configured'}
             </Pill>
+            {snap.configured && (
+              <>
+                <Pill tone="oasis">Short-Lived WS Token</Pill>
+                <Pill tone={snap.turnConfigured ? 'oasis' : 'dune'}>
+                  {snap.turnConfigured ? `TURN · ${snap.turnRegion || 'UAE'}` : 'TURN Relay Pending'}
+                </Pill>
+              </>
+            )}
             <button
               type="button"
               onClick={() => void sipClient.init(true)}
@@ -546,6 +579,22 @@ export default function PhonePage() {
                         {call.onHold ? 'Resume' : 'Hold'}
                       </button>
                     </div>
+                    <button
+                      type="button"
+                      disabled={call.state !== 'connected'}
+                      onClick={() =>
+                        void sipClient
+                          .recoverCallAudio('manual')
+                          .then((ok) =>
+                            ok
+                              ? toast.ok('WebRTC ICE restarted over regional TURN relay')
+                              : toast.error('ICE restart skipped — wait 3s or check connection'),
+                          )
+                      }
+                      className="w-full py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 border border-emerald-200 bg-emerald-50/70 text-emerald-900 cursor-pointer disabled:opacity-40"
+                    >
+                      <RefreshCw size={12} /> Wi-Fi ↔ 5G Audio Recovery (ICE Restart{snap.iceRestartCount > 0 ? ` · ${snap.iceRestartCount}` : ''})
+                    </button>
 
                     <div className="pt-1">
                       <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
@@ -1114,16 +1163,110 @@ export default function PhonePage() {
                   </button>
                 </div>
               </div>
-              <div className="md:col-span-2">
-                <label className="label">WebRTC ICE Servers (STUN / TURN JSON)</label>
+              <div>
+                <label className="label">WebSocket Session Token TTL (Seconds)</label>
+                <input
+                  className="input font-mono"
+                  type="number"
+                  min={120}
+                  max={3600}
+                  value={cfgForm.sip_ws_token_ttl_s}
+                  onChange={(e) => setCfgForm((f) => ({ ...f, sip_ws_token_ttl_s: Number(e.target.value) || 900 }))}
+                />
+                <div className="help">
+                  Static passwords are NEVER sent to browsers. SIP.js authenticates with short-lived revocable WS tokens (default 900s = 15m).
+                </div>
+              </div>
+              <div>
+                <label className="label">Regional TURN Relay Region &amp; ICE Policy</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    className="input"
+                    placeholder="UAE / Dubai (me-central-1)"
+                    value={cfgForm.sip_turn_region}
+                    onChange={(e) => setCfgForm((f) => ({ ...f, sip_turn_region: e.target.value }))}
+                  />
+                  <select
+                    className="select"
+                    value={cfgForm.sip_ice_transport_policy}
+                    onChange={(e) =>
+                      setCfgForm((f) => ({
+                        ...f,
+                        sip_ice_transport_policy: e.target.value === 'relay' ? 'relay' : 'all',
+                      }))
+                    }
+                  >
+                    <option value="all">ICE: All (STUN + TURN Relay)</option>
+                    <option value="relay">ICE: Relay Only (Strict TURN)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="label">Regional coturn TURN URLs (UDP / TCP / TLS 443)</label>
                 <textarea
                   className="textarea font-mono text-xs"
                   rows={3}
+                  placeholder={'turn:turn-dxb.swk.properties:3478?transport=udp\nturn:turn-dxb.swk.properties:3478?transport=tcp\nturns:turn-dxb.swk.properties:443?transport=tcp'}
+                  value={cfgForm.sip_turn_urls}
+                  onChange={(e) => setCfgForm((f) => ({ ...f, sip_turn_urls: e.target.value }))}
+                />
+                <div className="help">
+                  Prevents one-way audio and dropped calls when agents roam between Al Saqr office Wi-Fi and UAE 5G (Etisalat/du CGNAT).
+                </div>
+              </div>
+              <div>
+                <label className="label">coturn Shared Secret (static-auth-secret, Encrypted)</label>
+                <div className="flex gap-2">
+                  <input
+                    className="input font-mono flex-1"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={cfgForm.sip_turn_secret_set ? '********' : 'Enter coturn static-auth-secret'}
+                    value={cfgForm.sip_turn_secret}
+                    onChange={(e) => setCfgForm((f) => ({ ...f, sip_turn_secret: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void saveTrunkConfig(false, true)}
+                    className="btn outline sm whitespace-nowrap"
+                  >
+                    <KeyRound size={13} /> Rotate TURN
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted">
+                  <span>TURN Credential TTL (s):</span>
+                  <input
+                    className="input font-mono w-28"
+                    type="number"
+                    min={300}
+                    max={14400}
+                    value={cfgForm.sip_turn_ttl_s}
+                    onChange={(e) => setCfgForm((f) => ({ ...f, sip_turn_ttl_s: Number(e.target.value) || 3600 }))}
+                  />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="label">Additional STUN / Fallback ICE Servers (JSON)</label>
+                <textarea
+                  className="textarea font-mono text-xs"
+                  rows={2}
                   value={cfgForm.sip_ice_servers_text}
                   onChange={(e) => setCfgForm((f) => ({ ...f, sip_ice_servers_text: e.target.value }))}
                 />
               </div>
             </div>
+
+            {generatedTurnSecret && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 space-y-1.5">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck size={15} className="text-amber-700" /> New coturn static-auth-secret (Shown Once — Put in turnserver.conf):
+                </div>
+                <code className="block px-2.5 py-1.5 rounded bg-white border border-amber-200 font-mono break-all">
+                  static-auth-secret={generatedTurnSecret}
+                </code>
+              </div>
+            )}
 
             {generatedSecret && (
               <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-950 space-y-2">
@@ -1139,6 +1282,7 @@ export default function PhonePage() {
                   </button>
                 </div>
                 <div className="text-[11px] text-emerald-900 space-y-0.5 font-mono">
+                  <div>Verify Ephemeral WS Token: POST {origin}/api/public/sip/{generatedSecret}/verify-ws-token</div>
                   <div>Resolve Vault Token: POST {origin}/api/public/sip/{generatedSecret}/resolve-vault-token</div>
                   <div>Incoming Wake Push: POST {origin}/api/public/sip/{generatedSecret}/incoming-wake</div>
                 </div>

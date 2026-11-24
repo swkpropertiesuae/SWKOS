@@ -9,12 +9,14 @@ import { audit, getDef } from '../engine'
 import { dispatchPushToUser } from '../integrations/push'
 import { liveBus, liveScope } from '../notify'
 import { decryptSecret, encryptSecret, getSetting, setSettings } from '../settings'
-import { bad, conflict, forbidden, notFound, nowIso, nowLocal, safeJson } from '../util'
+import { bad, conflict, forbidden, HttpError, notFound, nowIso, nowLocal, safeJson } from '../util'
 import { idOf } from './helpers'
 
 const MASKED_OWNER_LABEL = 'Masked Vault Owner'
 const VAULT_TOKEN_PATTERN = /(?:[0-9A-Za-z*#+_-]{0,16})?vt_[0-9a-f]{8,}/gi
 const VAULT_SIP_URI_PATTERN = /sip:[0-9A-Za-z*#+_-]{0,16}vt_[0-9a-f]{8,}@[^\s,;>]+/gi
+const SIP_WS_TOKEN_PREFIX = 'swk_ws1.'
+const DEFAULT_STUN_FALLBACK: IceServerEntry = { urls: 'stun:stun.l.google.com:19302' }
 
 interface IceServerEntry {
   urls: string | string[]
@@ -48,6 +50,242 @@ function parseIceServers(raw: unknown): IceServerEntry[] {
     if (parsed.success) out.push(parsed.data)
   }
   return out
+}
+
+function parseTurnUrls(raw: unknown): string[] {
+  return String(raw ?? '')
+    .split(/[\r\n,]+/)
+    .map(s => s.trim())
+    .filter(s => /^turns?:\/\/?[^\s]+$/i.test(s) || /^turns?:[^\s]+$/i.test(s))
+}
+
+function getOrCreateWsTokenSecret(): string {
+  let s = String(getSetting('sip_ws_token_secret') || '').trim()
+  if (!s) {
+    s = 'swk_ws_sec_' + crypto.randomBytes(32).toString('hex')
+    setSettings({ sip_ws_token_secret: s })
+  }
+  return s
+}
+
+function getWsTokenTtlSeconds(): number {
+  const n = Number(getSetting('sip_ws_token_ttl_s') ?? 900)
+  if (!Number.isFinite(n)) return 900
+  return Math.max(120, Math.min(3600, Math.round(n)))
+}
+
+function getTurnTtlSeconds(): number {
+  const n = Number(getSetting('sip_turn_ttl_s') ?? 3600)
+  if (!Number.isFinite(n)) return 3600
+  return Math.max(300, Math.min(14400, Math.round(n)))
+}
+
+function getIceTransportPolicy(): 'all' | 'relay' {
+  return String(getSetting('sip_ice_transport_policy') || 'all').trim().toLowerCase() === 'relay' ? 'relay' : 'all'
+}
+
+/**
+ * Mints a short-lived, HMAC-SHA256-signed, server-revocable WebSocket session token
+ * for SIP.js so static SIP trunk passwords NEVER leave the server.
+ */
+function mintSipWsSessionToken(params: {
+  userId: number
+  extensionNo: string
+  sipUsername: string
+  sessionHash?: string | null
+  ttlSeconds?: number
+}) {
+  const ttlS = params.ttlSeconds ?? getWsTokenTtlSeconds()
+  const nowMs = Date.now()
+  const iat = Math.floor(nowMs / 1000)
+  const exp = iat + ttlS
+  const jti = 'ws_' + crypto.randomBytes(12).toString('hex')
+  const payload = {
+    v: 1,
+    jti,
+    uid: params.userId,
+    ext: params.extensionNo,
+    usr: params.sipUsername,
+    iat,
+    exp,
+  }
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')
+  const sig = crypto
+    .createHmac('sha256', getOrCreateWsTokenSecret())
+    .update(encodedPayload)
+    .digest('base64url')
+  const token = `${SIP_WS_TOKEN_PREFIX}${encodedPayload}.${sig}`
+  const issuedAtIso = new Date(nowMs).toISOString()
+  const expiresAtIso = new Date(exp * 1000).toISOString()
+
+  tx(() => {
+    const staleBefore = new Date(nowMs - 24 * 3600_000).toISOString()
+    q.run(`DELETE FROM sip_ws_sessions WHERE expires_at < ?`, staleBefore)
+    q.run(
+      `INSERT INTO sip_ws_sessions (jti, user_id, extension_no, sip_username, session_hash, issued_at, expires_at, revoked_at)
+       VALUES (?,?,?,?,?,?,?,NULL)`,
+      jti,
+      params.userId,
+      params.extensionNo,
+      params.sipUsername,
+      params.sessionHash ?? null,
+      issuedAtIso,
+      expiresAtIso,
+    )
+  })
+
+  return { token, jti, expiresAtIso, ttlS }
+}
+
+function appendWsTokenToUrl(wsUrl: string, token: string): string {
+  try {
+    const u = new URL(wsUrl)
+    u.searchParams.set('swk_ws_token', token)
+    return u.toString()
+  } catch {
+    const sep = wsUrl.includes('?') ? '&' : '?'
+    return `${wsUrl}${sep}swk_ws_token=${encodeURIComponent(token)}`
+  }
+}
+
+/**
+ * Generates RFC 8489 / coturn REST ephemeral TURN credentials (HMAC-SHA1 over `<unix_expiry>:<uid>:<ext>`)
+ * backed by the regional UAE coturn relay, merged with configured STUN servers.
+ */
+function buildEphemeralIceServers(userId: number, extensionNo: string): {
+  ice_servers: IceServerEntry[]
+  ice_transport_policy: 'all' | 'relay'
+  turn_configured: boolean
+  turn_region: string
+  turn_expires_at: string | null
+  turn_ttl_s: number
+} {
+  const configuredIce = parseIceServers(getSetting('sip_ice_servers'))
+  const turnUrls = parseTurnUrls(getSetting('sip_turn_urls'))
+  const turnSecret = String(getSetting('sip_turn_secret') || '').trim()
+  const turnRegion = String(getSetting('sip_turn_region') || 'UAE / Dubai (me-central-1)').trim()
+  const turnTtlS = getTurnTtlSeconds()
+  const policy = getIceTransportPolicy()
+
+  // Keep STUN entries (and non-secret ICE servers); never re-emit static TURN passwords when dynamic coturn is enabled
+  const baseServers: IceServerEntry[] = []
+  for (const s of configuredIce) {
+    const urlsList = Array.isArray(s.urls) ? s.urls : [s.urls]
+    const hasTurn = urlsList.some(u => /^turns?:/i.test(u))
+    if (hasTurn && turnUrls.length > 0 && turnSecret) continue
+    baseServers.push(s)
+  }
+
+  let turnConfigured = false
+  let turnExpiresAt: string | null = null
+  if (turnUrls.length > 0 && turnSecret) {
+    const expEpoch = Math.floor(Date.now() / 1000) + turnTtlS
+    const username = `${expEpoch}:${userId}:${extensionNo}`
+    const credential = crypto.createHmac('sha1', turnSecret).update(username).digest('base64')
+    baseServers.push({
+      urls: turnUrls,
+      username,
+      credential,
+    })
+    turnConfigured = true
+    turnExpiresAt = new Date(expEpoch * 1000).toISOString()
+  }
+
+  if (baseServers.length === 0) {
+    baseServers.push(DEFAULT_STUN_FALLBACK)
+  }
+
+  return {
+    ice_servers: baseServers,
+    ice_transport_policy: policy,
+    turn_configured: turnConfigured,
+    turn_region: turnRegion,
+    turn_expires_at: turnExpiresAt,
+    turn_ttl_s: turnTtlS,
+  }
+}
+
+function revokeUserSipWsTokens(userId: number, jti?: string) {
+  const now = nowIso()
+  if (jti) {
+    q.run(`UPDATE sip_ws_sessions SET revoked_at = ? WHERE user_id = ? AND jti = ? AND revoked_at IS NULL`, now, userId, jti)
+  } else {
+    q.run(`UPDATE sip_ws_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, now, userId)
+  }
+}
+
+function verifySipWsSessionToken(rawToken: string): {
+  jti: string
+  user_id: number
+  extension_no: string
+  sip_username: string
+  display_name: string
+  expires_at: string
+} {
+  const clean = rawToken.trim().replace(/^Bearer\s+/i, '')
+  if (!clean.startsWith(SIP_WS_TOKEN_PREFIX)) {
+    throw new HttpError(401, 'Invalid SIP WebSocket session token format')
+  }
+  const body = clean.slice(SIP_WS_TOKEN_PREFIX.length)
+  const dot = body.indexOf('.')
+  if (dot <= 0) throw new HttpError(401, 'Malformed SIP WebSocket session token')
+  const encodedPayload = body.slice(0, dot)
+  const providedSig = body.slice(dot + 1)
+  const expectedSig = crypto
+    .createHmac('sha256', getOrCreateWsTokenSecret())
+    .update(encodedPayload)
+    .digest('base64url')
+  if (!timingSafeEquals(providedSig, expectedSig)) {
+    throw new HttpError(401, 'Invalid SIP WebSocket session token signature')
+  }
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'))
+  } catch {
+    throw new HttpError(401, 'Unreadable SIP WebSocket session token payload')
+  }
+  if (!parsed || parsed.v !== 1 || typeof parsed.jti !== 'string' || !Number.isInteger(parsed.uid) || !Number.isInteger(parsed.exp)) {
+    throw new HttpError(401, 'Invalid SIP WebSocket session token claims')
+  }
+  const nowSec = Math.floor(Date.now() / 1000)
+  if (parsed.exp <= nowSec) {
+    throw new HttpError(401, 'SIP WebSocket session token has expired')
+  }
+
+  const row = q.get<{
+    jti: string
+    user_id: number
+    extension_no: string
+    sip_username: string
+    expires_at: string
+    revoked_at: string | null
+  }>(`SELECT jti, user_id, extension_no, sip_username, expires_at, revoked_at FROM sip_ws_sessions WHERE jti = ?`, parsed.jti)
+
+  if (!row || row.revoked_at !== null || row.user_id !== parsed.uid || Date.parse(row.expires_at) <= Date.now()) {
+    throw new HttpError(401, 'SIP WebSocket session token was revoked or expired')
+  }
+
+  const ext = q.get<{ extension_no: string; sip_username: string; display_name: string | null; user_name: string }>(
+    `SELECT s.extension_no, s.sip_username, s.display_name, u.name AS user_name
+     FROM sip_extensions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.user_id = ? AND s.active = 1 AND u.active = 1 AND u.deleted_at IS NULL AND u.party_id IS NULL
+     LIMIT 1`,
+    row.user_id,
+  )
+  if (!ext || ext.extension_no !== row.extension_no || ext.sip_username !== row.sip_username) {
+    throw new HttpError(403, 'SIP extension is no longer active for this user')
+  }
+
+  return {
+    jti: row.jti,
+    user_id: row.user_id,
+    extension_no: ext.extension_no,
+    sip_username: ext.sip_username,
+    display_name: ext.display_name || ext.user_name,
+    expires_at: row.expires_at,
+  }
 }
 
 function maskVaultStrings(input: string): string {
@@ -88,15 +326,14 @@ export default async function sipRoutes(app: FastifyInstance) {
   // Staff SIP Configuration, Colleague Directory, Call Logs & Live Wake Stream
   // =========================================================================
 
-  app.get('/api/sip/my-config', async (req) => {
-    const user = requireStaff(req)
+  const buildStaffSipSessionPayload = (req: FastifyRequest, user: ReturnType<typeof requireStaff>) => {
     const enabled = Boolean(getSetting('sip_enabled'))
     const wsUrl = String(getSetting('sip_ws_url') || '').trim()
     const domain = String(getSetting('sip_domain') || '').trim()
 
     if (!enabled || !wsUrl || !domain) {
       return {
-        configured: false,
+        configured: false as const,
         reason: 'Company SIP/VoIP trunk is not enabled or configured yet.',
       }
     }
@@ -116,27 +353,69 @@ export default async function sipRoutes(app: FastifyInstance) {
 
     if (!ext) {
       return {
-        configured: false,
+        configured: false as const,
         reason: 'No active SIP extension is assigned to your account.',
       }
     }
 
+    const wsTok = mintSipWsSessionToken({
+      userId: user.id,
+      extensionNo: ext.extension_no,
+      sipUsername: ext.sip_username,
+      sessionHash: req.sessionHash ?? null,
+    })
+    const ice = buildEphemeralIceServers(user.id, ext.extension_no)
+
     return {
-      configured: true,
+      configured: true as const,
+      auth_mode: 'ephemeral_ws_token' as const,
       ws_url: wsUrl,
+      ws_url_tokenized: appendWsTokenToUrl(wsUrl, wsTok.token),
+      ws_session_token: wsTok.token,
+      ws_token_jti: wsTok.jti,
+      ws_token_expires_at: wsTok.expiresAtIso,
+      ws_token_ttl_s: wsTok.ttlS,
       domain,
       outbound_proxy: String(getSetting('sip_outbound_proxy') || '').trim(),
-      ice_servers: parseIceServers(getSetting('sip_ice_servers')),
+      ice_servers: ice.ice_servers,
+      ice_transport_policy: ice.ice_transport_policy,
+      turn_configured: ice.turn_configured,
+      turn_region: ice.turn_region,
+      turn_expires_at: ice.turn_expires_at,
+      turn_ttl_s: ice.turn_ttl_s,
       caller_id_mode: String(getSetting('sip_caller_id_mode') || 'company_main'),
       has_vault_prefix: Boolean(String(getSetting('sip_vault_bridge_prefix') || '').trim()),
       extension: {
         extension_no: ext.extension_no,
         sip_username: ext.sip_username,
-        sip_password: ext.sip_password_enc ? decryptSecret(ext.sip_password_enc) : '',
+        has_static_password: Boolean(ext.sip_password_enc),
         display_name: ext.display_name || user.name,
         allow_direct_dial: Boolean(ext.allow_direct_dial),
       },
     }
+  }
+
+  app.get('/api/sip/my-config', async (req, reply) => {
+    reply.header('cache-control', 'no-store')
+    const user = requireStaff(req)
+    return buildStaffSipSessionPayload(req, user)
+  })
+
+  app.post('/api/sip/session-token', async (req, reply) => {
+    reply.header('cache-control', 'no-store')
+    const user = requireStaff(req)
+    const payload = buildStaffSipSessionPayload(req, user)
+    if (!payload.configured) {
+      throw bad(payload.reason)
+    }
+    return payload
+  })
+
+  app.post('/api/sip/session-token/revoke', async (req) => {
+    const user = requireStaff(req)
+    const b = z.object({ jti: z.string().trim().max(80).optional() }).parse(req.body ?? {})
+    revokeUserSipWsTokens(user.id, b.jti)
+    return { ok: true }
   })
 
   app.get('/api/sip/directory', async (req) => {
@@ -488,6 +767,7 @@ export default async function sipRoutes(app: FastifyInstance) {
   app.get('/api/sip/admin/config', async (req) => {
     requireSipAdmin(req)
     const secretSet = Boolean(String(getSetting('sip_webhook_secret') || '').trim())
+    const turnSecretSet = Boolean(String(getSetting('sip_turn_secret') || '').trim())
     return {
       sip_enabled: Boolean(getSetting('sip_enabled')),
       sip_ws_url: String(getSetting('sip_ws_url') || ''),
@@ -498,6 +778,13 @@ export default async function sipRoutes(app: FastifyInstance) {
       sip_vault_bridge_prefix: String(getSetting('sip_vault_bridge_prefix') || ''),
       sip_webhook_secret: secretSet ? '********' : '',
       sip_webhook_secret_set: secretSet,
+      sip_ws_token_ttl_s: getWsTokenTtlSeconds(),
+      sip_turn_urls: String(getSetting('sip_turn_urls') || ''),
+      sip_turn_secret: turnSecretSet ? '********' : '',
+      sip_turn_secret_set: turnSecretSet,
+      sip_turn_ttl_s: getTurnTtlSeconds(),
+      sip_turn_region: String(getSetting('sip_turn_region') || 'UAE / Dubai (me-central-1)'),
+      sip_ice_transport_policy: getIceTransportPolicy(),
     }
   })
 
@@ -516,6 +803,13 @@ export default async function sipRoutes(app: FastifyInstance) {
       .optional(),
     sip_webhook_secret: z.string().trim().max(200).optional(),
     regenerate_secret: z.boolean().optional(),
+    sip_ws_token_ttl_s: z.number().int().min(120).max(3600).optional(),
+    sip_turn_urls: z.string().trim().max(1500).optional(),
+    sip_turn_secret: z.string().trim().max(256).optional(),
+    regenerate_turn_secret: z.boolean().optional(),
+    sip_turn_ttl_s: z.number().int().min(300).max(14400).optional(),
+    sip_turn_region: z.string().trim().max(120).optional(),
+    sip_ice_transport_policy: z.enum(['all', 'relay']).optional(),
   })
 
   app.put('/api/sip/admin/config', async (req) => {
@@ -533,6 +827,23 @@ export default async function sipRoutes(app: FastifyInstance) {
     if (b.sip_outbound_proxy !== undefined) patch.sip_outbound_proxy = b.sip_outbound_proxy
     if (b.sip_caller_id_mode !== undefined) patch.sip_caller_id_mode = b.sip_caller_id_mode || 'company_main'
     if (b.sip_vault_bridge_prefix !== undefined) patch.sip_vault_bridge_prefix = b.sip_vault_bridge_prefix
+    if (b.sip_ws_token_ttl_s !== undefined) patch.sip_ws_token_ttl_s = b.sip_ws_token_ttl_s
+    if (b.sip_turn_ttl_s !== undefined) patch.sip_turn_ttl_s = b.sip_turn_ttl_s
+    if (b.sip_turn_region !== undefined) patch.sip_turn_region = b.sip_turn_region || 'UAE / Dubai (me-central-1)'
+    if (b.sip_ice_transport_policy !== undefined) patch.sip_ice_transport_policy = b.sip_ice_transport_policy
+
+    if (b.sip_turn_urls !== undefined) {
+      const rawLines = b.sip_turn_urls
+        .split(/[\r\n,]+/)
+        .map(s => s.trim())
+        .filter(Boolean)
+      for (const u of rawLines) {
+        if (!/^turns?:[^\s]+$/i.test(u)) {
+          throw bad(`Invalid TURN URL "${u}". Must begin with turn: or turns:`)
+        }
+      }
+      patch.sip_turn_urls = rawLines.join('\n')
+    }
 
     if (b.sip_ice_servers !== undefined) {
       const rawArr = typeof b.sip_ice_servers === 'string' ? safeJson<unknown>(b.sip_ice_servers, null) : b.sip_ice_servers
@@ -556,12 +867,24 @@ export default async function sipRoutes(app: FastifyInstance) {
       patch.sip_webhook_secret = generatedSecret
     }
 
+    let generatedTurnSecret: string | undefined
+    const explicitTurnSecret = b.sip_turn_secret && b.sip_turn_secret !== '********' ? b.sip_turn_secret : ''
+    if (b.regenerate_turn_secret) {
+      generatedTurnSecret = crypto.randomBytes(32).toString('hex')
+      patch.sip_turn_secret = generatedTurnSecret
+    } else if (explicitTurnSecret) {
+      if (explicitTurnSecret.length < 12) throw bad('TURN shared secret (coturn static-auth-secret) must be at least 12 characters')
+      patch.sip_turn_secret = explicitTurnSecret
+    }
+
     setSettings(patch)
     const auditSnapshot = { ...patch }
     if ('sip_webhook_secret' in auditSnapshot) auditSnapshot.sip_webhook_secret = '[redacted]'
+    if ('sip_turn_secret' in auditSnapshot) auditSnapshot.sip_turn_secret = '[redacted]'
     audit(req.ctx, getDef('branches'), 0, 'sip_config', auditSnapshot, 'SIP trunk configuration')
 
     const nowSecretSet = Boolean(String(getSetting('sip_webhook_secret') || '').trim())
+    const nowTurnSecretSet = Boolean(String(getSetting('sip_turn_secret') || '').trim())
     return {
       ok: true,
       sip_enabled: Boolean(getSetting('sip_enabled')),
@@ -573,7 +896,15 @@ export default async function sipRoutes(app: FastifyInstance) {
       sip_vault_bridge_prefix: String(getSetting('sip_vault_bridge_prefix') || ''),
       sip_webhook_secret: nowSecretSet ? '********' : '',
       sip_webhook_secret_set: nowSecretSet,
+      sip_ws_token_ttl_s: getWsTokenTtlSeconds(),
+      sip_turn_urls: String(getSetting('sip_turn_urls') || ''),
+      sip_turn_secret: nowTurnSecretSet ? '********' : '',
+      sip_turn_secret_set: nowTurnSecretSet,
+      sip_turn_ttl_s: getTurnTtlSeconds(),
+      sip_turn_region: String(getSetting('sip_turn_region') || 'UAE / Dubai (me-central-1)'),
+      sip_ice_transport_policy: getIceTransportPolicy(),
       ...(generatedSecret ? { generated_webhook_secret: generatedSecret } : {}),
+      ...(generatedTurnSecret ? { generated_turn_secret: generatedTurnSecret } : {}),
     }
   })
 
@@ -679,6 +1010,10 @@ export default async function sipRoutes(app: FastifyInstance) {
       now,
     )
 
+    if (!active) {
+      revokeUserSipWsTokens(b.user_id)
+    }
+
     audit(
       req.ctx,
       getDef('users'),
@@ -708,6 +1043,7 @@ export default async function sipRoutes(app: FastifyInstance) {
     const userId = idOf((req.params as any).userId)
     const res = q.run(`DELETE FROM sip_extensions WHERE user_id = ?`, userId)
     if (res.changes === 0) throw notFound('SIP extension not found')
+    revokeUserSipWsTokens(userId)
     audit(req.ctx, getDef('users'), userId, 'sip_extension_delete', null, `User #${userId}`)
     return { ok: true, user_id: userId }
   })
@@ -717,6 +1053,29 @@ export default async function sipRoutes(app: FastifyInstance) {
   // =========================================================================
 
   const pbxGate = { config: { rateLimit: { max: 300, timeWindow: '1 minute' } } }
+
+  /**
+   * Called by the SIP WebSocket gateway (Kamailio / Asterisk / FreeSWITCH / OpenSIPS)
+   * on WSS upgrade or SIP REGISTER to authenticate the short-lived session token
+   * without ever exposing static extension passwords to the browser.
+   */
+  app.post('/api/public/sip/:secret/verify-ws-token', pbxGate, async (req) => {
+    requirePbxSecret(req)
+    const b = z
+      .object({
+        token: z.string().trim().min(10).max(1200).optional(),
+        authorization: z.string().trim().min(10).max(1200).optional(),
+      })
+      .parse(req.body ?? {})
+    const raw = b.token || b.authorization || String(req.headers.authorization || '')
+    if (!raw) throw bad('Missing SIP WebSocket session token')
+    const verified = verifySipWsSessionToken(raw)
+    return {
+      ok: true,
+      valid: true,
+      ...verified,
+    }
+  })
 
   app.post('/api/public/sip/:secret/resolve-vault-token', pbxGate, async (req) => {
     requirePbxSecret(req)

@@ -7,6 +7,7 @@ import { HttpError, nowIso, safeJson, todayStr } from '../util'
 import { canAccessCrmVault } from '../../shared/swk-staff-access'
 import { getOmniPreset, normalizeLane, OMNI_PRESETS, type OmniLane, type OmniTier } from './omni-catalog'
 import { findPendingPlaceholderStart, restoreScrubbedPii, restoreValueWithPii, scrubMessages } from './pii-shield'
+import { buildRbacSystemGuard, isToolAllowedForUser, RBAC_GUARD_MARKER, rbacPromptFingerprint } from './policy'
 
 export interface ToolDef {
   name: string
@@ -42,6 +43,19 @@ export interface OmniRequest {
   signal?: AbortSignal
 }
 
+export interface OmniFailoverHop {
+  attempt: number
+  routeId: number | null
+  routeLabel: string
+  provider: string
+  model: string
+  zeroRetention: boolean
+  status: 'ok' | 'failed'
+  httpStatus: number | null
+  reason: string | null
+  elapsedMs: number
+}
+
 export interface OmniResult {
   content: string
   tool_calls: { id: string; name: string; args: any }[]
@@ -54,6 +68,8 @@ export interface OmniResult {
   piiRedacted: number
   attempts: number
   lane: OmniLane
+  failoverTrace: OmniFailoverHop[]
+  rbacGuardDigest?: string
 }
 
 export interface OmniRouteRow {
@@ -269,7 +285,7 @@ export function loadPoolRoutes(opts: { includeDisabled?: boolean; includeLegacy?
   })
   const legacyRoutes: ResolvedRoute[] = legacyEps.map((e, idx) => {
     const preset = getOmniPreset(e.provider)
-    const id = idx === 0 ? -1 : -2
+    const id = -(idx + 1)
     const stateKey = `legacy:${id}:${e.base}:${e.model}`
     const rt = getRouteRuntime(stateKey)
     const lanes: OmniLane[] = preset?.lanes ? [...preset.lanes] : ['general', 'reasoning', 'fast', 'translate']
@@ -678,9 +694,13 @@ function formatHttpErrorHint(route: ResolvedRoute, status: number, detail: strin
   return `${route.label} model ${route.model_id}: HTTP ${status} ${detail} ${hint}`.trim()
 }
 
-function combineSignals(timeoutMs: number, externalSignal?: AbortSignal): { signal: AbortSignal; cleanup: () => void } {
+function combineSignals(timeoutMs: number, externalSignal?: AbortSignal): { signal: AbortSignal; didTimeout: () => boolean; cleanup: () => void } {
   const ctl = new AbortController()
-  const timer = setTimeout(() => ctl.abort(new Error(`Request timed out after ${timeoutMs}ms`)), timeoutMs)
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    ctl.abort(new Error(`Request timed out after ${timeoutMs}ms`))
+  }, timeoutMs)
   const onAbort = () => ctl.abort(externalSignal?.reason)
   if (externalSignal) {
     if (externalSignal.aborted) ctl.abort(externalSignal.reason)
@@ -688,11 +708,45 @@ function combineSignals(timeoutMs: number, externalSignal?: AbortSignal): { sign
   }
   return {
     signal: ctl.signal,
+    didTimeout: () => timedOut,
     cleanup: () => {
       clearTimeout(timer)
       externalSignal?.removeEventListener('abort', onAbort)
     },
   }
+}
+
+function enforceRbacBoundary(req: OmniRequest): {
+  messages: OmniMessage[]
+  tools: ToolDef[] | undefined
+  rbacGuardDigest?: string
+} {
+  if (!req.user) {
+    return { messages: req.messages, tools: req.tools, rbacGuardDigest: undefined }
+  }
+  const confidential = Boolean(req.confidential || req.zeroRetentionOnly)
+  const guard = buildRbacSystemGuard(req.user, confidential)
+  const digest = rbacPromptFingerprint(guard)
+  const nextTools = req.tools
+    ? req.tools.filter(t => isToolAllowedForUser(req.user, t.name))
+    : undefined
+
+  const cloned = req.messages.map(m => ({ ...m }))
+  const sysIdx = cloned.findIndex(m => m.role === 'system')
+  if (sysIdx >= 0) {
+    const cur = typeof cloned[sysIdx]!.content === 'string' ? cloned[sysIdx]!.content : ''
+    if (!cur.includes(RBAC_GUARD_MARKER)) {
+      cloned[sysIdx] = { ...cloned[sysIdx]!, content: cur ? `${cur}\n\n${guard}` : guard }
+    }
+  } else {
+    cloned.unshift({ role: 'system', content: guard })
+  }
+  return { messages: cloned, tools: nextTools, rbacGuardDigest: digest }
+}
+
+function attachHttpStatus(err: Error, httpStatus: number | null): Error {
+  ;(err as any).httpStatus = httpStatus
+  return err
 }
 
 async function callRouteOnce(
@@ -706,7 +760,7 @@ async function callRouteOnce(
   recordRpmHit(route.stateKey)
   const started = Date.now()
   const timeoutMs = opts.timeoutMs ?? 90_000
-  const { signal, cleanup } = combineSignals(timeoutMs, opts.signal)
+  const { signal, didTimeout, cleanup } = combineSignals(timeoutMs, opts.signal)
   let failureRecorded = false
   const recordFailureOnce = (status: number | null, retryAfter: string | null, message: string) => {
     if (failureRecorded) return
@@ -758,6 +812,10 @@ async function callRouteOnce(
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (route.api_key) headers.Authorization = `Bearer ${route.api_key}`
+    if (route.provider_key === 'cloudflare_ai_gateway' || route.base_url.includes('gateway.ai.cloudflare.com')) {
+      const cfGwToken = String(getSetting('ai_cloudflare_gateway_token') || '').trim()
+      if (cfGwToken) headers['cf-aig-authorization'] = `Bearer ${cfGwToken}`
+    }
 
     const res = await fetch(`${route.base_url}/chat/completions`, {
       method: 'POST',
@@ -773,7 +831,7 @@ async function callRouteOnce(
       const detail = String(data?.error?.message ?? data?.message ?? text.slice(0, 160))
       const msg = formatHttpErrorHint(route, res.status, detail)
       recordFailureOnce(res.status, res.headers.get('retry-after'), msg)
-      throw new Error(msg)
+      throw attachHttpStatus(new Error(msg), res.status)
     }
 
     const ctype = String(res.headers.get('content-type') || '').toLowerCase()
@@ -798,7 +856,7 @@ async function callRouteOnce(
           const detail = String(parsed.error.message ?? JSON.stringify(parsed.error)).slice(0, 200)
           const msg = formatHttpErrorHint(route, errStatus, detail)
           recordFailureOnce(errStatus, retryAfter, msg)
-          throw new Error(msg)
+          throw attachHttpStatus(new Error(msg), errStatus)
         }
         if (parsed?.usage?.total_tokens) tokens = Number(parsed.usage.total_tokens) || tokens
         const delta = parsed?.choices?.[0]?.delta
@@ -849,7 +907,7 @@ async function callRouteOnce(
       if (!content && !calls.length) {
         const errMsg = `${route.label} model ${route.model_id}: HTTP 502 empty stream response`
         recordFailureOnce(502, retryAfter, errMsg)
-        throw new Error(errMsg)
+        throw attachHttpStatus(new Error(errMsg), 502)
       }
       markRouteSuccess(route, tokens, Date.now() - started)
       return { content, tool_calls: calls, tokens, model: route.model_id }
@@ -863,7 +921,7 @@ async function callRouteOnce(
     if (!msg) {
       const errMsg = `${route.label}: empty response`
       recordFailureOnce(502, null, errMsg)
-      throw new Error(errMsg)
+      throw attachHttpStatus(new Error(errMsg), 502)
     }
     let content: string = typeof msg.content === 'string' ? msg.content : ''
     let calls = (msg.tool_calls ?? []).map((c: any) => {
@@ -884,8 +942,11 @@ async function callRouteOnce(
     markRouteSuccess(route, tokens, Date.now() - started)
     return { content, tool_calls: calls, tokens, model: route.model_id }
   } catch (err: any) {
-    const msg = String(err?.message ?? err)
-    recordFailureOnce(null, null, msg)
+    const isTimeout = didTimeout()
+    const httpStatus: number | null = typeof err?.httpStatus === 'number' ? err.httpStatus : isTimeout ? 408 : null
+    const msg = isTimeout ? `${route.label} model ${route.model_id}: Request timed out after ${timeoutMs}ms` : String(err?.message ?? err)
+    recordFailureOnce(httpStatus, null, msg)
+    if (isTimeout) throw attachHttpStatus(new Error(msg), 408)
     throw err
   } finally {
     cleanup()
@@ -904,22 +965,37 @@ export function preflightOmniRequest(req: OmniRequest): { lane: OmniLane; candid
 // ---------------------------------------------------------------------------
 export async function omniChat(req: OmniRequest): Promise<OmniResult> {
   const { lane, candidates } = preflightOmniRequest(req)
+  const bounded = enforceRbacBoundary(req)
   const errors: string[] = []
+  const failoverTrace: OmniFailoverHop[] = []
   let attempts = 0
 
   for (const route of candidates) {
     attempts++
+    const hopStarted = Date.now()
     const pii = route.zero_retention
-      ? { messages: req.messages, map: new Map<string, string>(), redactedCount: 0 }
-      : scrubMessages(req.messages)
+      ? { messages: bounded.messages, map: new Map<string, string>(), redactedCount: 0 }
+      : scrubMessages(bounded.messages)
 
     try {
-      const res = await callRouteOnce(route, pii.messages, req.tools, {
+      const res = await callRouteOnce(route, pii.messages, bounded.tools, {
         maxTokens: req.maxTokens,
         temperature: req.temperature,
         timeoutMs: req.timeoutMs,
         signal: req.signal,
         stream: false,
+      })
+      failoverTrace.push({
+        attempt: attempts,
+        routeId: route.isLegacy ? null : route.id,
+        routeLabel: route.label,
+        provider: route.provider_key,
+        model: res.model,
+        zeroRetention: route.zero_retention,
+        status: 'ok',
+        httpStatus: 200,
+        reason: null,
+        elapsedMs: Date.now() - hopStarted,
       })
       const restored = pii.map.size ? restoreScrubbedPii(res.content, pii.map) : res.content
       const restoredCalls = pii.map.size
@@ -938,9 +1014,24 @@ export async function omniChat(req: OmniRequest): Promise<OmniResult> {
         piiRedacted: pii.redactedCount,
         attempts,
         lane,
+        failoverTrace,
+        rbacGuardDigest: bounded.rbacGuardDigest,
       }
     } catch (err: any) {
-      errors.push(String(err?.message ?? err))
+      const reason = String(err?.message ?? err)
+      failoverTrace.push({
+        attempt: attempts,
+        routeId: route.isLegacy ? null : route.id,
+        routeLabel: route.label,
+        provider: route.provider_key,
+        model: route.model_id,
+        zeroRetention: route.zero_retention,
+        status: 'failed',
+        httpStatus: typeof err?.httpStatus === 'number' ? err.httpStatus : null,
+        reason: reason.slice(0, 240),
+        elapsedMs: Date.now() - hopStarted,
+      })
+      errors.push(reason)
       if (req.signal?.aborted) break
     }
   }
@@ -950,14 +1041,17 @@ export async function omniChat(req: OmniRequest): Promise<OmniResult> {
 
 export async function omniChatStream(req: OmniRequest, onToken: (delta: string) => void): Promise<OmniResult> {
   const { lane, candidates } = preflightOmniRequest(req)
+  const bounded = enforceRbacBoundary(req)
   const errors: string[] = []
+  const failoverTrace: OmniFailoverHop[] = []
   let attempts = 0
 
   for (const route of candidates) {
     attempts++
+    const hopStarted = Date.now()
     const pii = route.zero_retention
-      ? { messages: req.messages, map: new Map<string, string>(), redactedCount: 0 }
-      : scrubMessages(req.messages)
+      ? { messages: bounded.messages, map: new Map<string, string>(), redactedCount: 0 }
+      : scrubMessages(bounded.messages)
 
     let emittedAny = false
     let pending = ''
@@ -1002,7 +1096,7 @@ export async function omniChatStream(req: OmniRequest, onToken: (delta: string) 
       const res = await callRouteOnce(
         route,
         pii.messages,
-        req.tools,
+        bounded.tools,
         {
           maxTokens: req.maxTokens,
           temperature: req.temperature,
@@ -1016,6 +1110,18 @@ export async function omniChatStream(req: OmniRequest, onToken: (delta: string) 
         },
       )
       flushSafe(true)
+      failoverTrace.push({
+        attempt: attempts,
+        routeId: route.isLegacy ? null : route.id,
+        routeLabel: route.label,
+        provider: route.provider_key,
+        model: res.model,
+        zeroRetention: route.zero_retention,
+        status: 'ok',
+        httpStatus: 200,
+        reason: null,
+        elapsedMs: Date.now() - hopStarted,
+      })
       const restored = pii.map.size ? restoreScrubbedPii(res.content, pii.map) : res.content
       const restoredCalls = pii.map.size
         ? res.tool_calls.map(c => ({ ...c, args: restoreValueWithPii(c.args, pii.map) }))
@@ -1033,9 +1139,24 @@ export async function omniChatStream(req: OmniRequest, onToken: (delta: string) 
         piiRedacted: pii.redactedCount,
         attempts,
         lane,
+        failoverTrace,
+        rbacGuardDigest: bounded.rbacGuardDigest,
       }
     } catch (err: any) {
-      errors.push(String(err?.message ?? err))
+      const reason = String(err?.message ?? err)
+      failoverTrace.push({
+        attempt: attempts,
+        routeId: route.isLegacy ? null : route.id,
+        routeLabel: route.label,
+        provider: route.provider_key,
+        model: route.model_id,
+        zeroRetention: route.zero_retention,
+        status: 'failed',
+        httpStatus: typeof err?.httpStatus === 'number' ? err.httpStatus : null,
+        reason: reason.slice(0, 240),
+        elapsedMs: Date.now() - hopStarted,
+      })
+      errors.push(reason)
       if (emittedAny || req.signal?.aborted) break
     }
   }

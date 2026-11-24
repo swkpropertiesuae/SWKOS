@@ -7,7 +7,7 @@ import { sendWhatsApp,ownerNumbers } from '../integrations/whatsapp'
 import { getSetting,setSettings } from '../settings'
 import { attemptLogin,createSession,destroyDeviceSessions,destroyUserSessions,hashPassword,loadUser } from '../auth'
 import { COOKIE } from '../app'
-import { currentQrToken,qrTokenValid,regenerateFixedQr,setQrMode,checkPasswordForCheckin,deviceGate,newChallenge,verifyDeviceProof } from '../domain/attendance-security'
+import { burnQrNonce, checkPasswordForCheckin, currentQrToken, deviceGate, inspectQrToken, newChallenge, qrMode, regenerateFixedQr, setQrMode, verifyDeviceProof, verifyOfficeGeofence } from '../domain/attendance-security'
 import { config } from '../config'
 import { need } from './helpers'
 import { canAccessSwkAdminLogic,canPrintReceptionQr,isAdminSwkUser,isOwnerSwkUser } from '../../shared/swk-staff-access'
@@ -1377,7 +1377,17 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return String(req.ip || '127.0.0.1')
   }
 
-  const officeGps = () => ({ lat: Number(getSetting('office_gps_lat')), lng: Number(getSetting('office_gps_lng')), radius: Number(getSetting('office_gps_radius_m')) || 200 })
+  const officeGps = () => ({
+    name: String(getSetting('office_gps_name') || 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai'),
+    lat: Number(getSetting('office_gps_lat') ?? 25.2131),
+    lng: Number(getSetting('office_gps_lng') ?? 55.2768),
+    radius: Number(getSetting('office_gps_radius_m') ?? 75) || 75,
+    max_accuracy_m: Number(getSetting('gps_max_accuracy_m') ?? 65) || 65,
+    enforce_gps: Boolean(getSetting('office_gps_enforce') ?? true),
+    qr_mode: qrMode(),
+    qr_step_s: Number(getSetting('qr_step_seconds') ?? 20) || 20,
+    require_live_camera: Boolean(getSetting('qr_require_live_camera') ?? true),
+  })
 
   const getWifiCfg = (clientIp?: string) => {
     const ssidRaw = String(getSetting('office_wifi_ssid') || 'XAVIER BUSINESS').trim()
@@ -1389,6 +1399,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const cleanClientIp = String(clientIp || '').replace(/^::ffff:/, '').trim()
     const isLocalIp = !config.isProd && (!cleanClientIp || cleanClientIp === '127.0.0.1' || cleanClientIp.startsWith('127.') || cleanClientIp === '::1' || cleanClientIp.startsWith('192.168.') || cleanClientIp.startsWith('10.'))
     const ipMatchesConfigured = isLocalIp || allowedPublicIps.some(ip => ip.endsWith(':') ? cleanClientIp.startsWith(ip) : cleanClientIp === ip)
+    const gps = officeGps()
     return {
       ssid: allowedSsids[0] || 'XAVIER BUSINESS',
       allowed_ssids: allowedSsids,
@@ -1399,7 +1410,16 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
       detected_client_ip: cleanClientIp || '127.0.0.1',
       ip_matches_office: ipMatchesConfigured,
       office_ip_locked: allowedPublicIps.length > 0,
-      office_gps_set: Number.isFinite(officeGps().lat) && Number.isFinite(officeGps().lng),
+      office_gps_set: Number.isFinite(gps.lat) && Number.isFinite(gps.lng),
+      office_gps_name: gps.name,
+      office_gps_lat: gps.lat,
+      office_gps_lng: gps.lng,
+      office_gps_radius_m: gps.radius,
+      gps_max_accuracy_m: gps.max_accuracy_m,
+      office_gps_enforce: gps.enforce_gps,
+      qr_mode: gps.qr_mode,
+      qr_step_s: gps.qr_step_s,
+      qr_require_live_camera: gps.require_live_camera,
     }
   }
 
@@ -1435,7 +1455,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     if (b.use_current_gps && Number.isFinite(Number(b.gps_lat)) && Number.isFinite(Number(b.gps_lng))) {
       cleanPatch.office_gps_lat = String(Number(b.gps_lat)); cleanPatch.office_gps_lng = String(Number(b.gps_lng))
     }
-    for (const k of ['office_gps_lat', 'office_gps_lng', 'office_gps_radius_m', 'office_wifi_ssid', 'office_wifi_bssid', 'office_wifi_public_ips', 'office_wifi_gateway_ip', 'office_wifi_strict_ip']) {
+    for (const k of ['office_gps_name', 'office_gps_lat', 'office_gps_lng', 'office_gps_radius_m', 'office_gps_enforce', 'gps_max_accuracy_m', 'qr_step_seconds', 'qr_require_live_camera', 'office_wifi_ssid', 'office_wifi_bssid', 'office_wifi_public_ips', 'office_wifi_gateway_ip', 'office_wifi_strict_ip']) {
       if (b[k] !== undefined) cleanPatch[k] = b[k]
     }
     setSettings(cleanPatch)
@@ -1528,13 +1548,12 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   app.get('/api/public/reception-qr/challenge', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req) => ({ challenge: newChallenge(resolveClientIp(req)) }))
 
   /**
-   * Check-in rules, all of which must hold:
-   *  1. the request comes from the office network (its locked public IP),
-   *  2. the code was read live by the in-app camera from the reception screen (encrypted, rotates every 30 s),
-   *  3. the phone proves its identity with its own device key, and that device belongs to this one person,
-   *  4. the person signs in with their own password,
-   *  5. a device checks in only one person per day.
-   * No location or file path exists: only the office network can check in.
+   * Locked-down office check-in rules, all of which must hold:
+   *  1. Request originates from the locked office Wi-Fi public IP,
+   *  2. Short-TTL rotating AES-256-GCM QR token (rotates every 20s, max ~40s TTL, single-use nonce burn per user),
+   *  3. Live browser camera capture attestation (`capture_source === 'live_camera'`) in rotating mode — static screenshots & forwarded links are refused,
+   *  4. Tight GPS radius check around Al Saqr Business Tower (default 75m radius, <= 65m accuracy, impossible-travel spoof detection),
+   *  5. Hardware-bound WebCrypto P-256 device key belonging to one approved person per day.
    */
   const handlePublicQrCheckIn = async (req: any, reply: any) => {
     const b = (req.body ?? {}) as Record<string, any>
@@ -1543,12 +1562,28 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const wifiConfig = getWifiCfg(clientIp)
     if (!wifiConfig.office_ip_locked) throw new HttpError(403, 'Check-in is not set up yet. The Owner or Manager must lock the office network first.')
     if (!wifiConfig.ip_matches_office) throw new HttpError(403, `Check-in works only on the office Wi-Fi (${wifiConfig.ssid}). Your connection (${wifiConfig.detected_client_ip}) is not the office network. Mobile data and other Wi-Fi are refused.`)
-    if (!qrTokenValid(b.qr_payload)) throw new HttpError(400, 'Scan the code on the reception screen with the camera in this page. The code must be the current one from the reception screen.')
+    const qrCheck = inspectQrToken(b.qr_payload)
+    if (!qrCheck.valid) {
+      throw new HttpError(400, qrCheck.reason || 'Scan the code on the reception screen with the camera in this page. The code must be the current one from the reception screen.')
+    }
+    const captureSource = String(b.capture_source || '').trim().toLowerCase()
+    const requireLiveCam = Boolean(getSetting('qr_require_live_camera') ?? true)
+    if (qrCheck.mode === 'rotating' && requireLiveCam) {
+      if (captureSource !== 'live_camera') {
+        throw new HttpError(403, 'Static screenshots and forwarded QR links are blocked. Scan the live rotating reception display directly using your browser camera.')
+      }
+      if (b.captured_at) {
+        const capTs = Date.parse(String(b.captured_at))
+        if (!Number.isFinite(capTs) || Math.abs(Date.now() - capTs) > 45_000) {
+          throw new HttpError(400, 'Camera capture expired. Point your live camera at the rotating reception screen again.')
+        }
+      }
+    }
     const deviceId = verifyDeviceProof({ challenge: String(b.challenge || ''), payload: String(b.qr_payload), pub: b.device_pub, sig: String(b.device_sig || '') }, clientIp)
 
     // Already signed in on this phone: check in with the session, no password needed.
     const sessionUser = req.sessionUserForCheckin as any
-    if (sessionUser) return finishCheckIn(sessionUser, b, clientIp, ua, wifiConfig, deviceId)
+    if (sessionUser) return finishCheckIn(sessionUser, b, clientIp, ua, wifiConfig, deviceId, qrCheck, captureSource || 'live_camera')
     const loginEmail = String(b.email || '').trim().toLowerCase()
     const loginPassword = String(b.password || '')
     if (!loginEmail || !loginPassword) throw new HttpError(400, 'Enter your company email and password.')
@@ -1557,7 +1592,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const loginRes = attemptLogin(loginEmail, loginPassword, b.totp, clientIp, ua)
     if ('needsTotp' in loginRes && loginRes.needsTotp) return { needsTotp: true }
     const authUser = (loginRes as any).user
-    const out = await finishCheckIn(authUser, b, clientIp, ua, wifiConfig, deviceId)
+    const out = await finishCheckIn(authUser, b, clientIp, ua, wifiConfig, deviceId, qrCheck, captureSource || 'live_camera')
     // Scanning signs the person in as well, so they continue straight into SWK OS on this phone.
     const sess = createSession(authUser.id, clientIp, ua)
     const secure = config.cookieSecure ?? (config.isProd && (req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https'))
@@ -1565,7 +1600,16 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return { ...out, signed_in: true }
   }
 
-  const finishCheckIn = async (authUser: any, b: Record<string, any>, clientIp: string, ua: string, wifiConfig: any, deviceId: string) => {
+  const finishCheckIn = async (
+    authUser: any,
+    b: Record<string, any>,
+    clientIp: string,
+    ua: string,
+    wifiConfig: any,
+    deviceId: string,
+    qrCheck: ReturnType<typeof inspectQrToken>,
+    captureSource: string,
+  ) => {
     const device = deviceGate(authUser.id, deviceId, String(b.device_name || ua), canPrintReceptionQr(authUser))
     if (device === 'Pending') {
       for (const em of ['shabib@swk.properties', 'haseeb@swk.properties']) { const u = q.get<any>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, em); if (u) notify(u.id, `New device waiting: ${authUser.name}`, 'Approve it on the reception check-in page under Attendance control', '/reception-qr', 'approval', `dev-${authUser.id}-${deviceId.slice(0, 12)}`) }
@@ -1574,7 +1618,17 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const reuse = q.get<any>(`SELECT id FROM attendance_events WHERE device_id = ? AND work_date = ? AND user_id <> ? AND deleted_at IS NULL LIMIT 1`, deviceId, todayStr(), authUser.id)
     if (reuse) throw new HttpError(403, 'This device has already checked in another person today. One device, one person.')
 
+    // Enforce tight Al Saqr Business Tower GPS perimeter before committing attendance
+    const enforceGps = Boolean(getSetting('office_gps_enforce') ?? true)
+    const hasGpsInput = b.gps_lat !== undefined && b.gps_lat !== null && b.gps_lng !== undefined && b.gps_lng !== null
+    const gpsVerified = enforceGps || hasGpsInput
+      ? verifyOfficeGeofence(authUser.id, { lat: b.gps_lat, lng: b.gps_lng, accuracy_m: b.gps_accuracy_m })
+      : null
+
     return tx(() => {
+      if (qrCheck.mode === 'rotating' && qrCheck.nonceHash && qrCheck.windowId !== null) {
+        burnQrNonce(qrCheck.nonceHash, authUser.id, qrCheck.windowId)
+      }
       let emp = q.get<any>(`SELECT * FROM employees WHERE (user_id = ? OR lower(email) = lower(?)) AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`, authUser.id, authUser.email)
       if (!emp) {
         emp = createRecord(getDef('employees'), { name: authUser.name || authUser.email.split('@')[0], user_id: authUser.id, email: authUser.email, designation: 'Staff', status: 'Active', branch_id: authUser.branch_id ?? 1 }, SYSTEM_CTX)
@@ -1592,7 +1646,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
             shift_name: shiftInfo.shiftName,
             grace_minutes: 5,
             terminal_type: 'Dynamic QR',
-            qr_token_ref: 'encrypted-rotating',
+            qr_token_ref: qrCheck.mode === 'rotating' ? `rotating-${wifiConfig.qr_step_s}s-${captureSource}` : 'fixed-office-qr',
             check_in_at: now,
             duty_status: shiftInfo.isLate ? 'Late Arrival' : 'On Duty',
             late_minutes: shiftInfo.lateMinutes,
@@ -1601,7 +1655,11 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
             checkin_method: 'Office Wi-Fi',
             device_id: deviceId,
             client_ip: wifiConfig.detected_client_ip,
-            notes: `Verified on office network ${wifiConfig.ssid} · IP ${wifiConfig.detected_client_ip} · device ${deviceId.slice(0, 8)}`,
+            gps_lat: gpsVerified ? String(gpsVerified.lat) : undefined,
+            gps_lng: gpsVerified ? String(gpsVerified.lng) : undefined,
+            gps_accuracy_m: gpsVerified ? gpsVerified.accuracy_m : undefined,
+            security_flags: gpsVerified?.flags.length ? gpsVerified.flags.join('; ') : undefined,
+            notes: `Verified on ${wifiConfig.ssid} · IP ${wifiConfig.detected_client_ip} · ${qrCheck.mode} QR (${captureSource})${gpsVerified ? ` · GPS ${gpsVerified.distance_m}m from ${gpsVerified.office_name} (±${gpsVerified.accuracy_m}m)` : ''} · device ${deviceId.slice(0, 8)}`,
           }, SYSTEM_CTX)
 
       if (!q.get(`SELECT 1 AS x FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL`, emp.id, todayStr())) {
@@ -1616,6 +1674,13 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
           office_network_verified: true,
           office_wifi_ssid: wifiConfig.ssid,
           client_ip: wifiConfig.detected_client_ip,
+          qr_mode: qrCheck.mode,
+          capture_source: captureSource,
+          gps_verified: Boolean(gpsVerified),
+          office_name: gpsVerified?.office_name ?? wifiConfig.office_gps_name,
+          distance_m: gpsVerified?.distance_m ?? null,
+          radius_m: gpsVerified?.radius_m ?? wifiConfig.office_gps_radius_m,
+          gps_accuracy_m: gpsVerified?.accuracy_m ?? null,
           timestamp_gst: existingToday?.check_in_at || now,
           shift_name: eventRecord.shift_name,
           grace_cutoff_gst: '10:05',

@@ -28,16 +28,27 @@ export interface SipIceServer {
 export interface SipMyConfigResponse {
   configured: boolean
   reason?: string
+  auth_mode?: 'ephemeral_ws_token'
   ws_url?: string
+  ws_url_tokenized?: string
+  ws_session_token?: string
+  ws_token_jti?: string
+  ws_token_expires_at?: string
+  ws_token_ttl_s?: number
   domain?: string
   outbound_proxy?: string
   ice_servers?: SipIceServer[]
+  ice_transport_policy?: 'all' | 'relay'
+  turn_configured?: boolean
+  turn_region?: string
+  turn_expires_at?: string | null
+  turn_ttl_s?: number
   caller_id_mode?: string
   has_vault_prefix?: boolean
   extension?: {
     extension_no: string
     sip_username: string
-    sip_password: string
+    has_static_password?: boolean
     display_name: string
     allow_direct_dial: boolean
   }
@@ -71,6 +82,16 @@ export interface SipClientSnapshot {
   configured: boolean
   reason: string
   registration: SipRegistrationState
+  authMode: 'ephemeral_ws_token' | null
+  wsTokenExpiresAt: string | null
+  turnConfigured: boolean
+  turnRegion: string | null
+  turnExpiresAt: string | null
+  iceTransportPolicy: 'all' | 'relay'
+  iceConnectionState: string
+  networkType: string
+  iceRestartCount: number
+  lastHandoffAt: string | null
   extensionNo: string | null
   displayName: string | null
   domain: string | null
@@ -115,6 +136,16 @@ class SwkSipClient {
     configured: false,
     reason: 'SIP softphone has not been initialized yet.',
     registration: 'unconfigured',
+    authMode: null,
+    wsTokenExpiresAt: null,
+    turnConfigured: false,
+    turnRegion: null,
+    turnExpiresAt: null,
+    iceTransportPolicy: 'all',
+    iceConnectionState: 'new',
+    networkType: typeof navigator !== 'undefined' && (navigator as any).connection?.effectiveType ? String((navigator as any).connection.effectiveType) : 'online',
+    iceRestartCount: 0,
+    lastHandoffAt: null,
     extensionNo: null,
     displayName: null,
     domain: null,
@@ -145,6 +176,12 @@ class SwkSipClient {
   private wakeReconnectTimer: number | null = null
   private configCache: SipMyConfigResponse | null = null
   private registeredUserId: number | null = null
+  private tokenRefreshTimer: number | null = null
+  private pendingPostCallRefresh = false
+  private lastIceRestartMs = 0
+  private iceRestartInFlight = false
+  private networkListenersBound = false
+  private currentWsTokenJti: string | null = null
 
   getSnapshot = (): SipClientSnapshot => this.snapshot
 
@@ -242,6 +279,170 @@ class SwkSipClient {
     syncStream()
     sdh.remoteMediaStream?.addEventListener('addtrack', syncStream)
     sdh.peerConnection?.addEventListener('track', syncStream)
+    this.bindPeerConnectionRecovery(session, sdh.peerConnection)
+  }
+
+  private bindPeerConnectionRecovery(session: Session, pc: RTCPeerConnection | undefined) {
+    if (!pc || (pc as any).__swkIceBound) return
+    ;(pc as any).__swkIceBound = true
+    const updateState = () => {
+      const st = pc.iceConnectionState || 'new'
+      this.emit({ iceConnectionState: st })
+      if (st === 'connected' || st === 'completed') {
+        this.attachRemoteMedia(session)
+      } else if (st === 'failed' || st === 'disconnected') {
+        if (this.activeSession === session && session.state === SessionState.Established) {
+          const delay = st === 'failed' ? 150 : 1800
+          if (typeof window !== 'undefined') {
+            window.setTimeout(() => {
+              if (this.activeSession === session && (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed')) {
+                void this.recoverCallAudio(`ice-${pc.iceConnectionState}`)
+              }
+            }, delay)
+          }
+        }
+      }
+    }
+    pc.addEventListener('iceconnectionstatechange', updateState)
+    updateState()
+  }
+
+  private detectNetworkLabel(): string {
+    if (typeof navigator === 'undefined') return 'online'
+    if (navigator.onLine === false) return 'offline'
+    const conn = (navigator as any).connection
+    if (conn) {
+      const parts = [conn.type, conn.effectiveType].filter(Boolean)
+      if (parts.length) return parts.join(' / ')
+    }
+    return 'online'
+  }
+
+  private bindNetworkHandoffListeners() {
+    if (this.networkListenersBound || typeof window === 'undefined') return
+    this.networkListenersBound = true
+    const onNetworkShift = () => {
+      const label = this.detectNetworkLabel()
+      this.emit({ networkType: label })
+      if (navigator.onLine === false) return
+      if (this.activeSession && this.activeSession.state === SessionState.Established) {
+        void this.recoverCallAudio(`network-shift:${label}`)
+      } else if (this.snapshot.configured && this.snapshot.registration !== 'registered') {
+        void this.init(true)
+      }
+    }
+    window.addEventListener('online', onNetworkShift)
+    const conn = (navigator as any).connection
+    if (conn && typeof conn.addEventListener === 'function') {
+      conn.addEventListener('change', onNetworkShift)
+    }
+  }
+
+  private clearTokenRefreshTimer() {
+    if (this.tokenRefreshTimer !== null && typeof window !== 'undefined') {
+      window.clearTimeout(this.tokenRefreshTimer)
+      this.tokenRefreshTimer = null
+    }
+  }
+
+  private scheduleTokenRefresh(cfg: SipMyConfigResponse) {
+    this.clearTokenRefreshTimer()
+    if (typeof window === 'undefined' || !cfg.configured) return
+    const wsTtl = Number(cfg.ws_token_ttl_s || 900)
+    const turnTtl = Number(cfg.turn_ttl_s || 3600)
+    const refreshSec = Math.max(60, Math.floor(Math.min(wsTtl, turnTtl) * 0.75))
+    this.tokenRefreshTimer = window.setTimeout(() => {
+      void this.refreshSessionCredentials()
+    }, refreshSec * 1000)
+  }
+
+  private async refreshSessionCredentials(): Promise<SipMyConfigResponse | null> {
+    try {
+      const fresh = await post<SipMyConfigResponse>('/api/sip/session-token', {})
+      if (!fresh?.configured) return null
+      this.configCache = fresh
+      this.currentWsTokenJti = fresh.ws_token_jti ?? null
+      this.emit({
+        authMode: fresh.auth_mode ?? 'ephemeral_ws_token',
+        wsTokenExpiresAt: fresh.ws_token_expires_at ?? null,
+        turnConfigured: Boolean(fresh.turn_configured),
+        turnRegion: fresh.turn_region ?? null,
+        turnExpiresAt: fresh.turn_expires_at ?? null,
+        iceTransportPolicy: fresh.ice_transport_policy ?? 'all',
+      })
+      this.scheduleTokenRefresh(fresh)
+      if (this.activeSession) {
+        // Apply fresh regional coturn TURN credentials to live PeerConnection without dropping call
+        const sdh = this.activeSession.sessionDescriptionHandler as Web.SessionDescriptionHandler | undefined
+        const pc = sdh?.peerConnection
+        if (pc && typeof pc.setConfiguration === 'function') {
+          try {
+            pc.setConfiguration({
+              iceServers: (fresh.ice_servers || []) as RTCIceServer[],
+              iceTransportPolicy: fresh.ice_transport_policy || 'all',
+            })
+          } catch {
+            /* browser ignored live configuration update */
+          }
+        }
+        this.pendingPostCallRefresh = true
+      } else {
+        await this.init(true)
+      }
+      return fresh
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Triggers a WebRTC ICE restart with freshly minted regional coturn TURN credentials
+   * so active calls recover bidirectional audio cleanly across office Wi-Fi <-> UAE 5G handoffs.
+   */
+  async recoverCallAudio(trigger = 'manual'): Promise<boolean> {
+    const session = this.activeSession
+    if (!session || session.state !== SessionState.Established) return false
+    const now = Date.now()
+    if (this.iceRestartInFlight || now - this.lastIceRestartMs < 3000) return false
+    this.iceRestartInFlight = true
+    this.lastIceRestartMs = now
+    try {
+      const fresh = await this.refreshSessionCredentials()
+      const sdh = session.sessionDescriptionHandler as Web.SessionDescriptionHandler | undefined
+      const pc = sdh?.peerConnection
+      if (pc && fresh && typeof pc.setConfiguration === 'function') {
+        try {
+          pc.setConfiguration({
+            iceServers: (fresh.ice_servers || []) as RTCIceServer[],
+            iceTransportPolicy: fresh.ice_transport_policy || 'all',
+          })
+        } catch {
+          /* ignore */
+        }
+      }
+      await session.invite({
+        sessionDescriptionHandlerOptions: {
+          offerOptions: { iceRestart: true },
+          constraints: {
+            audio: this.getAudioConstraints(),
+            video: false,
+          },
+        } as Web.SessionDescriptionHandlerOptions,
+      })
+      this.attachRemoteMedia(session)
+      this.emit({
+        iceRestartCount: this.snapshot.iceRestartCount + 1,
+        lastHandoffAt: new Date().toISOString(),
+        lastError: null,
+        networkType: `${this.detectNetworkLabel()} (${trigger})`,
+      })
+      return true
+    } catch (e: any) {
+      this.emit({ lastError: e?.message || 'ICE audio recovery failed' })
+      return false
+    } finally {
+      this.iceRestartInFlight = false
+    }
   }
 
   private clearCallMedia() {
@@ -432,12 +633,17 @@ class SwkSipClient {
     }
 
     this.configCache = cfg
-    if (!cfg.configured || !cfg.ws_url || !cfg.domain || !cfg.extension) {
+    if (!cfg.configured || !cfg.ws_url || !cfg.domain || !cfg.extension || !cfg.ws_session_token) {
       await this.teardownAgent()
       this.emit({
         configured: false,
         reason: cfg.reason || 'SIP trunk or staff extension is not configured yet.',
         registration: 'unconfigured',
+        authMode: null,
+        wsTokenExpiresAt: null,
+        turnConfigured: false,
+        turnRegion: null,
+        turnExpiresAt: null,
         extensionNo: null,
         displayName: null,
         domain: null,
@@ -449,6 +655,8 @@ class SwkSipClient {
     }
 
     await this.teardownAgent()
+    this.bindNetworkHandoffListeners()
+    this.currentWsTokenJti = cfg.ws_token_jti ?? null
 
     const uri = UserAgent.makeURI(`sip:${cfg.extension.sip_username}@${cfg.domain}`)
     if (!uri) {
@@ -465,6 +673,13 @@ class SwkSipClient {
       configured: true,
       reason: '',
       registration: 'connecting',
+      authMode: cfg.auth_mode ?? 'ephemeral_ws_token',
+      wsTokenExpiresAt: cfg.ws_token_expires_at ?? null,
+      turnConfigured: Boolean(cfg.turn_configured),
+      turnRegion: cfg.turn_region ?? null,
+      turnExpiresAt: cfg.turn_expires_at ?? null,
+      iceTransportPolicy: cfg.ice_transport_policy ?? 'all',
+      networkType: this.detectNetworkLabel(),
       extensionNo: cfg.extension.extension_no,
       displayName: cfg.extension.display_name,
       domain: cfg.domain,
@@ -476,18 +691,23 @@ class SwkSipClient {
     const ua = new UserAgent({
       uri,
       transportOptions: {
-        server: cfg.ws_url,
+        server: cfg.ws_url_tokenized || cfg.ws_url,
+        keepAliveInterval: 20,
       },
       authorizationUsername: cfg.extension.sip_username,
-      authorizationPassword: cfg.extension.sip_password,
+      authorizationPassword: cfg.ws_session_token,
       displayName: cfg.extension.display_name,
       preloadedRouteSet: cfg.outbound_proxy ? [cfg.outbound_proxy] : [],
       sipExtensionReplaces: SIPExtension.Supported,
       logLevel: 'warn',
       sessionDescriptionHandlerFactoryOptions: {
-        iceGatheringTimeout: 2000,
+        iceGatheringTimeout: 2500,
         peerConnectionConfiguration: {
           iceServers: (cfg.ice_servers || []) as RTCIceServer[],
+          iceTransportPolicy: cfg.ice_transport_policy || 'all',
+          iceCandidatePoolSize: 4,
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require',
         },
         constraints: {
           audio: this.getAudioConstraints(),
@@ -504,6 +724,13 @@ class SwkSipClient {
               registration: err ? 'error' : 'disconnected',
               lastError: err ? err.message : this.snapshot.lastError,
             })
+            if (err && typeof navigator !== 'undefined' && navigator.onLine !== false && !this.activeSession) {
+              window.setTimeout(() => {
+                if (this.ua === ua && this.snapshot.registration !== 'registered') {
+                  void this.init(true)
+                }
+              }, 2500)
+            }
           }
         },
       },
@@ -516,7 +743,9 @@ class SwkSipClient {
       }
     })
 
-    const registerer = new Registerer(ua)
+    const registerer = new Registerer(ua, {
+      extraHeaders: [`X-SWK-WS-Token: ${cfg.ws_session_token}`],
+    })
     registerer.stateChange.addListener((st) => {
       if (this.registerer !== registerer) return
       if (st === RegistererState.Registered) {
@@ -531,6 +760,7 @@ class SwkSipClient {
     this.ua = ua
     this.registerer = registerer
     if (userId !== null) this.registeredUserId = userId
+    this.scheduleTokenRefresh(cfg)
 
     try {
       await ua.start()
@@ -586,12 +816,18 @@ class SwkSipClient {
   }
 
   async disconnect(): Promise<void> {
+    this.clearTokenRefreshTimer()
     this.wakeRefCount = 0
     this.stopWakeStream()
+    const jti = this.currentWsTokenJti
+    this.currentWsTokenJti = null
+    if (jti) {
+      void post('/api/sip/session-token/revoke', { jti }).catch(() => {})
+    }
     this.registeredUserId = null
     this.configCache = null
     await this.teardownAgent()
-    this.emit({ registration: this.snapshot.configured ? 'disconnected' : 'unconfigured' })
+    this.emit({ registration: this.snapshot.configured ? 'disconnected' : 'unconfigured', wsTokenExpiresAt: null })
   }
 
   connectWakeStream(): () => void {
@@ -778,7 +1014,11 @@ class SwkSipClient {
         }
         this.clearCallMedia()
         this.activeSession = null
-        this.emit({ activeCall: null, consultCall: null })
+        this.emit({ activeCall: null, consultCall: null, iceConnectionState: 'closed' })
+        if (this.pendingPostCallRefresh) {
+          this.pendingPostCallRefresh = false
+          void this.init(true)
+        }
       }
     })
   }

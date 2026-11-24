@@ -604,6 +604,29 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
     CREATE INDEX IF NOT EXISTS ix_seal_app_src ON document_seal_approvals(source_type, source_id, status);
     CREATE INDEX IF NOT EXISTS ix_seal_app_status ON document_seal_approvals(status, created_at);
   ` },
+  { id: '013_hardened_sip_and_qr_security', sql: `
+    CREATE TABLE IF NOT EXISTS sip_ws_sessions (
+      jti TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      extension_no TEXT NOT NULL,
+      sip_username TEXT NOT NULL,
+      session_hash TEXT,
+      issued_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_sip_ws_user ON sip_ws_sessions(user_id, expires_at);
+    CREATE INDEX IF NOT EXISTS ix_sip_ws_sess ON sip_ws_sessions(session_hash);
+
+    CREATE TABLE IF NOT EXISTS qr_used_nonces (
+      nonce_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      window_id INTEGER NOT NULL,
+      used_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_qr_nonce_exp ON qr_used_nonces(expires_at);
+  ` },
 ]
 
 /** Translate SQLite-dialect DDL to PostgreSQL-compatible DDL. */

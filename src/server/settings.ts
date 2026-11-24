@@ -53,23 +53,34 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   // --- Hard-Masked Agent Bridge Calling (Zero Phone History Exposure)
   masked_call_provider: 'none', masked_call_caller_id: '', masked_call_twilio_sid: '', masked_call_twilio_token: '', masked_call_webhook_url: '', masked_call_webhook_secret: '', masked_call_record: true,
   // --- AI
-  ai_enabled: false, ai_provider: 'groq', ai_base_url: '', ai_api_key: '', ai_model: '', ai_fallback_provider: '', ai_fallback_base_url: '', ai_fallback_api_key: '', ai_fallback_model: '', ai_fallback2_provider: '', ai_fallback2_base_url: '', ai_fallback2_api_key: '', ai_fallback2_model: '', ai_cloudflare_account_id: '', ai_company_context: '',
+  ai_enabled: false, ai_provider: 'groq', ai_base_url: '', ai_api_key: '', ai_model: '', ai_fallback_provider: '', ai_fallback_base_url: '', ai_fallback_api_key: '', ai_fallback_model: '', ai_fallback2_provider: '', ai_fallback2_base_url: '', ai_fallback2_api_key: '', ai_fallback2_model: '', ai_cloudflare_account_id: '', ai_cloudflare_gateway_token: '', ai_company_context: '',
   ai_allow_nonvault_vision_free: false, ai_staff_daily_req_limit: 150, ai_staff_rpm_limit: 10,
   // --- Web Search (Utilities Unified Search)
   web_search_provider: 'duckduckgo', web_search_api_key: '', web_search_searxng_url: '',
-  // --- SIP / VoIP Softphone
+  // --- SIP / VoIP Softphone (Short-Lived WS Session Tokens + Regional coturn TURN)
   sip_enabled: false, sip_ws_url: '', sip_domain: '', sip_outbound_proxy: '', sip_ice_servers: '[]', sip_caller_id_mode: 'company_main', sip_vault_bridge_prefix: '', sip_webhook_secret: '',
+  sip_ws_token_secret: '', sip_ws_token_ttl_s: 900,
+  sip_turn_urls: '', sip_turn_secret: '', sip_turn_ttl_s: 3600, sip_turn_region: 'UAE / Dubai (me-central-1)', sip_ice_transport_policy: 'all',
   // --- Push Notifications (Web Push VAPID & FCM)
   vapid_public_key: '', vapid_private_key: '', fcm_service_account_json: '', push_hide_preview_global: false,
-  // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security
+  // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security (Al Saqr Business Tower HQ)
   office_wifi_ssid: 'XAVIER BUSINESS',
   office_wifi_bssid: '',
   office_wifi_public_ips: '',
   office_wifi_gateway_ip: '192.168.0.1',
   office_wifi_strict_ip: true,
-  office_gps_lat: '25.2532',
-  office_gps_lng: '55.2972',
-  office_gps_radius_m: 200, qr_token_secret: '', qr_mode: 'fixed', qr_fixed_version: 1, device_binding_enforce: true, gps_max_accuracy_m: 150,
+  office_gps_name: 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai',
+  office_gps_lat: '25.2131',
+  office_gps_lng: '55.2768',
+  office_gps_radius_m: 75,
+  office_gps_enforce: true,
+  qr_token_secret: '',
+  qr_mode: 'rotating',
+  qr_step_seconds: 20,
+  qr_require_live_camera: true,
+  qr_fixed_version: 1,
+  device_binding_enforce: true,
+  gps_max_accuracy_m: 65,
   mobile_require_device_approval: false, gps_retention_days: 90, field_duty_auto_stop_hour: 21,
   // --- tracking
   tracking_provider: 'none', tracking_api_key: '', tracking_webhook_secret: '',
@@ -89,7 +100,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'vapid_private_key', 'fcm_service_account_json'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {

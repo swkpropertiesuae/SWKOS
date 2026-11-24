@@ -66,12 +66,18 @@ export function destroySessionByHash(hash: string) {
   for (const [k, v] of streamTickets) {
     if (v.sessionHash === hash) streamTickets.delete(k)
   }
+  try {
+    q.run(`UPDATE sip_ws_sessions SET revoked_at = ? WHERE session_hash = ? AND revoked_at IS NULL`, nowIso(), hash)
+  } catch { /* table may not exist before first migration */ }
   q.run(`DELETE FROM sessions WHERE id = ?`, hash)
 }
 export function destroyUserSessions(userId: number, exceptHash?: string) {
   for (const [k, v] of streamTickets) {
     if (v.userId === userId) streamTickets.delete(k)
   }
+  try {
+    q.run(`UPDATE sip_ws_sessions SET revoked_at = ? WHERE user_id = ? AND COALESCE(session_hash, '') <> ? AND revoked_at IS NULL`, nowIso(), userId, exceptHash ?? '')
+  } catch { /* ignore */ }
   q.run(`DELETE FROM sessions WHERE user_id = ? AND id <> ?`, userId, exceptHash ?? '')
 }
 
@@ -91,6 +97,14 @@ export function destroyDeviceSessions(deviceId: string): number {
   for (const [k, v] of streamTickets) {
     if (v.deviceId === clean) streamTickets.delete(k)
   }
+  try {
+    q.run(
+      `UPDATE sip_ws_sessions SET revoked_at = ?
+       WHERE revoked_at IS NULL AND session_hash IN (SELECT id FROM sessions WHERE device_id = ?)`,
+      nowIso(),
+      clean,
+    )
+  } catch { /* ignore */ }
   const res = q.run(`DELETE FROM sessions WHERE device_id = ?`, clean)
   return Number(res?.changes ?? 0)
 }

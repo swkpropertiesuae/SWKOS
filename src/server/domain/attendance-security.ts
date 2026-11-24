@@ -4,9 +4,17 @@ import { HttpError,nowIso } from '../util'
 import { getSetting,setSettings } from '../settings'
 import { verifyPassword } from '../auth'
 
-// ---------------------------------------------------------------- encrypted, rotating reception QR payload
-const STEP_MS = 30_000
-const VALID_STEPS = 3 // current 30 s window plus the two before it: about 90 s to scan and sign in
+// ---------------------------------------------------------------- encrypted, short-TTL rotating reception QR payload
+const DEFAULT_STEP_S = 20 // rotates every 20 seconds by default
+const VALID_STEPS = 2 // current 20s window + 1 previous grace window (~40s max TTL) so shared screenshots expire immediately
+
+function stepSeconds(): number {
+  const n = Number(getSetting('qr_step_seconds') ?? DEFAULT_STEP_S)
+  if (!Number.isFinite(n)) return DEFAULT_STEP_S
+  return Math.max(15, Math.min(30, Math.round(n)))
+}
+const stepMs = () => stepSeconds() * 1000
+
 function secret(): string {
   let s = String(getSetting('qr_token_secret') || '')
   if (!s) { s = crypto.randomBytes(32).toString('hex'); setSettings({ qr_token_secret: s }) }
@@ -14,34 +22,107 @@ function secret(): string {
 }
 const key = () => crypto.createHash('sha256').update('swk-qr-v1:' + secret()).digest()
 const b64u = (b: Buffer) => b.toString('base64url')
-/** Fixed mode (default): one code that never changes until the Owner regenerates it, so it can be printed and stuck on the wall. Rotating mode: an encrypted code that changes every 30 s. */
-const qrMode = () => (String(getSetting('qr_mode') || 'fixed') === 'rotating' ? 'rotating' : 'fixed')
+/** Rotating mode (default): short-TTL AES-256-GCM encrypted code that rotates every 20s. Fixed mode: only when explicitly enabled by Owner/Manager. */
+export const qrMode = (): 'rotating' | 'fixed' => (String(getSetting('qr_mode') || 'rotating') === 'fixed' ? 'fixed' : 'rotating')
 const fixedToken = () => 'SWK2.' + crypto.createHmac('sha256', key()).update('fixed:' + (Number(getSetting('qr_fixed_version')) || 1)).digest('base64url')
 /** Makes every printed fixed code useless and returns the new one (use it if a photo of the code leaks). */
 export function regenerateFixedQr() { setSettings({ qr_fixed_version: (Number(getSetting('qr_fixed_version')) || 1) + 1 }); return fixedToken() }
-export function setQrMode(mode: string) { setSettings({ qr_mode: mode === 'rotating' ? 'rotating' : 'fixed' }) }
-/** The rotating code is AES-256-GCM encrypted, so it looks like random text and cannot be read, edited or made up. It is not a link: only the in-app camera can use it. */
+export function setQrMode(mode: string) { setSettings({ qr_mode: mode === 'fixed' ? 'fixed' : 'rotating' }) }
+/** The rotating code is AES-256-GCM encrypted, so it looks like random text and cannot be read, edited or made up. */
 export function currentQrToken(now = Date.now()) {
-  if (qrMode() === 'fixed') return { token: fixedToken(), expires_in: 600, step_s: 600, mode: 'fixed' as const }
-  const w = Math.floor(now / STEP_MS), iv = crypto.randomBytes(12)
-  const c = crypto.createCipheriv('aes-256-gcm', key(), iv)
-  const enc = Buffer.concat([c.update(JSON.stringify({ w, n: crypto.randomBytes(6).toString('hex') })), c.final()])
-  return { token: 'SWK1.' + b64u(Buffer.concat([iv, c.getAuthTag(), enc])), expires_in: Math.ceil(((w + 1) * STEP_MS - now) / 1000), step_s: STEP_MS / 1000, mode: 'rotating' as const }
-}
-export function qrTokenValid(token: unknown, now = Date.now()): boolean {
-  const t = String(token ?? '')
+  const officeName = String(getSetting('office_gps_name') || 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai')
+  const radiusM = Number(getSetting('office_gps_radius_m') ?? 75) || 75
+  const requireLiveCamera = Boolean(getSetting('qr_require_live_camera') ?? true)
+  const enforceGps = Boolean(getSetting('office_gps_enforce') ?? true)
   if (qrMode() === 'fixed') {
+    return {
+      token: fixedToken(),
+      expires_in: 600,
+      step_s: 600,
+      max_ttl_s: 600,
+      mode: 'fixed' as const,
+      office_name: officeName,
+      office_gps_radius_m: radiusM,
+      enforce_gps: enforceGps,
+      require_live_camera: false,
+    }
+  }
+  const sMs = stepMs()
+  const sSec = Math.round(sMs / 1000)
+  const w = Math.floor(now / sMs), iv = crypto.randomBytes(12)
+  const c = crypto.createCipheriv('aes-256-gcm', key(), iv)
+  const enc = Buffer.concat([c.update(JSON.stringify({ w, n: crypto.randomBytes(8).toString('hex') })), c.final()])
+  return {
+    token: 'SWK1.' + b64u(Buffer.concat([iv, c.getAuthTag(), enc])),
+    expires_in: Math.max(1, Math.ceil(((w + 1) * sMs - now) / 1000)),
+    step_s: sSec,
+    max_ttl_s: sSec * VALID_STEPS,
+    mode: 'rotating' as const,
+    office_name: officeName,
+    office_gps_radius_m: radiusM,
+    enforce_gps: enforceGps,
+    require_live_camera: requireLiveCamera,
+  }
+}
+
+export interface QrTokenInspection {
+  valid: boolean
+  mode: 'rotating' | 'fixed'
+  windowId: number | null
+  nonceHash: string | null
+  reason?: string
+}
+
+export function inspectQrToken(token: unknown, now = Date.now()): QrTokenInspection {
+  const t = String(token ?? '').trim()
+  const mode = qrMode()
+  if (mode === 'fixed') {
     const want = Buffer.from(fixedToken()), got = Buffer.from(t)
-    return got.length === want.length && crypto.timingSafeEqual(got, want)
+    const ok = got.length === want.length && crypto.timingSafeEqual(got, want)
+    return { valid: ok, mode: 'fixed', windowId: null, nonceHash: ok ? crypto.createHash('sha256').update(t).digest('hex') : null, reason: ok ? undefined : 'Invalid or outdated fixed reception QR code.' }
   }
   const m = /^SWK1\.([A-Za-z0-9_-]{40,200})$/.exec(t)
-  if (!m) return false
+  if (!m) return { valid: false, mode: 'rotating', windowId: null, nonceHash: null, reason: 'Invalid reception QR payload format.' }
   try {
     const raw = Buffer.from(m[1], 'base64url')
     const d = crypto.createDecipheriv('aes-256-gcm', key(), raw.subarray(0, 12)); d.setAuthTag(raw.subarray(12, 28))
-    const w = Number(JSON.parse(Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString()).w), cur = Math.floor(now / STEP_MS)
-    return Number.isInteger(w) && cur - w >= 0 && cur - w < VALID_STEPS
-  } catch { return false }
+    const parsed = JSON.parse(Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString())
+    const w = Number(parsed.w), cur = Math.floor(now / stepMs())
+    if (!Number.isInteger(w) || cur - w < 0 || cur - w >= VALID_STEPS) {
+      return { valid: false, mode: 'rotating', windowId: Number.isInteger(w) ? w : null, nonceHash: null, reason: 'This rotating reception QR code has expired. Scan the live screen again.' }
+    }
+    const nonceHash = crypto.createHash('sha256').update(t).digest('hex')
+    return { valid: true, mode: 'rotating', windowId: w, nonceHash }
+  } catch {
+    return { valid: false, mode: 'rotating', windowId: null, nonceHash: null, reason: 'Could not decrypt rotating reception QR code.' }
+  }
+}
+
+export function qrTokenValid(token: unknown, now = Date.now()): boolean {
+  return inspectQrToken(token, now).valid
+}
+
+/**
+ * Burns a rotating QR token nonce for a user so captured screenshots or replayed QR frames
+ * cannot be submitted twice even within the short 20-40s TTL window.
+ */
+export function burnQrNonce(nonceHash: string, userId: number, windowId: number): void {
+  const keyHash = crypto.createHash('sha256').update(`${nonceHash}:${userId}`).digest('hex')
+  const now = nowIso()
+  const expiresAt = new Date(Date.now() + stepMs() * (VALID_STEPS + 2)).toISOString()
+  q.run(`DELETE FROM qr_used_nonces WHERE expires_at < ?`, now)
+  const existing = q.get<{ nonce_hash: string }>(`SELECT nonce_hash FROM qr_used_nonces WHERE nonce_hash = ?`, keyHash)
+  if (existing) {
+    throw new HttpError(400, 'This rotating QR code has already been used. Scan the fresh code on the reception monitor with your live camera.')
+  }
+  q.run(
+    `INSERT INTO qr_used_nonces (nonce_hash, user_id, window_id, used_at, expires_at) VALUES (?,?,?,?,?)`,
+    keyHash,
+    userId,
+    windowId,
+    now,
+    expiresAt,
+  )
 }
 
 // ---------------------------------------------------------------- device key: a signature proves this is the same phone, and the key cannot be copied out of it
@@ -123,4 +204,71 @@ export function gpsFlags(userId: number, lat: number, lng: number): string[] {
   const same = q.val<number>(`SELECT COUNT(*) FROM attendance_events WHERE user_id = ? AND gps_lat = ? AND gps_lng = ? AND deleted_at IS NULL`, userId, String(lat), String(lng)) ?? 0
   if (same >= 2) flags.push('Identical coordinates repeated (possible fake GPS)')
   return flags
+}
+
+export interface OfficeGeofenceResult {
+  verified: true
+  office_name: string
+  office_lat: number
+  office_lng: number
+  lat: number
+  lng: number
+  accuracy_m: number
+  distance_m: number
+  radius_m: number
+  max_accuracy_m: number
+  flags: string[]
+}
+
+/**
+ * Enforces a tight GPS geofence around the SWK HQ office (Al Saqr Business Tower, Sheikh Zayed Road, Dubai)
+ * with accuracy ceiling and anti-spoofing velocity checks so shared screenshots cannot spoof remote check-ins.
+ */
+export function verifyOfficeGeofence(
+  userId: number | null,
+  input: { lat: unknown; lng: unknown; accuracy_m: unknown },
+): OfficeGeofenceResult {
+  const officeName = String(getSetting('office_gps_name') || 'Al Saqr Business Tower, Sheikh Zayed Road, Dubai').trim()
+  const officeLat = Number(getSetting('office_gps_lat') ?? 25.2131)
+  const officeLng = Number(getSetting('office_gps_lng') ?? 55.2768)
+  const radiusM = Math.max(20, Math.min(500, Number(getSetting('office_gps_radius_m') ?? 75) || 75))
+  const maxAccuracyM = Math.max(15, Math.min(250, Number(getSetting('gps_max_accuracy_m') ?? 65) || 65))
+
+  const lat = Number(input.lat)
+  const lng = Number(input.lng)
+  const acc = Number(input.accuracy_m)
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || (lat === 0 && lng === 0)) {
+    throw new HttpError(403, `Live GPS location is required to verify you are physically inside ${officeName} (within ${radiusM}m). Enable Location Services and retry.`)
+  }
+  if (!Number.isFinite(acc) || acc <= 0) {
+    throw new HttpError(403, 'Invalid or synthetic GPS accuracy reading detected. Disable mock location apps and retry with live GPS.')
+  }
+  if (acc > maxAccuracyM) {
+    throw new HttpError(403, `GPS accuracy is too coarse (${Math.round(acc)}m; maximum allowed is ${maxAccuracyM}m). Step near reception or enable High Accuracy GPS and retry.`)
+  }
+
+  const distM = distanceM([officeLat, officeLng], [lat, lng])
+  if (distM > radiusM) {
+    throw new HttpError(403, `Outside ${officeName} check-in perimeter (${distM}m away; maximum allowed is ${radiusM}m). Remote screenshot check-ins are blocked.`)
+  }
+
+  const flags = userId ? gpsFlags(userId, lat, lng) : []
+  if (flags.some(f => f.startsWith('Impossible travel'))) {
+    throw new HttpError(403, `GPS spoof check triggered: ${flags[0]}. Contact Operations Manager to verify attendance.`)
+  }
+
+  return {
+    verified: true,
+    office_name: officeName,
+    office_lat: officeLat,
+    office_lng: officeLng,
+    lat,
+    lng,
+    accuracy_m: Math.round(acc),
+    distance_m: distM,
+    radius_m: radiusM,
+    max_accuracy_m: maxAccuracyM,
+    flags,
+  }
 }
