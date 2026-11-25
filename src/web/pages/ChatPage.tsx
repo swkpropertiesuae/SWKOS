@@ -1,7 +1,7 @@
 import { Fragment,useEffect,useMemo,useRef,useState,type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { AlertCircle,ArrowLeft,Archive,BellOff,BellRing,Check,CheckCheck,ChevronDown,ClipboardList,Clock,Copy,CornerUpLeft,Crown,Download,ExternalLink,FileText,FolderOpen,Forward,Info,Loader2,LogOut,MapPin,Megaphone,MessageSquarePlus,Mic,MoreVertical,Paperclip,Pencil,Pin,RefreshCw,Search,Send,Smile,Trash2,UserPlus,Users,X } from 'lucide-react'
+import { AlertCircle,ArrowLeft,Archive,BellOff,BellRing,Check,CheckCheck,ChevronDown,ClipboardList,Clock,Copy,CornerUpLeft,Crown,Download,ExternalLink,FileText,FolderOpen,Forward,Globe,Info,Loader2,LogOut,MapPin,Megaphone,MessageSquarePlus,Mic,MoreVertical,Paperclip,Pencil,Pin,RefreshCw,Search,Send,Smile,Trash2,UserPlus,Users,X } from 'lucide-react'
 import { get,post,del,api,upload,downloadAuthFile,openAuthFile,resolveApiUrl } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { useMeta } from '../lib/meta'
@@ -125,6 +125,7 @@ export function ChatPage() {
   const [term, setTerm] = useState('')
   const [typing, setTyping] = useState<Record<number, { name: string; until: number; recording?: boolean }>>({})
   const [newChat, setNewChat] = useState<null | 'dm' | 'group'>(null)
+  const [externalOpen, setExternalOpen] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const [rowMenu, setRowMenu] = useState<number | null>(null)
   const [notifPerm, setNotifPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'denied')
@@ -182,10 +183,27 @@ export function ChatPage() {
     <div className="mx-auto grid h-[calc(100dvh-136px)] min-h-[460px] max-md:h-[calc(100dvh-184px)] max-md:min-h-[400px] max-w-[1400px] overflow-hidden rounded-[22px] border border-[#e2e8f0] bg-white shadow-[0_18px_48px_-18px_rgba(11,31,42,0.14)] md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
       {/* ------------------------------------------------ chat list */}
       <aside className={`flex min-h-0 flex-col border-r border-[#e2e8f0] ${sel ? 'hidden md:flex' : 'flex'}`} aria-label="Chats">
-        <header className="flex items-center gap-2 px-5 pb-3 pt-5">
-          <div className="min-w-0 flex-1"><div className="web-eyebrow">SWK internal</div><h1 className="m-0 text-[24px] font-medium tracking-[-0.035em]">Inside</h1></div>
-          <button type="button" className="swk-tbtn" title="New chat" aria-label="New chat" onClick={() => setNewChat('dm')}><MessageSquarePlus size={17} /></button>
-          <button type="button" className="swk-tbtn" title="New group" aria-label="New group" onClick={() => setNewChat('group')}><Users size={17} /></button>
+        <header className="flex items-center gap-2.5 bg-gradient-to-r from-[#07131b] via-[#0c2620] to-[#0a1b24] px-4 py-4 text-white border-b border-[#c89b3c]/35">
+          <img
+            src="/brand/web/swk-icon-192.webp"
+            alt="SWK Inside"
+            className="size-10 rounded-xl border border-[#c89b3c]/50 bg-[#07131b] p-0.5 object-contain shrink-0 shadow-sm"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f0ce78]">SWK PROPERTIES · ENCRYPTED</div>
+            <h1 className="m-0 text-[21px] font-bold tracking-[-0.025em] !text-white leading-tight">SWK Inside</h1>
+          </div>
+          <button
+            type="button"
+            className="flex size-9 items-center justify-center rounded-xl border border-[#c89b3c]/40 bg-[#c89b3c]/16 text-[#f3d27a] hover:bg-[#c89b3c] hover:text-[#07131b] transition-colors cursor-pointer"
+            title="Send to External Platforms (WhatsApp · Facebook · Instagram)"
+            aria-label="External Messaging Bridge"
+            onClick={() => setExternalOpen(true)}
+          >
+            <Globe size={16} />
+          </button>
+          <button type="button" className="flex size-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer" title="New chat" aria-label="New chat" onClick={() => setNewChat('dm')}><MessageSquarePlus size={16} /></button>
+          <button type="button" className="flex size-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer" title="New group" aria-label="New group" onClick={() => setNewChat('group')}><Users size={16} /></button>
         </header>
         {notifPerm === 'default' && (
           <button type="button" onClick={() => void askNotif()} className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border-0 bg-[#0f2a33] px-4 py-3 text-left text-white">
@@ -262,16 +280,173 @@ export function ChatPage() {
       {current ? (
         <Conversation key={current.id} thread={current} typing={typing[current.id]} onBack={() => setSel(null)} showInfo={showInfo} setShowInfo={setShowInfo} threads={threads} people={peopleQ.data ?? []} />
       ) : (
-        <section className="hidden flex-col items-center justify-center gap-4 bg-[#f8f5ef] p-10 text-center md:flex" style={{ backgroundImage: 'repeating-linear-gradient(to right, rgba(15,42,51,0.04) 0px, rgba(15,42,51,0.04) 1px, transparent 1px, transparent 24px)' }}>
-          <img src="/brand/apps/messages.svg" alt="" className="size-28" />
-          <h2 className="m-0 text-[30px] font-medium tracking-[-0.035em]">Inside by SWK</h2>
-          <p className="m-0 max-w-md text-[14px] text-[#5b676e]">Message colleagues, run project groups and share files with the team. Messages stay inside SWK OS and are only visible to people in the chat.</p>
-          <div className="mt-2 flex gap-3"><button type="button" className="web-btn" onClick={() => setNewChat('dm')}><MessageSquarePlus size={14} /> New chat</button><button type="button" className="web-btn light" onClick={() => setNewChat('group')}><Users size={14} /> New group</button></div>
+        <section className="hidden flex-col items-center justify-center gap-4 bg-[#f5f4f0] dark:bg-[#08131b] p-10 text-center md:flex">
+          <div className="flex items-center justify-center rounded-3xl border border-[#c89b3c]/40 bg-gradient-to-br from-[#07131b] to-[#0c2620] p-4 shadow-xl">
+            <img src="/brand/web/swk-icon-192.webp" alt="SWK Properties" className="size-20 object-contain" />
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#c89b3c]/40 bg-[#fbf5e6] dark:bg-[#c89b3c]/18 px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#7f5710] dark:text-[#f3d27a]">
+            SWK PROPERTIES OFFICIAL MESSENGER
+          </div>
+          <h2 className="m-0 text-[30px] font-bold tracking-[-0.03em] text-ink">SWK Inside</h2>
+          <p className="m-0 max-w-md text-[14.5px] text-muted leading-relaxed">Message colleagues, run deal rooms, share property files internally, or bridge directly out to WhatsApp Business, Facebook Messenger &amp; Instagram DM.</p>
+          <div className="mt-2 flex flex-wrap justify-center gap-3">
+            <button type="button" className="btn green" onClick={() => setNewChat('dm')}><MessageSquarePlus size={15} /> New Chat</button>
+            <button type="button" className="btn outline" onClick={() => setNewChat('group')}><Users size={15} /> New Group</button>
+            <button type="button" className="btn orange" onClick={() => setExternalOpen(true)}><Globe size={15} /> External Bridge (WA · FB · IG)</button>
+          </div>
         </section>
       )}
 
       <NewChatModal mode={newChat} people={peopleQ.data ?? []} onClose={() => setNewChat(null)} onOpen={id => { setNewChat(null); void qc.invalidateQueries({ queryKey: ['chat-threads'] }); setSel(id) }} />
+      <ExternalBridgeModal open={externalOpen} activeThreadId={sel} onClose={() => setExternalOpen(false)} />
     </div>
+  )
+}
+
+function ExternalBridgeModal({ open, activeThreadId, onClose }: { open: boolean; activeThreadId: number | null; onClose: () => void }) {
+  const toast = useToast()
+  const qc = useQueryClient()
+  const [platform, setPlatform] = useState<'whatsapp' | 'facebook' | 'instagram'>('whatsapp')
+  const [recipient, setRecipient] = useState('')
+  const [text, setText] = useState('')
+  const [mirror, setMirror] = useState(true)
+  const [sending, setSending] = useState(false)
+
+  const chQ = useQuery({
+    queryKey: ['chat-external-channels'],
+    enabled: open,
+    queryFn: () => get<{
+      can_dispatch: boolean
+      channels: { platform: 'whatsapp' | 'facebook' | 'instagram'; label: string; configured: boolean; endpoint: string; required_permissions: string[]; policy_note: string }[]
+    }>('/api/chat/external-channels'),
+  })
+
+  const channels = chQ.data?.channels ?? []
+  const activeChannel = channels.find(c => c.platform === platform)
+  const canDispatch = chQ.data?.can_dispatch ?? false
+
+  const sendExternal = async () => {
+    if (!recipient.trim() || !text.trim()) {
+      toast.error('Enter recipient and message text.')
+      return
+    }
+    setSending(true)
+    try {
+      const res = await post<{ ok: boolean; error?: string; message_id?: string }>('/api/chat/external-send', {
+        platform,
+        recipient: recipient.trim(),
+        text: text.trim(),
+        mirror_thread_id: mirror && activeThreadId ? activeThreadId : undefined,
+      })
+      if (res.ok) {
+        toast.ok(`Delivered via ${activeChannel?.label || platform}${res.message_id ? ` (${res.message_id})` : ''}`, 'External Message Sent')
+        setText('')
+        if (activeThreadId) void qc.invalidateQueries({ queryKey: ['chat-msgs', activeThreadId] })
+        onClose()
+      } else {
+        toast.error(res.error || 'Platform rejected the message.')
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'External dispatch failed')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="SWK Inside → External Platforms Bridge"
+      width={620}
+      footer={
+        <>
+          <button type="button" className="btn outline" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="btn green"
+            disabled={!canDispatch || sending || !recipient.trim() || !text.trim()}
+            onClick={() => void sendExternal()}
+          >
+            {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            Send to {platform === 'whatsapp' ? 'WhatsApp' : platform === 'facebook' ? 'Facebook Messenger' : 'Instagram DM'}
+          </button>
+        </>
+      }
+    >
+      <div className="grid gap-4">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(['whatsapp', 'facebook', 'instagram'] as const).map(p => {
+            const c = channels.find(x => x.platform === p)
+            const active = platform === p
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPlatform(p)}
+                className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                  active ? 'border-[#046c4e] bg-[#ebf7f2] dark:bg-[#046c4e]/20' : 'border-line bg-soft hover:border-line-strong'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-bold text-[13.5px] text-ink capitalize">{p === 'whatsapp' ? 'WhatsApp' : p === 'facebook' ? 'Messenger' : 'Instagram'}</span>
+                  <span className={`badge ${c?.configured ? 'green' : 'amber'}`}>{c?.configured ? 'Live' : 'Setup'}</span>
+                </div>
+                <div className="text-[11.5px] text-muted mt-1">{p === 'whatsapp' ? 'Meta Cloud API v21' : p === 'facebook' ? 'Page Send API' : 'IG Graph DM API'}</div>
+              </button>
+            )
+          })}
+        </div>
+
+        {activeChannel && (
+          <div className="rounded-xl border border-line bg-soft p-3.5 text-[13px] text-body">
+            <div className="font-semibold text-ink">{activeChannel.label}</div>
+            <div className="mt-1 text-muted">{activeChannel.policy_note}</div>
+            <div className="mt-1.5 font-mono text-[11.5px] text-[#046c4e] dark:text-emerald-400 break-all">{activeChannel.endpoint}</div>
+          </div>
+        )}
+
+        {!canDispatch && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[13px] text-ink">
+            Direct external dispatch from SWK Inside is limited to leadership &amp; CRM-authorised staff. Field agents use Hard-Masked WhatsApp Relay inside <b>My Assigned Deals</b>.
+          </div>
+        )}
+
+        <div>
+          <label className="label" htmlFor="ext-recipient">
+            {platform === 'whatsapp' ? 'Recipient Phone (UAE / International E.164)' : platform === 'facebook' ? 'Facebook Page-Scoped User ID (PSID)' : 'Instagram Scoped User ID (IGSID)'}
+          </label>
+          <input
+            id="ext-recipient"
+            className="input"
+            placeholder={platform === 'whatsapp' ? '+971 50 123 4567' : 'Paste recipient PSID / IGSID from Meta webhook…'}
+            value={recipient}
+            onChange={e => setRecipient(e.target.value)}
+            disabled={!canDispatch}
+          />
+        </div>
+
+        <div>
+          <label className="label" htmlFor="ext-text">Message</label>
+          <textarea
+            id="ext-text"
+            className="textarea"
+            rows={4}
+            placeholder="Type your official SWK Properties message…"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            disabled={!canDispatch}
+          />
+        </div>
+
+        {activeThreadId && (
+          <label className="inline-flex items-center gap-2 text-[13px] text-body cursor-pointer">
+            <input type="checkbox" checked={mirror} onChange={e => setMirror(e.target.checked)} className="size-4 accent-[#046c4e]" />
+            Also post a dispatch audit note inside the current SWK Inside thread
+          </label>
+        )}
+      </div>
+    </Modal>
   )
 }
 

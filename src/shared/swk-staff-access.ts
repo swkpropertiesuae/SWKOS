@@ -514,29 +514,86 @@ export function canViewEmployeeRecords(
 }
 
 /**
- * HARD RULE: Document Templates (Letter Studio & doc_templates) are restricted STRICTLY to
- * Owner, Admin, HR, and Office Admin. Operations Manager (Haseeb), sales/leasing agents,
- * viewers, and portal users are blocked.
+ * Exact 5-person confidential leadership & admin whitelist for BOTH:
+ *  - 158+ Document Templates & Letter Studio (100% invisible to everyone else)
+ *  - Confidential AI Brain Universal Format Converter & Bulk Importer
+ * Authorized: Owner (Shabib), Admin, Operations Manager (Haseeb), Office Admin (Meenakshi), HR (Rahaba).
+ */
+export const CONFIDENTIAL_FIVE_EMAILS: ReadonlySet<string> = new Set([
+  'shabib@swk.properties',
+  'shabib@swk.property',
+  'shabib@swkpropertiesuae.com',
+  'admin@swk.properties',
+  'admin@swk.property',
+  'admin@swkpropertiesuae.com',
+  'haseeb@swk.properties',
+  'haseeb@swk.property',
+  'haseeb@swkpropertiesuae.com',
+  'manager@swkpropertiesuae.com',
+  'meenakshi@swk.properties',
+  'meenakshi@swk.property',
+  'meenakshi@swkpropertiesuae.com',
+  'rahaba@swk.properties',
+  'rahaba@swk.property',
+  'rahaba@swkpropertiesuae.com',
+])
+
+/**
+ * HARD RULE: Document Templates (158+ library, Letter Studio & doc_templates) are COMPLETELY HIDDEN
+ * and locked for everyone EXCEPT the exact 5-person whitelist:
+ * Owner (Shabib), Admin, Operations Manager (Haseeb), Office Admin (Meenakshi), and HR (Rahaba).
+ * Every other account (sales/leasing agents, callers, viewers, portal) must never see any trace.
  */
 export function canAccessDocumentTemplates(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id || isRestrictedStaffUser(user)) return false
   if (isOwnerSwkUser(user) || isAdminSwkUser(user)) return true
-  const role = String(user.role_name || user.role || '').trim().toLowerCase()
-  if (role === 'hr' || role === 'office admin') return true
   const email = String(user.email || '').trim().toLowerCase()
-  const fixed = hardcodedAccountFor(email)
-  if (fixed && (fixed.roleName === 'Owner' || fixed.roleName === 'Admin' || fixed.roleName === 'HR' || fixed.roleName === 'Office Admin')) {
-    return true
+  if (CONFIDENTIAL_FIVE_EMAILS.has(email)) return true
+  const role = String(user.role_name || user.role || '').trim().toLowerCase()
+  if (role === 'hr' || role === 'office admin' || role === 'manager') {
+    const fixed = hardcodedAccountFor(email)
+    if (!fixed || ['Owner', 'Admin', 'Manager', 'HR', 'Office Admin'].includes(fixed.roleName)) return true
   }
   return false
 }
 
 /**
+ * HARD RULE: Confidential AI Brain Universal Format Converter & Bulk Importer is exclusively
+ * available to Owner, Admin, Haseeb, Meenakshi, and Rahaba (confidential).
+ */
+export function canUseConfidentialAiImporter(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  return canAccessDocumentTemplates(user)
+}
+
+/**
+ * HARD RULE: "Shabib's Corner" Executive Command Workspace is exclusively in Owner's account.
+ */
+export function canAccessShabibsCorner(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  return isOwnerSwkUser(user)
+}
+
+/**
+ * HARD RULE: Emergency Mandatory-Field Override (submitting forms/documents with * mandatory fields
+ * blank by recording an emergency detail) is HARDCODED strictly to Owner and Admin ONLY.
+ * Manager (Haseeb), HR (Rahaba), Office Admin (Meenakshi), Agents, and Portal users are ALWAYS blocked.
+ */
+export function canUseEmergencyOverride(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
+  return isOwnerSwkUser(user) || isAdminSwkUser(user)
+}
+
+/**
  * HARD RULE: ONLY the Supreme Owner (shabib@swk.properties) can apply the Company Seal
  * and Authorized Owner Signature directly without prior approval.
- * Admin, HR, and Office Admin MUST obtain explicit Owner approval before applying them.
+ * Admin, Haseeb, HR, and Office Admin MUST obtain explicit Owner approval before applying them.
  */
 export function canUseCompanySealDirectly(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,

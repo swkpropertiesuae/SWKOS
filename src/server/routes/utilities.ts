@@ -766,7 +766,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const user = requireStaff(req)
     const b = wordCreateSchema.parse(req.body ?? {})
     if (b.source_template_id && !canAccessDocumentTemplates(user)) {
-      throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
+      throw forbidden('Access denied.')
     }
     assertSealAllowed(user, b.include_seal, b.include_signature, null)
 
@@ -817,7 +817,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     if (!existing) throw notFound('Word document not found')
     const b = wordUpdateSchema.parse(req.body ?? {})
     if (b.source_template_id && !canAccessDocumentTemplates(user)) {
-      throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
+      throw forbidden('Access denied.')
     }
     assertSealAllowed(user, b.include_seal, b.include_signature, id)
 

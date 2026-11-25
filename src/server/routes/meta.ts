@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { ENTITY_LIST,NAV,MODULE_DEFS } from '../../shared/entities'
+import { canAccessDocumentTemplates } from '../../shared/swk-staff-access'
 import { can,customFieldsFor } from '../engine'
 import { publicSettings } from '../settings'
 import { ACTIONS } from '../../shared/types'
@@ -12,8 +13,17 @@ export default async function (app: FastifyInstance) {
       const s = publicSettings()
       return { entities: [], nav: [], modules: [], perms: {}, settings: { company_name: s.company_name, base_currency: s.base_currency } }
     }
-    const entities = ENTITY_LIST.map(e => ({ ...e, customFieldDefs: e.customFields ? customFieldsFor(e.key) : [], fields: e.fields.filter(f => !f.secret) }))
-    const nav = NAV.map(g => ({ ...g, items: g.items.filter(i => !i.module || can(user, i.module, 'view')) })).filter(g => g.items.length)
+    const allowTemplates = canAccessDocumentTemplates(user)
+    const entities = ENTITY_LIST
+      .filter(e => allowTemplates || (e.key !== 'doc_templates' && e.key !== 'studio_documents'))
+      .map(e => ({ ...e, customFieldDefs: e.customFields ? customFieldsFor(e.key) : [], fields: e.fields.filter(f => !f.secret) }))
+    const nav = NAV.map(g => ({
+      ...g,
+      items: g.items.filter(i => {
+        if (!allowTemplates && (i.to === '/studio' || i.to === '/e/doc_templates' || i.to === '/e/studio_documents')) return false
+        return !i.module || can(user, i.module, 'view')
+      }),
+    })).filter(g => g.items.length)
     const perms: Record<string, string[]> = {}
     for (const [m] of MODULE_DEFS) perms[m] = ACTIONS.filter(a => can(user, m, a))
     const s = publicSettings()

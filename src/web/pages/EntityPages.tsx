@@ -32,7 +32,7 @@ export function EntityListPage() {
   const known = meta?.entities.find(e => e.key === entity)
   const nav = useNavigate()
   if (entity === 'doc_templates' && !canAccessDocumentTemplates(me)) {
-    return <ErrorBox error={new Error('Document Templates are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+    return <ErrorBox error={new Error('Unknown record type')} />
   }
   if (!known || known.child) return <ErrorBox error={new Error('Unknown record type')} />
   const presets: Record<string, any> = {}
@@ -64,7 +64,7 @@ export function EntityRecordPage() {
   const [deleteReason, setDeleteReason] = useState('')
   const [dialog, setDialog] = useState<{ name: string; props: any } | null>(null)
   if (entity === 'doc_templates' && !canAccessDocumentTemplates(me)) {
-    return <ErrorBox error={new Error('Document Templates are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+    return <ErrorBox error={new Error('Unknown record type')} />
   }
   if (!known) return <ErrorBox error={new Error('Unknown record type')} />
   const def = getDef(entity)

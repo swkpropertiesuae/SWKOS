@@ -5,9 +5,9 @@ UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoi
 KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
 Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
 ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText,Languages,Search,Navigation,
-MessageCircleMore,SquareCheckBig,Gauge,UsersRound,Handshake,Settings2
+MessageCircleMore,SquareCheckBig,Gauge,UsersRound,Handshake,Settings2,Crown,Wand2
 } from 'lucide-react';
-import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,canAccessDocumentTemplates,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
+import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,canAccessDocumentTemplates,canAccessShabibsCorner,canUseConfidentialAiImporter,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }
@@ -19,6 +19,9 @@ export type NavSection = { key: string; label: string; items: NavItem[] }
 export const SWK_CORE_SUITE_KEYS = new Set(['messages', 'work', 'phone'])
 
 export const SWK_NAV: NavSection[] = [
+  { key: 'shabibs_corner', label: "Shabib's Corner", items: [
+    { label: "Shabib's Corner", to: '/shabibs-corner', icon: Crown, isNew: true, desc: 'Owner 1→8 workflow pipeline, Confidential AI converter & Emergency Override desk' },
+  ] },
   { key: 'messages', label: 'SWK Inside', items: [
     { label: 'SWK Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, groups & announcements' },
   ] },
@@ -41,7 +44,8 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Daily Operations', to: '/enterprise/master-os', icon: ShieldCheck, module: 'admin', desc: 'Company workflow control' },
     { label: 'Market Pulse', to: '/market', icon: LineChart, desc: 'Dubai prices & yields' },
     { label: 'Attendance Check-In', to: '/reception-qr', icon: QrCode, desc: 'Office reception scan & check-in' },
-    { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Smart daily helper' },
+    { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Smart daily helper & best-model orchestrator' },
+    { label: 'AI Format Converter', to: '/ai-importer', icon: Wand2, isNew: true, desc: 'Confidential bulk format converter (Owner/Admin/Haseeb/Meenakshi/Rahaba)' },
   ] },
   { key: 'inventory', label: 'Properties', items: [
     { label: 'New Submissions', to: '/e/inventory_submissions', icon: Building2, module: 'properties', desc: 'Step 1 · Agent property intake' },
@@ -197,6 +201,7 @@ export function findNav(pathname: string) {
 /** Launcher ("Apps") presentation for each nav section — one simple icon tile per app on the post-sign-in home screen. */
 export type AppTone = 'navy' | 'champ' | 'oasis' | 'ocean' | 'dune' | 'plum'
 export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: AppTone }> = {
+  shabibs_corner: { blurb: 'Exclusive Owner pipeline (1→8), Confidential AI converter & Emergency Override', icon: Crown, tone: 'champ' },
   messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessageCircleMore, tone: 'oasis' },
   work: { blurb: 'My work, tasks & projects on boards, calendars and no-code automations', icon: SquareCheckBig, tone: 'champ' },
   phone: { blurb: 'WebRTC SIP extension, colleague directory & Masked Vault calling', icon: PhoneCall, tone: 'dune' },
@@ -330,6 +335,8 @@ export function isNavItemVisible(
 ): boolean {
   if (!user || user.party_id) return false
   const clean = item.to.split('?')[0] || ''
+  if (clean === '/shabibs-corner' && !canAccessShabibsCorner(user)) return false
+  if (clean === '/ai-importer' && !canUseConfidentialAiImporter(user)) return false
   if (clean === '/crm-vault' && !canAccessCrmVault(user)) return false
   if (clean === '/field-live' && !canAccessFieldLiveMap(user)) return false
   if ((clean === '/studio' || clean === '/e/doc_templates') && !canAccessDocumentTemplates(user)) return false

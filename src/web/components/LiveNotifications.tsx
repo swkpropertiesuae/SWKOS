@@ -159,23 +159,38 @@ export function LiveNotifications() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 48, scale: 0.96 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className={`swk-live-card ${isUrgent ? 'ring-2 ring-[#dc2626]' : ''}`}
+              className={`swk-live-card ${isUrgent ? 'ring-2 ring-[#be123c]' : ''}`}
               role="status"
             >
-              <button type="button" className="swk-live-body" onClick={() => open(n)}>
-                <span className={`swk-live-ic ${isUrgent ? '!bg-[#dc2626] !text-white' : ''}`}>
-                  <I size={18} />
-                </span>
-                <span className="swk-live-tx">
-                  {tag && <span className={`text-[10px] font-bold uppercase tracking-[0.12em] ${isUrgent ? 'text-[#dc2626]' : 'text-[#0e9f6e]'}`}>{tag}</span>}
-                  <b>{n.title}</b>
-                  {n.body ? <small>{n.body}</small> : null}
-                  <em>{n.link ? 'Tap to open →' : 'Just now'}</em>
-                </span>
-              </button>
-              <button type="button" className="swk-live-x" aria-label="Dismiss" onClick={() => setItems(a => a.filter(x => x.id !== n.id))}>
-                <X size={14} />
-              </button>
+              <div className="flex flex-col w-full">
+                {/* SWK Brand Highlight Header Ribbon */}
+                <div className={`flex items-center justify-between gap-2 px-4 py-2 border-b ${isUrgent ? 'bg-[#881337] border-[#be123c]/40' : 'bg-[#0a1b24] border-[#c89b3c]/30'} text-white`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img src="/brand/web/swk-icon-192.webp" alt="SWK" className="size-5 rounded-md object-contain shrink-0" />
+                    <span className="truncate text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#f0ce78]">
+                      SWK PROPERTIES · {tag || 'LIVE ALERT'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="flex size-6 items-center justify-center rounded-lg border-0 bg-white/12 text-slate-200 hover:bg-white/25 cursor-pointer"
+                    aria-label="Dismiss"
+                    onClick={() => setItems(a => a.filter(x => x.id !== n.id))}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+                <button type="button" className="swk-live-body" onClick={() => open(n)}>
+                  <span className={`swk-live-ic ${isUrgent ? '!bg-[#be123c] !text-white' : ''}`}>
+                    <I size={20} />
+                  </span>
+                  <span className="swk-live-tx">
+                    <b>{n.title}</b>
+                    {n.body ? <small>{n.body}</small> : null}
+                    <em>{n.link ? 'Open Workspace Record →' : 'Live SWK OS Update'}</em>
+                  </span>
+                </button>
+              </div>
             </motion.div>
           )
         })}

@@ -16,6 +16,7 @@ RESTRICTED_STAFF_ALLOWED_ENTITIES,
 RESTRICTED_STAFF_SELF_SCOPED_ENTITIES,
 RESTRICTED_HR_PII_ENTITIES,
 canViewEmployeeRecords,
+canUseEmergencyOverride,
 } from '../shared/swk-staff-access'
 
 export type Perms = '*' | Record<string, string[]>
@@ -23,7 +24,12 @@ export interface SessionUser {
   id: number; name: string; email: string; role_id: number | null; role_name: string; permissions: Perms
   branch_id: number | null; party_id: number | null; apiKey?: boolean
 }
-export interface Ctx { vendorServiceTransition?: 'confirm' | 'reset'; jobTransition?: 'close' | 'reopen'; user: SessionUser | null; ip?: string; system?: boolean; auditReason?: string; recycleBin?: boolean; after?: (() => void)[] }
+export interface EmergencyOverrideCtx {
+  enabled: boolean
+  reason: string
+  bypassedFields?: string[]
+}
+export interface Ctx { vendorServiceTransition?: 'confirm' | 'reset'; jobTransition?: 'close' | 'reopen'; user: SessionUser | null; ip?: string; system?: boolean; auditReason?: string; recycleBin?: boolean; emergencyOverride?: EmergencyOverrideCtx; after?: (() => void)[] }
 export const SYSTEM_CTX: Ctx = { user: null, system: true }
 
 export type Rec = Record<string, any>
@@ -495,15 +501,38 @@ function applyPayload(def: EntityDef, base: Rec, payload: Rec, isNew: boolean, c
   return out
 }
 
-function checkRequired(def: EntityDef, rec: Rec) {
+function assertEmergencyOverrideAuthorized(ctx?: Ctx): EmergencyOverrideCtx | null {
+  if (!ctx?.emergencyOverride?.enabled) return null
+  if (!ctx.system && !canUseEmergencyOverride(ctx.user)) {
+    throw forbidden('Emergency mandatory-field override is hardcoded exclusively to Owner and Admin accounts.')
+  }
+  const reason = String(ctx.emergencyOverride.reason ?? '').trim()
+  if (reason.length < 3) {
+    throw bad('Emergency override requires a clear detail / reason (minimum 3 characters).')
+  }
+  return ctx.emergencyOverride
+}
+
+function checkRequired(def: EntityDef, rec: Rec, ctx?: Ctx): string[] {
+  const override = assertEmergencyOverrideAuthorized(ctx)
+  const bypassed: string[] = []
   for (const f of def.fields) {
     if (!f.required || f.virtual || f.computed) continue
     const v = rec[f.name]
-    if (v === null || v === undefined || v === '') throw bad(`${f.label} is required`, { field: f.name })
+    if (v === null || v === undefined || v === '') {
+      if (override) {
+        bypassed.push(f.name)
+        continue
+      }
+      throw bad(`${f.label} is required`, { field: f.name })
+    }
   }
+  if (override) override.bypassedFields = [...(override.bypassedFields ?? []), ...bypassed]
+  return bypassed
 }
 
-function validateCustom(def: EntityDef, incoming: any, previous: Rec = {}): Rec {
+function validateCustom(def: EntityDef, incoming: any, previous: Rec = {}, ctx?: Ctx): Rec {
+  const override = assertEmergencyOverrideAuthorized(ctx)
   if (!def.customFields) return {}
   const defs = customFieldsFor(def.key)
   const out: Rec = { ...previous }
@@ -511,7 +540,15 @@ function validateCustom(def: EntityDef, incoming: any, previous: Rec = {}): Rec 
     const v = coerceIn(f, incoming[f.name])
     if (v === null) delete out[f.name]; else out[f.name] = v
   }
-  for (const f of defs) if (f.required && (out[f.name] === undefined || out[f.name] === null || out[f.name] === '')) throw bad(`${f.label} is required`)
+  for (const f of defs) {
+    if (f.required && (out[f.name] === undefined || out[f.name] === null || out[f.name] === '')) {
+      if (override) {
+        override.bypassedFields = [...(override.bypassedFields ?? []), `custom.${f.name}`]
+        continue
+      }
+      throw bad(`${f.label} is required`)
+    }
+  }
   return out
 }
 
@@ -627,14 +664,24 @@ export function createRecord(def: EntityDef, payload: Rec, ctx: Ctx): Rec {
     const children = sanitizeChildren(def, payload.children, c2)
     const h = hooksFor(def.key)
     h.beforeSave?.({ def, rec, old: null, children, isNew: true, ctx: c2 })
-    checkRequired(def, rec)
+    const override = assertEmergencyOverrideAuthorized(c2)
+    checkRequired(def, rec, c2)
     assertRefs(def, rec)
     assertUnique(def, rec, null)
     if (def.numbering && !rec[def.numbering.field]) {
       const tokens = h.tokens?.(rec) ?? {}
       rec[def.numbering.field] = formatNumber(def.key, def.numbering.pattern, tokens, h.numberDate?.(rec) ?? todayStr())
     }
-    const custom = validateCustom(def, payload.custom)
+    const custom = validateCustom(def, payload.custom, {}, c2)
+    if (override) {
+      custom._emergency_override = {
+        by_email: c2.user?.email ?? 'system',
+        by_name: c2.user?.name ?? 'System',
+        at: nowIso(),
+        reason: override.reason,
+        bypassed_fields: [...new Set(override.bypassedFields ?? [])],
+      }
+    }
     const id = writeRow(def, rec, c2, null, Object.keys(custom).length ? JSON.stringify(custom) : null)
     rec.id = id
     const ch: Record<string, [number, number]> = {}
@@ -644,6 +691,13 @@ export function createRecord(def: EntityDef, payload: Rec, ctx: Ctx): Rec {
     const fresh = getRecord(def, id, SYSTEM_CTX)
     const label = fresh._title
     auditLog(c2, def, id, 'create', null, label)
+    if (override) {
+      auditLog(c2, def, id, 'emergency_override', {
+        op: 'create',
+        reason: override.reason,
+        bypassed_fields: [...new Set(override.bypassedFields ?? [])],
+      }, label)
+    }
     after.push(() => emitWebhooks(def.key + '.created', fresh))
     after.push(() => emitChange(def.key, def.module, id, 'create'))
     syncWorkQueues(def.key,fresh)
@@ -685,11 +739,21 @@ export function updateRecord(def: EntityDef, id: number, payload: Rec, ctx: Ctx)
     const children = sanitizeChildren(def, payload.children, c2)
     const h = hooksFor(def.key)
     h.beforeSave?.({ def, rec, old, children, isNew: false, ctx: c2 })
-    checkRequired(def, rec)
+    const override = assertEmergencyOverrideAuthorized(c2)
+    checkRequired(def, rec, c2)
     assertRefs(def, rec)
     assertUnique(def, rec, id)
-    const custom = def.customFields ? validateCustom(def, payload.custom, old.custom ?? {}) : {}
-    writeRow(def, rec, c2, id, def.customFields && Object.keys(custom).length ? JSON.stringify(custom) : null)
+    const custom = def.customFields ? validateCustom(def, payload.custom, old.custom ?? {}, c2) : (override ? { ...(old.custom ?? {}) } : {})
+    if (override) {
+      custom._emergency_override = {
+        by_email: c2.user?.email ?? 'system',
+        by_name: c2.user?.name ?? 'System',
+        at: nowIso(),
+        reason: override.reason,
+        bypassed_fields: [...new Set(override.bypassedFields ?? [])],
+      }
+    }
+    writeRow(def, rec, c2, id, (def.customFields || override) && Object.keys(custom).length ? JSON.stringify(custom) : null)
     const ch: Record<string, [number, number]> = {}
     saveChildren(def, id, children, c2, ch)
     fireHooks('afterSave', { def, rec, old, children, isNew: false, ctx: c2 })
@@ -698,8 +762,15 @@ export function updateRecord(def: EntityDef, id: number, payload: Rec, ctx: Ctx)
     delete d.updated_at
     const changes: Rec = { ...d }
     if (Object.keys(ch).length) changes._children = ch
-    const reason = String(payload?.__reason ?? ctx.auditReason ?? '').trim()
+    const reason = String(payload?.__reason ?? ctx.auditReason ?? override?.reason ?? '').trim()
     if (reason && Object.keys(changes).length) changes._reason = reason
+    if (override) {
+      auditLog(c2, def, id, 'emergency_override', {
+        op: 'update',
+        reason: override.reason,
+        bypassed_fields: [...new Set(override.bypassedFields ?? [])],
+      }, fresh._title)
+    }
     if (Object.keys(changes).length) {
       auditLog(c2, def, id, 'update', changes, fresh._title)
       if (!ctx.system && reason) {

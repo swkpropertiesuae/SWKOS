@@ -2,7 +2,7 @@ import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,useCallback,useState,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,canAccessShabibsCorner,canUseConfidentialAiImporter,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { BrandSplashScreen } from './components/BrandSplashScreen'
 import { Login } from './pages/Login'
@@ -64,6 +64,8 @@ const UnifiedSearchPage = lazy(() => import('./pages/swk/UnifiedSearchPage'))
 const PhonePage = lazy(() => import('./pages/swk/PhonePage'))
 const FieldDutyPage = lazy(() => import('./pages/swk/FieldDutyPage'))
 const FieldLiveMapPage = lazy(() => import('./pages/swk/FieldLiveMapPage'))
+const ShabibsCornerPage = lazy(() => import('./pages/swk/ShabibsCornerPage'))
+const AiImporterPage = lazy(() => import('./pages/swk/AiImporterPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -102,9 +104,24 @@ function FieldLiveGuard({ children }: { children: ReactNode }) {
 function DocTemplateGuard({ children }: { children: ReactNode }) {
   const { me } = useMeta()
   if (!me) return <Loading />
+  // Completely silent: unauthorized users must never even learn that a template library exists.
   return canAccessDocumentTemplates(me)
     ? <>{children}</>
-    : <ErrorBox error={new Error('Document Templates & Letter Studio are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+    : <ErrorBox error={new Error('Page not found')} />
+}
+function ShabibsCornerGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessShabibsCorner(me)
+    ? <>{children}</>
+    : <ErrorBox error={new Error('Page not found')} />
+}
+function AiImporterGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canUseConfidentialAiImporter(me)
+    ? <>{children}</>
+    : <ErrorBox error={new Error('Page not found')} />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -190,6 +207,8 @@ export default function App() {
         <Route element={<Shell />}>
           <Route index element={<Navigate to={defaultLanding} replace />} />
           <Route path="/home" element={<Launcher />} />
+          <Route path="/shabibs-corner" element={<ShabibsCornerGuard><ShabibsCornerPage /></ShabibsCornerGuard>} />
+          <Route path="/ai-importer" element={<AiImporterGuard><AiImporterPage /></AiImporterGuard>} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />

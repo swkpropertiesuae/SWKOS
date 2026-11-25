@@ -170,29 +170,55 @@ export function ChatNotifier() {
           </span>
         )}
       </Link>
-      <div className="pointer-events-none fixed right-4 top-20 z-[90] flex w-[min(390px,calc(100vw-32px))] flex-col gap-2 no-print" aria-live="polite">
+      <div className="pointer-events-none fixed right-5 top-20 z-[125] flex w-[min(436px,calc(100vw-28px))] flex-col gap-3 no-print" aria-live="polite">
         <AnimatePresence initial={false}>
           {banners.map(b => (
             <motion.div
               key={b.thread_id}
               layout
-              initial={{ opacity: 0, y: -16, scale: 0.97 }}
+              initial={{ opacity: 0, y: -16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 40 }}
+              exit={{ opacity: 0, x: 48 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className="pointer-events-auto rounded-2xl border border-black/5 bg-white/95 p-3 shadow-[0_24px_60px_rgba(15,42,51,0.18)] backdrop-blur-xl"
+              className="pointer-events-auto overflow-hidden rounded-[20px] border border-[#c89b3c]/45 bg-card shadow-[0_28px_64px_-16px_rgba(7,19,27,0.38)]"
               role="status"
             >
-              <div className="flex items-start gap-3">
+              {/* Branded SWK Inside Corporate Highlight Header */}
+              <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-[#07131b] via-[#0c2620] to-[#07131b] px-4 py-2.5 text-white border-b border-[#c89b3c]/35">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src="/brand/web/swk-icon-192.webp"
+                    alt="SWK Inside"
+                    className="size-6 rounded-lg border border-[#c89b3c]/50 object-contain shrink-0"
+                  />
+                  <span className="truncate text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">
+                    SWK INSIDE · TEAM MESSENGER
+                  </span>
+                  <span className="size-2 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="rounded-full bg-[#c89b3c]/20 px-2 py-0.5 text-[10px] font-bold text-[#f3d27a]">NOW</span>
+                  <button
+                    type="button"
+                    aria-label="Dismiss"
+                    className="flex size-6 items-center justify-center rounded-lg border-0 bg-white/12 text-slate-200 hover:bg-white/25 cursor-pointer"
+                    onClick={() => setBanners(a => a.filter(x => x.thread_id !== b.thread_id))}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4">
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-start gap-3 border-0 bg-transparent p-0 text-left"
+                  className="flex w-full min-w-0 items-start gap-3.5 border-0 bg-transparent p-0 text-left cursor-pointer"
                   onClick={() => {
                     setBanners(a => a.filter(x => x.thread_id !== b.thread_id))
                     nav(`/chat?t=${b.thread_id}`)
                   }}
                 >
-                  <span className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#0f2a33] text-[13px] font-semibold text-[#d4a752]">
+                  <span className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#c89b3c]/50 bg-[#0a1b24] text-[14px] font-bold text-[#e6be63]">
                     <StaffPhoto
                       email={people?.find(p => p.id === b.user_id)?.email}
                       className="size-full object-cover object-top"
@@ -205,53 +231,44 @@ export function ChatNotifier() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <b className="truncate text-[14px] font-semibold text-[#0f2a33]">{b.group ? b.title : b.sender}</b>
-                      <span className="ml-auto shrink-0 text-[10.5px] font-medium text-[#8a621c]">now</span>
+                      <b className="truncate text-[15.5px] font-bold text-ink">{b.group ? b.title : b.sender}</b>
                     </span>
-                    <span className="line-clamp-2 text-[13px] text-[#3d4a51]">
-                      {b.group && <b className="font-medium text-[#0f2a33]">{b.sender}: </b>}
+                    <span className="mt-0.5 line-clamp-2 text-[14px] text-body leading-snug">
+                      {b.group && <b className="font-semibold text-ink">{b.sender}: </b>}
                       {b.text}
                     </span>
-                    <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-[#5b676e]">
-                      Inside · tap to open
+                    <span className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#046c4e] dark:text-emerald-400">
+                      Open in SWK Inside →
                     </span>
                   </span>
                 </button>
-                <button
-                  type="button"
-                  aria-label="Dismiss"
-                  className="flex size-7 items-center justify-center rounded-full border-0 bg-transparent text-[#5b676e] hover:bg-[#f4f0e8]"
-                  onClick={() => setBanners(a => a.filter(x => x.thread_id !== b.thread_id))}
+                <form
+                  className="mt-3.5 flex items-center gap-2"
+                  onSubmit={e => {
+                    e.preventDefault()
+                    void sendQuickReply(b)
+                  }}
                 >
-                  <X size={14} />
-                </button>
+                  <input
+                    type="text"
+                    value={drafts[b.thread_id] ?? ''}
+                    onChange={e => setDrafts(d => ({ ...d, [b.thread_id]: e.target.value }))}
+                    onFocus={() => setFocusedThreadId(b.thread_id)}
+                    onBlur={() => setFocusedThreadId(k => (k === b.thread_id ? null : k))}
+                    placeholder="Quick reply inside SWK Inside…"
+                    aria-label={`Quick reply to ${b.group ? b.title : b.sender}`}
+                    className="h-10 min-w-0 flex-1 rounded-xl border border-line-strong bg-soft px-3.5 text-[13.5px] text-ink outline-none focus:border-[#046c4e] focus:bg-card"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!(drafts[b.thread_id] ?? '').trim() || sendingThreadId === b.thread_id}
+                    aria-label="Send quick reply"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl border-0 bg-[#046c4e] text-white transition-transform hover:bg-[#03543f] active:scale-95 disabled:opacity-40 cursor-pointer"
+                  >
+                    <Send size={15} />
+                  </button>
+                </form>
               </div>
-              <form
-                className="mt-2.5 flex items-center gap-1.5"
-                onSubmit={e => {
-                  e.preventDefault()
-                  void sendQuickReply(b)
-                }}
-              >
-                <input
-                  type="text"
-                  value={drafts[b.thread_id] ?? ''}
-                  onChange={e => setDrafts(d => ({ ...d, [b.thread_id]: e.target.value }))}
-                  onFocus={() => setFocusedThreadId(b.thread_id)}
-                  onBlur={() => setFocusedThreadId(k => (k === b.thread_id ? null : k))}
-                  placeholder="Quick reply…"
-                  aria-label={`Quick reply to ${b.group ? b.title : b.sender}`}
-                  className="h-8 min-w-0 flex-1 rounded-full border border-black/10 bg-[#f8f5ef] px-3 text-[12.5px] text-[#0f2a33] outline-none focus:border-[#8a621c] focus:bg-white"
-                />
-                <button
-                  type="submit"
-                  disabled={!(drafts[b.thread_id] ?? '').trim() || sendingThreadId === b.thread_id}
-                  aria-label="Send quick reply"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-[#8a621c] text-white transition-transform active:scale-95 disabled:opacity-40"
-                >
-                  <Send size={13} />
-                </button>
-              </form>
             </motion.div>
           ))}
         </AnimatePresence>

@@ -4,7 +4,9 @@ import { useQuery,useQueryClient } from '@tanstack/react-query'
 import {
 ArrowUpRight,BadgeCheck,CheckCircle2,FileCheck,FileSignature,Gavel,IdCard,Lock,Plus,Scale,ShieldCheck,
 } from 'lucide-react'
+import { canAccessDocumentTemplates } from '@shared/swk-staff-access'
 import { get,put } from '../../lib/api'
+import { useMeta } from '../../lib/meta'
 import { fmtDate } from '../../lib/format'
 import {
 Bar,Card,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,SWK,Segmented,StatTile,aed,
@@ -14,6 +16,8 @@ import { RERA_FORMS,UAE } from '../../swk/uae'
 type TabKey = 'overview' | 'permits' | 'aml' | 'forms'
 
 export default function ReraCentre() {
+  const { me } = useMeta()
+  const canOpenTemplates = canAccessDocumentTemplates(me)
   const qc = useQueryClient()
   const [tab, setTab] = useState<TabKey>('overview')
   const [notice, setNotice] = useState<string | null>(null)
@@ -276,7 +280,9 @@ export default function ReraCentre() {
               <p className="text-xs text-muted m-0 mb-3">
                 Mandatory Dubai Land Department / RERA contract stage. Digital e-signatures via Dubai Brokers App / UAE PASS must be archived in the Deal File before advancing pipeline stage.
               </p>
-              <Link to="/studio" className="swk-btn swk-btn-ghost w-full">Open in Document Studio <ArrowUpRight size={14} /></Link>
+              {canOpenTemplates && (
+                <Link to="/studio" className="swk-btn swk-btn-ghost w-full">Open in Document Studio <ArrowUpRight size={14} /></Link>
+              )}
             </Card>
           ))}
         </Reveal>

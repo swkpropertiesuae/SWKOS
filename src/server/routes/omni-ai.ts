@@ -80,7 +80,7 @@ function sanitizeRouteRow(r: OmniRouteRow) {
 interface ParsedChatInput {
   message: string
   conversation_id?: number
-  mode: OmniLane
+  mode: OmniLane | 'auto'
   confidential: boolean
   use_vision: boolean
   use_tools: boolean
@@ -116,10 +116,11 @@ async function parseChatRequest(req: FastifyRequest): Promise<ParsedChatInput> {
     const convId = fields.conversation_id ? Number(fields.conversation_id) : undefined
     if (convId !== undefined && (!Number.isInteger(convId) || convId <= 0)) throw bad('Invalid conversation_id')
     const preferRaw = String(fields.prefer_tier || '').trim().toLowerCase()
+    const modeRaw = String(fields.mode || fields.lane || 'auto').trim().toLowerCase()
     return {
       message: rawMsg.slice(0, 24_000),
       conversation_id: convId,
-      mode: normalizeLane(fields.mode || fields.lane || 'general'),
+      mode: modeRaw === 'auto' ? 'auto' : normalizeLane(modeRaw),
       confidential: fields.confidential === 'true' || fields.confidential === '1',
       use_vision: fields.use_vision === 'true' || fields.use_vision === '1',
       use_tools: fields.use_tools === 'true' || fields.use_tools === '1',
@@ -142,10 +143,11 @@ async function parseChatRequest(req: FastifyRequest): Promise<ParsedChatInput> {
   const b = schema.parse(req.body ?? {})
   const message = String(b.message ?? b.prompt ?? '').trim()
   if (!message) throw bad('Enter a message')
+  const modeRaw = String(b.mode ?? b.lane ?? 'auto').trim().toLowerCase()
   return {
     message,
     conversation_id: b.conversation_id,
-    mode: normalizeLane(b.mode ?? b.lane ?? 'general'),
+    mode: modeRaw === 'auto' ? 'auto' : normalizeLane(modeRaw),
     confidential: Boolean(b.confidential),
     use_vision: Boolean(b.use_vision),
     use_tools: Boolean(b.use_tools),
@@ -451,7 +453,8 @@ export default async function omniAiRoutes(app: FastifyInstance) {
     }
 
     const extracted = await extractAttachmentContent(input.files, { useVision: input.use_vision })
-    const effectiveLane: OmniLane = extracted.visionImages.length ? 'vision' : input.mode
+    const requestedLane: OmniLane | 'auto' = extracted.visionImages.length ? 'vision' : input.mode
+    const effectiveLane: OmniLane = requestedLane === 'auto' ? 'general' : requestedLane
 
     const combinedText = [input.message, ...extracted.extractedBlocks].filter(Boolean).join('\n\n')
     if (!combinedText && !extracted.visionImages.length) {
@@ -482,7 +485,7 @@ export default async function omniAiRoutes(app: FastifyInstance) {
 
     const omniReq: OmniRequest = {
       messages,
-      lane: effectiveLane,
+      lane: requestedLane,
       confidential: input.confidential,
       zeroRetentionOnly: input.confidential,
       preferTier: input.prefer_tier,
@@ -580,6 +583,7 @@ export default async function omniAiRoutes(app: FastifyInstance) {
       tokens: totalTokens,
       attempts: totalAttempts,
       lane: result.lane,
+      routing_reason: result.routingReason ?? null,
       failover_trace: result.failoverTrace,
       rbac_guard_digest: result.rbacGuardDigest,
     }
@@ -692,6 +696,7 @@ export default async function omniAiRoutes(app: FastifyInstance) {
         tokens: totalTokens,
         attempts: totalAttempts,
         lane: result.lane,
+        routing_reason: result.routingReason ?? null,
         failover_trace: result.failoverTrace,
         rbac_guard_digest: result.rbacGuardDigest,
       })

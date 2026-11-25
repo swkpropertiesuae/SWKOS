@@ -42,10 +42,11 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   storage_provider: 'local', r2_account_id: '', r2_access_key_id: '', r2_secret_access_key: '', r2_bucket: '', r2_backup_nightly: true,
   // --- Supabase (Postgres replica for BI / disaster recovery)
   supabase_url: '', supabase_service_key: '', supabase_sync: false, supabase_cursors: {},
-  // --- WhatsApp Cloud API
+  // --- WhatsApp Cloud API & Meta Omnichannel (Facebook Messenger / Instagram DM)
   wa_enabled: false, wa_phone_number_id: '', wa_access_token: '', wa_verify_token: '', wa_app_secret: '', wa_owner_numbers: '', wa_default_country_code: '971',
   wa_template_lang: 'en', wa_tpl_notify: '', wa_tpl_reminder: '', wa_tpl_report: '',
   wa_auto_leads: true, wa_auto_milestones: false, wa_auto_overdue: false, wa_owner_daily_report: false, wa_staff_bot: true, wa_customer_bot: true,
+  meta_page_id: '', meta_page_access_token: '', meta_ig_user_id: '', meta_ig_access_token: '',
   // --- Voice (AI receptionist over a SIP trunk, e.g. du)
   // --- Review requests: when an opportunity is won, a message draft asking for a review is created for approval (only when this https link is set)
   review_request_link: '',
@@ -100,7 +101,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'meta_page_access_token', 'meta_ig_access_token', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {

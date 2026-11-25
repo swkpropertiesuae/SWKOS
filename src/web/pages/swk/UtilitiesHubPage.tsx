@@ -53,7 +53,7 @@ const PILLAR_CARDS: HubCardDef[] = [
     key: 'word',
     title: 'SWK Word Studio',
     eyebrow: 'DOCX · PDF · RTL',
-    blurb: 'Private rich-text drafting with official SWK letterhead, optional seal, 158 templates, inline AI Assist, and .docx/.pdf export.',
+    blurb: 'Private rich-text drafting with official SWK letterhead, inline AI Assist, and instant .docx/.pdf export.',
     icon: FileCode2,
     route: '/utilities/word',
     badge: 'New',
