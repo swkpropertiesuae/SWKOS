@@ -69,7 +69,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   vapid_public_key: '', vapid_private_key: '', fcm_service_account_json: '', push_hide_preview_global: false,
   // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security
   office_wifi_ssid: 'XAVIER BUSINESS',
-  office_wifi_bssid: '',
+  office_wifi_bssid: '72:d7:9a:db:56:f0',
   office_wifi_public_ips: '',
   office_wifi_gateway_ip: '192.168.0.1',
   office_wifi_strict_ip: true,

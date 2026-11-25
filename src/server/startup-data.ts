@@ -8,9 +8,11 @@ import { SYSTEM_CTX } from './engine'
 import { nowIso } from './util'
 import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusinessData,starterDeclined,starterLoaded } from './domain/business-data'
 import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,retireSwk2026PatternPasswords } from './seed'
+import { setSettings } from './settings'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
 
 const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
+const XAVIER_BUSINESS_WIFI_SYNC_KEY = 'wifi:xavier-business-2026-11-25'
 
 /** Removes every internal login that is not one of the official staff accounts (old @swkpropertiesuae.com and @swk.property users). Customer-portal users are kept. */
 function removeUnlistedStaffUsers() {
@@ -63,6 +65,24 @@ export async function runStartupDataTasks() {
   applyConfiguredPasswords()
   retireSwk2026PatternPasswords()
   applyPasswordReset()
+  // One-time production office network sync for XAVIER BUSINESS (AP BSSID 72:d7:9a:db:56:f0, Gateway 192.168.0.1, Public IP 2.50.42.191)
+  if (config.isProd && !q.val(`SELECT 1 FROM settings WHERE key = ?`, XAVIER_BUSINESS_WIFI_SYNC_KEY)) {
+    setSettings({
+      office_wifi_ssid: 'XAVIER BUSINESS',
+      office_wifi_bssid: '72:d7:9a:db:56:f0',
+      office_wifi_gateway_ip: '192.168.0.1',
+      office_wifi_public_ips: '2.50.42.191',
+      office_wifi_strict_ip: true,
+      office_gps_enforce: false,
+      qr_mode: 'rotating',
+    })
+    q.run(
+      `INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      XAVIER_BUSINESS_WIFI_SYNC_KEY,
+      nowIso(),
+    )
+    console.log('[wifi] Synced production office network XAVIER BUSINESS (2.50.42.191 / 72:d7:9a:db:56:f0)')
+  }
   if (config.starterData && !starterLoaded() && !starterDeclined() && businessDataSummary().total === 0) {
     const r = loadSwkStarterData(SYSTEM_CTX) as any
     if (r.loaded) console.log(`SWK OS starter data loaded (${r.invoices?.length} invoices, ${r.jobs?.length} jobs).`)

@@ -1393,19 +1393,43 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     require_live_camera: Boolean(getSetting('qr_require_live_camera') ?? true),
   })
 
+  const ipMatchesRule = (cleanClientIp: string, rule: string): boolean => {
+    const r = rule.trim()
+    if (!r) return false
+    if (r.endsWith(':')) return cleanClientIp.startsWith(r)
+    if (r.includes('/')) {
+      const [net, bitsStr] = r.split('/')
+      const bits = Number(bitsStr)
+      const toInt = (ip: string) => {
+        const parts = ip.split('.').map(Number)
+        if (parts.length !== 4 || parts.some(p => !Number.isInteger(p) || p < 0 || p > 255)) return null
+        return ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0
+      }
+      const a = toInt(cleanClientIp)
+      const b = toInt(net)
+      if (a !== null && b !== null && Number.isInteger(bits) && bits >= 8 && bits <= 32) {
+        const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0
+        return (a & mask) === (b & mask)
+      }
+    }
+    return cleanClientIp === r
+  }
+
   const getWifiCfg = (clientIp?: string) => {
     const ssidRaw = String(getSetting('office_wifi_ssid') || 'XAVIER BUSINESS').trim()
     const allowedSsids = ssidRaw.split(',').map(s => s.trim()).filter(Boolean)
     const publicIpsRaw = String(getSetting('office_wifi_public_ips') || '').trim()
     const allowedPublicIps = publicIpsRaw.split(',').map(s => s.trim()).filter(Boolean)
     const gatewayIp = String(getSetting('office_wifi_gateway_ip') || '192.168.0.1').trim()
+    const bssid = String(getSetting('office_wifi_bssid') || '72:d7:9a:db:56:f0').trim()
     const strictIp = Boolean(getSetting('office_wifi_strict_ip'))
     const cleanClientIp = String(clientIp || '').replace(/^::ffff:/, '').trim()
     const isLocalIp = !config.isProd && (!cleanClientIp || cleanClientIp === '127.0.0.1' || cleanClientIp.startsWith('127.') || cleanClientIp === '::1' || cleanClientIp.startsWith('192.168.') || cleanClientIp.startsWith('10.'))
-    const ipMatchesConfigured = isLocalIp || allowedPublicIps.some(ip => ip.endsWith(':') ? cleanClientIp.startsWith(ip) : cleanClientIp === ip)
+    const ipMatchesConfigured = isLocalIp || allowedPublicIps.some(ip => ipMatchesRule(cleanClientIp, ip))
     const gps = officeGps()
     return {
       ssid: allowedSsids[0] || 'XAVIER BUSINESS',
+      bssid,
       allowed_ssids: allowedSsids,
       public_ips: publicIpsRaw,
       allowed_public_ips: allowedPublicIps,
@@ -1445,7 +1469,11 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const b = (req.body ?? {}) as Record<string, any>
     const clientIp = resolveClientIp(req)
     if (b.clear_ips) b.office_wifi_public_ips = ''
-    if (b.lock_current_ip && clientIp) {
+    if (b.relock_current_ip && clientIp) {
+      const clean = clientIp.replace(/^::ffff:/, '')
+      const lockVal = clean.includes(':') ? clean.split(':').slice(0, 4).join(':') + ':' : clean
+      b.office_wifi_public_ips = lockVal
+    } else if (b.lock_current_ip && clientIp) {
       // locked once: changing it means clearing first, both done by the Admin in Settings
       if (String(b.office_wifi_public_ips ?? getSetting('office_wifi_public_ips') ?? '').trim()) throw new HttpError(409, 'The office network is already locked. To change it, clear it first in Settings, Attendance Wi-Fi.')
       // an IPv6 phone gets a different address each time, so lock the network prefix (first four groups); IPv4 locks the exact address
@@ -1472,7 +1500,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     reply.header('cache-control', 'no-store')
     if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin and Haseeb can open the reception code screen.')
     const cfg = getWifiCfg(resolveClientIp(req))
-    if (cfg.office_ip_locked && !cfg.ip_matches_office) throw new HttpError(403, `Open the reception screen on the office network (${cfg.ssid}).`)
+    if (cfg.office_ip_locked && !cfg.ip_matches_office) throw new HttpError(403, `Open the reception screen on the office network (${cfg.ssid}). Detected IP ${cfg.detected_client_ip} does not match the locked office IP.`)
     return currentQrToken()
   })
   // Owner/Manager: make every printed fixed code useless (use after a leak) or switch between the fixed and the 30-second rotating code
