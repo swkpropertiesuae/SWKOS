@@ -1011,7 +1011,7 @@ export function preflightOmniRequest(req: OmniRequest): { lane: OmniLane; candid
   let routingReason: string | undefined
   let effectiveReq: OmniRequest = req
 
-  if (!req.lane || req.lane === 'auto') {
+  if (req.lane === 'auto') {
     const auto = classifyAutoTaskLane(req.messages, req.hasVisionContent)
     lane = auto.lane
     routingReason = auto.reason
@@ -1020,7 +1020,7 @@ export function preflightOmniRequest(req: OmniRequest): { lane: OmniLane; candid
       effectiveReq = { ...req, preferTier: 'tier1' }
     }
   } else {
-    lane = normalizeLane(req.lane)
+    lane = normalizeLane(req.lane ?? 'general')
   }
 
   if (!effectiveReq.bypassQuota) assertUserQuota(effectiveReq.user)
@@ -1030,7 +1030,7 @@ export function preflightOmniRequest(req: OmniRequest): { lane: OmniLane; candid
     return { lane, candidates, routingReason }
   } catch (err) {
     // In auto mode, gracefully fall back to 'general' if the specialized lane has no route configured
-    if ((!req.lane || req.lane === 'auto') && lane !== 'general' && lane !== 'vision') {
+    if (req.lane === 'auto' && lane !== 'general' && lane !== 'vision') {
       const candidates = selectCandidates(effectiveReq, 'general')
       return {
         lane: 'general',
