@@ -322,12 +322,15 @@ function buildWhere(def: EntityDef, p: ListParams, ctx: Ctx): { where: string; a
       args.push(uid, uemail, uid)
     }
   }
+  // Masked fields (masked_fields setting) must not be searchable or filterable either, or their values could be guessed with gt/lt or LIKE.
+  const masked = new Set(maskedFieldsFor(def, ctx))
   if (p.q && p.q.trim()) {
-    const cols = [...new Set([...def.fields.filter(f => f.search && f.type !== 'ref').map(f => f.name), ...titleCols(def).filter(c => def.fields.find(x => x.name === c)?.type !== 'ref')])]
+    const cols = [...new Set([...def.fields.filter(f => f.search && f.type !== 'ref').map(f => f.name), ...titleCols(def).filter(c => def.fields.find(x => x.name === c)?.type !== 'ref')])].filter(c => !masked.has(c))
     const term = `%${likeEsc(p.q.trim())}%`
     if (cols.length) { cl.push('(' + cols.map(c => `${searchCol(c)} LIKE ? ESCAPE '\\'`).join(' OR ') + ')'); args.push(...cols.map(() => term)) }
   }
   for (const flt of p.filters ?? []) {
+    if (masked.has(flt.field)) continue
     const f = def.fields.find(x => x.name === flt.field && !x.secret)
     const sys = ['id', 'created_at', 'updated_at'].includes(flt.field)
     if (!f && !sys) continue

@@ -2,9 +2,10 @@ import { createHash } from 'node:crypto'
 import { q } from '../db'
 import { assertCan,getRecord,getDef,createRecord,patchRecord,listRecords,audit,SYSTEM_CTX,type Ctx,type Rec } from '../engine'
 import type { Hooks } from '../hooks'
-import { addDays,bad,forbidden,fromCents,nowIso,safeJson,todayStr } from '../util'
+import { addDays,bad,forbidden,fromCents,notFound,nowIso,safeJson,todayStr } from '../util'
 import { loadUser } from '../auth'
 import { notifyRole } from '../notify'
+import { canViewEmployeeRecords } from '../../shared/swk-staff-access'
 
 const digest = (v: string) => createHash('sha256').update(v).digest('hex')
 const dateValid = (v: string) => !!v && v >= todayStr()
@@ -287,6 +288,8 @@ export function reviewDailyReport(id: number, decision: 'approve' | 'return', fe
 }
 
 export function scanMissingDailyReports(workDate = todayStr(), ctx: Ctx = SYSTEM_CTX) {
+  // The result lists every active employee without a report: leadership and HR only.
+  if (!ctx.system && !canViewEmployeeRecords(ctx.user)) throw forbidden('Only the Owner, Admin, Operations Manager and HR can scan for missing daily reports')
   const activeEmps = q.all('SELECT * FROM employees WHERE status = ? AND deleted_at IS NULL', 'Active')
   const missing: Rec[] = []
   let tasksCreated = 0
@@ -1289,14 +1292,18 @@ export function decideComplianceCase(caseId: number, findings: string, remedyDec
 
 export function appealComplianceCase(caseId: number, appealNotes: string, ctx: Ctx) {
   if (!ctx.system && !ctx.user?.id) throw bad('Authentication required to submit a compliance appeal')
-  getRecord(getDef('compliance_cases'), caseId, { ...ctx, system: true })
+  const c = getRecord(getDef('compliance_cases'), caseId, { ...ctx, system: true })
+  // Only the person the case is about may appeal it; anyone else gets "not found" so case ids reveal nothing.
+  if (!ctx.system && ctx.user!.id !== c.subject_user_id && ctx.user!.id !== c.implicated_user_id) throw notFound()
   if (appealNotes.trim().length < 10) throw bad('Provide appeal grounds and counter-evidence (at least 10 characters)')
   // Control 3.29 & Adversarial 7.16: Right to appeal automated risk flags or findings
-  return patchRecord(getDef('compliance_cases'), caseId, {
+  const updated = patchRecord(getDef('compliance_cases'), caseId, {
     appeal_submitted: true,
     appeal_notes: appealNotes.trim(),
     status: 'Appealed by Subject',
   }, { ...ctx, system: true })
+  // The subject sees the outcome of the appeal, not the investigation file.
+  return { id: updated.id, case_no: updated.case_no, status: updated.status, appeal_submitted: true }
 }
 
 export function resolveComplianceAppeal(caseId: number, outcome: 'correct_false_flag' | 'uphold', notes: string, ctx: Ctx) {
@@ -1382,6 +1389,7 @@ export function reassignProtectedLead(leadId: number, toUserId: number, mode: st
 
 export function challengeQaReview(qaId: number, challengeReason: string, ctx: Ctx) {
   const qRev = getRecord(getDef('qa_reviews'), qaId, ctx)
+  if (!ctx.system && qRev.user_id !== ctx.user?.id) throw forbidden('Only the reviewed broker can challenge this quality review')
   if (challengeReason.trim().length < 10) throw bad('Provide detailed grounds for challenging the QA assessment (at least 10 characters)')
   return patchRecord(getDef('qa_reviews'), qaId, {
     broker_challenged: true,

@@ -656,7 +656,7 @@ export function canRequestCompanySeal(
   return canAccessDocumentTemplates(user)
 }
 
-/** Password pattern for every hardcoded account except the Manager: first part of the email, capitalised, + '@swk2026' (Shabib@swk2026). */
+/** The retired name pattern (first part of the email, capitalised, + '@swk2026'). Only used to detect and replace accounts that still accept it; never assign it. */
 export function swkPatternPassword(email: string): string {
   const local = String(email).split('@')[0]
   return local.charAt(0).toUpperCase() + local.slice(1).toLowerCase() + '@swk2026'

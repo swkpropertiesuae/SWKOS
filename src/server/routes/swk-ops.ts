@@ -1,3 +1,4 @@
+import { portalListings } from '../domain/portals'
 import type { FastifyInstance } from 'fastify'
 import { q,tx } from '../db'
 import { can,createRecord,deleteRecord,getDef,patchRecord,SYSTEM_CTX,updateRecord,type Ctx } from '../engine'
@@ -1163,8 +1164,11 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   })
 
   // ------------------------------------------------------------------ 4. Bayut & Dubizzle Portal Syndication + 3rd-Party A2A Match
-  // No Bayut/Dubizzle/Property Finder API or XML feed is wired up yet: say so instead of showing a fake "Live" status.
-  const NO_FEED = 'No live feed connected: publish manually on the portal, then record it here'
+  // Each portal pulls an XML feed (Settings, Portals). The status counts what the feed really sends: only listings with a valid Trakheesi permit.
+  const feedStatus = (key: 'propertyfinder' | 'bayut' | 'dubizzle') => {
+    const { eligible, blocked } = portalListings(key)
+    return `XML feed: ${eligible.length} live, ${blocked.length} blocked (permit, price, agent or description missing)`
+  }
   app.get('/api/swk-ops/portals/status', async (req) => {
     need(req, 'properties', 'view')
     const props = q.all(`
@@ -1180,9 +1184,9 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     const leadsBySource = q.all(`SELECT source, COUNT(*) as count FROM leads WHERE deleted_at IS NULL GROUP BY source ORDER BY count DESC`)
     return {
       portals: [
-        { key: 'bayut', name: 'Bayut UAE', activeListings: props.filter((p: any) => p.portal_bayut).length, account: 'SWK Properties LLC — Bayut Pro Agency #BRN-SWK', status: NO_FEED },
-        { key: 'dubizzle', name: 'Dubizzle Property', activeListings: props.filter((p: any) => p.portal_dubizzle).length, account: 'SWK Properties LLC — Dubizzle Verified Agency', status: NO_FEED },
-        { key: 'pf', name: 'Property Finder UAE', activeListings: props.filter((p: any) => p.portal_pf).length, account: 'SWK Properties LLC — PF Enterprise', status: NO_FEED },
+        { key: 'bayut', name: 'Bayut UAE', activeListings: props.filter((p: any) => p.portal_bayut).length, account: 'SWK Properties LLC — Bayut Pro Agency #BRN-SWK', status: feedStatus('bayut') },
+        { key: 'dubizzle', name: 'Dubizzle Property', activeListings: props.filter((p: any) => p.portal_dubizzle).length, account: 'SWK Properties LLC — Dubizzle Verified Agency', status: feedStatus('dubizzle') },
+        { key: 'pf', name: 'Property Finder UAE', activeListings: props.filter((p: any) => p.portal_pf).length, account: 'SWK Properties LLC — PF Enterprise', status: feedStatus('propertyfinder') },
       ],
       byDepartment: {
         offplan: props.filter((p: any) => p.department_division === 'Sales of Off-Plan Projects').length,

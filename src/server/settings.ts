@@ -53,7 +53,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   // --- Voice (AI receptionist over a SIP trunk, e.g. du)
   // --- Review requests: when an opportunity is won, a message draft asking for a review is created for approval (only when this https link is set)
   review_request_link: '',
-  voice_enabled: false, voice_secret: '', lead_webhook_secret: '', voice_transfer_number: '', voice_greeting_en: '', voice_greeting_ar: '', voice_record_notice: true, voice_retention_days: 90,
+  voice_enabled: false, voice_secret: '', lead_webhook_secret: '', portal_feed_token: '', portal_feed_agency_name: '', voice_transfer_number: '', voice_greeting_en: '', voice_greeting_ar: '', voice_record_notice: true, voice_retention_days: 90,
   // --- Hard-Masked Agent Bridge Calling (Zero Phone History Exposure)
   masked_call_provider: 'none', masked_call_caller_id: '', masked_call_twilio_sid: '', masked_call_twilio_token: '', masked_call_webhook_url: '', masked_call_webhook_secret: '', masked_call_record: true,
   // --- AI
@@ -104,7 +104,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'meta_page_access_token', 'meta_ig_access_token', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'meta_page_access_token', 'meta_ig_access_token', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'portal_feed_token', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {
