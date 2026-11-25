@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { ENTITIES } from '../../shared/entities'
 import {
   canAccessCrmVault,
-  canAccessDocumentTemplates,
   canViewEmployeeRecords,
   isFullAccessSwkUser,
   isRestrictedStaffUser,
@@ -236,7 +235,6 @@ function canAccessAttachmentLink(user: SessionUser, linkEntity: string | null | 
   if (!ent) return can(user, 'documents', 'view')
   const def = ENTITIES[ent]
   if (!def) return false
-  if ((ent === 'doc_templates' || ent === 'studio_documents') && !canAccessDocumentTemplates(user)) return false
   if (RESTRICTED_HR_PII_ENTITIES.has(ent) && !canViewEmployeeRecords(user)) return false
   if (isRestrictedStaffUser(user) && !RESTRICTED_STAFF_ALLOWED_ENTITIES.has(ent)) return false
   return can(user, def.module, 'view')

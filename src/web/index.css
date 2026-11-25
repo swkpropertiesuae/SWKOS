@@ -32,32 +32,31 @@
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-700-normal.woff2') format('woff2'); font-weight: 700 800; font-style: normal; font-display: swap; }
 
 @theme {
-  --font-sans: 'Switzer', 'Instrument Sans', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, sans-serif;
-  --font-display: 'Instrument Sans', 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, sans-serif;
-  --font-editorial: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Manrope Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'Geist Mono Variable', ui-monospace, Menlo, monospace;
 
-  --color-navy: #0a1b24;
-  --color-midnight: #07131a;
-  --color-graphite: #0f172a;
-  --color-emerald: #046c4e;
-  --color-fold: #0a1b24;
-  --color-signal: #be123c;
-  --color-champ: #a6761f;
-  --color-oasis: #0f766e;
-  --color-dune: #be123c;
-  --color-ocean: #1d4ed8;
-  --color-teal: #0f766e;
-  --color-copper: #c89b3c;
-  --color-violet: #046c4e;
-  --color-pearl: #f5f4f0;
-  --color-champagne: #fbf6ea;
-  --color-mint: #ebf7f2;
-  --color-sky: #eff5fc;
-  --color-sand: #f4f2ec;
-  --color-lilac: #edf4f2;
+  --color-navy: #0b1f2a;
+  --color-midnight: #091821;
+  --color-graphite: #111827;
+  --color-emerald: #0e9f6e;
+  --color-fold: #0b1f2a;
+  --color-signal: #dc2626;
+  --color-champ: #b78328;
+  --color-oasis: #0d9488;
+  --color-dune: #dc2626;
+  --color-ocean: #2563eb;
+  --color-teal: #0d9488;
+  --color-copper: #d4a752;
+  --color-violet: #7c3aed;
+  --color-pearl: #f8fafc;
+  --color-champagne: #fef7e6;
+  --color-mint: #ecfdf5;
+  --color-sky: #eff6ff;
+  --color-sand: #f8fafc;
+  --color-lilac: #f5f3ff;
   --color-blush: #fef2f2;
-  --color-gold: #fbf6ea;
+  --color-gold: #fffbeb;
 }
 
 @theme inline {

@@ -4,7 +4,7 @@ import { logIntegration } from '../integrations/log'
 import { notifyLeadership } from '../notify'
 import { decryptSecret, getSetting } from '../settings'
 import { HttpError, nowIso, safeJson, todayStr } from '../util'
-import { canAccessCrmVault, isOwnerSwkUser } from '../../shared/swk-staff-access'
+import { canAccessCrmVault } from '../../shared/swk-staff-access'
 import { getOmniPreset, normalizeLane, OMNI_PRESETS, type OmniLane, type OmniTier } from './omni-catalog'
 import { findPendingPlaceholderStart, restoreScrubbedPii, restoreValueWithPii, scrubMessages } from './pii-shield'
 import { buildRbacSystemGuard, isToolAllowedForUser, RBAC_GUARD_MARKER, rbacPromptFingerprint } from './policy'
@@ -68,7 +68,6 @@ export interface OmniResult {
   piiRedacted: number
   attempts: number
   lane: OmniLane
-  routingReason?: string
   failoverTrace: OmniFailoverHop[]
   rbacGuardDigest?: string
 }
@@ -954,99 +953,18 @@ async function callRouteOnce(
   }
 }
 
-function latestUserPromptText(messages: OmniMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i]!
-    if (m.role !== 'user') continue
-    if (typeof m.content === 'string') return m.content.trim()
-    if (Array.isArray(m.content)) {
-      return m.content
-        .map(p => (p && typeof p === 'object' && p.type === 'text' ? String(p.text || '') : ''))
-        .join(' ')
-        .trim()
-    }
-  }
-  return ''
-}
-
-/**
- * Automatic Best-Model-Per-Task Orchestrator:
- * Classifies the incoming task and picks the ideal Omni-Route lane so Owner & staff
- * always get the strongest available model for each specific job.
- */
-export function classifyAutoTaskLane(
-  messages: OmniMessage[],
-  hasVisionContent?: boolean,
-): { lane: OmniLane; reason: string } {
-  if (hasVisionContent || hasMultimodalImage(messages)) {
-    return { lane: 'vision', reason: 'Visual / image input detected — routed to best Vision model' }
-  }
-  const text = latestUserPromptText(messages)
-  if (!text) return { lane: 'general', reason: 'General assistant workload — routed to primary General model' }
-
-  if (/\b(translate|translation|bilingual|arabic|urdu|hindi|russian|chinese|french|spanish|persian|farsi)\b|ترجم/i.test(text)) {
-    return { lane: 'translate', reason: 'Multilingual / UAE real-estate translation detected — routed to Translation specialist' }
-  }
-
-  if (
-    /\b(rera|dld|ejari|oqood|form\s*[abf]|mou|noc|legal|contract|clause|compliance|aml|goaml|pdpl|vat|corporate\s+tax|roi|irr|yield|amorti[sz]|calculat|audit|strategy|strateg|compare|analy[sz]e|convert|spreadsheet|csv|excel|json|sql|typescript|code|debug|architect|forecast|valuation|feasibility|step[\s-]by[\s-]step|deep)\b/i.test(text) ||
-    text.length >= 420
-  ) {
-    return { lane: 'reasoning', reason: 'Complex reasoning, legal/RERA, finance or data conversion task — routed to top Reasoning model' }
-  }
-
-  if (/\b(market|price\s+per\s+sqft|psf|benchmark|trend|latest|2026|2027|launch|developer|community\s+report|research|news)\b/i.test(text)) {
-    return { lane: 'search', reason: 'Dubai market research & live benchmark request — routed to Search-Grounded model' }
-  }
-
-  if (text.length <= 95) {
-    return { lane: 'fast', reason: 'Quick short-turnaround prompt — routed to lowest-latency Fast model' }
-  }
-
-  return { lane: 'general', reason: 'Balanced executive assistant task — routed to best General model' }
-}
-
-export function preflightOmniRequest(req: OmniRequest): { lane: OmniLane; candidates: ResolvedRoute[]; routingReason?: string } {
-  let lane: OmniLane
-  let routingReason: string | undefined
-  let effectiveReq: OmniRequest = req
-
-  if (req.lane === 'auto') {
-    const auto = classifyAutoTaskLane(req.messages, req.hasVisionContent)
-    lane = auto.lane
-    routingReason = auto.reason
-    // Owner automatically receives Tier-1 flagship model priority for complex/research/vision work
-    if (!req.preferTier && isOwnerSwkUser(req.user) && (lane === 'reasoning' || lane === 'search' || lane === 'vision')) {
-      effectiveReq = { ...req, preferTier: 'tier1' }
-    }
-  } else {
-    lane = normalizeLane(req.lane ?? 'general')
-  }
-
-  if (!effectiveReq.bypassQuota) assertUserQuota(effectiveReq.user)
-
-  try {
-    const candidates = selectCandidates(effectiveReq, lane)
-    return { lane, candidates, routingReason }
-  } catch (err) {
-    // In auto mode, gracefully fall back to 'general' if the specialized lane has no route configured
-    if (req.lane === 'auto' && lane !== 'general' && lane !== 'vision') {
-      const candidates = selectCandidates(effectiveReq, 'general')
-      return {
-        lane: 'general',
-        candidates,
-        routingReason: `${routingReason || 'Auto-routed'} (fallback to best General pool)`,
-      }
-    }
-    throw err
-  }
+export function preflightOmniRequest(req: OmniRequest): { lane: OmniLane; candidates: ResolvedRoute[] } {
+  const lane = normalizeLane(req.lane)
+  if (!req.bypassQuota) assertUserQuota(req.user)
+  const candidates = selectCandidates(req, lane)
+  return { lane, candidates }
 }
 
 // ---------------------------------------------------------------------------
 // Public Router API: omniChat() & omniChatStream()
 // ---------------------------------------------------------------------------
 export async function omniChat(req: OmniRequest): Promise<OmniResult> {
-  const { lane, candidates, routingReason } = preflightOmniRequest(req)
+  const { lane, candidates } = preflightOmniRequest(req)
   const bounded = enforceRbacBoundary(req)
   const errors: string[] = []
   const failoverTrace: OmniFailoverHop[] = []
@@ -1096,7 +1014,6 @@ export async function omniChat(req: OmniRequest): Promise<OmniResult> {
         piiRedacted: pii.redactedCount,
         attempts,
         lane,
-        routingReason,
         failoverTrace,
         rbacGuardDigest: bounded.rbacGuardDigest,
       }
@@ -1123,7 +1040,7 @@ export async function omniChat(req: OmniRequest): Promise<OmniResult> {
 }
 
 export async function omniChatStream(req: OmniRequest, onToken: (delta: string) => void): Promise<OmniResult> {
-  const { lane, candidates, routingReason } = preflightOmniRequest(req)
+  const { lane, candidates } = preflightOmniRequest(req)
   const bounded = enforceRbacBoundary(req)
   const errors: string[] = []
   const failoverTrace: OmniFailoverHop[] = []
@@ -1222,7 +1139,6 @@ export async function omniChatStream(req: OmniRequest, onToken: (delta: string) 
         piiRedacted: pii.redactedCount,
         attempts,
         lane,
-        routingReason,
         failoverTrace,
         rbacGuardDigest: bounded.rbacGuardDigest,
       }

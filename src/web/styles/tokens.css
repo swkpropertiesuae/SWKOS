@@ -1,102 +1,100 @@
 /* =====================================================================================
-   SWK OS — Bespoke Dubai Corporate Design Tokens
-   Swiss Architectural Alabaster (Light) + Executive Midnight Obsidian (Dark)
-   Zero AI pastel/neon gradients · Ultra-high optical contrast (WCAG AAA ink >= 10:1)
+   SWK OS — Unified Corporate Design Tokens (Light Executive Porcelain + Midnight Obsidian)
+   WCAG AA >= 4.5:1 guaranteed across light and dark themes.
    ===================================================================================== */
 
 :root {
-  --font-sans: 'Switzer', 'Instrument Sans', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
-  --font-display: 'Instrument Sans', 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, sans-serif;
-  --font-editorial: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Manrope Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Core Architectural Alabaster & Pure White Surfaces */
-  --bg: #f4f3ee;
+  /* Core Porcelain & Obsidian Surfaces */
+  --bg: #f5f7fb;
   --bg-white: #ffffff;
-  --bg-offwhite: #f8f7f3;
-  --bg-cta-light: #efede7;
-  --bg-subtle: #e4e2da;
-  --bg-obsidian: #0a1b24;
-  --bg-obsidian-card: #102733;
+  --bg-offwhite: #f8fafc;
+  --bg-cta-light: #f1f5f9;
+  --bg-subtle: #e2e8f0;
+  --bg-obsidian: #0b1f2a;
+  --bg-obsidian-card: #122d3d;
 
   --card: #ffffff;
-  --card-glass: rgba(255, 255, 255, 0.98);
-  --soft: #f2f1ec;
-  --hover: #eae8e0;
-  --line: #dcdad0;
-  --line-strong: #c4c1b5;
+  --card-glass: rgba(255, 255, 255, 0.94);
+  --soft: #f4f6fb;
+  --hover: #eef1f9;
+  --line: #e5e8f2;
+  --line-strong: #d2d8e8;
 
-  /* Ultra-Crisp High-Contrast Corporate Typography */
-  --ink: #09161f;
-  --ink-primary: #09161f;
-  --body: #233443;
-  --ink-secondary: #233443;
-  --muted: #465868;
-  --ink-muted: #465868;
-  --ink-subtle: #556677;
-  --eyebrow: #046c4e;
-  --lime-accent: #d4a752;
+  /* High-Contrast Typography (>= 7:1 on white) */
+  --ink: #0f172a;
+  --ink-primary: #0f172a;
+  --body: #334155;
+  --ink-secondary: #334155;
+  --muted: #526273;
+  --ink-muted: #526273;
+  --ink-subtle: #64748b;
+  --eyebrow: #6d28d9;
+  --lime-accent: #c5e86c;
 
-  /* Bespoke SWK Dubai Heritage Brand Accents (Emerald · Champagne Gold · Obsidian) */
-  --navy: #0a1b24;
-  --midnight: #07131a;
-  --graphite: #0f1c26;
-  --fold: #0a1b24;
-  --emerald: #046c4e;
-  --emerald-deep: #03543f;
-  --emerald-soft: #ebf7f2;
-  --sapphire: #1d4ed8;
+  /* Brand & Vibrant Corporate Semantic Accents */
+  --navy: #0b1f2a;
+  --midnight: #091821;
+  --graphite: #111827;
+  --fold: #0b1f2a;
+  --emerald: #0e9f6e;
+  --emerald-deep: #047857;
+  --emerald-soft: #ecfdf5;
+  --sapphire: #2563eb;
   --sapphire-soft: #eff6ff;
-  --champ: #a6761f;
-  --champ-bright: #c89b3c;
-  --champ-deep: #7f5710;
-  --champ-soft: #fbf5e6;
-  --oasis: #0f766e;
-  --dune: #be123c;
-  --signal: #be123c;
+  --champ: #b78328;
+  --champ-bright: #d4a752;
+  --champ-deep: #8a5f14;
+  --champ-soft: #fef7e6;
+  --oasis: #0d9488;
+  --dune: #dc2626;
+  --signal: #dc2626;
   --signal-soft: #fef2f2;
-  --amber: #b45309;
+  --amber: #d97706;
   --amber-soft: #fffbeb;
-  --violet: #046c4e;
-  --violet-soft: #ebf7f2;
+  --violet: #7c3aed;
+  --violet-soft: #f5f3ff;
 
-  --accent-mint: #c89b3c;
-  --accent-mint-deep: #7f5710;
-  --focus: #046c4e;
-  --ember: #a6761f;
-  --section-tint: #fbf5e6;
-  --section-ink: #0a1b24;
+  --accent-mint: #d4a752;
+  --accent-mint-deep: #8a5f14;
+  --focus: #2563eb;
+  --ember: #b78328;
+  --section-tint: #fef7e6;
+  --section-ink: #0b1f2a;
 
-  /* Precision Framer / Figma Elevation & Radii */
+  /* Motion & Elevation */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-swiss: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-fast: 150ms;
-  --radius: 18px;
-  --radius-lg: 22px;
-  --surface-raised: 0 1px 2px rgba(9, 22, 31, 0.05), 0 10px 28px -16px rgba(9, 22, 31, 0.12);
-  --surface-floating: 0 4px 12px rgba(9, 22, 31, 0.08), 0 24px 52px -18px rgba(9, 22, 31, 0.20);
-  --elevation: 0 2px 6px rgba(9, 22, 31, 0.06), 0 16px 36px -16px rgba(9, 22, 31, 0.16);
-  --workspace-ground: #f4f3ee;
+  --motion-fast: 160ms;
+  --radius: 22px;
+  --radius-lg: 28px;
+  --surface-raised: 0 14px 36px -22px rgba(15, 23, 42, 0.12);
+  --surface-floating: 0 22px 54px -22px rgba(15, 23, 42, 0.18);
+  --elevation: 0 16px 40px -20px rgba(15, 23, 42, 0.16);
+  --workspace-ground: #f5f5fa;
 
-  /* shadcn / 21st.dev Semantic Tokens (Light Executive Alabaster) */
-  --background: #f4f3ee;
-  --foreground: #09161f;
-  --card-foreground: #09161f;
+  /* shadcn / 21st.dev Semantic Tokens (Light Executive Porcelain) */
+  --background: #f5f5fa;
+  --foreground: #0f172a;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #09161f;
-  --primary: #0a1b24;
+  --popover-foreground: #0f172a;
+  --primary: #0f172a;
   --primary-foreground: #ffffff;
-  --secondary: #f2f1ec;
-  --secondary-foreground: #09161f;
-  --accent: #eae8e0;
-  --accent-foreground: #09161f;
-  --destructive: #be123c;
+  --secondary: #f4f6fb;
+  --secondary-foreground: #0f172a;
+  --accent: #eef1f9;
+  --accent-foreground: #0f172a;
+  --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
-  --border: #dcdad0;
-  --input: #c4c1b5;
-  --ring: #046c4e;
-  --muted-foreground: #465868;
-  --muted-surface: #f2f1ec;
+  --border: #e5e8f2;
+  --input: #d2d8e8;
+  --ring: #6d28d9;
+  --muted-foreground: #526273;
+  --muted-surface: #f4f6fb;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -110,52 +108,49 @@
 
 :root[data-theme='dark'],
 .dark {
-  --bg: #071219;
-  --workspace-ground: #071219;
-  --card: #0e1e29;
-  --card-glass: rgba(14, 30, 41, 0.98);
-  --soft: #142937;
-  --hover: #1b3446;
-  --line: #233f52;
-  --line-strong: #375c74;
+  --bg: #08131a;
+  --workspace-ground: #08131a;
+  --card: #0f202b;
+  --card-glass: rgba(15, 32, 43, 0.94);
+  --soft: #162c3a;
+  --hover: #1c3647;
+  --line: #213c4d;
+  --line-strong: #35566b;
   --ink: #f8fafc;
   --ink-primary: #f8fafc;
-  --body: #dbe4ee;
-  --ink-secondary: #dbe4ee;
-  --muted: #9eb2c6;
-  --ink-muted: #9eb2c6;
-  --ink-subtle: #9eb2c6;
-  --eyebrow: #e0b85c;
-  --lime-accent: #e0b85c;
-  --focus: #e0b85c;
-  --champ: #d4a752;
-  --champ-bright: #ebc874;
-  --champ-deep: #f0d082;
+  --body: #cbd5e1;
+  --ink-secondary: #cbd5e1;
+  --muted: #94a3b8;
+  --ink-muted: #94a3b8;
+  --ink-subtle: #94a3b8;
+  --eyebrow: #c5e86c;
+  --lime-accent: #c5e86c;
+  --focus: #d4a752;
   --champ-soft: rgba(212, 167, 82, 0.16);
-  --section-tint: #142937;
+  --section-tint: #162c3a;
   --section-ink: #f8fafc;
-  --surface-raised: 0 2px 6px rgba(0, 0, 0, 0.42), 0 12px 28px -12px rgba(0, 0, 0, 0.6);
-  --surface-floating: 0 24px 56px -14px rgba(0, 0, 0, 0.78);
+  --surface-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.55);
+  --surface-floating: 0 22px 54px -16px rgba(0, 0, 0, 0.72);
 
-  /* shadcn / 21st.dev Semantic Tokens (Dark Executive Obsidian) */
-  --background: #071219;
+  /* shadcn / 21st.dev Semantic Tokens (Dark Midnight Obsidian) */
+  --background: #08131a;
   --foreground: #f8fafc;
   --card-foreground: #f8fafc;
-  --popover: #112432;
+  --popover: #112533;
   --popover-foreground: #f8fafc;
   --primary: #f8fafc;
-  --primary-foreground: #071219;
-  --secondary: #142937;
+  --primary-foreground: #0b1f2a;
+  --secondary: #162c3a;
   --secondary-foreground: #f8fafc;
-  --accent: #1b3446;
+  --accent: #1c3647;
   --accent-foreground: #f8fafc;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #233f52;
-  --input: #375c74;
-  --ring: #e0b85c;
-  --muted-foreground: #9eb2c6;
-  --muted-surface: #142937;
+  --border: #213c4d;
+  --input: #35566b;
+  --ring: #d4a752;
+  --muted-foreground: #94a3b8;
+  --muted-surface: #162c3a;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -178,7 +173,6 @@
     height: 100%;
     color-scheme: light;
     background-color: var(--bg);
-    font-size: 16px;
   }
   :root[data-theme='dark'] {
     color-scheme: dark;
@@ -190,31 +184,28 @@
   }
   body {
     font-family: var(--font-sans);
-    font-size: 16px;
-    font-weight: 450;
-    line-height: 1.62;
+    font-size: 15.5px;
+    font-weight: 500;
+    line-height: 1.58;
     color: var(--body);
     background-color: var(--bg);
-    /* Crisp architectural warm stone canvas — zero generic pastel AI blobs */
     background-image:
-      linear-gradient(180deg, #f7f6f2 0%, #f1efe9 100%);
+      radial-gradient(960px 460px at 8% -6%, rgba(244, 198, 178, 0.24), transparent 58%),
+      radial-gradient(920px 440px at 92% -4%, rgba(196, 181, 253, 0.22), transparent 58%),
+      radial-gradient(760px 380px at 50% 100%, rgba(186, 230, 253, 0.16), transparent 60%),
+      linear-gradient(180deg, #faf8fc 0%, #f3f5fa 100%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.006em;
+    letter-spacing: -0.008em;
     caret-color: var(--focus);
   }
   :root[data-theme='dark'] body {
     background-image:
-      linear-gradient(180deg, #071219 0%, #091720 100%);
-  }
-  img,
-  picture,
-  svg {
-    image-rendering: -webkit-optimize-contrast;
+      radial-gradient(800px 380px at 15% -10%, rgba(212, 167, 82, 0.08), transparent 60%),
+      linear-gradient(180deg, #08131a 0%, #0b1922 100%);
   }
   h1,
   h2,
@@ -222,8 +213,8 @@
   h4 {
     font-family: var(--font-display);
     color: var(--ink);
-    letter-spacing: -0.024em;
-    line-height: 1.16;
+    letter-spacing: -0.025em;
+    line-height: 1.18;
   }
   .font-display {
     font-family: var(--font-display);

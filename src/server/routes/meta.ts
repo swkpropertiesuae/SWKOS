@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify'
 import { ENTITY_LIST,NAV,MODULE_DEFS } from '../../shared/entities'
-import { canAccessDocumentTemplates } from '../../shared/swk-staff-access'
 import { can,customFieldsFor } from '../engine'
 import { publicSettings } from '../settings'
 import { ACTIONS } from '../../shared/types'
@@ -13,23 +12,14 @@ export default async function (app: FastifyInstance) {
       const s = publicSettings()
       return { entities: [], nav: [], modules: [], perms: {}, settings: { company_name: s.company_name, base_currency: s.base_currency } }
     }
-    const allowTemplates = canAccessDocumentTemplates(user)
-    const entities = ENTITY_LIST
-      .filter(e => allowTemplates || (e.key !== 'doc_templates' && e.key !== 'studio_documents'))
-      .map(e => ({ ...e, customFieldDefs: customFieldsFor(e.key), fields: e.fields.filter(f => !f.secret) }))
-    const nav = NAV.map(g => ({
-      ...g,
-      items: g.items.filter(i => {
-        if (!allowTemplates && (i.to === '/studio' || i.to === '/e/doc_templates' || i.to === '/e/studio_documents')) return false
-        return !i.module || can(user, i.module, 'view')
-      }),
-    })).filter(g => g.items.length)
+    const entities = ENTITY_LIST.map(e => ({ ...e, customFieldDefs: e.customFields ? customFieldsFor(e.key) : [], fields: e.fields.filter(f => !f.secret) }))
+    const nav = NAV.map(g => ({ ...g, items: g.items.filter(i => !i.module || can(user, i.module, 'view')) })).filter(g => g.items.length)
     const perms: Record<string, string[]> = {}
     for (const [m] of MODULE_DEFS) perms[m] = ACTIONS.filter(a => can(user, m, a))
     const s = publicSettings()
     return {
       entities, nav, modules: MODULE_DEFS.map(([key, label]) => ({ key, label })), perms,
-      settings: { company_address_ar: s.company_address_ar, company_legal_form: s.company_legal_form, licence_issue_date: s.licence_issue_date, licence_expiry_date: s.licence_expiry_date, establishment_card_no: s.establishment_card_no, establishment_card_expiry: s.establishment_card_expiry, ct_application_reference: s.ct_application_reference, ct_application_date: s.ct_application_date, ct_application_status: s.ct_application_status, dcci_no: s.dcci_no, commercial_register_no: s.commercial_register_no, company_name: s.company_name, company_name_ar: s.company_name_ar, company_info_email: s.company_info_email, company_trade_license: s.company_trade_license, licence_authority: s.licence_authority, vat_registered: s.vat_registered, document_seal: s.document_seal, document_signature: s.document_signature, document_seal_default: s.document_seal_default, document_watermark_enabled: s.document_watermark_enabled, document_watermark_opacity: s.document_watermark_opacity, os_custom_options: s.os_custom_options, company_address: s.company_address, company_phone: s.company_phone, company_email: s.company_email, company_website: s.company_website, company_trn: s.company_trn, base_currency: s.base_currency, quote_validity_days: s.quote_validity_days, min_margin_pct: s.min_margin_pct, weight_divisor_air: s.weight_divisor_air, bank_details: s.bank_details, invoice_footer: s.invoice_footer, quote_terms: s.quote_terms, invoice_terms: s.invoice_terms, free_days_default: s.free_days_default },
+      settings: { company_address_ar: s.company_address_ar, company_legal_form: s.company_legal_form, licence_issue_date: s.licence_issue_date, licence_expiry_date: s.licence_expiry_date, establishment_card_no: s.establishment_card_no, establishment_card_expiry: s.establishment_card_expiry, ct_application_reference: s.ct_application_reference, ct_application_date: s.ct_application_date, ct_application_status: s.ct_application_status, dcci_no: s.dcci_no, commercial_register_no: s.commercial_register_no, company_name: s.company_name, company_name_ar: s.company_name_ar, company_info_email: s.company_info_email, company_trade_license: s.company_trade_license, licence_authority: s.licence_authority, vat_registered: s.vat_registered, document_seal: s.document_seal, document_signature: s.document_signature, document_seal_default: s.document_seal_default, company_address: s.company_address, company_phone: s.company_phone, company_email: s.company_email, company_website: s.company_website, company_trn: s.company_trn, base_currency: s.base_currency, quote_validity_days: s.quote_validity_days, min_margin_pct: s.min_margin_pct, weight_divisor_air: s.weight_divisor_air, bank_details: s.bank_details, invoice_footer: s.invoice_footer, quote_terms: s.quote_terms, invoice_terms: s.invoice_terms, free_days_default: s.free_days_default },
     }
   })
 }

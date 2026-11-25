@@ -13,8 +13,8 @@ import { canAccessDocumentTemplates } from '../../shared/swk-staff-access'
 
 const company = () => publicSettings()
 const staffOnly = (req: any) => {
-  if (req.user?.party_id) throw forbidden('Access denied.')
-  if (!canAccessDocumentTemplates(req.user)) throw forbidden('Access denied.')
+  if (req.user?.party_id) throw forbidden('Customer accounts cannot use the Document Studio')
+  if (!canAccessDocumentTemplates(req.user)) throw forbidden('Document Templates & Letter Studio are restricted to Owner, Admin, HR, and Office Admin only.')
 }
 
 /** Facts from a customer and job that fit the common placeholders, keyed by the lower-case label inside the brackets. */

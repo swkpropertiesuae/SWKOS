@@ -45,8 +45,7 @@ export async function backupToR2(): Promise<string> {
   return name
 }
 
-const DEPARTMENTS = ['Sales of Off-Plan Projects', 'Secondary Projects', 'Leasing']
-type LeadIn = { external_id?: string; name?: string; email?: string; phone?: string; message?: string; source?: string; interest?: string; consent?: boolean; department_division?: string; owner_id?: number }
+type LeadIn = { external_id?: string; name?: string; email?: string; phone?: string; message?: string; source?: string; interest?: string; consent?: boolean }
 /** Creates or updates a lead from any intake channel. The sender's id (or the whole body) is the event key, so retries are harmless. */
 export function ingestLead(b: LeadIn): { duplicate: true; lead_id: number } | { duplicate: false; lead_id: number; created: boolean } {
     const key = crypto.createHash('sha256').update(b.external_id ? `id:${b.source ?? ''}:${b.external_id}` : JSON.stringify(b)).digest('hex')
@@ -60,7 +59,7 @@ export function ingestLead(b: LeadIn): { duplicate: true; lead_id: number } | { 
       leadId = existing.id
       q.run(`INSERT INTO comments(entity, record_id, user_id, body, created_at) VALUES ('leads', ?, (SELECT MIN(id) FROM users), ?, ?)`, leadId, `New enquiry via ${source}: ${(b.message ?? '').slice(0, 500)}`, nowIso())
     } else {
-      leadId = createRecord(getDef('leads'), { company: b.name || b.email || `+${phone}`, contact_name: b.name ?? null, email: b.email ?? null, phone: phone ? '+' + phone : null, source, status: 'New', interest: MODES.includes(b.interest as string) ? b.interest : null, marketing_consent: b.consent === true ? 'Opted in' : 'Unknown', notes: b.message ?? null, department_division: DEPARTMENTS.includes(b.department_division as string) ? b.department_division : undefined, ...(b.owner_id ? { owner_id: b.owner_id, routed_by: 'Listing agent' } : {}) }, SYSTEM_CTX).id
+      leadId = createRecord(getDef('leads'), { company: b.name || b.email || `+${phone}`, contact_name: b.name ?? null, email: b.email ?? null, phone: phone ? '+' + phone : null, source, status: 'New', interest: MODES.includes(b.interest as string) ? b.interest : null, marketing_consent: b.consent === true ? 'Opted in' : 'Unknown', notes: b.message ?? null }, SYSTEM_CTX).id
       created = true
     }
     q.run(`INSERT INTO lead_source_events (event_key, source, lead_id, new_lead, payload_json, received_at) VALUES (?,?,?,?,?,?)`, key, source, leadId, created ? 1 : 0, JSON.stringify(b), nowIso())

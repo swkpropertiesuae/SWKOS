@@ -13,7 +13,6 @@ import { enterDb,q } from './db'
 import { can } from './engine'
 import { getDemoDb } from './demo/workspace'
 import type { Ctx,SessionUser } from './engine'
-import { installEnterpriseSecurityHardening } from './security/hardening'
 import { ZodError } from 'zod'
 
 declare module 'fastify' {
@@ -43,19 +42,8 @@ const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-p
 // Webhook secrets, tracking tokens, and one-time SSE tickets travel in URLs; keep them out of the request log.
 export const redactUrl = (u: string) =>
   u
-    .replace(/^(\/api\/public\/(?:bank|voice|sip|tracking|track|deal|crm-bridge\/twiml|portal-feed)\/)[^/?#]+/, '$1[redacted]')
-    .replace(/^(\/api\/public\/portal-lead\/[a-z]+\/)[^/?#]+/, '$1[redacted]')
+    .replace(/^(\/api\/public\/(?:bank|voice|sip|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
     .replace(/([?&]ticket=)[^&#]*/gi, '$1[redacted]')
-
-/** The native apps' WebViews (Android https://localhost, iOS capacitor://localhost). Other localhost origins, with any port, only outside production. */
-export const allowedLocalOrigin = (origin: string) =>
-  /^(?:https:\/\/localhost|capacitor:\/\/localhost)$/i.test(origin) || (!config.isProd && /^(?:https?|capacitor):\/\/localhost(:\d+)?$/i.test(origin))
-
-export const rateLimitKey = (req: FastifyRequest): string => {
-  const cf = req.headers['cf-connecting-ip']
-  if (config.isProd && typeof cf === 'string' && cf.trim()) return cf.trim()
-  return req.raw.socket?.remoteAddress || req.ip
-}
 
 export async function buildApp(): Promise<FastifyInstance> {
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
@@ -71,15 +59,12 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
 
   await app.register(helmet, {
-    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], workerSrc: ["'self'", 'blob:'], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:', 'wss:'], objectSrc: ["'self'", 'blob:'], frameSrc: ["'self'", 'blob:'], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
+    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:', 'wss:'], objectSrc: ["'self'"], frameSrc: ["'self'"], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
     crossOriginEmbedderPolicy: false, hsts: config.isProd ? { maxAge: 15552000 } : false,
   })
   await app.register(cookie)
   await app.register(multipart, { limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 10 } })
-  // Rate-limit by the real client. With trustProxy, req.ip is the left-most X-Forwarded-For entry, which the client can type freely.
-  // Production is reached only through the Cloudflare Tunnel, which sets CF-Connecting-IP; elsewhere use the TCP peer.
-  await app.register(rateLimit, { global: false, keyGenerator: rateLimitKey })
-  installEnterpriseSecurityHardening(app)
+  await app.register(rateLimit, { global: false })
 
   app.decorateRequest('user', null)
   app.decorateRequest('ctx', null as any)
@@ -87,7 +72,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Demo sessions (cookie/mobile prefix "demo.") and demo tracking links run against the isolated demo database.
   app.addHook('onRequest', (req: FastifyRequest, reply, done) => {
     const origin = req.headers.origin
-    if (origin && (allowedLocalOrigin(origin) || /^https?:\/\/([a-z0-9-]+\.)?(swkpropertiesuae\.com|swk\.properties|swk\.property)$/i.test(origin) || req.url.startsWith('/api/public/reception-qr'))) {
+    if (origin && (/^(?:https?|capacitor):\/\/localhost(:\d+)?$/i.test(origin) || /^https?:\/\/([a-z0-9-]+\.)?(swkpropertiesuae\.com|swk\.properties|swk\.property)$/i.test(origin) || req.url.startsWith('/api/public/reception-qr'))) {
       reply.header('Access-Control-Allow-Origin', origin)
       reply.header('Access-Control-Allow-Credentials', 'true')
       reply.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS')
@@ -187,7 +172,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/daily'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'), import('./routes/sip'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/shabibs-corner'), import('./routes/master-hub'), import('./routes/customizer'), import('./routes/social-media'), import('./routes/portals'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))

@@ -1,7 +1,6 @@
 import { useEffect,useMemo,useState } from 'react'
-import { Save,X,ListPlus,ShieldAlert } from 'lucide-react'
+import { Save,X,ListPlus } from 'lucide-react'
 import type { FieldDef } from '@shared/types'
-import { canUseEmergencyOverride } from '@shared/swk-staff-access'
 import { useMeta,type MetaEntity } from '../lib/meta'
 import { get,post,put } from '../lib/api'
 import { FieldInput,CellValue } from './Fields'
@@ -35,11 +34,10 @@ export function sectionsOf(fields: FieldDef[], allFields?: FieldDef[]): { name: 
   return out
 }
 
-export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEdit = [], childKeys, title, defaultEmergencyOverride = false }: { def: MetaEntity; record: Row | null; presets?: Row; onSaved: (rec: Row) => void; onCancel: () => void; lockedOnEdit?: string[]; childKeys?: string[]; title?: string; defaultEmergencyOverride?: boolean }) {
+export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEdit = [], childKeys, title }: { def: MetaEntity; record: Row | null; presets?: Row; onSaved: (rec: Row) => void; onCancel: () => void; lockedOnEdit?: string[]; childKeys?: string[]; title?: string }) {
   const { me, def: getDef } = useMeta()
   const toast = useToast()
   const edit = !!record?.id
-  const canOverride = canUseEmergencyOverride(me)
   const [vals, setVals] = useState<Row>(() => initial(def, record, presets, me?.id))
   const [labels, setLabels] = useState<Record<string, string>>(record?._labels ?? {})
   const [custom, setCustom] = useState<Row>(record?.custom ?? {})
@@ -53,8 +51,6 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
   const [saving, setSaving] = useState(false)
   const [picker, setPicker] = useState<null | 'docs'>(null)
   const [auditReason, setAuditReason] = useState('')
-  const [emergencyOverride, setEmergencyOverride] = useState(Boolean(defaultEmergencyOverride && canOverride))
-  const [overrideReason, setOverrideReason] = useState('')
 
   const fields = useMemo(() => def.fields.filter(f => {
     if (f.hidden || f.secret) return false
@@ -67,18 +63,11 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
   const parentView = { ...vals, __currency: vals.currency }
 
   const submit = async () => {
-    const useOverride = canOverride && emergencyOverride
     const miss: Record<string, boolean> = {}
-    if (!useOverride) {
-      for (const f of fields) if (f.required && !f.readonly && !f.computed && (vals[f.name] === null || vals[f.name] === undefined || vals[f.name] === '')) miss[f.name] = true
-      for (const f of customDefs) if (f.required && (custom[f.name] === null || custom[f.name] === undefined || custom[f.name] === '')) miss['cf:' + f.name] = true
-      if (Object.keys(miss).length) { setErrors(miss); setBanner('Please complete the highlighted required fields.'); return }
-    } else if (overrideReason.trim().length < 3) {
-      setBanner('Emergency Override requires a clear reason / detail (minimum 3 characters).')
-      return
-    }
-    const effectiveAuditReason = auditReason.trim() || (useOverride ? overrideReason.trim() : '')
-    if (edit && effectiveAuditReason.length < 3) {
+    for (const f of fields) if (f.required && !f.readonly && !f.computed && (vals[f.name] === null || vals[f.name] === undefined || vals[f.name] === '')) miss[f.name] = true
+    for (const f of customDefs) if (f.required && (custom[f.name] === null || custom[f.name] === undefined || custom[f.name] === '')) miss['cf:' + f.name] = true
+    if (Object.keys(miss).length) { setErrors(miss); setBanner('Please complete the highlighted required fields.'); return }
+    if (edit && auditReason.trim().length < 3) {
       setBanner('Please specify the reason for editing this record (recorded in Audit Log and alerted to Owner, Manager & IT).')
       return
     }
@@ -94,13 +83,9 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
       }
       if (customDefs.length) body.custom = custom
       if (kidDefs.length) body.children = Object.fromEntries(kidDefs.map(c => [c.key, kids[c.key].map(r => { const { _labels, ...rest } = r; return Object.fromEntries(Object.entries(rest).filter(([k]) => !k.startsWith('__'))) })]))
-      if (useOverride) {
-        body._emergency_override = true
-        body._emergency_override_reason = overrideReason.trim()
-      }
       if (edit) {
         body.version = record!.version
-        body._audit_reason = effectiveAuditReason
+        body._audit_reason = auditReason.trim()
       }
       if (canQueue(def.key)) {
         enqueue({ op: edit ? 'update' : 'create', entity: def.key, id: edit ? record!.id : undefined, payload: body })
@@ -109,13 +94,9 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
         return
       }
       const saved = edit
-        ? await put<Row>(`/api/e/${def.key}/${record!.id}`, body, { 'x-swk-audit-reason': encodeURIComponent(effectiveAuditReason) })
+        ? await put<Row>(`/api/e/${def.key}/${record!.id}`, body, { 'x-swk-audit-reason': encodeURIComponent(auditReason.trim()) })
         : await post<Row>(`/api/e/${def.key}`, body)
-      toast.ok(
-        useOverride
-          ? `${def.label} saved via Owner/Admin Emergency Override & logged to Audit Trail`
-          : edit ? `${def.label} updated & logged to Audit Trail` : `${def.label} created`,
-      )
+      toast.ok(edit ? `${def.label} updated & logged to Audit Trail` : `${def.label} created`)
       onSaved(saved)
     } catch (e: any) { setBanner(e.message ?? 'Could not save'); if (e.details?.field) setErrors({ [e.details.field]: true }) }
     finally { setSaving(false) }
@@ -168,55 +149,6 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
           <ChildEditor child={c} rows={kids[c.key] ?? []} onChange={r => setKids(k => ({ ...k, [c.key]: r }))} parent={parentView} />
         </div>
       ))}
-      {canOverride && (
-        <div
-          className="swk-form-section mt-6"
-          style={{
-            borderColor: emergencyOverride ? 'rgba(166, 118, 31, 0.72)' : 'rgba(166, 118, 31, 0.32)',
-            background: emergencyOverride ? 'rgba(200, 155, 60, 0.09)' : 'rgba(200, 155, 60, 0.03)',
-          }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 font-display font-bold text-[14px] text-ink">
-              <ShieldAlert size={16} className="text-[#a6761f]" />
-              Owner / Admin Emergency Override
-            </div>
-            <label className="inline-flex items-center gap-2 text-[13.5px] font-semibold text-ink cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={emergencyOverride}
-                onChange={e => {
-                  setEmergencyOverride(e.target.checked)
-                  if (e.target.checked) setErrors({})
-                }}
-                className="w-4 h-4 accent-[#a6761f]"
-              />
-              Allow submitting with * mandatory fields blank
-            </label>
-          </div>
-          {emergencyOverride ? (
-            <div className="swk-form-field mt-2">
-              <label className="label" htmlFor="f-emergency-reason">
-                Emergency Override Detail / Justification <span className="req">*</span>
-              </label>
-              <input
-                id="f-emergency-reason"
-                className="input"
-                placeholder="State the emergency detail (e.g. Urgent VIP booking — title deed & Ejari details pending upload tomorrow)…"
-                value={overrideReason}
-                onChange={e => setOverrideReason(e.target.value)}
-              />
-              <div className="help mt-1">
-                Hardcoded strictly for Owner &amp; Admin. Every bypassed field and detail is permanently stamped into the Audit Trail.
-              </div>
-            </div>
-          ) : (
-            <div className="text-[13px] text-muted">
-              Exclusive Owner &amp; Admin emergency control: enable to submit this {def.label.toLowerCase()} immediately even when mandatory (*) fields are not yet available.
-            </div>
-          )}
-        </div>
-      )}
       {edit && (
         <div className="swk-form-section mt-6" style={{ borderColor: 'rgba(190, 152, 76, 0.45)', background: 'rgba(190, 152, 76, 0.06)' }}>
           <div className="swk-form-section-title">Mandatory Edit Reason — Audit Log & Leadership Notification</div>
@@ -225,7 +157,7 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
             <input
               id="f-audit-reason"
               className="input"
-              required={!emergencyOverride}
+              required
               placeholder="Explain why this record is being modified (sent to Owner Shabib Siraj, Manager Mohammad Haseeb & IT Talha Shabbir)…"
               value={auditReason}
               onChange={e => setAuditReason(e.target.value)}
@@ -236,13 +168,9 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
       )}
       </div>
       <div className="entity-form-actions flex items-center gap-3 border-t border-line bg-card">
-        <button type="submit" className={emergencyOverride ? 'btn orange' : 'btn green'} disabled={saving}>
-          <Save /> {saving ? 'Saving…' : emergencyOverride ? `Emergency Save ${def.label}` : edit ? 'Save Changes' : `Create ${def.label}`}
-        </button>
+        <button type="submit" className="btn green" disabled={saving}><Save /> {saving ? 'Saving…' : edit ? 'Save Changes' : `Create ${def.label}`}</button>
         <button type="button" className="btn red" onClick={onCancel}><X /> Cancel</button>
-        <span className="text-xs text-muted ml-auto hidden md:block">
-          {emergencyOverride ? 'Emergency Override ACTIVE — blank * fields allowed with audit detail' : <>Fields marked <span className="text-signal font-bold">*</span> are required</>}
-        </span>
+        <span className="text-xs text-muted ml-auto hidden md:block">Fields marked <span className="text-signal font-bold">*</span> are required</span>
       </div>
       {picker === 'docs' && <OpenDocsPicker kind={def.key === 'receipts' ? 'receipt' : 'payment'} partyId={vals.party_id ?? vals.vendor_id} currency={vals.currency} existing={kids.allocations ?? []} onClose={() => setPicker(null)} onPick={rows => { setKids(k => ({ ...k, allocations: rows })); const sum = rows.reduce((s, r) => s + Number(r.amount || 0), 0); if (!vals.amount || vals.amount < sum) set('amount', Math.round(sum * 100) / 100); setPicker(null) }} />}
     </form>
@@ -265,7 +193,7 @@ function OpenDocsPicker({ kind, partyId, currency, existing, onClose, onPick }: 
   )
 }
 
-export function EntityFormModal({ entity, id, presets, onClose, onSaved, lockedOnEdit, childKeys, title, width, defaultEmergencyOverride }: { entity: string; id?: number; presets?: Row; onClose: () => void; onSaved: (r: Row) => void; lockedOnEdit?: string[]; childKeys?: string[]; title?: string; width?: number; defaultEmergencyOverride?: boolean }) {
+export function EntityFormModal({ entity, id, presets, onClose, onSaved, lockedOnEdit, childKeys, title, width }: { entity: string; id?: number; presets?: Row; onClose: () => void; onSaved: (r: Row) => void; lockedOnEdit?: string[]; childKeys?: string[]; title?: string; width?: number }) {
   const { def } = useMeta()
   const d = def(entity)
   const [rec, setRec] = useState<Row | null>(null)
@@ -273,7 +201,7 @@ export function EntityFormModal({ entity, id, presets, onClose, onSaved, lockedO
   useEffect(() => { if (id) get<Row>(`/api/e/${entity}/${id}`).then(setRec).catch(e => setErr(e.message)) }, [id, entity])
   return (
     <Modal open onClose={onClose} persistent title={title ?? (id ? `Edit ${d.label}` : `New ${d.label}`)} width={width ?? (d.fields.filter(f => !f.hidden).length > 10 || (d.children?.length ?? 0) > 0 ? 960 : 720)}>
-      {err ? <div className="text-signal">{err}</div> : id && !rec ? <Loading /> : <EntityForm def={d} record={rec} presets={presets} onCancel={onClose} onSaved={onSaved} lockedOnEdit={lockedOnEdit} childKeys={childKeys} defaultEmergencyOverride={defaultEmergencyOverride} />}
+      {err ? <div className="text-signal">{err}</div> : id && !rec ? <Loading /> : <EntityForm def={d} record={rec} presets={presets} onCancel={onClose} onSaved={onSaved} lockedOnEdit={lockedOnEdit} childKeys={childKeys} />}
     </Modal>
   )
 }

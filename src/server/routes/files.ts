@@ -12,18 +12,20 @@ import { bad,forbidden,notFound,nowIso,todayStr } from '../util'
 import { audit } from '../engine'
 import { idOf } from './helpers'
 import { openStored,persistUpload,removeStored } from '../integrations/storage'
-import { assertHardenedUploadMagicBytes } from '../security/hardening'
 
-const BLOCKED = new Set(['exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'js', 'mjs', 'cjs', 'vbs', 'sh', 'ps1', 'jar', 'dll', 'html', 'htm', 'svg', 'php', 'phtml', 'jsp', 'asp', 'aspx', 'apk', 'app', 'iso', 'lnk'])
+const BLOCKED = new Set(['exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'js', 'mjs', 'vbs', 'sh', 'ps1', 'jar', 'dll', 'html', 'htm', 'svg', 'php', 'apk', 'app', 'iso', 'lnk'])
 const INLINE: Record<string, string> = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', txt: 'text/plain; charset=utf-8' }
 
 function verifyFileMagicBytes(fullPath: string, ext: string) {
   const fd = fs.openSync(fullPath, 'r')
-  const buf = Buffer.alloc(64)
+  const buf = Buffer.alloc(16)
   let bytesRead = 0
-  try { bytesRead = fs.readSync(fd, buf, 0, 64, 0) } finally { fs.closeSync(fd) }
-  const err = assertHardenedUploadMagicBytes(buf, bytesRead, ext)
-  if (err) throw bad(err)
+  try { bytesRead = fs.readSync(fd, buf, 0, 16, 0) } finally { fs.closeSync(fd) }
+  if (bytesRead >= 2 && buf[0] === 0x4d && buf[1] === 0x5a) throw bad('Executable binary files (PE/MZ) are not allowed')
+  if (bytesRead >= 4 && buf[0] === 0x7f && buf[1] === 0x45 && buf[2] === 0x4c && buf[3] === 0x46) throw bad('Executable binary files (ELF) are not allowed')
+  if (bytesRead >= 4 && ext === 'png' && !(buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47)) throw bad('Invalid PNG file header')
+  if (bytesRead >= 3 && (ext === 'jpg' || ext === 'jpeg') && !(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) throw bad('Invalid JPEG file header')
+  if (bytesRead >= 4 && ext === 'gif' && !(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38)) throw bad('Invalid GIF file header')
 }
 
 export default async function (app: FastifyInstance) {
@@ -59,9 +61,6 @@ export default async function (app: FastifyInstance) {
       if (!saved.length) throw bad('No file received')
       const entity = fields.link_entity, linkId = Number(fields.link_id)
       if (entity) {
-        if (RESTRICTED_HR_PII_ENTITIES.has(String(entity)) && !canViewEmployeeRecords(req.user)) {
-          throw forbidden('Access restricted: HR, payroll, salary, and staff visa/EID documents are only accessible to Owner, Admin, Operations Manager, and HR.')
-        }
         const def = getDef(entity)
         assertCan(req.ctx, def.module, 'edit')
         const r = getRecord(def, idOf(linkId), req.ctx, { children: false })
@@ -86,9 +85,6 @@ export default async function (app: FastifyInstance) {
     const id = idOf((req.params as any).id)
     const f = q.get(`SELECT * FROM attachments WHERE id = ? AND deleted_at IS NULL`, id)
     if (!f) throw notFound('File not found')
-    if (f.link_entity && RESTRICTED_HR_PII_ENTITIES.has(String(f.link_entity)) && !canViewEmployeeRecords(req.user)) {
-      throw forbidden('Access restricted: HR, payroll, salary, and staff visa/EID records are only accessible to Owner, Admin, Operations Manager, and HR.')
-    }
     if (f.link_entity && ENTITIES[f.link_entity]) getRecord(getDef(f.link_entity), f.link_id, req.ctx, { children: false })
     else assertCan(req.ctx, 'documents', 'view')
     const stream = await openStored(f.stored_name)

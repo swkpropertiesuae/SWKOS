@@ -6,8 +6,6 @@ export const STUDIO_CLASSES = [
   'ph', 'note', 'guidance', 'page-break', 'fields', 'doc-meta', 'totals', 'sig', 'sig-line', 'avoid-break', 'small', 'muted', 'center', 'right', 'lead', 'keep',
   // brochure / flyer layout blocks
   'hero', 'hero-title', 'hero-sub', 'band', 'band-dark', 'band-light', 'cols-2', 'cols-3', 'cols-4', 'card', 'stat', 'stat-num', 'cta', 'steps', 'step', 'kicker', 'contact-strip', 'badge', 'divider', 'cover', 'cover-title', 'cover-sub', 'toc', 'letter-head', 'ref-line', 'subject',
-  // official brand-free RERA Form I (A2A) statutory layout blocks
-  'a2a-form', 'a2a-head', 'a2a-bar', 'a2a-grid', 'a2a-decl', 'a2a-sig', 'a2a-foot', 'a2a-box', 'a2a-sub',
 ]
 
 const MAX_HTML = 4_000_000

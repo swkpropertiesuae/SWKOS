@@ -30,9 +30,6 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   document_seal: '',
   document_signature: '',
   document_seal_default: false,
-  document_watermark_enabled: true,
-  document_watermark_opacity: 0.045,
-  os_custom_options: {},
   bank_details: '',
   smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', smtp_from: '', smtp_secure: false,
   tracking_public_enabled: true,
@@ -45,15 +42,14 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   storage_provider: 'local', r2_account_id: '', r2_access_key_id: '', r2_secret_access_key: '', r2_bucket: '', r2_backup_nightly: true,
   // --- Supabase (Postgres replica for BI / disaster recovery)
   supabase_url: '', supabase_service_key: '', supabase_sync: false, supabase_cursors: {},
-  // --- WhatsApp Cloud API & Meta Omnichannel (Facebook Messenger / Instagram DM)
+  // --- WhatsApp Cloud API
   wa_enabled: false, wa_phone_number_id: '', wa_access_token: '', wa_verify_token: '', wa_app_secret: '', wa_owner_numbers: '', wa_default_country_code: '971',
   wa_template_lang: 'en', wa_tpl_notify: '', wa_tpl_reminder: '', wa_tpl_report: '',
   wa_auto_leads: true, wa_auto_milestones: false, wa_auto_overdue: false, wa_owner_daily_report: false, wa_staff_bot: true, wa_customer_bot: true,
-  meta_page_id: '', meta_page_access_token: '', meta_ig_user_id: '', meta_ig_access_token: '',
   // --- Voice (AI receptionist over a SIP trunk, e.g. du)
   // --- Review requests: when an opportunity is won, a message draft asking for a review is created for approval (only when this https link is set)
   review_request_link: '',
-  voice_enabled: false, voice_secret: '', lead_webhook_secret: '', portal_feed_token: '', portal_feed_agency_name: '', voice_transfer_number: '', voice_greeting_en: '', voice_greeting_ar: '', voice_record_notice: true, voice_retention_days: 90,
+  voice_enabled: false, voice_secret: '', lead_webhook_secret: '', voice_transfer_number: '', voice_greeting_en: '', voice_greeting_ar: '', voice_record_notice: true, voice_retention_days: 90,
   // --- Hard-Masked Agent Bridge Calling (Zero Phone History Exposure)
   masked_call_provider: 'none', masked_call_caller_id: '', masked_call_twilio_sid: '', masked_call_twilio_token: '', masked_call_webhook_url: '', masked_call_webhook_secret: '', masked_call_record: true,
   // --- AI
@@ -69,7 +65,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   vapid_public_key: '', vapid_private_key: '', fcm_service_account_json: '', push_hide_preview_global: false,
   // --- Office Reception QR & Office Wi-Fi Anti-Loophole Security
   office_wifi_ssid: 'XAVIER BUSINESS',
-  office_wifi_bssid: '72:d7:9a:db:56:f0',
+  office_wifi_bssid: '',
   office_wifi_public_ips: '',
   office_wifi_gateway_ip: '192.168.0.1',
   office_wifi_strict_ip: true,
@@ -104,7 +100,7 @@ export const SETTING_DEFAULTS: Record<string, any> = {
   ui_lang: 'en',
   seeded: {},
 }
-export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'meta_page_access_token', 'meta_ig_access_token', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'portal_feed_token', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
+export const SECRET_SETTINGS = new Set(['qr_token_secret', ...CONNECTOR_SECRET_KEYS, 'meta_webhook_secret', 'mail_accounts', 'smtp_pass', 'resend_api_key', 'r2_secret_access_key', 'supabase_service_key', 'wa_access_token', 'wa_app_secret', 'ai_api_key', 'ai_fallback_api_key', 'ai_fallback2_api_key', 'ai_cloudflare_gateway_token', 'tracking_api_key', 'tracking_webhook_secret', 'voice_secret', 'lead_webhook_secret', 'einv_api_key', 'bank_webhook_secret', 'masked_call_twilio_token', 'masked_call_webhook_secret', 'web_search_api_key', 'sip_webhook_secret', 'sip_ws_token_secret', 'sip_turn_secret', 'vapid_private_key', 'fcm_service_account_json'])
 
 const caches = new WeakMap<object, Record<string, any>>()
 export function loadSettings(): Record<string, any> {

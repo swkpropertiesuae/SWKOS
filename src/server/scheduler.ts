@@ -26,13 +26,8 @@ export function startScheduler() {
   setTimeout(() => { void periodic() }, 20_000)
 }
 
-// Stored in settings so a restart does not resend today's WhatsApp briefings or rerun nightly jobs.
-const once = (key: string, stamp: string) => {
-  const k = `sched:${key}`
-  if (q.val<string>(`SELECT value FROM settings WHERE key = ?`, k) === stamp) return false
-  q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, k, stamp, new Date().toISOString())
-  return true
-}
+const done = new Map<string, string>()
+const once = (key: string, stamp: string) => { if (done.get(key) === stamp) return false; done.set(key, stamp); return true }
 
 async function periodic() {
   const now = nowLocal(), hhmm = now.slice(11, 16), day = now.slice(0, 10)

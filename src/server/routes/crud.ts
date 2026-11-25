@@ -4,7 +4,7 @@ import { q,qi,tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue,recordTitle,type EntityDef,type FieldDef } from '../../shared/types'
 import { attachLabels,createRecord,deleteRecord,requestDeleteOrExecute,getDef,getRecord,labelsFor,listRecords,rowToApi,updateRecord,can,assertCan,maskRecs,maskedFieldsFor,MASK,titleCols,customFieldsFor,invalidateCustomFields,type Ctx } from '../engine'
-import { canAccessDocumentTemplates, canUseEmergencyOverride, canViewEmployeeRecords, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
+import { canAccessDocumentTemplates, canViewEmployeeRecords, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
 import { bad,HttpError,forbidden,notFound,parseCsv,safeJson,toCsv,nowLocal,nowIso,todayStr } from '../util'
 import { body,idOf,parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
@@ -60,8 +60,8 @@ function assertHrPiiRouteAccess(def: EntityDef, ctx: Ctx) {
   if (!ctx.system && RESTRICTED_HR_PII_ENTITIES.has(def.key) && !canViewEmployeeRecords(ctx.user)) {
     throw forbidden('Only the Owner, the Admin, the Operations Manager and HR can access employee, payroll, and staff visa records.')
   }
-  if (!ctx.system && (def.key === 'doc_templates' || def.key === 'studio_documents') && !canAccessDocumentTemplates(ctx.user)) {
-    throw forbidden('Access denied.')
+  if (!ctx.system && def.key === 'doc_templates' && !canAccessDocumentTemplates(ctx.user)) {
+    throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
   }
 }
 
@@ -240,31 +240,10 @@ export default async function (app: FastifyInstance) {
     return { results }
   })
 
-  function extractEmergencyOverrideCtx(req: any, payload: Record<string, any>): Ctx {
-    const rawFlag = payload?._emergency_override ?? (req.headers['x-swk-emergency-override'] === '1')
-    const enabled = rawFlag === true || rawFlag === 'true' || rawFlag === 1 || rawFlag === '1'
-    const reasonRaw = payload?._emergency_override_reason ?? payload?._audit_reason ?? req.ctx?.auditReason ?? ''
-    if (payload && typeof payload === 'object') {
-      delete payload._emergency_override
-      delete payload._emergency_override_reason
-    }
-    if (!enabled) return req.ctx
-    if (!canUseEmergencyOverride(req.user)) {
-      throw forbidden('Emergency mandatory-field override is hardcoded exclusively to Owner and Admin accounts.')
-    }
-    const reason = String(reasonRaw || '').trim()
-    if (reason.length < 3) {
-      throw bad('Emergency override requires a clear reason / detail (minimum 3 characters).')
-    }
-    return { ...req.ctx, auditReason: req.ctx.auditReason || reason, emergencyOverride: { enabled: true, reason, bypassedFields: [] } }
-  }
-
   app.post('/api/e/:entity', async (req, reply) => {
     const def = guard(getDef((req.params as any).entity))
     assertHrPiiRouteAccess(def, req.ctx)
-    const b = { ...body<Record<string, any>>(req) }
-    const ctx = extractEmergencyOverrideCtx(req, b)
-    const rec = createRecord(def, b, ctx)
+    const rec = createRecord(def, body(req), req.ctx)
     reply.status(201)
     return rec
   })
@@ -273,10 +252,9 @@ export default async function (app: FastifyInstance) {
     const def = guard(getDef(p.entity))
     assertHrPiiRouteAccess(def, req.ctx)
     // A masked field comes back as the placeholder; sending it back must not overwrite the real value.
-    const b = { ...body<Record<string, any>>(req) }
-    const ctx = extractEmergencyOverrideCtx(req, b)
-    for (const f of maskedFieldsFor(def, ctx)) if (b[f] === MASK) delete b[f]
-    return maskRecs(def, [updateRecord(def, idOf(p.id), b, ctx)], ctx)[0]
+    const b = body<Record<string, any>>(req)
+    for (const f of maskedFieldsFor(def, req.ctx)) if (b[f] === MASK) delete b[f]
+    return maskRecs(def, [updateRecord(def, idOf(p.id), b, req.ctx)], req.ctx)[0]
   })
   app.delete('/api/e/:entity/:id', async (req) => {
     const p = req.params as any

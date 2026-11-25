@@ -10,15 +10,9 @@ import { hashPassword,verifyPassword } from '../auth'
 import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
 import crypto from 'node:crypto'
 
-const isProdStaffAccount = (acc: SwkHardcodedStaffAccount) => config.isProd && !acc.fullAccess && acc.roleName !== 'Manager'
-const oneTimePassword = () => crypto.randomBytes(12).toString('base64url') + 'aA1'
-const announceOneTimePassword = (email: string, pw: string) =>
-  console.warn(`[one-time password] ${email}: ${pw}  (give it to the person privately; they must change it at first sign-in)`)
-
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
-  // Production: low-privilege staff start on a random one-time password (printed once in the server log) and must change it at first sign-in.
-  // Never a name pattern: anyone who knows a colleague's name could sign in first and take the account.
-  if (isProdStaffAccount(acc)) return oneTimePassword()
+  // Production: only low-privilege staff start on the name pattern, and must change it at first sign-in. Owner, Admin and Manager never do: the pattern is readable in the repo.
+  if (config.isProd && !acc.fullAccess && acc.roleName !== 'Manager') return swkPatternPassword(acc.email)
   if (acc.roleName === 'Owner') return config.accounts.ownerPassword
   if (acc.roleName === 'Admin') return config.accounts.adminSwkPassword
   if (process.env.SWK_DEV_FIXTURE_PASSWORD) return process.env.SWK_DEV_FIXTURE_PASSWORD
@@ -279,27 +273,21 @@ export function applyConfiguredPasswords() {
   }
 }
 
-/**
- * Production, once: retire the old name-pattern passwords (Talha@swk2026 …). The pattern is readable in the repository, so any account that still
- * accepts it gets a random one-time password (printed once in the server log) and must change it at first sign-in. Personal passwords are kept.
- */
-export function retireSwk2026PatternPasswords() {
-  const key = 'pwreset:retire-swk2026-pattern'
+/** Production, once: every hardcoded account except the Manager (Haseeb) gets the name pattern password (Shabib@swk2026, Admin@swk2026, Talha@swk2026 …). Their open sessions end. */
+export function applySwk2026Passwords() {
+  const key = 'pwreset:swk2026-pattern'
   if (!config.isProd || q.val(`SELECT 1 FROM settings WHERE key = ?`, key)) return
   let n = 0
   for (const acc of SWK_STAFF_ACCOUNTS) {
-    for (const email of [acc.email, acc.displayEmail, ...acc.aliases]) {
-      const row = q.get<{ id: number; email: string; password_hash: string }>(`SELECT id, email, password_hash FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, email.toLowerCase())
-      if (!row || !verifyPassword(swkPatternPassword(email), row.password_hash)) continue
-      const pw = oneTimePassword()
-      q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
-      q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
-      announceOneTimePassword(row.email, pw)
-      n++
-    }
+    if (acc.roleName === 'Manager' || acc.fullAccess) continue
+    const row = q.get(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, acc.email.toLowerCase())
+    if (!row) continue
+    q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(swkPatternPassword(acc.email)), nowIso(), row.id)
+    q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
+    n++
   }
   q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?)`, key, nowIso())
-  if (n) console.log(`Name-pattern passwords retired for ${n} account(s).`)
+  console.log(`Name-pattern passwords set for ${n} account(s) (Manager unchanged).`)
 }
 
 /** One-time reset of the Manager and staff passwords. Set PASSWORD_RESET_ID (any new text) with MANAGER_PASSWORD and/or BDM_PASSWORD; each id runs once, so later restarts keep personal passwords. */
@@ -364,7 +352,6 @@ export function syncSwkStaffRoster() {
       compensation_model: 'Commission Only (50/50 Company Visa – 0 Basic)', company_visa_sponsored: true,
       commission_split_company_pct: 50, commission_split_agent_pct: 50, basic_salary: 0,
     }, SYSTEM_CTX)
-    if (isProdStaffAccount(acc)) announceOneTimePassword(acc.email, pw)
     console.log(`[staff] ${acc.email} created.`)
   }
 }
@@ -483,8 +470,6 @@ export function ensureHardcodedSwkStaffAccounts() {
     let userId = q.val<number>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL LIMIT 1`, acc.email.toLowerCase())
     const resolvedPw = resolveStaffAccountPassword(acc)
     const pwHash = hashPassword(resolvedPw)
-    const mustChange = isProdStaffAccount(acc) ? 1 : 0
-    if (mustChange) announceOneTimePassword(acc.email, resolvedPw)
 
     if (!userId) {
       const created = mk('users', {
@@ -500,36 +485,33 @@ export function ensureHardcodedSwkStaffAccounts() {
       })
       userId = created.id
       const envKey = acc.roleName === 'Owner' ? 'OWNER_PASSWORD' : acc.roleName === 'Admin' ? 'ADMIN_SWK_PASSWORD' : acc.roleName === 'Manager' ? 'MANAGER_PASSWORD' : 'BDM_PASSWORD'
-      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD && !mustChange) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
+      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD && !(config.isProd && !acc.fullAccess && acc.roleName !== 'Manager')) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
       q.run(
-        `UPDATE users SET password_hash = ?, must_change_password = ?, active = 1, role_id = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`,
+        `UPDATE users SET password_hash = ?, must_change_password = 0, active = 1, role_id = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`,
         pwHash,
-        mustChange,
         targetRoleId,
         userId,
       )
     } else if (!initialRoleSeedDone || acc.fullAccess) {
       q.run(
-        `UPDATE users SET name = ?, email = ?, password_hash = ?, role_id = ?, department_id = ?, designation = ?, active = 1, must_change_password = ?, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`,
+        `UPDATE users SET name = ?, email = ?, password_hash = ?, role_id = ?, department_id = ?, designation = ?, active = 1, must_change_password = 0, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`,
         acc.name,
         acc.displayEmail,
         pwHash,
         targetRoleId,
         dept(acc.departmentCode),
         acc.designation,
-        mustChange,
         nowIso(),
         userId,
       )
     } else {
       q.run(
-        `UPDATE users SET name = ?, password_hash = ?, role_id = COALESCE(role_id, ?), department_id = ?, designation = ?, active = 1, must_change_password = ?, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`,
+        `UPDATE users SET name = ?, password_hash = ?, role_id = COALESCE(role_id, ?), department_id = ?, designation = ?, active = 1, must_change_password = 0, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`,
         acc.name,
         pwHash,
         targetRoleId,
         dept(acc.departmentCode),
         acc.designation,
-        mustChange,
         nowIso(),
         userId,
       )

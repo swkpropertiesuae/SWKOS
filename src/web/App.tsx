@@ -2,7 +2,7 @@ import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,useCallback,useState,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,canAccessShabibsCorner,canUseConfidentialAiImporter,canUseOsCustomizer,canAccessSocialMediaSuite,canAccessMasterDataHub,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { BrandSplashScreen } from './components/BrandSplashScreen'
 import { Login } from './pages/Login'
@@ -64,11 +64,6 @@ const UnifiedSearchPage = lazy(() => import('./pages/swk/UnifiedSearchPage'))
 const PhonePage = lazy(() => import('./pages/swk/PhonePage'))
 const FieldDutyPage = lazy(() => import('./pages/swk/FieldDutyPage'))
 const FieldLiveMapPage = lazy(() => import('./pages/swk/FieldLiveMapPage'))
-const ShabibsCornerPage = lazy(() => import('./pages/swk/ShabibsCornerPage'))
-const AiImporterPage = lazy(() => import('./pages/swk/AiImporterPage'))
-const MasterDataLogPage = lazy(() => import('./pages/swk/MasterDataLogPage'))
-const OsCustomizerPage = lazy(() => import('./pages/swk/OsCustomizerPage'))
-const SocialMediaPage = lazy(() => import('./pages/swk/SocialMediaPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -107,45 +102,9 @@ function FieldLiveGuard({ children }: { children: ReactNode }) {
 function DocTemplateGuard({ children }: { children: ReactNode }) {
   const { me } = useMeta()
   if (!me) return <Loading />
-  // Completely silent: unauthorized users must never even learn that a template library exists.
   return canAccessDocumentTemplates(me)
     ? <>{children}</>
-    : <ErrorBox error={new Error('Page not found')} />
-}
-function ShabibsCornerGuard({ children }: { children: ReactNode }) {
-  const { me } = useMeta()
-  if (!me) return <Loading />
-  return canAccessShabibsCorner(me)
-    ? <>{children}</>
-    : <ErrorBox error={new Error('Page not found')} />
-}
-function AiImporterGuard({ children }: { children: ReactNode }) {
-  const { me } = useMeta()
-  if (!me) return <Loading />
-  return canUseConfidentialAiImporter(me)
-    ? <>{children}</>
-    : <ErrorBox error={new Error('Page not found')} />
-}
-function OsCustomizerGuard({ children }: { children: ReactNode }) {
-  const { me } = useMeta()
-  if (!me) return <Loading />
-  return canUseOsCustomizer(me)
-    ? <>{children}</>
-    : <ErrorBox error={new Error('No-Code OS Customizer is hardcoded exclusively to Owner and Admin accounts.')} />
-}
-function SocialMediaGuard({ children }: { children: ReactNode }) {
-  const { me } = useMeta()
-  if (!me) return <Loading />
-  return canAccessSocialMediaSuite(me)
-    ? <>{children}</>
-    : <ErrorBox error={new Error('Social Media Management Suite is restricted to Owner, Admin, Operations Manager, and Office Admin (Meenakshi).')} />
-}
-function MasterDataHubGuard({ children }: { children: ReactNode }) {
-  const { me } = useMeta()
-  if (!me) return <Loading />
-  return canAccessMasterDataHub(me)
-    ? <>{children}</>
-    : <ErrorBox error={new Error('Master Data & Master Log Hub is restricted to leadership and authorised coordinators.')} />
+    : <ErrorBox error={new Error('Document Templates & Letter Studio are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -231,11 +190,6 @@ export default function App() {
         <Route element={<Shell />}>
           <Route index element={<Navigate to={defaultLanding} replace />} />
           <Route path="/home" element={<Launcher />} />
-          <Route path="/shabibs-corner" element={<ShabibsCornerGuard><ShabibsCornerPage /></ShabibsCornerGuard>} />
-          <Route path="/ai-importer" element={<AiImporterGuard><AiImporterPage /></AiImporterGuard>} />
-          <Route path="/master-data" element={<MasterDataHubGuard><MasterDataLogPage /></MasterDataHubGuard>} />
-          <Route path="/admin/customizer" element={<OsCustomizerGuard><OsCustomizerPage /></OsCustomizerGuard>} />
-          <Route path="/social-media" element={<SocialMediaGuard><SocialMediaPage /></SocialMediaGuard>} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />

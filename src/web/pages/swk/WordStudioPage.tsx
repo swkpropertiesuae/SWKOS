@@ -790,8 +790,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
         </aside>
       </div>
 
-      {/* Template Picker Modal — strictly mounted ONLY for the 5 authorized accounts */}
-      {canViewTemplates && (
+      {/* Template Picker Modal */}
       <Modal
         open={tplOpen}
         onClose={() => setTplOpen(false)}
@@ -840,7 +839,6 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
           </div>
         </div>
       </Modal>
-      )}
 
       <ShareToInsideModal
         open={shareOpen}

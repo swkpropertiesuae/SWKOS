@@ -17,17 +17,6 @@ import { StudioDoc } from '../pages/StudioPage'
 import { SealApprovalPanel, type SealApprovalStatus } from '../components/SealApprovalPanel'
 
 const S = () => useMeta().meta!.settings
-export function CorporateWatermark() {
-  const s = S()
-  if (s.document_watermark_enabled === false) return null
-  const opacity = Math.min(0.12, Math.max(0.015, Number(s.document_watermark_opacity ?? 0.045)))
-  return (
-    <div className="swk-doc-watermark" aria-hidden="true" style={{ opacity }}>
-      <img src="/brand/web/swk-icon-192.webp" alt="" />
-    </div>
-  )
-}
-
 export function Letterhead() {
   const s = S()
   const c = corporateFooterDetails(s)
@@ -193,13 +182,12 @@ export function PrintPage() {
   if (!meta) return <DocumentPrinter />
   const docTitle = q.data?.[0]?.title || q.data?.[0]?._title || `${entity} #${id}`
   const body = (() => {
-    if (entity === 'statement' || entity === 'parties') return <Presentation.Provider value={{ entity, seal, signature }}><div className="print-document"><CorporateWatermark /><Letterhead /><StatementDoc partyId={id} /></div></Presentation.Provider>
+    if (entity === 'statement' || entity === 'parties') return <Presentation.Provider value={{ entity, seal, signature }}><Letterhead /><StatementDoc partyId={id} /></Presentation.Provider>
     if (q.error) return <ErrorBox error={q.error} />
     if (!q.data) return <DocumentPrinter />
     const rs = q.data
     return rs.map((r, i) => {
-      const branded = !(entity === 'studio_documents' && !r.letterhead)
-      const e = <Presentation.Provider key={r.id} value={{ entity, record: r, seal, signature }}><div className="print-document" style={{ pageBreakAfter: i < rs.length - 1 ? 'always' : 'auto' }}>{branded && <CorporateWatermark />}{entity === 'studio_documents' ? (r.letterhead ? <Letterhead /> : null) : <><Letterhead /><Recipient record={r} /></>}{(() => { switch (entity) {
+      const e = <Presentation.Provider key={r.id} value={{ entity, record: r, seal, signature }}><div className="print-document" style={{ pageBreakAfter: i < rs.length - 1 ? 'always' : 'auto' }}>{entity === 'studio_documents' ? (r.letterhead ? <Letterhead /> : null) : <><Letterhead /><Recipient record={r} /></>}{(() => { switch (entity) {
         case 'studio_documents': return <StudioDoc r={r} seal={seal} sealImage={meta.settings.document_seal} signature={signature} signatureImage={meta.settings.document_signature} />
         case 'invoices': return <InvoiceDoc r={r} />
         case 'quotations': return <QuoteDoc r={r} />

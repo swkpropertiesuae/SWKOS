@@ -37,7 +37,7 @@ import {
   Zap,
   Brain,
 } from 'lucide-react'
-import { canAccessCrmVault, canOpenEmployeeRecords, canUseConfidentialAiImporter } from '@shared/swk-staff-access'
+import { canAccessCrmVault, canOpenEmployeeRecords } from '@shared/swk-staff-access'
 import { api, buildClientHeaders, del, get, getFetchCredentials, post, put, resolveApiUrl } from '../lib/api'
 import { cls, fmtIsoStamp } from '../lib/format'
 import { useMeta } from '../lib/meta'
@@ -120,16 +120,14 @@ interface OmniMessageItem {
   streaming?: boolean
 }
 
-type ChatModeKey = OmniLane | 'auto'
-
 const MODE_OPTIONS: {
-  key: ChatModeKey
+  key: OmniLane
   label: string
   short: string
   hint: string
   Icon: typeof Sparkles
 }[] = [
-  { key: 'auto', label: 'Auto Best-Model', short: 'Auto', hint: 'Automatically picks the best available model for each task (Reasoning / Translate / Search / Vision / Fast)', Icon: Sparkles },
+  { key: 'general', label: 'Auto / General', short: 'Auto', hint: 'Balanced routing across active pool', Icon: Sparkles },
   { key: 'reasoning', label: 'Deep Reasoning', short: 'Reasoning', hint: 'Step-by-step analysis & DLD/RERA checks', Icon: Brain },
   { key: 'fast', label: 'Fast', short: 'Fast', hint: 'Low-latency quick drafts & Q&A', Icon: Zap },
   { key: 'translate', label: 'Translate', short: 'Translate', hint: 'EN / AR UAE real-estate terminology', Icon: Languages },
@@ -421,18 +419,11 @@ export function AiPage() {
             : 'Your private SWK AI Brain workbench with smart mode routing, document/image understanding, and automatic PII Shield.'
         }
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {canUseConfidentialAiImporter(me) && (
-              <Link className="btn green sm no-underline" to="/ai-importer">
-                <Sparkles size={15} /> Confidential Format Converter
-              </Link>
-            )}
-            {isOmniAdmin && (
-              <Link className="btn outline sm no-underline" to="/admin/integrations">
-                <Settings2 size={15} /> Omni-Route &amp; Integrations
-              </Link>
-            )}
-          </div>
+          isOmniAdmin ? (
+            <Link className="btn outline" to="/admin/integrations">
+              <Settings2 size={15} /> Omni-Route &amp; Integrations
+            </Link>
+          ) : undefined
         }
       />
       <div className="card overflow-hidden">
@@ -522,7 +513,7 @@ function AiBrainWorkbench({
   const [editingTitleId, setEditingTitleId] = useState<number | null>(null)
   const [editingTitleText, setEditingTitleText] = useState('')
 
-  const [mode, setMode] = useState<ChatModeKey>('auto')
+  const [mode, setMode] = useState<OmniLane>('general')
   const [confidential, setConfidential] = useState(false)
   const [useTools, setUseTools] = useState(false)
   const [useVision, setUseVision] = useState(true)

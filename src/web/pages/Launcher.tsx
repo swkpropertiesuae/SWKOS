@@ -9,7 +9,6 @@ import {
   Building2,
   CalendarCheck,
   Clock3,
-  Crown,
   LayoutDashboard,
   LineChart,
   MapPin,
@@ -24,7 +23,7 @@ import { useMeta } from '../lib/meta'
 import { get } from '../lib/api'
 import { launcherApps, recentItems, SWK_CORE_SUITE_KEYS, type LauncherApp } from '../swk/nav'
 import { aed, num } from '../swk/ui'
-import { canAccessShabibsCorner, isRestrictedStaffUser } from '@shared/swk-staff-access'
+import { isRestrictedStaffUser } from '@shared/swk-staff-access'
 import { useSipClient } from '../lib/sipClient'
 
 const ease = [0.22, 1, 0.36, 1] as const
@@ -52,7 +51,7 @@ const todayLabel = () =>
 
 const CATEGORY_FILTERS: { id: string; label: string; keys: string[] }[] = [
   { id: 'all', label: 'All Apps', keys: [] },
-  { id: 'core', label: 'Command', keys: ['shabibs_corner', 'command'] },
+  { id: 'core', label: 'Command', keys: ['command'] },
   { id: 'deals', label: 'Sales & CRM', keys: ['clients', 'sales', 'inventory', 'website'] },
   { id: 'leasing', label: 'Leasing & Owners', keys: ['leasing', 'owners'] },
   { id: 'finance', label: 'Finance & Legal', keys: ['finance', 'compliance', 'admin'] },
@@ -105,12 +104,12 @@ const CORE_SUITE_BRANDING: Record<
 }
 
 const TONE_ACCENT: Record<string, { bg: string; fg: string; pill: string }> = {
-  navy: { bg: '#e8eff4', fg: '#0a1b24', pill: 'bg-[#e8eff4] text-[#0a1b24] dark:bg-[#193446] dark:text-[#e2edf5]' },
-  champ: { bg: '#fbf2d8', fg: '#7f5710', pill: 'bg-[#fbf2d8] text-[#7f5710] dark:bg-[#a6761f]/25 dark:text-[#f3d27a]' },
-  oasis: { bg: '#e6f6ef', fg: '#03543f', pill: 'bg-[#e6f6ef] text-[#03543f] dark:bg-[#046c4e]/25 dark:text-[#6ee7b7]' },
-  ocean: { bg: '#eaf2ff', fg: '#1d4ed8', pill: 'bg-[#eaf2ff] text-[#1d4ed8] dark:bg-[#1d4ed8]/25 dark:text-[#93c5fd]' },
-  dune: { bg: '#feecef', fg: '#9f1239', pill: 'bg-[#feecef] text-[#9f1239] dark:bg-[#be123c]/25 dark:text-[#fda4af]' },
-  plum: { bg: '#e6f6ef', fg: '#03543f', pill: 'bg-[#e6f6ef] text-[#03543f] dark:bg-[#046c4e]/25 dark:text-[#6ee7b7]' },
+  navy: { bg: '#eff6ff', fg: '#1d4ed8', pill: 'bg-[#eff6ff] text-[#1d4ed8]' },
+  champ: { bg: '#fef7e6', fg: '#92400e', pill: 'bg-[#fef7e6] text-[#92400e]' },
+  oasis: { bg: '#ecfdf5', fg: '#047857', pill: 'bg-[#ecfdf5] text-[#047857]' },
+  ocean: { bg: '#f0f9ff', fg: '#0369a1', pill: 'bg-[#f0f9ff] text-[#0369a1]' },
+  dune: { bg: '#fef2f2', fg: '#b91c1c', pill: 'bg-[#fef2f2] text-[#b91c1c]' },
+  plum: { bg: '#f5f3ff', fg: '#6d28d9', pill: 'bg-[#f5f3ff] text-[#6d28d9]' },
 }
 
 /** Tactile 21st.dev spotlight app tile — zero negative edge bleed, guaranteed contrast. */
@@ -285,32 +284,32 @@ export function Launcher() {
             </p>
           </div>
 
-          {/* Dual-Layer Command Card (Executive Obsidian Strip + Crisp Search & Quick Chips Inside) */}
-          <div className="rounded-[22px] border border-[#c89b3c]/30 bg-gradient-to-br from-[#07131b] via-[#0d2230] to-[#081720] p-2.5 shadow-[0_20px_48px_-18px_rgba(7,19,27,0.44)]">
+          {/* Dual-Layer Command Card (Obsidian Top Strip + Crisp Search & Quick Chips Inside) */}
+          <div className="rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-2.5 shadow-[0_20px_48px_-18px_rgba(15,23,42,0.38)]">
             <div className="flex items-center justify-between gap-3 px-3 pt-1.5 pb-3 text-white">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#c89b3c]/18 border border-[#c89b3c]/35 text-[#e6be63]">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#c5e86c]">
                   {lastVisit ? <lastVisit.icon size={17} /> : <LayoutDashboard size={17} />}
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate text-[14.5px] font-semibold text-white">
+                  <div className="truncate text-[13.5px] font-semibold text-white">
                     {lastVisit ? lastVisit.label : restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
                   </div>
-                  <div className="truncate text-[12px] text-slate-300">
+                  <div className="truncate text-[11px] text-[#94a3b8]">
                     {lastVisit ? `Recently Visited · ${lastVisit.section}` : restricted ? 'Dispatched Vault Deals & Hard-Masked Calling' : 'Live Pipeline, Journeys & Analytics'}
                   </div>
                 </div>
               </div>
               <Link
                 to={lastVisit ? lastVisit.to : restricted ? '/my-deals' : '/dashboard'}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#c89b3c]/45 bg-[#c89b3c]/16 px-3.5 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.12em] text-[#f3d27a] no-underline transition-colors hover:bg-[#c89b3c] hover:border-[#c89b3c] hover:text-[#07131b]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-[#c5e86c] hover:border-[#c5e86c] hover:text-[#0f172a]"
               >
-                <Clock3 size={13} />
+                <Clock3 size={12} />
                 {lastVisit ? 'Resume' : 'Open'}
               </Link>
             </div>
 
-            <div className="rounded-[16px] bg-card p-3.5 shadow-inner">
+            <div className="rounded-[20px] bg-card p-3.5 shadow-inner">
               <form className="relative flex items-center gap-2" role="search" onSubmit={e => { e.preventDefault(); openFirst() }}>
                 <div className="relative flex-1 min-w-0">
                   <Search size={17} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -321,10 +320,10 @@ export function Launcher() {
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Escape') setQuery('') }}
-                    placeholder="Search apps, workflows, or jump anywhere…"
+                    placeholder="Ask anything or search apps & pages…"
                     aria-label="Search apps and features"
                     autoComplete="off"
-                    className="h-11 w-full rounded-xl border border-line bg-soft pl-10 pr-10 text-[15px] text-ink outline-none no-focus-outline transition-all placeholder:text-muted focus:border-[#046c4e] focus:bg-card focus:ring-4 focus:ring-[#046c4e]/12"
+                    className="h-11 w-full rounded-2xl border border-line bg-soft pl-10 pr-10 text-[14.5px] text-ink outline-none no-focus-outline transition-all placeholder:text-muted focus:border-ink focus:bg-card focus:ring-4 focus:ring-[#2563eb]/12"
                   />
                   {query && (
                     <button
@@ -340,7 +339,7 @@ export function Launcher() {
                 <Link
                   to="/utilities/search"
                   title="Advanced Unified Search"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#ebf7f2] text-[#046c4e] dark:bg-soft dark:text-[#6ee7b7] no-underline transition-colors hover:bg-[#046c4e] hover:text-white"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb] dark:bg-soft dark:text-[#93c5fd] no-underline transition-colors hover:bg-[#2563eb] hover:text-white"
                 >
                   <SlidersHorizontal size={17} />
                 </Link>
@@ -355,7 +354,7 @@ export function Launcher() {
                       key={c.id}
                       type="button"
                       onClick={() => { setQuery(''); setCat(c.id) }}
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[12.5px] font-semibold border transition-colors cursor-pointer ${
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold border transition-colors cursor-pointer ${
                         active
                           ? 'bg-primary border-primary text-primary-foreground'
                           : 'bg-soft border-line text-body hover:border-ink/30 hover:bg-hover'
@@ -370,16 +369,16 @@ export function Launcher() {
           </div>
         </div>
 
-        {/* Right Hero Card: Executive Today's Pulse (SWK Obsidian + Champagne Gold) */}
-        <div className="lg:col-span-4 rounded-[22px] border border-[#c89b3c]/35 bg-gradient-to-br from-[#07131b] via-[#0d2230] to-[#081720] p-5 text-white shadow-[0_20px_48px_-18px_rgba(7,19,27,0.46)] flex flex-col justify-between gap-4">
+        {/* Right Hero Card: Obsidian Today's Progress Ring (100% consistent with Dashboard Progress Card) */}
+        <div className="lg:col-span-4 rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-5 text-white shadow-[0_20px_48px_-18px_rgba(15,23,42,0.42)] flex flex-col justify-between gap-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#e6be63]">Today&apos;s Pulse</span>
-              <h2 className="m-0 mt-0.5 text-[19px] font-bold !text-white">Daily Operations</h2>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#c5e86c]">Today&apos;s Pulse</span>
+              <h2 className="m-0 mt-0.5 text-[18px] font-bold text-white">Daily Operations</h2>
             </div>
             <Link
               to={restricted ? '/reception-qr' : '/dashboard'}
-              className="inline-flex items-center gap-1 rounded-xl border border-[#c89b3c]/40 bg-[#c89b3c]/16 px-3 py-1.5 text-[12px] font-semibold text-[#f3d27a] no-underline hover:bg-[#c89b3c] hover:text-[#07131b] transition-colors"
+              className="inline-flex items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-[#c5e86c] no-underline hover:bg-[#c5e86c] hover:text-[#0f172a] transition-colors"
             >
               {restricted ? 'Check-In' : 'Dashboard'} <ArrowRight size={13} />
             </Link>
@@ -393,7 +392,7 @@ export function Launcher() {
                   cx={52}
                   cy={52}
                   r={42}
-                  stroke="#e2b857"
+                  stroke="#c5e86c"
                   strokeWidth={10}
                   fill="none"
                   strokeLinecap="round"
@@ -403,42 +402,37 @@ export function Launcher() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-[22px] font-bold text-white leading-none">{progressPct}%</span>
-                <span className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-300">Active</span>
+                <span className="mt-0.5 text-[9.5px] uppercase tracking-wider text-[#94a3b8]">Active</span>
               </div>
             </div>
 
             <div className="flex-1 min-w-0 grid gap-2.5">
               {restricted ? (
                 <>
-                  <div className="flex items-center justify-between text-[13px]"><span className="text-slate-300">Inside Unread</span><b className="text-white text-[15px]">{unread}</b></div>
-                  <div className="flex items-center justify-between text-[13px]"><span className="text-slate-300">Permitted Apps</span><b className="text-white text-[15px]">{apps.length}</b></div>
-                  <div className="flex items-center justify-between text-[13px]"><span className="text-slate-300">Dubai Timezone</span><b className="text-[#e6be63] text-[15px]">GST +4</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Inside Unread</span><b className="text-white text-sm">{unread}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Permitted Apps</span><b className="text-white text-sm">{apps.length}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Dubai Timezone</span><b className="text-[#d4a752] text-sm">GST +4</b></div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-between text-[13px]"><span className="text-slate-300">Leads Today</span><b className="text-white text-[15px]">{leadCount}</b></div>
-                  <div className="flex items-center justify-between text-[13px]"><span className="text-slate-300">Viewings (7d)</span><b className="text-[#6ee7b7] text-[15px]">{viewingCount}</b></div>
-                  <div className="flex items-center justify-between text-[13px]"><span className="text-slate-300">Pending Offers</span><b className="text-[#e6be63] text-[15px]">{offerCount}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Leads Today</span><b className="text-white text-sm">{leadCount}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Viewings (7d)</span><b className="text-[#a3e635] text-sm">{viewingCount}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Pending Offers</span><b className="text-[#d4a752] text-sm">{offerCount}</b></div>
                 </>
               )}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/12">
-            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white no-underline hover:bg-white/20">
-              <QrCode size={13} className="text-[#e6be63]" /> QR Check-In
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-white/10">
+            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-white/20">
+              <QrCode size={13} className="text-[#d4a752]" /> QR Check-In
             </Link>
-            <Link to="/chat" className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white no-underline hover:bg-white/20">
-              <Sparkles size={13} className="text-[#6ee7b7]" /> SWK Inside {unread > 0 ? `(${unread})` : ''}
+            <Link to="/chat" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-white/20">
+              <Sparkles size={13} className="text-[#a3e635]" /> Inside {unread > 0 ? `(${unread})` : ''}
             </Link>
-            <Link to="/field-duty" className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white no-underline hover:bg-white/20">
-              <Navigation size={13} className="text-[#93c5fd]" /> Field GPS
+            <Link to="/field-duty" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-white/20">
+              <Navigation size={13} className="text-[#38bdf8]" /> Field GPS
             </Link>
-            {canAccessShabibsCorner(me) && (
-              <Link to="/shabibs-corner" className="inline-flex items-center gap-1.5 rounded-xl border border-[#c89b3c]/50 bg-[#c89b3c]/20 px-3 py-1.5 text-[12px] font-bold text-[#f7dda0] no-underline hover:bg-[#c89b3c] hover:text-[#07131b]">
-                <Crown size={13} /> Shabib&apos;s Corner
-              </Link>
-            )}
           </div>
         </div>
       </motion.section>

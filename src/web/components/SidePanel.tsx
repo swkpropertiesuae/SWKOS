@@ -2,12 +2,11 @@ import { useState,type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { MessageSquare,Hand,Paperclip,Link as LinkIcon,Tag,Link2,ThumbsUp,MessageCircleWarning,Video,History,X,Trash2,Plus,Download,Send,ExternalLink,Check,Eye,FileText } from 'lucide-react'
-import { del,downloadAuthFile,get,post,put,upload } from '../lib/api'
+import { MessageSquare,Hand,Paperclip,Link as LinkIcon,Tag,Link2,ThumbsUp,MessageCircleWarning,Video,History,X,Trash2,Plus,Download,Send,ExternalLink,Check } from 'lucide-react'
+import { del,get,openAuthFile,post,put,resolveApiUrl,upload } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { Badge,Loading,useDialogs } from '../ui/kit'
 import { RefSelect } from './RefSelect'
-import { DocumentPreviewModal, type PreviewFileRecord } from './DocumentPreviewModal'
 import { useToast } from '../lib/toast'
 import { cls,fmtDate,fmtIsoStamp,fmtDateTime,todayIso } from '../lib/format'
 import { recordPath } from './EntityList'
@@ -88,117 +87,22 @@ function FollowUps({ entity, id, title, refresh }: any) {
   </div>)
 }
 
-const EMPLOYEE_DOC_PRESETS = [
-  'Emirates ID',
-  'Residence Visa',
-  'Passport',
-  'Labour Card / Work Permit',
-  'RERA BRN Card',
-  'Employment Contract',
-  'Salary Certificate / Payslip',
-  'Medical Insurance',
-  'NOC',
-]
-
 export function Attachments({ entity, id, refresh }: any) {
   const qc = useQueryClient(); const toast = useToast(); const dlg = useDialogs()
   const filters = JSON.stringify([{ field: 'link_entity', op: 'eq', value: entity }, { field: 'link_id', op: 'eq', value: id }])
   const q = useQuery({ queryKey: ['attach', entity, id], queryFn: () => get<{ rows: any[] }>('/api/e/attachments', { filters, pageSize: 200 }) })
-  const { def, meta } = useMeta()
-  const baseCats = (def('attachments').fields.find(f => f.name === 'category')?.options ?? []).map(optValue)
-  const customCats: string[] = Array.isArray(meta?.settings?.os_custom_options?.document_categories)
-    ? meta!.settings.os_custom_options.document_categories
-    : []
-  const cats = [...new Set([...baseCats, ...customCats])]
-  const defaultCat = entity === 'employees' ? 'Emirates ID' : (entity === 'properties' || entity === 'units') ? 'Title Deed / Oqood' : entity === 'leases' ? 'Ejari' : 'General'
-  const [cat, setCat] = useState(defaultCat)
-  const [exp, setExp] = useState('')
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [drag, setDrag] = useState(false)
-  const [previewFile, setPreviewFile] = useState<PreviewFileRecord | null>(null)
-  const go = async (files: FileList | File[]) => {
-    if (!files.length) return
-    setBusy(true)
-    try {
-      await upload([...files], { link_entity: entity, link_id: id, category: cat, expiry_date: exp, note })
-      toast.ok('Document uploaded & verified')
-      setNote('')
-      setExp('')
-      void qc.invalidateQueries({ queryKey: ['attach', entity, id] })
-      refresh?.()
-    } catch (e: any) {
-      toast.error(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-  const today = todayIso()
-  const in30Days = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
+  const { def } = useMeta()
+  const cats = (def('attachments').fields.find(f => f.name === 'category')?.options ?? []).map(optValue)
+  const [cat, setCat] = useState('General'); const [exp, setExp] = useState(''); const [busy, setBusy] = useState(false); const [drag, setDrag] = useState(false)
+  const go = async (files: FileList | File[]) => { if (!files.length) return; setBusy(true); try { await upload([...files], { link_entity: entity, link_id: id, category: cat, expiry_date: exp }); toast.ok('Uploaded'); void qc.invalidateQueries({ queryKey: ['attach', entity, id] }); refresh() } catch (e: any) { toast.error(e.message) } finally { setBusy(false) } }
   return (<div>
-    {entity === 'employees' && (
-      <div className="mb-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Quick UAE HR Document Category</div>
-        <div className="flex flex-wrap gap-1.5">
-          {EMPLOYEE_DOC_PRESETS.map(p => (
-            <button
-              key={p}
-              type="button"
-              className={cls('btn sm', cat === p ? 'green' : 'outline')}
-              onClick={() => setCat(p)}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      </div>
-    )}
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-      <select className="select" value={cat} onChange={e => setCat(e.target.value)} aria-label="Document Category">
-        {cats.map(c => <option key={c}>{c}</option>)}
-      </select>
-      <input className="input" type="date" value={exp} onChange={e => setExp(e.target.value)} title="Expiry date (optional)" aria-label="Expiry date" />
-      <input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder={entity === 'employees' ? 'EID / Visa / Passport No. (optional)' : 'Document note / ref (optional)'} aria-label="Document note" />
-    </div>
-    <label className={cls('block border-2 border-dashed rounded-xl p-4 sm:p-5 text-center cursor-pointer text-sm transition-colors', drag ? 'border-emerald bg-mint' : 'border-line-strong hover:bg-hover')} onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); void go(e.dataTransfer.files) }}>
-      <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" multiple hidden onChange={e => { if (e.target.files) void go(e.target.files); e.target.value = '' }} />
-      {busy ? 'Uploading & verifying magic bytes…' : <><b>Upload PDF / Document</b> — drop files or click to browse<div className="text-xs text-muted mt-1">Category: <b className="text-ink">{cat}</b> · Max 25 MB · PDF, Emirates ID/Visa scans, images, Office files</div></>}
-    </label>
-    <div className="mt-3">
-      {!q.data ? <Loading /> : q.data.rows.length === 0 ? (
-        <p className="text-sm text-muted text-center py-6">No documents attached yet. Upload PDFs (Emirates ID, Visa, Passport, Contracts, Title Deeds) above.</p>
-      ) : q.data.rows.map(f => {
-        const isExpired = !!f.expiry_date && f.expiry_date < today
-        const isExpiring = !!f.expiry_date && !isExpired && f.expiry_date <= in30Days
-        return (
-          <Row key={f.id} onDelete={async () => { if (await dlg.confirm({ title: 'Remove document?', message: f.file_name, danger: true, ok: 'Remove' })) { await del(`/api/files/${f.id}`); void qc.invalidateQueries({ queryKey: ['attach', entity, id] }); refresh?.() } }}>
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <button
-                type="button"
-                className="link flex items-center gap-1.5 text-left bg-transparent border-0 p-0 cursor-pointer font-semibold text-sm break-all"
-                onClick={() => setPreviewFile(f)}
-              >
-                <FileText size={14} className="shrink-0 text-emerald" />
-                <span>{f.file_name}</span>
-              </button>
-              <div className="flex items-center gap-1 shrink-0">
-                <button type="button" className="btn outline sm" onClick={() => setPreviewFile(f)} aria-label={`Preview ${f.file_name}`}><Eye size={13} /> View</button>
-                <button type="button" className="btn ghost icon sm" onClick={() => void downloadAuthFile(`/api/files/${f.id}/download?inline=0`, f.file_name).catch(err => toast.error(err.message))} aria-label={`Download ${f.file_name}`} title="Download"><Download size={14} /></button>
-              </div>
-            </div>
-            <div className="text-xs text-muted mt-1 flex items-center gap-1.5 flex-wrap">
-              <Badge value={f.category || 'General'} tone="teal" />
-              <span>v{f.doc_version} · {Math.max(1, Math.round((f.size || 0) / 1024))} KB · {fmtIsoStamp(f.created_at)}</span>
-              {f.expiry_date && (
-                <Badge value={isExpired ? `Expired ${fmtDate(f.expiry_date)}` : isExpiring ? `Expiring ${fmtDate(f.expiry_date)}` : `Exp ${fmtDate(f.expiry_date)}`} tone={isExpired ? 'red' : isExpiring ? 'amber' : 'green'} />
-              )}
-            </div>
-            {f.note && <div className="text-xs text-ink mt-1 opacity-85">{f.note}</div>}
-          </Row>
-        )
-      })}
-    </div>
-    <DocumentPreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
+    <div className="grid grid-cols-2 gap-2 mb-2"><select className="select" value={cat} onChange={e => setCat(e.target.value)} aria-label="Category">{cats.map(c => <option key={c}>{c}</option>)}</select><input className="input" type="date" value={exp} onChange={e => setExp(e.target.value)} title="Expiry date (optional)" aria-label="Expiry date" /></div>
+    <label className={cls('block border-2 border-dashed rounded-xl p-5 text-center cursor-pointer text-sm', drag ? 'border-emerald bg-mint' : 'border-line-strong hover:bg-hover')} onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); void go(e.dataTransfer.files) }}>
+      <input type="file" multiple hidden onChange={e => { if (e.target.files) void go(e.target.files); e.target.value = '' }} />{busy ? 'Uploading…' : <><b>Drop files here</b> or click to browse<div className="text-xs text-muted mt-1">Max 25 MB per file · PDF, images, Office files, ZIP…</div></>}</label>
+    <div className="mt-3">{!q.data ? <Loading /> : q.data.rows.length === 0 ? <p className="text-sm text-muted text-center py-6">No documents attached.</p> : q.data.rows.map(f => (
+      <Row key={f.id} onDelete={async () => { if (await dlg.confirm({ title: 'Remove document?', message: f.file_name, danger: true, ok: 'Remove' })) { await del(`/api/files/${f.id}`); void qc.invalidateQueries({ queryKey: ['attach', entity, id] }); refresh() } }}>
+        <a className="link flex items-center gap-1.5" href={resolveApiUrl(`/api/files/${f.id}/download`)} onClick={e => { e.preventDefault(); void openAuthFile(`/api/files/${f.id}/download`, f.file_name).catch(err => toast.error(err.message)) }} target="_blank" rel="noreferrer"><Download size={14} />{f.file_name}</a>
+        <div className="text-xs text-muted">{f.category} · v{f.doc_version} · {(f.size / 1024).toFixed(0)} KB · {fmtIsoStamp(f.created_at)}{f.expiry_date && <> · <span className={f.expiry_date < todayIso() ? 'text-signal font-bold' : ''}>expires {fmtDate(f.expiry_date)}</span></>}</div></Row>))}</div>
   </div>)
 }
 

@@ -12,8 +12,7 @@ import { dirs,config } from '../config'
 import { openStored,persistUpload } from '../integrations/storage'
 import { dispatchPushToUser, setActiveChatThread } from '../integrations/push'
 import { loadUser } from '../auth'
-import { canAccessSwkAdminLogic,isAdminSwkUser,isFullAccessSwkUser,isOwnerSwkUser,isRestrictedStaffUser } from '../../shared/swk-staff-access'
-import { getExternalMessagingChannels,sendExternalPlatformMessage } from '../integrations/meta-messaging'
+import { canAccessSwkAdminLogic,isAdminSwkUser,isFullAccessSwkUser,isOwnerSwkUser } from '../../shared/swk-staff-access'
 
 /**
  * Inside — SWK's internal messenger (WhatsApp-style). Clients are reached through WhatsApp and e-mail, which have their own threads.
@@ -608,50 +607,5 @@ export default async function (app: FastifyInstance) {
     const uid = me(req), tid = idOf((req.params as any).id)
     if (!canSendReport(req)) throw forbidden('Only the Owner, Admin, Manager or HR can send attendance reports')
     return insertMessage(tid, uid, { body: attendanceReportText(), kind: 'report' })
-  })
-
-  // ------------------------------------------------------------------ SWK Inside -> External Omnichannel Bridge (WhatsApp / Facebook Messenger / Instagram DM)
-  app.get('/api/chat/external-channels', async (req) => {
-    me(req)
-    const canDispatchExternal = !isRestrictedStaffUser(req.user)
-    return {
-      can_dispatch: canDispatchExternal,
-      channels: getExternalMessagingChannels(),
-    }
-  })
-
-  app.post('/api/chat/external-send', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req) => {
-    const uid = me(req)
-    if (isRestrictedStaffUser(req.user)) {
-      throw forbidden('Direct external platform dispatch is restricted to leadership & CRM-authorised staff. Field agents must use Masked Vault WhatsApp relay on assigned deals.')
-    }
-    const b = z.object({
-      platform: z.enum(['whatsapp', 'facebook', 'instagram']),
-      recipient: z.string().trim().min(3).max(120),
-      text: z.string().trim().min(1).max(3000),
-      template: z.string().trim().max(120).optional(),
-      mirror_thread_id: z.number().int().positive().optional(),
-    }).parse(req.body ?? {})
-
-    const res = await sendExternalPlatformMessage({
-      platform: b.platform,
-      recipient: b.recipient,
-      text: b.text,
-      template: b.template,
-      senderUserId: uid,
-      senderName: nameOf(uid),
-    })
-
-    if (res.ok && b.mirror_thread_id) {
-      try {
-        membership(b.mirror_thread_id, uid)
-        const label = b.platform === 'whatsapp' ? 'WhatsApp' : b.platform === 'facebook' ? 'Facebook Messenger' : 'Instagram DM'
-        insertMessage(b.mirror_thread_id, uid, {
-          body: `*[External ${label} → ${b.recipient}]*\n${b.text}`,
-          kind: 'text',
-        })
-      } catch { /* mirror is optional */ }
-    }
-    return res
   })
 }

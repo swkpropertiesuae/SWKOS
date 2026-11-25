@@ -122,5 +122,4 @@ bash tests/run-all.sh        # All API suites, each on a fresh server (build fir
 | Website enquiries into the CRM | [docs/WEBSITE-LEADS.md](docs/WEBSITE-LEADS.md) |
 | Database (Supabase Postgres) | [docs/POSTGRES.md](docs/POSTGRES.md) |
 | Dashboard and navigation | [docs/DASHBOARD.md](docs/DASHBOARD.md) |
-| Competitors and the portal feeds | [docs/COMPETITORS.md](docs/COMPETITORS.md) |
 | Owner and Manager handbooks | [docs/OWNER_MASTER_HANDBOOK.md](docs/OWNER_MASTER_HANDBOOK.md), [docs/MANAGER_OPERATIONS_HANDBOOK_HASEEB.md](docs/MANAGER_OPERATIONS_HANDBOOK_HASEEB.md) |
