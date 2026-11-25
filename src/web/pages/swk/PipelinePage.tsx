@@ -114,6 +114,11 @@ export default function PipelinePage() {
     queryKey: ['swk-portals-status'],
     queryFn: () => get<any>('/api/swk-ops/portals/status'),
   })
+  const feedsQ = useQuery({
+    queryKey: ['portal-feeds'],
+    queryFn: () => get<{ portals: { key: string; name: string; live: number; blocked: number; blocked_listings: { id: number; ref: string; title: string; reasons: string[] }[]; feed_url: string | null; avg_quality: number | null; low_quality: { id: number; ref: string; title: string; quality: number; missing: string[] }[] }[] }>('/api/portals/feeds'),
+  })
+  const feedFor = (key: string) => feedsQ.data?.portals.find(f => f.key === (key === 'pf' ? 'propertyfinder' : key))
   const a2aQ = useQuery({
     queryKey: ['swk-a2a-match'],
     queryFn: () => get<{ items: any[]; total: number }>('/api/swk-ops/a2a-match?only_a2a=1'),
@@ -360,8 +365,8 @@ export default function PipelinePage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         <div className="xl:col-span-5">
           <Card
-            title={<span className="flex items-center gap-2"><Megaphone size={17} /> Bayut & Dubizzle portal publishing</span>}
-            subtitle="Listings flagged for each portal. Publishing is manual: no live feed is connected."
+            title={<span className="flex items-center gap-2"><Megaphone size={17} /> Portal feeds: Property Finder, Bayut, Dubizzle</span>}
+            subtitle="Each portal pulls its XML feed. Only listings with a valid Trakheesi permit, price, agent BRN and description are sent; the rest are blocked."
             actions={
               <button type="button" className="btn green sm" disabled={syncingPortals} onClick={() => void syncPortals()}>
                 <RefreshCw size={13} /> Log requests
@@ -376,11 +381,34 @@ export default function PipelinePage() {
                     <div className="text-xs text-muted">{p.account}</div>
                   </div>
                   <div className="text-right">
-                    <Pill tone="oasis">{p.activeListings} flagged</Pill>
-                    <div className="text-[11px] text-muted mt-0.5">{p.status}</div>
+                    <Pill tone="oasis">{feedFor(p.key)?.live ?? 0} live</Pill>
+                    <div className="text-[11px] text-muted mt-0.5">{p.activeListings} flagged · {feedFor(p.key)?.blocked ?? 0} blocked{feedFor(p.key)?.avg_quality != null && ` · quality ${feedFor(p.key)!.avg_quality}/100`}</div>
+                    {feedFor(p.key)?.feed_url && (
+                      <button type="button" className="btn ghost sm mt-1" onClick={() => void navigator.clipboard?.writeText(feedFor(p.key)!.feed_url!)}>Copy feed URL</button>
+                    )}
                   </div>
                 </div>
               ))}
+              {(feedsQ.data?.portals ?? []).some(f => f.blocked) && (
+                <details className="p-3 rounded-xl border border-[#f4f0e8] bg-[#ffffff] text-xs">
+                  <summary className="cursor-pointer font-bold text-ink">Blocked listings and what to fix</summary>
+                  <ul className="mt-2 space-y-1">
+                    {[...new Map((feedsQ.data?.portals ?? []).flatMap(f => f.blocked_listings).map(b => [b.id, b])).values()].slice(0, 50).map(b => (
+                      <li key={b.id}><Link to={`/e/properties/${b.id}`}>{b.ref} · {b.title}</Link>: <span className="text-muted">{b.reasons.join('; ')}</span></li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {(feedsQ.data?.portals ?? []).some(f => f.low_quality?.length) && (
+                <details className="p-3 rounded-xl border border-[#f4f0e8] bg-[#ffffff] text-xs">
+                  <summary className="cursor-pointer font-bold text-ink">Live listings that rank lower (quality under 70)</summary>
+                  <ul className="mt-2 space-y-1">
+                    {[...new Map((feedsQ.data?.portals ?? []).flatMap(f => f.low_quality ?? []).map(b => [b.id, b])).values()].slice(0, 50).map(b => (
+                      <li key={b.id}><Link to={`/e/properties/${b.id}`}>{b.ref} · {b.title}</Link> ({b.quality}/100): <span className="text-muted">{b.missing.join('; ')}</span></li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
           </Card>
         </div>

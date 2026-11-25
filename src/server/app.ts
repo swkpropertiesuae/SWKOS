@@ -42,7 +42,8 @@ const PASSWORD_SETUP = new Set(['/api/auth/me', '/api/meta', '/api/auth/change-p
 // Webhook secrets, tracking tokens, and one-time SSE tickets travel in URLs; keep them out of the request log.
 export const redactUrl = (u: string) =>
   u
-    .replace(/^(\/api\/public\/(?:bank|voice|sip|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
+    .replace(/^(\/api\/public\/(?:bank|voice|sip|tracking|track|deal|crm-bridge\/twiml|portal-feed)\/)[^/?#]+/, '$1[redacted]')
+    .replace(/^(\/api\/public\/portal-lead\/[a-z]+\/)[^/?#]+/, '$1[redacted]')
     .replace(/([?&]ticket=)[^&#]*/gi, '$1[redacted]')
 
 /** The native apps' WebViews (Android https://localhost, iOS capacitor://localhost). Other localhost origins, with any port, only outside production. */
@@ -184,7 +185,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/daily'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'), import('./routes/sip'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/portals'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
