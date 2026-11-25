@@ -655,6 +655,8 @@ async function run() {
     })
     const emptyFailover = await omniChat({
       messages: [{ role: 'user', content: 'Fail over after empty response' }],
+      // pinned: without a lane, v3.9 auto-routes short prompts to 'fast', which this general-only route does not serve
+      lane: 'general',
       user: ownerUser,
     })
     assert.equal(emptyFailover.routeId, r3.id, 'Empty 200 choices[] must fail over to Route 3')
@@ -686,6 +688,7 @@ async function run() {
     try {
       const netFailover = await omniChat({
         messages: [{ role: 'user', content: 'Fail over after network error containing HTTP' }],
+        lane: 'general',
         user: ownerUser,
       })
       assert.equal(netFailover.routeId, r3.id)
@@ -721,7 +724,7 @@ async function run() {
     })
     const sseErrTokens: string[] = []
     const sseErrFailover = await omniChatStream(
-      { messages: [{ role: 'user', content: 'Stream failover test' }], user: ownerUser },
+      { messages: [{ role: 'user', content: 'Stream failover test' }], lane: 'general', user: ownerUser },
       d => sseErrTokens.push(d),
     )
     assert.equal(sseErrFailover.routeId, r3.id, 'SSE 200 error + empty stream must fail over to Route 3')
