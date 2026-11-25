@@ -1,4 +1,5 @@
 import { useEffect,useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
 import { KeyRound,ShieldCheck,Smartphone,MonitorSmartphone,Camera,Trash2 } from 'lucide-react'
@@ -11,19 +12,31 @@ import { forgetPhotoMiss } from '../components/ui/staff-photo'
 import { fmtIsoStamp } from '../lib/format'
 
 export function ProfilePage() {
-  const { me, reload } = useMeta(); const toast = useToast(); const qc = useQueryClient()
+  const { me, reload } = useMeta(); const toast = useToast(); const qc = useQueryClient(); const nav = useNavigate()
   const [cur, setCur] = useState(''); const [nw, setNw] = useState(''); const [nw2, setNw2] = useState(''); const [busy, setBusy] = useState(false)
   const [setup, setSetup] = useState<null | { secret: string; uri: string; qr: string }>(null); const [code, setCode] = useState(''); const [pwOff, setPwOff] = useState(''); const [pwSetup, setPwSetup] = useState(''); const [offCode, setOffCode] = useState('')
   const sessions = useQuery({ queryKey: ['sessions'], queryFn: () => get<any[]>('/api/auth/sessions') })
   const history = useQuery({ queryKey: ['loginhist'], queryFn: () => get<any[]>('/api/auth/login-history') })
   useEffect(() => { void reload() }, [])
-  const changePw = async (e: React.FormEvent) => { e.preventDefault(); if (nw !== nw2) { toast.error('The new passwords do not match'); return } setBusy(true); try { await post('/api/auth/change-password', { current: cur, next: nw }); toast.ok('Password changed — other sessions were signed out'); setCur(''); setNw(''); setNw2(''); await reload() } catch (er: any) { toast.error(er.message) } finally { setBusy(false) } }
+  const changePw = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (nw !== nw2) { toast.error('The new passwords do not match'); return }
+    const wasForced = Boolean(me?.mustChangePassword)
+    setBusy(true)
+    try {
+      await post('/api/auth/change-password', { current: cur, next: nw })
+      toast.ok('Password changed — other sessions were signed out')
+      setCur(''); setNw(''); setNw2('')
+      await reload()
+      if (wasForced) nav('/home', { replace: true })
+    } catch (er: any) { toast.error(er.message) } finally { setBusy(false) }
+  }
   const start2fa = async () => { try { const r = await post<{ secret: string; uri: string }>('/api/auth/totp/setup', { password: pwSetup }); setSetup({ ...r, qr: await QRCode.toDataURL(r.uri, { margin: 1, width: 180 }) }); setPwSetup('') } catch (er: any) { toast.error(er.message) } }
   return (
     <div className="fade-in max-w-5xl">
       <PageHeader icon={<KeyRound size={20} />} title="Profile & security" subtitle={`${me?.name} · ${me?.email} · ${me?.role}`} />
       {me?.mustChangePassword && <div className="mb-4 p-4 rounded-xl border border-[#f8f5ef] bg-[#f8f5ef] text-[14px]"><b>Set your own password to continue.</b> The account was created with a temporary password. Choose a new one (at least 10 characters with upper-case, lower-case and a digit) – the rest of the application unlocks right after.</div>}
-      <MyProfileCard />
+      {!me?.mustChangePassword && <MyProfileCard />}
       <div className="grid gap-4 lg:grid-cols-2">
         <form onSubmit={changePw} className="card p-5 grid gap-3 content-start"><h3 className="m-0 text-[16px]">Change password</h3>
           {me?.defaultPassword && <div className="text-sm bg-gold text-[#4a1f4d] rounded-lg px-3 py-2 font-semibold">You are still using the default password — please change it.</div>}

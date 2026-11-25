@@ -20,10 +20,9 @@ The reception QR is visible only to `shabib@`, `admin@` and `haseeb@swk.properti
 
 ## Passwords
 
-- **Owner and Admin:** set by `OWNER_PASSWORD` and `ADMIN_SWK_PASSWORD` in `.env` on the server. If not set at first start in production, a random password is generated and printed once in the log. These two accounts never use a name-based pattern.
-- **Manager (Haseeb):** `MANAGER_PASSWORD` at first start, otherwise generated.
+- **Owner, Admin and Manager:** set by `OWNER_PASSWORD`, `ADMIN_SWK_PASSWORD` (or `ADMIN_PASSWORD`), and `MANAGER_PASSWORD` in `.env` on the server. If not set at first start in production, a random password is generated and printed once in the log. These accounts never use a name-based pattern on fresh installs.
 - **Staff:** start on a temporary pattern password (first name, capitalised, plus `@swk2026`) and **must choose their own password at first sign-in**. Until they do, they cannot check in. The pattern is readable in the repository, so keep the repository private and have staff change their password on day one.
-- A new value of `OWNER_PASSWORD` or `ADMIN_SWK_PASSWORD` is applied once at the next start and signs that user out. Later restarts leave personal passwords alone. Steps: [OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md).
+- A new value of `OWNER_PASSWORD`, `ADMIN_SWK_PASSWORD`, or `MANAGER_PASSWORD` is applied once at the next start, unlocks the account, and signs that user out. Later restarts leave personal passwords alone. Steps: [OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md).
 - Staff who lose their password are reset by the Admin or Owner in Administration, Users.
 
 ## Rules

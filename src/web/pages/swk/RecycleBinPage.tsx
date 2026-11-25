@@ -17,6 +17,8 @@ export default function RecycleBinPage() {
   const [decidingItem, setDecidingItem] = useState<{ item: any; decision: 'approve' | 'reject' } | null>(null)
   const [newDecisionOpen, setNewDecisionOpen] = useState(false)
   const [decForm, setDecForm] = useState({ subject: '', category: 'Operational Policy / Budget Decision', reason: '', amount: '' })
+  const [resetAdminOpen, setResetAdminOpen] = useState(false)
+  const [resetAdminPw, setResetAdminPw] = useState('')
 
   const binQ = useQuery({
     queryKey: ['swk-recycle-bin'],
@@ -39,13 +41,23 @@ export default function RecycleBinPage() {
     void qc.invalidateQueries({ queryKey: ['swk-owner-admin-control'] })
   }
 
-  const runOwnerAdminAction = async (action: 'suspend' | 'activate' | 'force_signout' | 'reset_password' | 'unlock', label: string) => {
+  const runOwnerAdminAction = async (
+    action: 'suspend' | 'activate' | 'force_signout' | 'reset_password' | 'unlock',
+    label: string,
+    extra?: { new_password?: string },
+  ) => {
     try {
-      await post('/api/swk-ops/owner-admin-control/action', { action, notes: `Owner Shabib Siraj executed ${label} on admin@swk.properties` })
+      await post('/api/swk-ops/owner-admin-control/action', {
+        action,
+        ...(extra ?? {}),
+        notes: `Owner Shabib Siraj executed ${label} on admin@swk.properties`,
+      })
       toast.ok(`Owner Action Executed: ${label} on admin@swk.properties`)
       reload()
+      return true
     } catch (e: any) {
       toast.error(e.message)
+      return false
     }
   }
 
@@ -223,8 +235,8 @@ export default function RecycleBinPage() {
                   <button className="btn outline sm" onClick={() => void runOwnerAdminAction('unlock', 'Unlock Admin Account')}>
                     Unlock Admin
                   </button>
-                  <button className="btn outline sm" onClick={() => void runOwnerAdminAction('reset_password', 'Reset Admin Password to Default')}>
-                    Reset Password to Default
+                  <button className="btn outline sm" onClick={() => { setResetAdminPw(''); setResetAdminOpen(true) }}>
+                    Reset Admin Password
                   </button>
                 </div>
               )}
@@ -453,6 +465,48 @@ export default function RecycleBinPage() {
             <div>
               <label className="label">Detailed Reasoning & Operational Justification <span className="req">*</span></label>
               <textarea className="textarea" rows={4} placeholder="Explain the operational context and recommendation for Owner Shabib Siraj…" value={decForm.reason} onChange={e => setDecForm(f => ({ ...f, reason: e.target.value }))} />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {resetAdminOpen && (
+        <Modal
+          open
+          onClose={() => setResetAdminOpen(false)}
+          title="Reset Password for admin@swk.properties"
+          width={460}
+          footer={<>
+            <button className="btn outline" onClick={() => setResetAdminOpen(false)}>Cancel</button>
+            <div className="flex-1" />
+            <button
+              className="btn green"
+              disabled={resetAdminPw.trim().length < 10}
+              onClick={async () => {
+                const ok = await runOwnerAdminAction('reset_password', 'Reset Admin Password', { new_password: resetAdminPw.trim() })
+                if (ok) { setResetAdminOpen(false); setResetAdminPw('') }
+              }}
+            >
+              Save New Admin Password
+            </button>
+          </>}
+        >
+          <div className="grid gap-3">
+            <p className="text-xs text-muted m-0">
+              Sets a new password for <code>admin@swk.properties</code>, unlocks the account, and signs out all existing Admin sessions.
+            </p>
+            <div>
+              <label className="label" htmlFor="reset-admin-pw">New password <span className="req">*</span></label>
+              <input
+                id="reset-admin-pw"
+                className="input"
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                placeholder="At least 10 chars (upper, lower, digit/symbol)"
+                value={resetAdminPw}
+                onChange={e => setResetAdminPw(e.target.value)}
+              />
             </div>
           </div>
         </Modal>

@@ -252,8 +252,14 @@ export default async function (app: FastifyInstance) {
     return { ok: true, emailed: smtpConfigured() }
   })
   app.post('/api/public/invite/forgot', { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } }, async (req) => {
-    const email = String(z.object({ email: z.string().email().max(160) }).parse(req.body).email).toLowerCase()
-    const u = q.get(`SELECT id, name, email FROM users WHERE lower(email) = ? AND deleted_at IS NULL AND active = 1 AND party_id IS NULL`, email)
+    const email = String(z.object({ email: z.string().email().max(160) }).parse(req.body).email).trim().toLowerCase()
+    const staffMatch = hardcodedAccountFor(email)
+    const candidates = staffMatch ? [email, staffMatch.email.toLowerCase(), ...staffMatch.aliases.map(a => a.toLowerCase())] : [email]
+    let u: any
+    for (const cand of new Set(candidates)) {
+      u = q.get(`SELECT id, name, email FROM users WHERE lower(email) = ? AND deleted_at IS NULL AND active = 1 AND party_id IS NULL`, cand)
+      if (u) break
+    }
     if (u) sendLink({ id: u.id, email: u.email, name: u.name }, 'reset')
     return { ok: true }
   })

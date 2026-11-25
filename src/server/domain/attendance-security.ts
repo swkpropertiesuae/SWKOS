@@ -3,6 +3,7 @@ import { q } from '../db'
 import { HttpError,nowIso } from '../util'
 import { getSetting,setSettings } from '../settings'
 import { verifyPassword } from '../auth'
+import { hardcodedAccountFor } from '../../shared/swk-staff-access'
 
 // ---------------------------------------------------------------- encrypted, short-TTL rotating reception QR payload
 const DEFAULT_STEP_S = 20 // rotates every 20 seconds by default
@@ -152,18 +153,33 @@ export function verifyDeviceProof(p: { challenge: string; payload: string; pub: 
 
 // ---------------------------------------------------------------- check-in sign-in that cannot lock another person out
 const fails = new Map<string, { n: number; t: number }>()
-const WINDOW_MS = 15 * 60_000, MAX_PER_IP = 8
-/** Wrong passwords on this public endpoint count against the caller's IP, not the person's account. */
+const ipFails = new Map<string, { n: number; t: number }>()
+const WINDOW_MS = 15 * 60_000, MAX_PER_ACCOUNT_IP = 8, MAX_PER_IP = 40
+/** Wrong passwords on this public endpoint count against the caller's IP+email (not the account's DB lockout, and never locking out colleagues on the same office Wi-Fi). */
 export function checkPasswordForCheckin(email: string, password: string, ip: string) {
-  const f = fails.get(ip)
-  if (f && Date.now() - f.t < WINDOW_MS && f.n >= MAX_PER_IP) throw new HttpError(429, 'Too many wrong attempts from this connection. Try again in 15 minutes.')
-  const row = q.get(`SELECT id, password_hash, active, must_change_password, locked_until FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, email.trim().toLowerCase())
+  const cleanEmail = email.trim().toLowerCase()
+  const staffMatch = hardcodedAccountFor(cleanEmail)
+  const canonicalEmail = staffMatch ? staffMatch.email.toLowerCase() : cleanEmail
+  const acctKey = `${ip}:${canonicalEmail}`
+  const f = fails.get(acctKey)
+  if (f && Date.now() - f.t < WINDOW_MS && f.n >= MAX_PER_ACCOUNT_IP) throw new HttpError(429, 'Too many wrong attempts for this account from this connection. Try again in 15 minutes.')
+  const fi = ipFails.get(ip)
+  if (fi && Date.now() - fi.t < WINDOW_MS && fi.n >= MAX_PER_IP) throw new HttpError(429, 'Too many wrong attempts from this connection. Try again in 15 minutes.')
+  const candidates = staffMatch ? [cleanEmail, staffMatch.email.toLowerCase(), ...staffMatch.aliases.map(a => a.toLowerCase())] : [cleanEmail]
+  let row: any
+  for (const cand of new Set(candidates)) {
+    row = q.get(`SELECT id, password_hash, active, must_change_password, locked_until FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, cand)
+    if (row) break
+  }
   if (!row || !row.active || !verifyPassword(password, row.password_hash)) {
-    const cur = f && Date.now() - f.t < WINDOW_MS ? f : { n: 0, t: Date.now() }
-    fails.set(ip, { n: cur.n + 1, t: cur.t })
+    const now = Date.now()
+    const cur = f && now - f.t < WINDOW_MS ? f : { n: 0, t: now }
+    fails.set(acctKey, { n: cur.n + 1, t: cur.t })
+    const curIp = fi && now - fi.t < WINDOW_MS ? fi : { n: 0, t: now }
+    ipFails.set(ip, { n: curIp.n + 1, t: curIp.t })
     throw new HttpError(401, 'Incorrect e-mail or password')
   }
-  fails.delete(ip)
+  fails.delete(acctKey)
   if (row.must_change_password) throw new HttpError(403, 'Sign in to SWK OS once and choose your own password before you can check in.')
   return row.id as number
 }

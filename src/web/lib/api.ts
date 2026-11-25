@@ -12,9 +12,9 @@ export function getFetchCredentials(): RequestCredentials {
   return getApiBaseUrl() ? 'omit' : 'same-origin'
 }
 
-export function buildClientHeaders(extra?: Record<string, string>): Record<string, string> {
-  const mobileTok = getMobileSessionToken()
-  const useMobile = isNativeMobile() || Boolean(mobileTok)
+export function buildClientHeaders(extra?: Record<string, string>, opts?: { forceWeb?: boolean }): Record<string, string> {
+  const mobileTok = opts?.forceWeb ? null : getMobileSessionToken()
+  const useMobile = !opts?.forceWeb && (isNativeMobile() || Boolean(mobileTok))
   const headers: Record<string, string> = {
     'x-swk-client': useMobile ? 'mobile' : 'web',
   }
@@ -28,11 +28,12 @@ export function buildClientHeaders(extra?: Record<string, string>): Record<strin
 }
 
 async function rawApi<T = any>(method: string, path: string, body?: unknown, signal?: AbortSignal, extraHeaders?: Record<string, string>): Promise<T> {
+  const forceWeb = path.startsWith('/api/auth/login') && !isNativeMobile()
   const res = await fetch(resolveApiUrl(path), {
     method,
     signal,
     credentials: getFetchCredentials(),
-    headers: buildClientHeaders({ 'content-type': 'application/json', ...(extraHeaders || {}) }),
+    headers: buildClientHeaders({ 'content-type': 'application/json', ...(extraHeaders || {}) }, { forceWeb }),
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const text = await res.text()

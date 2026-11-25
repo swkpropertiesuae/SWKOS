@@ -7,7 +7,7 @@ import { seedCompanyDocuments } from './company-documents'
 import { seedCompliance } from './compliance'
 import { syncStudioLibrary } from '../studio/library'
 import { hashPassword,verifyPassword } from '../auth'
-import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
+import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,hardcodedAccountFor,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
 import crypto from 'node:crypto'
 
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
@@ -253,34 +253,113 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
  * 3. The 6 official @swk.property staff accounts (Haseeb, Talha, Fareed, Shahid, Umar, Saifullah)
  *    exist with their hardcoded credentials, roles, and employee profiles.
  */
-/** A NEW admin password set as an environment secret takes effect on the next container start. The same secret is applied only once, so a password set later (Shabib@swk2026 pattern, Users page) is not overwritten on every restart. Other accounts keep the password they have. */
-export function applyConfiguredPasswords() {
-  // The Admin cannot change the Owner (by design), so the Owner password has its own environment secret.
+function findStaffUserRow(email: string): { id: number; email: string; password_hash: string; must_change_password: number; active: number } | undefined {
+  const clean = email.trim().toLowerCase()
+  const acc = hardcodedAccountFor(clean)
+  const candidates = acc ? [acc.email.toLowerCase(), ...acc.aliases.map(a => a.toLowerCase())] : [clean]
+  for (const cand of candidates) {
+    const row = q.get<{ id: number; email: string; password_hash: string; must_change_password: number; active: number }>(
+      `SELECT id, email, password_hash, must_change_password, active FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL LIMIT 1`,
+      cand,
+    )
+    if (row) return row
+  }
+  return undefined
+}
+
+/** A NEW Owner, Admin, or Manager password set as an environment secret takes effect on the next container start. The same secret is applied only once, so a personal password set later in the app is not overwritten on every restart. */
+export function applyConfiguredPasswords(opts?: { forceEmails?: Set<string> }) {
+  // The Admin cannot change the Owner (by design), so each leadership account has its own environment secret.
   const targets: [string | undefined, string, string, string][] = [
-    [process.env.ADMIN_SWK_PASSWORD || process.env.ADMIN_PASSWORD, 'admin@swk.properties', 'pwsecret:admin', 'admin-secret:'],
-    [process.env.OWNER_PASSWORD, 'shabib@swk.properties', 'pwsecret:owner', 'owner-secret:'],
+    [process.env.ADMIN_SWK_PASSWORD?.trim() || process.env.ADMIN_PASSWORD?.trim(), 'admin@swk.properties', 'pwsecret:admin', 'admin-secret:'],
+    [process.env.OWNER_PASSWORD?.trim(), 'shabib@swk.properties', 'pwsecret:owner', 'owner-secret:'],
+    [process.env.MANAGER_PASSWORD?.trim(), 'haseeb@swk.properties', 'pwsecret:manager', 'manager-secret:'],
   ]
   for (const [pw, email, key, salt] of targets) {
     if (!pw) continue
+    const row = findStaffUserRow(email)
+    if (!row) continue
     const mark = crypto.createHash('sha256').update(salt + pw).digest('hex')
-    if (q.val(`SELECT value FROM settings WHERE key = ?`, key) === mark) continue
+    const force = Boolean(opts?.forceEmails?.has(email))
+    if (!force && q.val(`SELECT value FROM settings WHERE key = ?`, key) === mark) continue
     q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, key, mark, nowIso())
-    const row = q.get(`SELECT id, password_hash FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, email)
-    if (!row || verifyPassword(pw, row.password_hash)) continue
+    if (verifyPassword(pw, row.password_hash)) {
+      q.run(`UPDATE users SET must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, nowIso(), row.id)
+      continue
+    }
     q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(pw), nowIso(), row.id)
     q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
     console.log(`Password for ${email} set from its environment secret.`)
   }
 }
 
-/** Production, once: every hardcoded account except the Manager (Haseeb) gets the name pattern password (Shabib@swk2026, Admin@swk2026, Talha@swk2026 …). Their open sessions end. */
+/**
+ * Production, once: recover accounts whose passwords were overwritten with unreadable one-time random strings
+ * by commit a28edb2's retireSwk2026PatternPasswords() (recorded under settings key 'pwreset:retire-swk2026-pattern').
+ * - Personal passwords (must_change_password = 0) are NEVER touched.
+ * - Any account that was clobbered into must_change_password = 1 is restored:
+ *   * Owner / Admin / Manager: restored to their configured .env secret if present (must_change_password = 0),
+ *     otherwise to their temporary Firstname@swk2026 pattern with must_change_password = 1 so they can sign in and set a personal password.
+ *   * Staff: restored to their documented temporary Firstname@swk2026 pattern with must_change_password = 1.
+ * - All temporary login lockouts on internal accounts are cleared so staff and Admin can sign in immediately.
+ */
+export function recoverFromRetiredPatternPasswords() {
+  const retiredKey = 'pwreset:retire-swk2026-pattern'
+  const recoveryKey = 'pwreset:recover-retired-2026-11-25'
+  if (!config.isProd) return
+  if (!q.val(`SELECT 1 FROM settings WHERE key = ?`, retiredKey)) return
+  if (q.val(`SELECT 1 FROM settings WHERE key = ?`, recoveryKey)) return
+
+  // Clear temporary lockouts accumulated while logins were broken.
+  q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE deleted_at IS NULL AND party_id IS NULL`)
+
+  const envByEmail: Record<string, string | undefined> = {
+    'admin@swk.properties': process.env.ADMIN_SWK_PASSWORD?.trim() || process.env.ADMIN_PASSWORD?.trim(),
+    'shabib@swk.properties': process.env.OWNER_PASSWORD?.trim(),
+    'haseeb@swk.properties': process.env.MANAGER_PASSWORD?.trim(),
+  }
+  const forceEnvEmails = new Set<string>()
+  let recovered = 0
+
+  for (const acc of SWK_STAFF_ACCOUNTS) {
+    const email = acc.email.toLowerCase()
+    const row = findStaffUserRow(email)
+    if (!row || !row.must_change_password) continue
+    if (envByEmail[email]) {
+      forceEnvEmails.add(email)
+      recovered++
+      continue
+    }
+    q.run(
+      `UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`,
+      hashPassword(swkPatternPassword(acc.email)),
+      nowIso(),
+      row.id,
+    )
+    q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
+    recovered++
+  }
+
+  if (forceEnvEmails.size > 0) {
+    applyConfiguredPasswords({ forceEmails: forceEnvEmails })
+  }
+
+  q.run(
+    `INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = '1', updated_at = excluded.updated_at`,
+    recoveryKey,
+    nowIso(),
+  )
+  console.log(`Recovered ${recovered} account(s) affected by retired pattern-password reset; lockouts cleared.`)
+}
+
+/** Production, once: every non-leadership staff account gets the temporary name pattern password (Talha@swk2026 …) and must change it at first sign-in. Their open sessions end. */
 export function applySwk2026Passwords() {
   const key = 'pwreset:swk2026-pattern'
   if (!config.isProd || q.val(`SELECT 1 FROM settings WHERE key = ?`, key)) return
   let n = 0
   for (const acc of SWK_STAFF_ACCOUNTS) {
     if (acc.roleName === 'Manager' || acc.fullAccess) continue
-    const row = q.get(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, acc.email.toLowerCase())
+    const row = findStaffUserRow(acc.email)
     if (!row) continue
     q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(swkPatternPassword(acc.email)), nowIso(), row.id)
     q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
@@ -290,36 +369,41 @@ export function applySwk2026Passwords() {
   console.log(`Name-pattern passwords set for ${n} account(s) (Manager unchanged).`)
 }
 
-/** One-time reset of the Manager and staff passwords. Set PASSWORD_RESET_ID (any new text) with MANAGER_PASSWORD and/or BDM_PASSWORD; each id runs once, so later restarts keep personal passwords. */
+/** One-time reset of passwords. Set PASSWORD_RESET_ID (any new text) with OWNER_PASSWORD, ADMIN_SWK_PASSWORD, MANAGER_PASSWORD and/or BDM_PASSWORD (or PASSWORD_RESET_SUFFIX); each id runs once, so later restarts keep personal passwords. */
 export function applyPasswordReset() {
   const id = process.env.PASSWORD_RESET_ID?.trim()
   if (!id) return
   const key = `pwreset:${id}`
   if (q.get(`SELECT 1 AS x FROM settings WHERE key = ?`, key)) return
   // PASSWORD_RESET_SUFFIX gives each person their own temporary password: first name + suffix (haseeb + 123). The repo never holds a password.
-  const suffix = process.env.PASSWORD_RESET_SUFFIX
-  const set = (emails: string[], pw: string | undefined) => {
-    if (!pw && !suffix) return 0
+  const suffix = process.env.PASSWORD_RESET_SUFFIX?.trim()
+  const set = (emails: string[], pw: string | undefined, mustChange = 1) => {
+    const cleanPw = pw?.trim()
+    if (!cleanPw && !suffix) return 0
     let n = 0
     for (const email of emails) {
-      const own = suffix ? email.split('@')[0] + suffix : pw!
-      const row = q.get(`SELECT id FROM users WHERE lower(email) = ? AND party_id IS NULL AND deleted_at IS NULL`, email.toLowerCase())
+      const own = suffix ? email.split('@')[0] + suffix : cleanPw!
+      const row = findStaffUserRow(email)
       if (!row) continue
-      q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(own), nowIso(), row.id)
+      q.run(`UPDATE users SET password_hash = ?, must_change_password = ?, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`, hashPassword(own), mustChange, nowIso(), row.id)
       q.run(`DELETE FROM sessions WHERE user_id = ?`, row.id)
       n++
     }
     return n
   }
+  const owner = process.env.OWNER_PASSWORD?.trim() ? set(['shabib@swk.properties'], process.env.OWNER_PASSWORD, 0) : 0
+  const admin = (process.env.ADMIN_SWK_PASSWORD?.trim() || process.env.ADMIN_PASSWORD?.trim())
+    ? set(['admin@swk.properties'], process.env.ADMIN_SWK_PASSWORD?.trim() || process.env.ADMIN_PASSWORD?.trim(), 0)
+    : 0
   const mgr = set(['haseeb@swk.properties'], process.env.MANAGER_PASSWORD)
   const staff = set(SWK_STAFF_ACCOUNTS.filter(a => !a.fullAccess && a.roleName !== 'Manager').map(a => a.email), process.env.BDM_PASSWORD)
   q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?)`, key, JSON.stringify(true), nowIso())
-  console.log(`Password reset ${id}: manager ${mgr}, staff ${staff} account(s). Each person must choose a new password at next sign-in.`)
+  console.log(`Password reset ${id}: owner ${owner}, admin ${admin}, manager ${mgr}, staff ${staff} account(s).`)
 }
 
 /**
  * Runs on every start. Moves a staff user whose official email changed (fareed@swk.properties -> fareed@swk.rent)
- * and creates any roster account that has no user yet. Never changes an existing user's password or role.
+ * and creates any roster account that has no user yet (including Owner, Admin, Manager and staff). Never changes an existing user's password or role.
  */
 export function syncSwkStaffRoster() {
   const staffRoleId = idOf('roles', 'name', 'Staff (Attendance & General)')
@@ -337,19 +421,25 @@ export function syncSwkStaffRoster() {
         continue
       }
     }
-    const roleId = acc.roleName === 'HR' || acc.roleName === 'Office Admin' ? idOf('roles', 'name', acc.roleName) ?? staffRoleId : staffRoleId
-    if (userId || acc.fullAccess || !roleId) continue
+    const roleId = idOf('roles', 'name', acc.roleName) ?? staffRoleId
+    if (userId || !roleId) continue
     const pw = resolveStaffAccountPassword(acc)
+    const isLeadership = acc.fullAccess || acc.roleName === 'Manager'
     userId = createRecord(getDef('users'), {
       name: acc.name, email: acc.displayEmail, password: pw, role_id: roleId, branch_id: dxb,
-      department_id: dept(acc.departmentCode), designation: acc.designation, active: true, must_change_password: true,
+      department_id: dept(acc.departmentCode), designation: acc.designation, active: true, must_change_password: !isLeadership,
     }, SYSTEM_CTX).id
+    const envKey = acc.roleName === 'Owner' ? 'OWNER_PASSWORD' : acc.roleName === 'Admin' ? 'ADMIN_SWK_PASSWORD' : acc.roleName === 'Manager' ? 'MANAGER_PASSWORD' : 'BDM_PASSWORD'
+    if (isLeadership && config.isProd && !process.env[envKey]?.trim() && !(acc.roleName === 'Admin' && process.env.ADMIN_PASSWORD?.trim())) {
+      console.warn(`[staff] ${acc.email} recreated with a generated password (${envKey} is not set): ${pw}`)
+    }
     const empId = q.val<number>(`SELECT id FROM employees WHERE (emp_no = ? OR lower(email) = ?) AND deleted_at IS NULL LIMIT 1`, acc.empNo, acc.email.toLowerCase())
     if (empId) q.run(`UPDATE employees SET user_id = ?, email = ?, updated_at = ? WHERE id = ?`, userId, acc.displayEmail, nowIso(), empId)
     else createRecord(getDef('employees'), {
       emp_no: acc.empNo, name: acc.name, user_id: userId, department_id: dept(acc.departmentCode), designation: acc.designation,
       branch_id: dxb, status: 'Active', join_date: nowIso().slice(0, 10), contract_type: 'Unlimited', phone: acc.phone, email: acc.displayEmail,
-      compensation_model: 'Commission Only (50/50 Company Visa – 0 Basic)', company_visa_sponsored: true,
+      compensation_model: acc.fullAccess || acc.roleName === 'HR' || acc.roleName === 'Office Admin' ? 'Salaried Management / Operations' : 'Commission Only (50/50 Company Visa – 0 Basic)',
+      company_visa_sponsored: true,
       commission_split_company_pct: 50, commission_split_agent_pct: 50, basic_salary: 0,
     }, SYSTEM_CTX)
     console.log(`[staff] ${acc.email} created.`)
@@ -485,7 +575,17 @@ export function ensureHardcodedSwkStaffAccounts() {
       })
       userId = created.id
       const envKey = acc.roleName === 'Owner' ? 'OWNER_PASSWORD' : acc.roleName === 'Admin' ? 'ADMIN_SWK_PASSWORD' : acc.roleName === 'Manager' ? 'MANAGER_PASSWORD' : 'BDM_PASSWORD'
-      if (!process.env[envKey] && !process.env.SWK_DEV_FIXTURE_PASSWORD && !(config.isProd && !acc.fullAccess && acc.roleName !== 'Manager')) console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
+      const wasGenerated =
+        acc.roleName === 'Owner'
+          ? config.accounts.ownerPasswordGenerated
+          : acc.roleName === 'Admin'
+            ? config.accounts.adminSwkPasswordGenerated
+            : acc.roleName === 'Manager'
+              ? config.accounts.managerPasswordGenerated
+              : config.accounts.bdmPasswordGenerated
+      if (wasGenerated && !process.env.SWK_DEV_FIXTURE_PASSWORD && !(config.isProd && !acc.fullAccess && acc.roleName !== 'Manager')) {
+        console.warn(`[first start] ${acc.email} created with a generated password (${envKey} is not set): ${resolvedPw}`)
+      }
       q.run(
         `UPDATE users SET password_hash = ?, must_change_password = 0, active = 1, role_id = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`,
         pwHash,

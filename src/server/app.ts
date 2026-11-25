@@ -45,6 +45,12 @@ export const redactUrl = (u: string) =>
     .replace(/^(\/api\/public\/(?:bank|voice|sip|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
     .replace(/([?&]ticket=)[^&#]*/gi, '$1[redacted]')
 
+export const rateLimitKey = (req: FastifyRequest): string => {
+  const cf = req.headers['cf-connecting-ip']
+  if (config.isProd && typeof cf === 'string' && cf.trim()) return cf.trim()
+  return req.raw.socket?.remoteAddress || req.ip
+}
+
 export async function buildApp(): Promise<FastifyInstance> {
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
   const app = Fastify({ logger, trustProxy: config.trustProxy, bodyLimit: 12 * 1024 * 1024 })
@@ -64,7 +70,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
   await app.register(cookie)
   await app.register(multipart, { limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 10 } })
-  await app.register(rateLimit, { global: false })
+  await app.register(rateLimit, { global: false, keyGenerator: rateLimitKey })
 
   app.decorateRequest('user', null)
   app.decorateRequest('ctx', null as any)

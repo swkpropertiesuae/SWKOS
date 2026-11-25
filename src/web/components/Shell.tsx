@@ -317,6 +317,7 @@ export function Shell() {
   const loc = useLocation()
   const sipSnap = useSipClient()
   const isStaff = Boolean(me?.id && !me?.party_id)
+  const mustChangePw = Boolean(me?.mustChangePassword)
   const canFieldLive = canAccessFieldLiveMap(me)
   const canAi = isStaff && can('ai', 'view')
 
@@ -346,7 +347,7 @@ export function Shell() {
   const chatUnread =
     useQuery({
       queryKey: ['chat-unread'],
-      enabled: isStaff,
+      enabled: isStaff && !mustChangePw,
       queryFn: () => get<{ unread: number }>('/api/chat/unread'),
       refetchInterval: 60000,
     }).data?.unread ?? 0
@@ -476,8 +477,8 @@ export function Shell() {
             <span className="swk-hide-sm">Search leads, properties…</span>
             <kbd>Ctrl K</kbd>
           </button>
-          <ChatNotifier />
-          <NotificationBell />
+          {!mustChangePw && <ChatNotifier />}
+          {!mustChangePw && <NotificationBell />}
           <span className="hidden sm:inline-flex">
             <QuickCreate />
           </span>
@@ -763,7 +764,7 @@ export function Shell() {
       </AnimatePresence>
 
       {/* Coordinated Desktop Bottom-Right Dock Rail (Softphone + Inside sit side-by-side, ZERO overlap!) */}
-      {isStaff && (
+      {isStaff && !mustChangePw && (
         <div className="swk-dock-rail no-print">
           <SipSoftphoneDock docked />
           <ChatDock docked />
@@ -771,7 +772,7 @@ export function Shell() {
       )}
 
       {isStaff && <BiometricLockOverlay onLogout={logout} />}
-      <LiveNotifications />
+      {!mustChangePw && <LiveNotifications />}
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>
         <div className="grid gap-4 text-sm text-body">

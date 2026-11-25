@@ -5,7 +5,7 @@ import { HttpError,fromCents,nowIso,nowLocal,toCents,todayStr } from '../util'
 import { notify,notifyLeadership } from '../notify'
 import { sendWhatsApp,ownerNumbers } from '../integrations/whatsapp'
 import { getSetting,setSettings } from '../settings'
-import { attemptLogin,createSession,destroyDeviceSessions,destroyUserSessions,hashPassword,loadUser } from '../auth'
+import { attemptLogin,createSession,destroyDeviceSessions,destroyUserSessions,hashPassword,loadUser,validatePasswordStrength } from '../auth'
 import { COOKIE } from '../app'
 import { burnQrNonce, checkPasswordForCheckin, currentQrToken, deviceGate, inspectQrToken, newChallenge, qrMode, regenerateFixedQr, setQrMode, verifyDeviceProof, verifyOfficeGeofence } from '../domain/attendance-security'
 import { config } from '../config'
@@ -1769,7 +1769,12 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     } else if (act === 'unlock') {
       q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`, nowIso(), adminUser.id)
     } else if (act === 'reset_password') {
-      const nextPw = String(body.new_password || config.accounts.adminSwkPassword).trim()
+      const explicitPw = typeof body.new_password === 'string' ? body.new_password.trim() : ''
+      if (!explicitPw && config.accounts.adminSwkPasswordGenerated) {
+        throw new HttpError(400, 'Enter a new password for admin@swk.properties (at least 10 characters with upper-case, lower-case, and a digit or symbol).')
+      }
+      const nextPw = explicitPw || config.accounts.adminSwkPassword
+      if (explicitPw) validatePasswordStrength(nextPw)
       q.run(
         `UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, active = 1, updated_at = ? WHERE id = ?`,
         hashPassword(nextPw),

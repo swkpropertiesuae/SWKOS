@@ -12,10 +12,13 @@ if (process.env.REQUIRE_DATABASE_URL === 'true' && !process.env.DATABASE_URL) {
 
 /** In production the well-known default passwords are never used: without an explicit env value a random one is generated and printed once at first start. */
 const production = (env.NODE_ENV ?? 'development') === 'production'
-const initialPassword = (value: string | undefined, fallback: string) => value ? { password: value, generated: false } : production ? { password: crypto.randomBytes(12).toString('base64url') + 'aA1', generated: true } : { password: fallback, generated: false }
+const initialPassword = (value: string | undefined, fallback: string) => {
+  const clean = value?.trim()
+  return clean ? { password: clean, generated: false } : production ? { password: crypto.randomBytes(12).toString('base64url') + 'aA1', generated: true } : { password: fallback, generated: false }
+}
 const ownerInit = initialPassword(env.OWNER_PASSWORD, 'Shabib@swk.properties')
 const adminInit = initialPassword(env.ADMIN_PASSWORD, 'SWK@Admin2026')
-const adminSwkInit = initialPassword(env.ADMIN_SWK_PASSWORD, 'Admin@swk.properties')
+const adminSwkInit = initialPassword(env.ADMIN_SWK_PASSWORD?.trim() || env.ADMIN_PASSWORD?.trim(), 'Admin@swk.properties')
 const managerInit = initialPassword(env.MANAGER_PASSWORD, 'SWK@Manager2026')
 const bdmInit = initialPassword(env.BDM_PASSWORD, 'SWK@Talha2026')
 const advisorInit = initialPassword(env.ADVISOR_PASSWORD, 'SWK@Advisor2026')
@@ -49,6 +52,7 @@ export const config = {
     adminSwkEmail: (env.ADMIN_SWK_EMAIL ?? 'admin@swk.properties').toLowerCase(),
     adminSwkName: env.ADMIN_SWK_NAME ?? 'SWK Admin',
     adminSwkPassword: adminSwkInit.password,
+    adminSwkPasswordGenerated: adminSwkInit.generated,
     adminEmail: (env.ADMIN_EMAIL ?? 'admin@swkpropertiesuae.com').toLowerCase(),
     adminName: env.ADMIN_NAME ?? 'SWK Admin',
     adminPassword: adminInit.password,

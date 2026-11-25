@@ -399,26 +399,33 @@ export function newApiKey() {
 
 // ---------------------------------------------------------------- login with lockout
 const MAX_FAILS = 5
+function findUserForLogin(e: string, staffMatch: (typeof SWK_STAFF_ACCOUNTS)[number] | undefined) {
+  let row = q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, e)
+  if (!row && staffMatch) {
+    for (const candidate of [staffMatch.email, ...staffMatch.aliases]) {
+      row = q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, candidate.toLowerCase())
+      if (row) break
+    }
+  }
+  return row
+}
 export function attemptLogin(email: string, password: string, totp: string | undefined, ip?: string, ua?: string): { user: SessionUser; needsTotp?: false } | { needsTotp: true } {
   const e = email.trim().toLowerCase()
   const staffMatch = SWK_STAFF_ACCOUNTS.find(a => a.email.toLowerCase() === e || a.aliases.some(al => al.toLowerCase() === e))
-  let row = q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, e)
+  let row = findUserForLogin(e, staffMatch)
   if (!row && staffMatch) {
-    row = q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, staffMatch.email.toLowerCase())
-    if (!row) {
-      // creates only the missing account; never resets anyone else's password
-      try { syncSwkStaffRoster() } catch { /* ignore */ }
-      row =
-        q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, e) ??
-        q.get(`SELECT * FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, staffMatch.email.toLowerCase())
-    }
+    // creates only the missing account; never resets anyone else's password
+    try { syncSwkStaffRoster() } catch { /* ignore */ }
+    row = findUserForLogin(e, staffMatch)
   }
   const log = (success: boolean, reason: string) => q.run(`INSERT INTO login_events(at, email, user_id, success, reason, ip, user_agent) VALUES (?,?,?,?,?,?,?)`, nowIso(), e, row?.id ?? null, success ? 1 : 0, reason, ip ?? null, (ua ?? '').slice(0, 200))
-  if (row?.locked_until && row.locked_until > nowIso().slice(0, 16)) { log(false, 'locked'); throw new HttpError(423, 'Account temporarily locked after repeated failures. Try again in 15 minutes.') }
+  const nowMin = nowIso().slice(0, 16)
+  if (row?.locked_until && row.locked_until > nowMin) { log(false, 'locked'); throw new HttpError(423, 'Account temporarily locked after repeated failures. Try again in 15 minutes.') }
+  const priorFails = row?.locked_until && row.locked_until <= nowMin ? 0 : (row?.failed_logins ?? 0)
   const ok = verifyPassword(password, row?.password_hash)
   if (!row || !ok || !row.active) {
     if (row) {
-      const fails = (row.failed_logins ?? 0) + 1
+      const fails = priorFails + 1
       q.run(`UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?`, fails, fails >= MAX_FAILS ? new Date(Date.now() + 15 * 60_000).toISOString().slice(0, 16) : null, row.id)
     }
     log(false, !row ? 'unknown user' : !row.active ? 'inactive' : 'bad password')
@@ -427,12 +434,12 @@ export function attemptLogin(email: string, password: string, totp: string | und
   if (row.totp_secret) {
     if (!totp) return { needsTotp: true }
     if (!verifyTotp(decryptSecret(row.totp_secret), totp)) {
-      const fails = (row.failed_logins ?? 0) + 1
+      const fails = priorFails + 1
       q.run('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?', fails, fails >= MAX_FAILS ? new Date(Date.now() + 15 * 60_000).toISOString().slice(0, 16) : null, row.id)
       log(false, 'bad totp'); throw new HttpError(401, 'Invalid authenticator code')
     }
   }
-  q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = ? WHERE id = ?`, nowIso().slice(0, 16), row.id)
+  q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = ? WHERE id = ?`, nowMin, row.id)
   log(true, 'ok')
   const user = loadUser(row.id)
   if (!user) throw new HttpError(401, 'Account unavailable')

@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { q,inDemo } from '../db'
 import type { Hooks } from '../hooks'
 import { bad,r2,todayStr,nowLocal,addDays,safeJson } from '../util'
-import { labelsFor,type Rec,type Perms } from '../engine'
+import { audit,getDef,labelsFor,type Rec,type Perms } from '../engine'
 import { hashPassword,destroyUserSessions,validatePasswordStrength,newApiKey,signRoleGrant } from '../auth'
 import { notify,notifyLeadership,notifyRole } from '../notify'
 import { checkEmployeeAndDocumentExpiries } from './compliance'
@@ -36,7 +36,14 @@ export const userHooks: Hooks = {
   beforeSave({ rec, old, isNew, ctx }) {
     rec.work_capacity_points ??= 40
     if (!Number.isInteger(rec.work_capacity_points) || rec.work_capacity_points < 1 || rec.work_capacity_points > 10000) throw bad('Work capacity must be 1–10000 points')
-    if (rec.password) { if (!ctx.system) validatePasswordStrength(String(rec.password)); rec.password_hash = hashPassword(String(rec.password)); rec.must_change_password = rec.must_change_password ?? false; rec.__pw = true }
+    if (rec.password) {
+      if (!ctx.system) validatePasswordStrength(String(rec.password))
+      rec.password_hash = hashPassword(String(rec.password))
+      rec.must_change_password = rec.must_change_password ?? false
+      rec.failed_logins = 0
+      rec.locked_until = null
+      rec.__pw = true
+    }
     else if (isNew) throw bad('Set an initial password for the new user')
     delete rec.password
     if (rec.party_id) { const role = q.get(`SELECT name FROM roles WHERE id = ?`, rec.role_id); if (role?.name !== 'Customer Portal') throw bad('Portal company can only be set for users with the "Customer Portal" role') }
@@ -126,8 +133,10 @@ export const userHooks: Hooks = {
       }
     }
     if ((rec as any).__pw) {
+      q.run(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`, rec.id)
       destroyUserSessions(rec.id)
       q.run(`UPDATE api_keys SET active = 0 WHERE user_id = ?`, rec.id)
+      if (!isNew && !ctx.system) audit(ctx, getDef('users'), rec.id, 'password-reset', null, rec.email || rec.name || '')
     }
   },
 }

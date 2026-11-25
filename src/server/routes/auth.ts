@@ -6,7 +6,7 @@ import { openStored,persistUpload,removeStored } from '../integrations/storage'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { q,tx } from '../db'
-import { COOKIE,DEMO_PREFIX } from '../app'
+import { COOKIE,DEMO_PREFIX,rateLimitKey } from '../app'
 import { runInDb,inDemo } from '../db'
 import { getDemoDb } from '../demo/workspace'
 import { config } from '../config'
@@ -33,7 +33,15 @@ export default async function (app: FastifyInstance) {
 
   app.get('/api/auth/branding', async () => ({ company_name: getSetting('company_name'), base_currency: getSetting('base_currency') }))
 
-  app.post('/api/auth/login', { config: { rateLimit: { max: 12, timeWindow: '1 minute' } } }, async (req, reply) => {
+  const loginRateLimitKey = (req: any) => {
+    const ip = rateLimitKey(req)
+    const rawEmail = typeof req.body === 'object' && req.body && typeof (req.body as any).email === 'string'
+      ? (req.body as any).email.trim().toLowerCase().slice(0, 160)
+      : ''
+    return rawEmail ? `${ip}:${rawEmail}` : ip
+  }
+
+  app.post('/api/auth/login', { config: { rateLimit: { max: 12, timeWindow: '1 minute', hook: 'preHandler', keyGenerator: loginRateLimitKey } } }, async (req, reply) => {
     const clientHeader = String(req.headers['x-swk-client'] || '').trim().toLowerCase()
     const isMobileClient = clientHeader === 'mobile'
     const b = z.object({
@@ -192,14 +200,16 @@ export default async function (app: FastifyInstance) {
         req.ip ?? null,
         String(req.headers['user-agent'] ?? '').slice(0, 200),
       )
-    if (row?.locked_until && row.locked_until > nowIso().slice(0, 16)) {
+    const nowMin = nowIso().slice(0, 16)
+    if (row?.locked_until && row.locked_until > nowMin) {
       logVerify(false, 'verify_locked')
       throw new HttpError(423, 'Account temporarily locked after repeated failures. Try again in 15 minutes.')
     }
+    const priorFails = row?.locked_until && row.locked_until <= nowMin ? 0 : (row?.failed_logins ?? 0)
     const ok = verifyPassword(b.password, row?.password_hash)
     if (!row || !ok || !row.active) {
       if (row) {
-        const fails = (row.failed_logins ?? 0) + 1
+        const fails = priorFails + 1
         q.run(
           `UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?`,
           fails,
@@ -213,7 +223,7 @@ export default async function (app: FastifyInstance) {
     if (row.totp_secret) {
       if (!b.totp) return { ok: false, needsTotp: true }
       if (!verifyTotp(decryptSecret(row.totp_secret), b.totp)) {
-        const fails = (row.failed_logins ?? 0) + 1
+        const fails = priorFails + 1
         q.run(
           `UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?`,
           fails,
@@ -298,7 +308,11 @@ export default async function (app: FastifyInstance) {
     const u = req.user!
     const row = q.get(`SELECT totp_secret, must_change_password, password_hash, last_login_at FROM users WHERE id = ?`, u.id)
     const config0 = config.accounts
-    const usingDefault = !inDemo() && [config0.adminPassword, config0.managerPassword].some(p => verifyPassword(p, row?.password_hash))
+    const defaultCandidates = [
+      !config0.adminPasswordGenerated ? config0.adminPassword : null,
+      !config0.managerPasswordGenerated ? config0.managerPassword : null,
+    ].filter((p): p is string => Boolean(p))
+    const usingDefault = !inDemo() && !config.isProd && defaultCandidates.some(p => verifyPassword(p, row?.password_hash))
     return { demo: inDemo(), id: u.id, name: u.name, email: u.email, role: u.role_name, permissions: u.permissions, branch_id: u.branch_id, party_id: u.party_id, totp: !!row?.totp_secret, mustChangePassword: !!row?.must_change_password, defaultPassword: usingDefault, lastLogin: row?.last_login_at }
   })
 
@@ -360,7 +374,7 @@ export default async function (app: FastifyInstance) {
     if (!verifyPassword(b.current, row?.password_hash)) throw new HttpError(400, 'Current password is incorrect')
     validatePasswordStrength(b.next)
     if (b.next === b.current) throw bad('Choose a different password')
-    q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = ? WHERE id = ?`, hashPassword(b.next), nowIso(), req.user!.id)
+    q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?`, hashPassword(b.next), nowIso(), req.user!.id)
     destroyUserSessions(req.user!.id, req.sessionHash)
     q.run('DELETE FROM settings WHERE key = ?', `totp-pending:${req.user!.id}`)
     audit(req.ctx, getDef('users'), req.user!.id, 'password-change', null, req.user!.name)
