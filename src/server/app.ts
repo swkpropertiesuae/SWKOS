@@ -45,6 +45,16 @@ export const redactUrl = (u: string) =>
     .replace(/^(\/api\/public\/(?:bank|voice|sip|tracking|track|deal|crm-bridge\/twiml)\/)[^/?#]+/, '$1[redacted]')
     .replace(/([?&]ticket=)[^&#]*/gi, '$1[redacted]')
 
+/** The native apps' WebViews (Android https://localhost, iOS capacitor://localhost). Other localhost origins, with any port, only outside production. */
+export const allowedLocalOrigin = (origin: string) =>
+  /^(?:https:\/\/localhost|capacitor:\/\/localhost)$/i.test(origin) || (!config.isProd && /^(?:https?|capacitor):\/\/localhost(:\d+)?$/i.test(origin))
+
+export const rateLimitKey = (req: FastifyRequest): string => {
+  const cf = req.headers['cf-connecting-ip']
+  if (config.isProd && typeof cf === 'string' && cf.trim()) return cf.trim()
+  return req.raw.socket?.remoteAddress || req.ip
+}
+
 export async function buildApp(): Promise<FastifyInstance> {
   const logger = { level: config.isProd ? 'info' : 'warn', serializers: { req: (r: any) => ({ method: r.method, url: redactUrl(String(r.url ?? '')), host: r.host, remoteAddress: r.ip, remotePort: r.socket?.remotePort }) } }
   const app = Fastify({ logger, trustProxy: config.trustProxy, bodyLimit: 12 * 1024 * 1024 })
@@ -64,7 +74,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
   await app.register(cookie)
   await app.register(multipart, { limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 10 } })
-  await app.register(rateLimit, { global: false })
+  // Rate-limit by the real client. With trustProxy, req.ip is the left-most X-Forwarded-For entry, which the client can type freely.
+  // Production is reached only through the Cloudflare Tunnel, which sets CF-Connecting-IP; elsewhere use the TCP peer.
+  await app.register(rateLimit, { global: false, keyGenerator: rateLimitKey })
 
   app.decorateRequest('user', null)
   app.decorateRequest('ctx', null as any)
@@ -72,7 +84,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Demo sessions (cookie/mobile prefix "demo.") and demo tracking links run against the isolated demo database.
   app.addHook('onRequest', (req: FastifyRequest, reply, done) => {
     const origin = req.headers.origin
-    if (origin && (/^(?:https?|capacitor):\/\/localhost(:\d+)?$/i.test(origin) || /^https?:\/\/([a-z0-9-]+\.)?(swkpropertiesuae\.com|swk\.properties|swk\.property)$/i.test(origin) || req.url.startsWith('/api/public/reception-qr'))) {
+    if (origin && (allowedLocalOrigin(origin) || /^https?:\/\/([a-z0-9-]+\.)?(swkpropertiesuae\.com|swk\.properties|swk\.property)$/i.test(origin) || req.url.startsWith('/api/public/reception-qr'))) {
       reply.header('Access-Control-Allow-Origin', origin)
       reply.header('Access-Control-Allow-Credentials', 'true')
       reply.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS')

@@ -1,4 +1,4 @@
-> **RETIRED.** SWK OS no longer runs on Cloudflare Containers. Production moved to AWS Lightsail (see [DEPLOY-FREE.md](DEPLOY-FREE.md) and [OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md)). This page is kept for history only. The "Deploy to Cloudflare" GitHub workflow is disabled and must stay disabled: running it would take `os.swk.properties` away from the AWS server.
+> **RETIRED.** SWK OS no longer runs on Cloudflare Containers. Production moved to AWS Lightsail (see [DEPLOY-FREE.md](DEPLOY-FREE.md) and [OPERATIONS-RUNBOOK.md](OPERATIONS-RUNBOOK.md)). This page is kept for history only. The "Deploy to Cloudflare" GitHub workflow has been removed from the repository: running it would take `os.swk.properties` away from the AWS server. Do not restore it.
 
 # Deploy SWK OS on Cloudflare (step by step)
 

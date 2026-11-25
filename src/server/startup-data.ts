@@ -7,7 +7,7 @@ import { isPg,PgDatabase,q } from './db'
 import { SYSTEM_CTX } from './engine'
 import { nowIso } from './util'
 import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusinessData,starterDeclined,starterLoaded } from './domain/business-data'
-import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,applySwk2026Passwords } from './seed'
+import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,retireSwk2026PatternPasswords } from './seed'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
 
 const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
@@ -61,7 +61,7 @@ export async function runStartupDataTasks() {
   try { ensureTeamGroup() } catch (e) { console.warn('[inside] team group skipped:', (e as Error).message) }
   try { seedWebsiteContent() } catch (e) { console.warn('[website] seed skipped:', (e as Error).message) }
   applyConfiguredPasswords()
-  applySwk2026Passwords()
+  retireSwk2026PatternPasswords()
   applyPasswordReset()
   if (config.starterData && !starterLoaded() && !starterDeclined() && businessDataSummary().total === 0) {
     const r = loadSwkStarterData(SYSTEM_CTX) as any
