@@ -428,7 +428,10 @@ async function renderDocumentToPdfBuffer(opts: {
   const pdfDoc = await PDFDocument.create()
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
-  const company = corporateFooterDetails(publicSettings())
+  const settings = publicSettings()
+  const company = corporateFooterDetails(settings)
+  const wmEnabled = settings.document_watermark_enabled !== false
+  const wmOpacity = Math.min(0.12, Math.max(0.02, Number(settings.document_watermark_opacity ?? 0.045)))
 
   const pageWidth = 595.28
   const pageHeight = 841.89
@@ -439,28 +442,47 @@ async function renderDocumentToPdfBuffer(opts: {
 
   const drawChrome = (page: any) => {
     if (!opts.include_letterhead) return
+    // Very slight corporate watermark (omitted automatically when letterhead is disabled)
+    if (wmEnabled && canEncodeWinAnsi(fontBold, company.name)) {
+      page.drawText(company.name.toUpperCase(), {
+        x: pageWidth * 0.17,
+        y: pageHeight * 0.42,
+        size: 38,
+        font: fontBold,
+        color: rgb(0.06, 0.17, 0.2),
+        opacity: wmOpacity,
+        rotate: degrees(34),
+      })
+    }
+    // Corporate executive header
+    page.drawRectangle({ x: marginX, y: pageHeight - 24, width: 64, height: 2.5, color: rgb(0.79, 0.61, 0.24) })
     const hdrText = `${company.name}  |  ${company.address}`
     if (canEncodeWinAnsi(fontBold, company.name)) {
-      page.drawText(company.name, { x: marginX, y: pageHeight - 36, size: 11, font: fontBold, color: rgb(0.07, 0.18, 0.14) })
+      page.drawText(company.name, { x: marginX, y: pageHeight - 38, size: 11.5, font: fontBold, color: rgb(0.06, 0.17, 0.2) })
+    }
+    const regLine = `RERA ORN ${company.orn}${company.tradeLicense ? `  ·  DET Licence ${company.tradeLicense}` : ''}`
+    if (canEncodeWinAnsi(fontRegular, regLine)) {
+      page.drawText(regLine, { x: pageWidth - marginX - 185, y: pageHeight - 38, size: 8, font: fontBold, color: rgb(0.54, 0.38, 0.11) })
     }
     if (canEncodeWinAnsi(fontRegular, hdrText)) {
-      page.drawText(`${company.address}  ·  ${company.website}`, { x: marginX, y: pageHeight - 50, size: 8, font: fontRegular, color: rgb(0.37, 0.33, 0.29) })
+      page.drawText(`${company.address}  ·  ${company.website}`, { x: marginX, y: pageHeight - 51, size: 8, font: fontRegular, color: rgb(0.37, 0.33, 0.29) })
     }
     page.drawLine({
-      start: { x: marginX, y: pageHeight - 58 },
-      end: { x: pageWidth - marginX, y: pageHeight - 58 },
+      start: { x: marginX, y: pageHeight - 59 },
+      end: { x: pageWidth - marginX, y: pageHeight - 59 },
       thickness: 1.5,
-      color: rgb(0.79, 0.66, 0.43),
+      color: rgb(0.79, 0.61, 0.24),
     })
+    // Corporate executive footer
     page.drawLine({
-      start: { x: marginX, y: 48 },
-      end: { x: pageWidth - marginX, y: 48 },
-      thickness: 0.75,
-      color: rgb(0.79, 0.66, 0.43),
+      start: { x: marginX, y: 50 },
+      end: { x: pageWidth - marginX, y: 50 },
+      thickness: 0.9,
+      color: rgb(0.79, 0.61, 0.24),
     })
-    const ftrText = `${company.name} · ${company.phone} · ${company.email} · ${company.website}`
+    const ftrText = `${company.name} · RERA ORN ${company.orn} · ${company.phone} · ${company.email} · ${company.website}`
     if (canEncodeWinAnsi(fontRegular, ftrText)) {
-      page.drawText(ftrText, { x: marginX, y: 34, size: 8, font: fontRegular, color: rgb(0.37, 0.33, 0.29) })
+      page.drawText(ftrText, { x: marginX, y: 35, size: 7.8, font: fontRegular, color: rgb(0.35, 0.32, 0.29) })
     }
   }
 

@@ -7,7 +7,7 @@ Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calcula
 ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText,Languages,Search,Navigation,
 MessageCircleMore,SquareCheckBig,Gauge,UsersRound,Handshake,Settings2,Crown,Wand2
 } from 'lucide-react';
-import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,canAccessDocumentTemplates,canAccessShabibsCorner,canUseConfidentialAiImporter,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
+import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,canAccessDocumentTemplates,canAccessShabibsCorner,canUseConfidentialAiImporter,canUseOsCustomizer,canAccessSocialMediaSuite,canAccessMasterDataHub,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }
@@ -132,7 +132,8 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Registrations', to: '/e/compliance_items', icon: ScrollText, module: 'compliance', desc: 'Official certificates' },
     { label: 'File Vault', to: '/documents', icon: FileStack, module: 'documents', desc: 'All uploaded documents' },
   ] },
-  { key: 'website', label: 'Website', items: [
+  { key: 'website', label: 'Website & Social', items: [
+    { label: 'Social Media & 30-Day Suite', to: '/social-media', icon: Megaphone, isNew: true, desc: 'Brand profiles, 30-day batch scheduler & Meenakshi handover' },
     { label: 'Website Studio', to: '/website', icon: Globe, module: 'website', isNew: true, desc: 'Inventory, hot offers & one-click deploy' },
     { label: 'Website Listings', to: '/e/website_listings', icon: Building2, module: 'website', desc: 'All listings on swkpropertiesuae.com' },
     { label: 'Trending Spotlight', to: '/e/website_promotions', icon: Flame, module: 'website', desc: 'Promotions shown on the website' },
@@ -167,6 +168,8 @@ export const SWK_NAV: NavSection[] = [
     { label: 'Reports', to: '/reports', icon: BarChart3, module: 'reports', desc: 'Custom business exports' },
   ] },
   { key: 'admin', label: 'Settings', items: [
+    { label: 'No-Code OS Customizer', to: '/admin/customizer', icon: Settings2, isNew: true, desc: 'Owner/Admin: add fields, dropdown options, templates & watermarks' },
+    { label: 'Master Data & 360° Log', to: '/master-data', icon: Layers, isNew: true, desc: 'All master tables, unified activity log, OS gap audit & security shield' },
     { label: 'Company Info', to: '/admin/settings', icon: Settings, module: 'admin', desc: 'Logo, seal & company details' },
     { label: 'Branches', to: '/e/branches', icon: Building, module: 'admin', desc: 'Office locations & geofence' },
     { label: 'Roles & Access', to: '/admin/roles', icon: ShieldHalf, module: 'admin', desc: 'Staff permissions' },
@@ -337,6 +340,9 @@ export function isNavItemVisible(
   const clean = item.to.split('?')[0] || ''
   if (clean === '/shabibs-corner' && !canAccessShabibsCorner(user)) return false
   if (clean === '/ai-importer' && !canUseConfidentialAiImporter(user)) return false
+  if (clean === '/admin/customizer' && !canUseOsCustomizer(user)) return false
+  if (clean === '/social-media' && !canAccessSocialMediaSuite(user)) return false
+  if (clean === '/master-data' && !canAccessMasterDataHub(user)) return false
   if (clean === '/crm-vault' && !canAccessCrmVault(user)) return false
   if (clean === '/field-live' && !canAccessFieldLiveMap(user)) return false
   if ((clean === '/studio' || clean === '/e/doc_templates') && !canAccessDocumentTemplates(user)) return false

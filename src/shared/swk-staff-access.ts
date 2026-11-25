@@ -591,6 +591,54 @@ export function canUseEmergencyOverride(
 }
 
 /**
+ * HARD RULE: No-Code OS Customizer (adding/editing/removing custom fields, dropdown option lists,
+ * own document templates, and letterhead/watermark controls without developer or IT intervention)
+ * is HARDCODED strictly to Owner and Admin ONLY.
+ */
+export function canUseOsCustomizer(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
+  return isOwnerSwkUser(user) || isAdminSwkUser(user)
+}
+
+/**
+ * HARD RULE: Complete Social Media Management Suite (brand profiles, 30-day content scheduler,
+ * and Owner -> Meenakshi submission handover) is accessible to Owner, Admin, Operations Manager
+ * (Haseeb), and Office Admin (Meenakshi) ONLY. Restricted field agents & portal users are blocked.
+ */
+export function canAccessSocialMediaSuite(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
+  if (isOwnerSwkUser(user) || isAdminSwkUser(user) || isFullAccessSwkUser(user)) return true
+  const email = String(user.email || '').trim().toLowerCase()
+  const fixed = hardcodedAccountFor(email)
+  if (fixed && ['Owner', 'Admin', 'Manager', 'Office Admin'].includes(fixed.roleName)) return true
+  const role = String(user.role_name || user.role || '').trim().toLowerCase()
+  return role === 'office admin' || role === 'manager'
+}
+
+/**
+ * Master Data Registry & Operational Gap Hub: leadership + office/HR coordinators can view
+ * reference data; full 360° Security & Master Log is restricted to Owner, Admin, and Haseeb.
+ */
+export function canAccessMasterDataHub(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
+  if (isFullAccessSwkUser(user)) return true
+  return canAccessDocumentTemplates(user)
+}
+
+export function canViewMasterSecurityLog(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id || isRestrictedStaffUser(user)) return false
+  return isFullAccessSwkUser(user)
+}
+
+/**
  * HARD RULE: ONLY the Supreme Owner (shabib@swk.properties) can apply the Company Seal
  * and Authorized Owner Signature directly without prior approval.
  * Admin, Haseeb, HR, and Office Admin MUST obtain explicit Owner approval before applying them.

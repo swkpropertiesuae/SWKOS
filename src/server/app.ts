@@ -13,6 +13,7 @@ import { enterDb,q } from './db'
 import { can } from './engine'
 import { getDemoDb } from './demo/workspace'
 import type { Ctx,SessionUser } from './engine'
+import { installEnterpriseSecurityHardening } from './security/hardening'
 import { ZodError } from 'zod'
 
 declare module 'fastify' {
@@ -59,12 +60,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
 
   await app.register(helmet, {
-    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:', 'wss:'], objectSrc: ["'self'"], frameSrc: ["'self'"], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
+    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'blob:', 'https:'], mediaSrc: ["'self'", 'blob:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"], workerSrc: ["'self'", 'blob:'], fontSrc: ["'self'", 'data:'], connectSrc: ["'self'", 'https:', 'http:', 'wss:'], objectSrc: ["'self'", 'blob:'], frameSrc: ["'self'", 'blob:'], frameAncestors: ["'self'"], baseUri: ["'self'"], formAction: ["'self'"] } },
     crossOriginEmbedderPolicy: false, hsts: config.isProd ? { maxAge: 15552000 } : false,
   })
   await app.register(cookie)
   await app.register(multipart, { limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 10 } })
   await app.register(rateLimit, { global: false })
+  installEnterpriseSecurityHardening(app)
 
   app.decorateRequest('user', null)
   app.decorateRequest('ctx', null as any)
@@ -172,7 +174,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/daily'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'), import('./routes/sip'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/shabibs-corner'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/shabibs-corner'), import('./routes/master-hub'), import('./routes/customizer'), import('./routes/social-media'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))

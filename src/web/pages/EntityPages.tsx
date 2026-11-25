@@ -4,7 +4,7 @@ import { PdfDownload,DocumentPrinter,SealChoice } from '../components/ui/documen
 import { useEffect,useState } from 'react'
 import { Link,useNavigate,useParams,useSearchParams } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft,Pencil,Trash2,Printer,MoreHorizontal,Plus,Mail as MailIcon,Share2 } from 'lucide-react'
+import { ArrowLeft,Pencil,Trash2,Printer,MoreHorizontal,Plus,Mail as MailIcon,Share2,FileUp } from 'lucide-react'
 import { ShareWithClient,SHAREABLE_ENTITIES } from '../components/ShareWithClient'
 import { del,get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
@@ -14,7 +14,7 @@ import { RecordView } from '../components/RecordView'
 import { EmployeeAccess } from '../components/EmployeeAccess'
 import { canAccessDocumentTemplates, canOpenEmployeeRecords } from '@shared/swk-staff-access'
 import { ChildEditor } from '../components/ChildEditor'
-import { SidePanel } from '../components/SidePanel'
+import { Attachments, SidePanel } from '../components/SidePanel'
 import { QuickPayDialog,AllocateDialog,ReconcileDialog } from '../components/Dialogs'
 import { RefSelect } from '../components/RefSelect'
 import { Badge,Dropdown,ErrorBox,Loading,Modal,PageHeader,Tabs,useDialogs } from '../ui/kit'
@@ -57,6 +57,14 @@ export function EntityRecordPage() {
   const rid = Number(id)
   const known = meta?.entities.find(e => e.key === entity)
   const q = useQuery({ queryKey: ['rec', entity, rid], queryFn: () => get<any>(`/api/e/${entity}/${rid}`), enabled: !!known })
+  const attachCountQ = useQuery({
+    queryKey: ['attach-count', entity, rid],
+    enabled: !!known && entity !== 'attachments' && Number.isFinite(rid) && rid > 0,
+    queryFn: () => get<{ total: number }>('/api/e/attachments', {
+      filters: JSON.stringify([{ field: 'link_entity', op: 'eq', value: entity }, { field: 'link_id', op: 'eq', value: rid }]),
+      pageSize: 1,
+    }),
+  })
   const [tab, setTab] = useState('details')
   const [editing, setEditing] = useState(false)
   const [sharing, setSharing] = useState(false)
@@ -81,7 +89,14 @@ export function EntityRecordPage() {
   const canDelete = can(def.module, 'delete') && !def.noDelete && !def.readonlyApi
   const keyFields = def.fields.filter(f => f.key && rec[f.name] !== null && rec[f.name] !== undefined && rec[f.name] !== '').slice(0, 5)
   const facts = keyFields.length ? keyFields : def.fields.filter(f => f.list && f.name !== def.title[0] && rec[f.name] !== null && rec[f.name] !== '' && f.type !== 'textarea').slice(0, 4)
-  const tabs = [{ key: 'details', label: 'Details' }, ...(def.children ?? []).map(c => ({ key: 'c:' + c.key, label: c.label, count: rec.children?.[c.key]?.length })), ...(RELATED[entity] ?? []).filter(r => can(getDef(r.entity).module, 'view')).map(r => ({ key: 'r:' + r.key, label: r.label })), ...(entity === 'employees' && canOpenEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id }) ? [{ key: 'access', label: 'Access & usage' }] : [])]
+  const showDocsTab = entity !== 'attachments'
+  const tabs = [
+    { key: 'details', label: 'Details' },
+    ...(showDocsTab ? [{ key: 'documents', label: entity === 'employees' ? 'EID / Visa & PDFs' : 'Documents & PDFs', count: attachCountQ.data?.total }] : []),
+    ...(def.children ?? []).map(c => ({ key: 'c:' + c.key, label: c.label, count: rec.children?.[c.key]?.length })),
+    ...(RELATED[entity] ?? []).filter(r => can(getDef(r.entity).module, 'view')).map(r => ({ key: 'r:' + r.key, label: r.label })),
+    ...(entity === 'employees' && canOpenEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id }) ? [{ key: 'access', label: 'Access & usage' }] : []),
+  ]
   const status = def.statusField ? rec[def.statusField] : null
   const del_ = () => {
     setDeleteReason('')
@@ -121,6 +136,7 @@ export function EntityRecordPage() {
           {PRINTABLE.has(entity) && <PdfDownload entity={entity} id={rid} />}
           {PRINTABLE.has(entity) && can(def.module, 'edit') && entity !== 'payslips' && <button className="btn outline" onClick={() => setDialog({ name: 'emailPdf', props: {} })}><MailIcon /> E-mail</button>}
           {SHAREABLE_ENTITIES.has(entity) && <button className="btn outline" onClick={() => setSharing(true)}><Share2 /> Share with client</button>}
+          {showDocsTab && can(def.module, 'edit') && <button className="btn outline" onClick={() => setTab('documents')}><FileUp size={15} /> {entity === 'employees' ? 'Upload EID / Visa PDF' : 'Upload PDF'}</button>}
           {canDelete && <button className="btn red" onClick={() => void del_()}><Trash2 /> Delete</button>}
           {canEdit && <button className="btn green" onClick={() => setEditing(true)}><Pencil /> Edit</button>}
           {(more.length > 0 || canDelete) && <Dropdown className="btn outline" label={<MoreHorizontal size={16} />} items={[...more.map(a => ({ label: a.label, onClick: () => void a.run(helpers), danger: a.tone === 'red' })), ...(canDelete ? [{ label: <><Trash2 size={14} /> Delete</>, onClick: () => void del_(), danger: true, divider: false }] : [])]} />}
@@ -132,6 +148,21 @@ export function EntityRecordPage() {
           {tabs.length > 1 && <Tabs variant="sub" tabs={tabs} value={tab} onChange={setTab} />}
           <div className="p-4 md:p-5">
             {tab === 'details' && <RecordView def={def} rec={rec} />}
+            {tab === 'documents' && (
+              <div>
+                <div className="mb-4 pb-3 border-b border-line flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <h3 className="m-0 text-base font-bold">
+                      {entity === 'employees' ? 'Employee History & Compliance PDF Vault (Emirates ID, Visa, Passport, BRN)' : `${def.label} Documents & PDFs`}
+                    </h3>
+                    <p className="m-0 mt-0.5 text-xs text-muted">
+                      Every uploaded PDF is magic-byte verified, audit-logged, and opens cleanly fit-to-screen on mobile &amp; desktop.
+                    </p>
+                  </div>
+                </div>
+                <Attachments entity={entity} id={rid} refresh={() => { reload(); void qc.invalidateQueries({ queryKey: ['attach-count', entity, rid] }) }} />
+              </div>
+            )}
             {tab === 'access' && <EmployeeAccess employeeId={rec.id} />}
             {tab.startsWith('c:') && (() => { const c = def.children!.find(x => 'c:' + x.key === tab)!; return <ChildEditor child={c} rows={rec.children[c.key] ?? []} onChange={() => {}} readOnly parent={rec} /> })()}
             {tab.startsWith('r:') && (() => { const r = RELATED[entity].find(x => 'r:' + x.key === tab)!; return <EntityList key={r.key} entity={r.entity} embedded preset={[{ field: r.field, op: 'eq', value: rid }]} createPresets={{ [r.field]: rid }} /> })()}

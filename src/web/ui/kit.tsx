@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children, footer, width = 560, per
   if (!open) return null
   return createPortal(
     <div className="overlay" onMouseDown={e => { if (e.target === e.currentTarget && !persistent) onClose() }}>
-      <div ref={dialog} className={cls("modal", className)} style={{ maxWidth: `min(${width}px, calc(100vw - 32px))` }} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+      <div ref={dialog} className={cls("modal", className)} style={{ width: '100%', maxWidth: `min(${width}px, calc(100vw - 20px))`, maxHeight: 'calc(100dvh - 24px)' }} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <div className="modal-head"><span id={titleId}>{title}</span><button className="btn ghost icon sm" onClick={onClose} aria-label="Close"><X /></button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -86,7 +86,7 @@ export function Dropdown({ label, items, className = 'btn violet', align = 'righ
   return (
     <div className="relative inline-block" ref={ref}>
       <button className={className} onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open}>{icon}{label}<ChevronDown size={14} /></button>
-      {open && <div role="menu" className={cls('absolute z-50 mt-1 min-w-[220px] bg-card border border-line rounded-xl shadow-xl py-1 fade-in', align === 'right' ? 'right-0' : 'left-0')}>
+      {open && <div role="menu" className={cls('absolute z-50 mt-1 min-w-[200px] max-w-[calc(100vw-24px)] max-h-[65dvh] overflow-y-auto bg-card border border-line rounded-xl shadow-xl py-1 fade-in', align === 'right' ? 'right-0' : 'left-0')}>
         {items.map((it, i) => it.divider ? <div key={i} className="h-px bg-line my-1" /> : (
           <button key={i} role="menuitem" disabled={it.disabled} className={cls('w-full text-start px-3 py-2 text-[13.5px] hover:bg-hover disabled:opacity-40 cursor-pointer bg-transparent border-0 flex items-center gap-2', it.danger ? 'text-signal' : 'text-ink')}
             onClick={() => { setOpen(false); if (it.to) location.assign(it.to); else it.onClick?.() }}>{it.label}</button>))}

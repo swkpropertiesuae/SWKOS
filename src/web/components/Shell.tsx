@@ -51,7 +51,7 @@ import { StaffPhoto } from './ui/staff-photo'
 import { clearMobileSession, lockScreenNow, openManageLockPin, registerNativePush, stopNativeFieldDuty, unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient, useSipClient } from '../lib/sipClient'
 import { APP_META, QUICK_CREATE, findNav, isNavItemVisible, launcherApps, rememberVisit } from '../swk/nav'
-import { canAccessFieldLiveMap, canPrintReceptionQr, isAllowedPathForRestrictedStaff, isRestrictedStaffUser } from '@shared/swk-staff-access'
+import { canAccessFieldLiveMap, canAccessMasterDataHub, canAccessSocialMediaSuite, canPrintReceptionQr, canUseOsCustomizer, isAllowedPathForRestrictedStaff, isRestrictedStaffUser } from '@shared/swk-staff-access'
 
 /** Live Dubai time (Gulf Standard Time). */
 function DubaiClock() {
@@ -90,51 +90,85 @@ function NotificationBell() {
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div
-            className="swk-menu"
-            style={{ width: 372, padding: 0, overflow: 'hidden' }}
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16 }}
-          >
-            <div className="flex items-center px-4 py-3 border-b border-line bg-soft">
-              <b className="font-display text-[14.5px] text-ink">Notifications</b>
-              <div className="flex-1" />
-              {unread > 0 && (
-                <button type="button" className="btn ghost sm" onClick={() => void read()}>
-                  <Check size={14} /> Mark all read
-                </button>
-              )}
-            </div>
-            <div className="max-h-[60vh] overflow-auto">
-              {!q.data?.rows.length ? (
-                <div className="p-8 text-center text-muted text-sm">You&apos;re all caught up.</div>
-              ) : (
-                q.data.rows.map(n => (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[155] bg-[#06121866] md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
+            <motion.div
+              className="swk-menu swk-menu-notif"
+              style={{ padding: 0, overflow: 'hidden' }}
+              role="dialog"
+              aria-label="Notifications"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.16 }}
+            >
+              <div
+                className="flex items-center gap-2 px-4 py-3 border-b border-line"
+                style={{ background: 'linear-gradient(135deg, #0a1b24 0%, #102a36 100%)', color: '#ffffff' }}
+              >
+                <Bell size={15} style={{ color: '#e2b857' }} />
+                <b className="font-display text-[14.5px] text-white">Notifications</b>
+                {unread > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: 'rgba(226,184,87,0.22)', color: '#e2b857' }}>
+                    {unread} new
+                  </span>
+                )}
+                <div className="flex-1" />
+                {unread > 0 && (
                   <button
                     type="button"
-                    key={n.id}
-                    className={cls('w-full text-start px-4 py-3 border-0 border-b border-line bg-transparent cursor-pointer hover:bg-soft transition-colors', !n.read_at && 'bg-[#eff6ff]/60')}
-                    onClick={() => {
-                      void read([n.id])
-                      setOpen(false)
-                      if (n.link) nav(n.link)
-                    }}
+                    className="btn sm"
+                    style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+                    onClick={() => void read()}
                   >
-                    <div className="flex gap-2.5 items-start">
-                      {!n.read_at && <span className="w-2 h-2 rounded-full bg-[#2563eb] mt-1.5 flex-none" />}
-                      <div className="min-w-0">
-                        <div className="text-[13.5px] font-semibold text-ink">{n.title}</div>
-                        {n.body && <div className="text-xs text-muted line-clamp-2 mt-0.5">{n.body}</div>}
-                        <div className="text-[11px] text-muted mt-1">{fmtIsoStamp(n.created_at)}</div>
-                      </div>
-                    </div>
+                    <Check size={13} /> Mark all
                   </button>
-                ))
-              )}
-            </div>
-          </motion.div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close notifications"
+                  className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white border-0 grid place-items-center cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="max-h-[min(60vh,calc(100dvh-180px))] overflow-y-auto">
+                {!q.data?.rows.length ? (
+                  <div className="p-8 text-center text-muted text-sm">You&apos;re all caught up.</div>
+                ) : (
+                  q.data.rows.map(n => (
+                    <button
+                      type="button"
+                      key={n.id}
+                      className={cls('w-full text-start px-4 py-3 border-0 border-b border-line bg-transparent cursor-pointer hover:bg-soft transition-colors', !n.read_at && 'bg-emerald-500/5')}
+                      onClick={() => {
+                        void read([n.id])
+                        setOpen(false)
+                        if (n.link) nav(n.link)
+                      }}
+                    >
+                      <div className="flex gap-2.5 items-start">
+                        {!n.read_at && <span className="w-2 h-2 rounded-full mt-1.5 flex-none" style={{ background: '#046c4e' }} />}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13.5px] font-semibold text-ink break-words">{n.title}</div>
+                          {n.body && <div className="text-xs text-muted line-clamp-2 mt-0.5 break-words">{n.body}</div>}
+                          <div className="text-[11px] text-muted mt-1">{fmtIsoStamp(n.created_at)}</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
@@ -446,11 +480,11 @@ export function Shell() {
             <img className="word swk-hide-sm" src="/brand/web/swk-logo-light.webp" alt="SWK Properties" />
           </Link>
 
-          {/* Mobile compact location/office pill inspired by @siren.uix header */}
-          <div className="flex min-w-0 flex-1 flex-col items-center justify-center md:hidden">
-            <span className="text-[10px] font-medium text-muted leading-none">SWK Dubai HQ</span>
-            <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink truncate max-w-[165px]">
-              <MapPin size={12} className="text-[#2563eb] shrink-0" />
+          {/* Mobile compact location/office header — strictly clamped so title never collides with search icon */}
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-1 md:hidden">
+            <span className="text-[10px] font-medium text-muted leading-none truncate max-w-full">SWK Dubai HQ</span>
+            <span className="inline-flex items-center justify-center gap-1 text-[12px] font-semibold text-ink w-full max-w-full overflow-hidden">
+              <MapPin size={11} className="text-[#046c4e] shrink-0" />
               <span className="truncate">{isHome ? 'Sheikh Zayed Rd' : pageTitle}</span>
             </span>
           </div>
@@ -679,9 +713,9 @@ export function Shell() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="max-h-[84dvh] overflow-y-auto rounded-t-[28px] border-t border-line bg-white px-5 pt-4 pb-[calc(92px+env(safe-area-inset-bottom,0px))] shadow-2xl space-y-4"
+              className="max-h-[84dvh] overflow-y-auto rounded-t-[28px] border-t border-line bg-card px-5 pt-4 pb-[calc(92px+env(safe-area-inset-bottom,0px))] shadow-2xl space-y-4"
             >
-              <div className="mx-auto h-1.5 w-11 rounded-full bg-[#cbd5e1]" />
+              <div className="mx-auto h-1.5 w-11 rounded-full bg-line" />
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#b78328]">SWK Field · Voice · All Ops</div>
@@ -699,25 +733,43 @@ export function Shell() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <Link to="/reception-qr" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#0b1f2a] text-[#d4a752] grid place-items-center shrink-0"><QrCode size={18} /></span>
+                  <span className="size-10 rounded-xl bg-[#0a1b24] text-[#e2b857] grid place-items-center shrink-0"><QrCode size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Office QR Scan</b><small className="text-[11px] text-muted">Attendance check-in</small></span>
                 </Link>
                 <Link to="/field-duty" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#0e9f6e] text-white grid place-items-center shrink-0"><Navigation size={18} /></span>
+                  <span className="size-10 rounded-xl bg-[#046c4e] text-white grid place-items-center shrink-0"><Navigation size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Field Duty GPS</b><small className="text-[11px] text-muted">Viewing tracking &amp; SOS</small></span>
                 </Link>
                 <Link to="/phone" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#2563eb] text-white grid place-items-center shrink-0"><PhoneCall size={18} /></span>
-                  <span className="min-w-0"><b className="block text-xs truncate">SIP Softphone</b><small className="text-[11px] text-muted">{sipSnap.configured ? `Ext ${sipSnap.extensionNo}` : 'Dialer & Vault call'}</small></span>
+                  <span className="size-10 rounded-xl bg-[#143442] text-[#e2b857] grid place-items-center shrink-0"><PhoneCall size={18} /></span>
+                  <span className="min-w-0"><b className="block text-xs truncate">SWK Phone</b><small className="text-[11px] text-muted">{sipSnap.configured ? `Ext ${sipSnap.extensionNo}` : 'Dialer & Vault call'}</small></span>
                 </Link>
                 <Link to="/utilities" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#7c3aed] text-white grid place-items-center shrink-0"><Wrench size={18} /></span>
+                  <span className="size-10 rounded-xl bg-[#8a621c] text-white grid place-items-center shrink-0"><Wrench size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Utilities Suite</b><small className="text-[11px] text-muted">Word, OCR &amp; Search</small></span>
                 </Link>
+                {canAccessSocialMediaSuite(me) && (
+                  <Link to="/social-media" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                    <span className="size-10 rounded-xl bg-[#046c4e] text-[#e2b857] grid place-items-center shrink-0"><Sparkles size={18} /></span>
+                    <span className="min-w-0"><b className="block text-xs truncate">Social 30-Day</b><small className="text-[11px] text-muted">Schedule &amp; Meenakshi</small></span>
+                  </Link>
+                )}
+                {canAccessMasterDataHub(me) && (
+                  <Link to="/master-data" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                    <span className="size-10 rounded-xl bg-[#0a1b24] text-white grid place-items-center shrink-0"><ShieldCheck size={18} /></span>
+                    <span className="min-w-0"><b className="block text-xs truncate">Master Log</b><small className="text-[11px] text-muted">Data &amp; Security Shield</small></span>
+                  </Link>
+                )}
+                {canUseOsCustomizer(me) && (
+                  <Link to="/admin/customizer" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#c89b3c]/40 bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
+                    <span className="size-10 rounded-xl bg-[#0a1b24] text-[#e2b857] grid place-items-center shrink-0"><Wrench size={18} /></span>
+                    <span className="min-w-0"><b className="block text-xs truncate">No-Code OS Customizer</b><small className="text-[11px] text-muted">Owner/Admin: live fields, dropdowns &amp; templates</small></span>
+                  </Link>
+                )}
                 {canFieldLive && (
-                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5] p-3 flex items-center gap-2.5 no-underline text-[#065f46]">
-                    <span className="size-10 rounded-xl bg-[#0e9f6e] text-white grid place-items-center shrink-0"><MapPinned size={18} /></span>
-                    <span className="min-w-0"><b className="block text-xs truncate">Leadership Live Field GPS Map</b><small className="text-[11px] text-[#047857]">Real-time Dubai team pins &amp; route trails</small></span>
+                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-center gap-2.5 no-underline text-ink">
+                    <span className="size-10 rounded-xl bg-[#046c4e] text-white grid place-items-center shrink-0"><MapPinned size={18} /></span>
+                    <span className="min-w-0"><b className="block text-xs truncate">Leadership Live Field GPS Map</b><small className="text-[11px] text-muted">Real-time Dubai team pins &amp; route trails</small></span>
                   </Link>
                 )}
               </div>
@@ -737,7 +789,7 @@ export function Shell() {
                   <div key={app.key} className="rounded-2xl border border-line bg-soft p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <Link to={app.landing} onClick={() => setOpsSheet(false)} className="flex items-center gap-2 text-xs font-bold text-ink no-underline">
-                        <app.icon size={15} className="text-[#2563eb]" /> {app.label}
+                        <app.icon size={15} className="text-[#046c4e]" /> {app.label}
                       </Link>
                       <span className="text-[10.5px] font-semibold text-muted">{app.items.length} steps</span>
                     </div>

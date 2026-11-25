@@ -118,6 +118,24 @@ export default function ShabibsCornerPage() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
+              to="/admin/customizer"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#c89b3c]/55 bg-white/10 px-4 py-2.5 text-[13.5px] font-semibold text-[#f7dda0] no-underline hover:bg-[#c89b3c] hover:text-[#07131b] transition-colors"
+            >
+              <Zap size={15} /> No-Code OS Customizer
+            </Link>
+            <Link
+              to="/social-media"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[13.5px] font-semibold text-white no-underline hover:bg-white/20 transition-colors"
+            >
+              <ArrowUpRight size={15} /> Social 30-Day Suite
+            </Link>
+            <Link
+              to="/master-data"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[13.5px] font-semibold text-white no-underline hover:bg-white/20 transition-colors"
+            >
+              <ShieldCheck size={15} /> Master Log &amp; Security
+            </Link>
+            <Link
               to="/ai"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-[#046c4e] px-4 py-2.5 text-[13.5px] font-semibold text-white no-underline hover:bg-[#05825e] transition-colors"
             >

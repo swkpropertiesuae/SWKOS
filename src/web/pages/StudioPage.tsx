@@ -10,7 +10,7 @@ import { RefSelect } from '../components/RefSelect'
 import { PdfDownload,DocumentPrinter } from '../components/ui/document-printer'
 import { SealApprovalPanel } from '../components/SealApprovalPanel'
 import { EmailPdfDialog } from './EntityPages'
-import { Letterhead } from '../print/PrintPage'
+import { CorporateWatermark, Letterhead } from '../print/PrintPage'
 import { CorporateFooter } from '../components/CorporateFooter'
 import { RichEditor,type RichEditorHandle } from '../studio/RichEditor'
 import { safeHtml } from '../studio/safe-html'
@@ -81,7 +81,7 @@ function TemplatePreview({ tpl, settings, onClose, onUse }: { tpl: Tpl | null; s
   return (
     <Modal open={!!tpl} onClose={onClose} width={900} title={tpl ? `${tpl.code} · ${tpl.title}` : ''} footer={tpl && <><Link className="btn ghost" to="/e/doc_templates" onClick={onClose}>Manage templates</Link><div className="flex-1" /><button className="btn outline" onClick={onClose}>Close</button>{can('documents', 'create') && <button className="btn green" onClick={() => onUse(tpl)}>Use template</button>}</>}>
       {hint && <div className="mb-3 rounded-xl border border-line bg-hover px-3 py-2 text-sm">{hint.text} <Link to={hint.to} onClick={onClose}>{hint.label}</Link></div>}
-      {!full.data ? <Loading /> : <div className="studio-stage" style={{ maxHeight: '60vh' }}><div className={cls('studio-paper', tpl?.orientation === 'Landscape' && 'landscape')} style={{ zoom: 0.8 }}>{tpl?.letterhead && <Letterhead />}<div className="studio-content" dangerouslySetInnerHTML={{ __html: safeHtml(mergeCompanyTokens(presentDocumentHtml(full.data.content ?? '', full.data.title ?? ''), settings, todayIso())) }} /><CorporateFooter /></div></div>}
+      {!full.data ? <Loading /> : <div className="studio-stage" style={{ maxHeight: '60vh' }}><div className={cls('studio-paper', tpl?.orientation === 'Landscape' && 'landscape')} style={{ zoom: 0.8, position: 'relative' }}>{tpl?.letterhead && <CorporateWatermark />}{tpl?.letterhead && <Letterhead />}<div className="studio-content" style={{ position: 'relative', zIndex: 1 }} dangerouslySetInnerHTML={{ __html: safeHtml(mergeCompanyTokens(presentDocumentHtml(full.data.content ?? '', full.data.title ?? ''), settings, todayIso())) }} />{tpl?.letterhead && <CorporateFooter />}</div></div>}
     </Modal>
   )
 }
@@ -182,7 +182,7 @@ export function StudioEditor() {
       <div className="studio-shell">
         <div className="min-w-0">
           <RichEditor ref={editor} value={f.content ?? ''} onChange={onChange} readOnly={!canEdit} landscape={f.orientation === 'Landscape'} onSelection={setSelChars}
-            paperTop={f.letterhead ? <Letterhead /> : undefined} paperBottom={<CorporateFooter note={f.footer_text || undefined} />} />
+            paperTop={f.letterhead ? <Letterhead /> : undefined} paperBottom={f.letterhead ? <CorporateFooter note={f.footer_text || undefined} /> : undefined} />
         </div>
         <aside className="studio-side" aria-label="Document tools">
           <section className="card">
@@ -256,7 +256,7 @@ export function StudioDoc({ r, seal, sealImage, signature, signatureImage }: { r
         {seal && sealImage && <img className="document-seal" src={sealImage} alt="Company seal" />}
       </div>
     )}
-    <CorporateFooter note={r.footer_text || undefined} />
+    {r.letterhead !== false && <CorporateFooter note={r.footer_text || undefined} />}
   </>
 }
 void fillInHtml; void markPlaceholders; void Briefcase

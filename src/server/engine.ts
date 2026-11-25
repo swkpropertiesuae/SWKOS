@@ -533,8 +533,8 @@ function checkRequired(def: EntityDef, rec: Rec, ctx?: Ctx): string[] {
 
 function validateCustom(def: EntityDef, incoming: any, previous: Rec = {}, ctx?: Ctx): Rec {
   const override = assertEmergencyOverrideAuthorized(ctx)
-  if (!def.customFields) return {}
   const defs = customFieldsFor(def.key)
+  if (!defs.length) return {}
   const out: Rec = { ...previous }
   if (incoming && typeof incoming === 'object') for (const f of defs) if (incoming[f.name] !== undefined) {
     const v = coerceIn(f, incoming[f.name])

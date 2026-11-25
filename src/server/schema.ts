@@ -627,6 +627,59 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
     );
     CREATE INDEX IF NOT EXISTS ix_qr_nonce_exp ON qr_used_nonces(expires_at);
   ` },
+  { id: '018_social_media_suite', sql: `
+    CREATE TABLE IF NOT EXISTS social_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      account_name TEXT NOT NULL,
+      handle TEXT NOT NULL,
+      profile_url TEXT,
+      bio TEXT,
+      posting_cadence TEXT DEFAULT 'Daily (30/month)',
+      target_audience TEXT,
+      followers_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'Active',
+      assigned_to_user_id INTEGER,
+      notes TEXT,
+      created_by INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_social_profiles_status ON social_profiles(status, deleted_at);
+
+    CREATE TABLE IF NOT EXISTS social_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER,
+      batch_label TEXT NOT NULL DEFAULT 'Monthly Batch',
+      day_number INTEGER NOT NULL DEFAULT 1,
+      scheduled_date TEXT NOT NULL,
+      scheduled_time TEXT NOT NULL DEFAULT '11:00',
+      platform TEXT NOT NULL,
+      content_pillar TEXT NOT NULL DEFAULT 'Luxury Listing Showcase',
+      title TEXT NOT NULL,
+      caption TEXT NOT NULL DEFAULT '',
+      hashtags TEXT DEFAULT '',
+      cta TEXT DEFAULT '',
+      media_attachment_id INTEGER,
+      media_url TEXT,
+      status TEXT NOT NULL DEFAULT 'Draft',
+      assigned_to_user_id INTEGER,
+      handed_over_by INTEGER,
+      handed_over_at TEXT,
+      submitted_by INTEGER,
+      submitted_at TEXT,
+      published_url TEXT,
+      submission_notes TEXT,
+      created_by INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_social_posts_sched ON social_posts(scheduled_date, status, deleted_at);
+    CREATE INDEX IF NOT EXISTS ix_social_posts_assignee ON social_posts(assigned_to_user_id, status);
+    CREATE INDEX IF NOT EXISTS ix_social_posts_batch ON social_posts(batch_label, day_number);
+  ` },
 ]
 
 /** Translate SQLite-dialect DDL to PostgreSQL-compatible DDL. */
