@@ -1,4 +1,3 @@
-import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,useParams,Link } from 'react-router-dom'
 import { Suspense,lazy,useCallback,useState,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
@@ -6,34 +5,47 @@ import { canAccessSwkAdminLogic,canAccessMasterLog,canAccessShabibsCorner,canPri
 import { Shell } from './components/Shell'
 import { BrandSplashScreen } from './components/BrandSplashScreen'
 import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
 import { Launcher } from './pages/Launcher'
-import { Workspaces,WorkspaceUtilities } from './pages/Workspaces'
-import { EntityListPage,EntityRecordPage } from './pages/EntityPages'
-import { CalendarPage } from './pages/CalendarPage'
-import { ReportsPage } from './pages/ReportPages'
-import { ToolsPage } from './pages/ToolsPage'
-import { DocumentsPage } from './pages/DocumentsPage'
-import { ProfilePage } from './pages/ProfilePage'
-import { RolesPage,SettingsPage,AuditPage,BackupPage } from './pages/AdminPages'
-import { CompliancePage } from './pages/CompliancePage'
-import { WorkQueuePage,HandoverPage } from './pages/WorkPages'
-import { PublicTrack } from './pages/PublicTrack'
-import { PublicListing } from './pages/PublicListing'
-import { AcceptInvite } from './pages/AcceptInvite'
-import { IntegrationsPage } from './pages/IntegrationsPage'
-import { AiPage } from './pages/AiPage'
-import { WhatsAppPage } from './pages/WhatsAppPage'
-import { ChatPage } from './pages/ChatPage'
-import { PortalPage } from './pages/PortalPage'
-import { ReceptionDisplayPage } from './pages/ReceptionDisplayPage'
-import { InspectList,InspectPage } from './pages/InspectPage'
-import { SmartSearchPage } from './pages/SmartSearchPage'
-import { BankImportPage,YearEndPage,WpsPage } from './pages/FinanceExtras'
-import { PrintPage } from './print/PrintPage'
-import { StudioHome,StudioEditor } from './pages/StudioPage'
-import { NewInvoicePage } from './pages/NewInvoicePage'
 import { Loading,ErrorBox } from './ui/kit'
+
+// Core workspace pages (code-split for instant mobile & Android WebView boot)
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
+const EmailPage = lazy(() => import('./pages/EmailPage'))
+const Workspaces = lazy(() => import('./pages/Workspaces').then(m => ({ default: m.Workspaces })))
+const WorkspaceUtilities = lazy(() => import('./pages/Workspaces').then(m => ({ default: m.WorkspaceUtilities })))
+const EntityListPage = lazy(() => import('./pages/EntityPages').then(m => ({ default: m.EntityListPage })))
+const EntityRecordPage = lazy(() => import('./pages/EntityPages').then(m => ({ default: m.EntityRecordPage })))
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then(m => ({ default: m.CalendarPage })))
+const ReportsPage = lazy(() => import('./pages/ReportPages').then(m => ({ default: m.ReportsPage })))
+const ToolsPage = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })))
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage').then(m => ({ default: m.DocumentsPage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const RolesPage = lazy(() => import('./pages/AdminPages').then(m => ({ default: m.RolesPage })))
+const SettingsPage = lazy(() => import('./pages/AdminPages').then(m => ({ default: m.SettingsPage })))
+const AuditPage = lazy(() => import('./pages/AdminPages').then(m => ({ default: m.AuditPage })))
+const BackupPage = lazy(() => import('./pages/AdminPages').then(m => ({ default: m.BackupPage })))
+const CompliancePage = lazy(() => import('./pages/CompliancePage').then(m => ({ default: m.CompliancePage })))
+const WorkQueuePage = lazy(() => import('./pages/WorkPages').then(m => ({ default: m.WorkQueuePage })))
+const HandoverPage = lazy(() => import('./pages/WorkPages').then(m => ({ default: m.HandoverPage })))
+const PublicTrack = lazy(() => import('./pages/PublicTrack').then(m => ({ default: m.PublicTrack })))
+const PublicListing = lazy(() => import('./pages/PublicListing').then(m => ({ default: m.PublicListing })))
+const AcceptInvite = lazy(() => import('./pages/AcceptInvite').then(m => ({ default: m.AcceptInvite })))
+const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })))
+const AiPage = lazy(() => import('./pages/AiPage').then(m => ({ default: m.AiPage })))
+const WhatsAppPage = lazy(() => import('./pages/WhatsAppPage').then(m => ({ default: m.WhatsAppPage })))
+const ChatPage = lazy(() => import('./pages/ChatPage').then(m => ({ default: m.ChatPage })))
+const PortalPage = lazy(() => import('./pages/PortalPage').then(m => ({ default: m.PortalPage })))
+const ReceptionDisplayPage = lazy(() => import('./pages/ReceptionDisplayPage').then(m => ({ default: m.ReceptionDisplayPage })))
+const InspectList = lazy(() => import('./pages/InspectPage').then(m => ({ default: m.InspectList })))
+const InspectPage = lazy(() => import('./pages/InspectPage').then(m => ({ default: m.InspectPage })))
+const SmartSearchPage = lazy(() => import('./pages/SmartSearchPage').then(m => ({ default: m.SmartSearchPage })))
+const BankImportPage = lazy(() => import('./pages/FinanceExtras').then(m => ({ default: m.BankImportPage })))
+const YearEndPage = lazy(() => import('./pages/FinanceExtras').then(m => ({ default: m.YearEndPage })))
+const WpsPage = lazy(() => import('./pages/FinanceExtras').then(m => ({ default: m.WpsPage })))
+const PrintPage = lazy(() => import('./print/PrintPage').then(m => ({ default: m.PrintPage })))
+const StudioHome = lazy(() => import('./pages/StudioPage').then(m => ({ default: m.StudioHome })))
+const StudioEditor = lazy(() => import('./pages/StudioPage').then(m => ({ default: m.StudioEditor })))
+const NewInvoicePage = lazy(() => import('./pages/NewInvoicePage').then(m => ({ default: m.NewInvoicePage })))
 
 // SWK real-estate modules (code-split)
 const MarketPage = lazy(() => import('./pages/swk/MarketPage'))
@@ -138,6 +150,8 @@ export default function App() {
   const defaultLanding = '/home'
   const [showSplash, setShowSplash] = useState(() => {
     if (typeof window === 'undefined') return false
+    // Native Android/iOS already renders a hardware SplashScreen; skip the secondary web splash for instant boot
+    if ((window as any).Capacitor?.isNativePlatform?.() || (window as any).__SWK_CONFIG__?.MOBILE_SHELL) return false
     if (loc.pathname.startsWith('/l/') || loc.pathname.startsWith('/t/') || loc.pathname.startsWith('/print/')) return false
     try {
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false
@@ -149,9 +163,9 @@ export default function App() {
     try { sessionStorage.setItem('swk.splash.shown', '1') } catch { /* ignore */ }
     setShowSplash(false)
   }, [])
-  if (loc.pathname === '/accept-invite') return <AcceptInvite />
-  if (loc.pathname.startsWith('/t/')) return <Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes>
-  if (loc.pathname.startsWith('/l/')) return <Routes><Route path="/l/:token" element={<PublicListing />} /></Routes>
+  if (loc.pathname === '/accept-invite') return <Suspense fallback={<Loading />}><AcceptInvite /></Suspense>
+  if (loc.pathname.startsWith('/t/')) return <Suspense fallback={<Loading />}><Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes></Suspense>
+  if (loc.pathname.startsWith('/l/')) return <Suspense fallback={<Loading />}><Routes><Route path="/l/:token" element={<PublicListing />} /></Routes></Suspense>
   const isStandaloneReceptionQr =
     loc.pathname === '/qr-checkin' ||
     loc.pathname.startsWith('/qr-checkin/') ||

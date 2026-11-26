@@ -1,4 +1,11 @@
-try { document.documentElement.dataset.theme = 'light'; localStorage.removeItem('swk-theme') } catch { /* ignore */ }
+try {
+  document.documentElement.dataset.theme = 'light'
+  localStorage.removeItem('swk-theme')
+  const isNative = Boolean((window as any).Capacitor?.isNativePlatform?.() || (window as any).__SWK_CONFIG__?.MOBILE_SHELL)
+  const isSmallTouch = typeof window !== 'undefined' && (window.innerWidth < 1024 || window.matchMedia?.('(pointer: coarse)').matches)
+  if (isNative) document.documentElement.classList.add('swk-native-app')
+  if (isNative || isSmallTouch) document.documentElement.classList.add('swk-mobile-perf')
+} catch { /* ignore */ }
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

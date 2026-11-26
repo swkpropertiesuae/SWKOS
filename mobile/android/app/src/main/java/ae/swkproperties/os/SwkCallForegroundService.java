@@ -83,12 +83,11 @@ public class SwkCallForegroundService extends Service {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 boolean hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-                int fgsType = hasMic
-                    ? (ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-                    : ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL;
-                startForeground(NOTIFICATION_ID, notification, fgsType);
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+                if (!hasMic) {
+                    stopSelf();
+                    return START_NOT_STICKY;
+                }
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
             } else {
                 startForeground(NOTIFICATION_ID, notification);
             }
