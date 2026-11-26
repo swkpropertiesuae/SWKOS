@@ -164,13 +164,18 @@ export function LiveNotifications() {
             >
               <button type="button" className="swk-live-body" onClick={() => open(n)}>
                 <span className={`swk-live-ic ${isUrgent ? '!bg-[#dc2626] !text-white' : ''}`}>
-                  <I size={18} />
+                  <I size={17} />
                 </span>
                 <span className="swk-live-tx">
-                  {tag && <span className={`text-[10px] font-bold uppercase tracking-[0.12em] ${isUrgent ? 'text-[#dc2626]' : 'text-[#0e9f6e]'}`}>{tag}</span>}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className={`size-1.5 rounded-full ${isUrgent ? 'bg-[#dc2626]' : 'bg-[#0e9f6e]'}`} />
+                    <span className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${isUrgent ? 'text-[#dc2626]' : 'text-[#0e9f6e]'}`}>
+                      {tag || 'Live Update'}
+                    </span>
+                  </span>
                   <b>{n.title}</b>
                   {n.body ? <small>{n.body}</small> : null}
-                  <em>{n.link ? 'Tap to open →' : 'Just now'}</em>
+                  <em>{n.link ? 'Open dossier →' : 'Just now'}</em>
                 </span>
               </button>
               <button type="button" className="swk-live-x" aria-label="Dismiss" onClick={() => setItems(a => a.filter(x => x.id !== n.id))}>

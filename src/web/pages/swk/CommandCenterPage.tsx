@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react'
 import { get } from '../../lib/api'
+import { BracketLink, LiveStatusDot, SectionEyebrow, SwissCarousel, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
@@ -33,121 +34,123 @@ export default function CommandCenterPage() {
 
   return (
     <div className="mx-auto max-w-[1380px] space-y-6 pb-10">
-      {/* Header */}
-      <section className="rounded-[28px] bg-gradient-to-br from-[#0b1f2a] via-[#132f3f] to-[#08151d] p-6 text-white shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-[#c5e86c]">
-              <Radio size={13} /> Live Operations Cockpit · Al Saqr Building SZR
-            </div>
-            <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white">Command Center</h1>
-            <p className="mt-1 text-xs text-slate-300">
-              12-stage live deal counts, critical alerts, today&apos;s personal &amp; team tasks, assigned clients, office QR attendance &amp; live Field GPS radar.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-              <QrCode size={14} className="text-[#f3d27a]" /> Office QR ({att.checked_in}/{att.total})
-            </Link>
-            <Link to="/field-live" className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6e]">
-              <MapPinned size={14} /> Live Field GPS ({gps.active_count})
-            </Link>
-          </div>
-        </div>
-
+      {/* Swiss Architectural Header */}
+      <SwissHeroHeader
+        eyebrow="Live Operations Cockpit · Al Saqr Building SZR"
+        badge={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a7f3d0] bg-[#ecfdf5] px-2.5 py-0.5 text-[10.5px] font-semibold text-[#047857]">
+            <LiveStatusDot /> Live Feed
+          </span>
+        }
+        title="Command Center"
+        subtitle="12-stage live deal counts, critical alerts, today's personal & team tasks, assigned clients, office QR attendance & live Field GPS radar."
+        actions={
+          <>
+            <BracketLink to="/reception-qr" variant="light" size="sm">
+              <QrCode size={14} /> Office QR ({att.checked_in}/{att.total})
+            </BracketLink>
+            <BracketLink to="/field-live" variant="dark" size="sm">
+              <MapPinned size={14} className="text-[#51fec0]" /> Live Field GPS ({gps.active_count})
+            </BracketLink>
+          </>
+        }
+      >
         {/* Critical Alerts Strip */}
         {alerts.length > 0 && (
-          <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             {alerts.map((a, i) => (
               <Link
                 key={i}
                 to={a.to}
-                className={`rounded-2xl border p-3.5 no-underline transition-colors ${
+                className={`rounded-2xl border p-3.5 no-underline transition-all hover:-translate-y-0.5 ${
                   a.severity === 'critical'
-                    ? 'border-rose-400/40 bg-rose-500/20 text-white'
+                    ? 'border-[#fecaca] bg-[#fef2f2] text-[#991b1b]'
                     : a.severity === 'warning'
-                      ? 'border-amber-400/40 bg-amber-500/20 text-white'
-                      : 'border-white/20 bg-white/10 text-white'
+                      ? 'border-[#fde68a] bg-[#fffbeb] text-[#92400e]'
+                      : 'border-black/[0.08] bg-[#f4f7fa] text-[#121212]'
                 }`}
               >
-                <div className="flex items-center gap-1.5 text-xs font-bold">
+                <div className="flex items-center gap-1.5 text-xs font-semibold">
                   <AlertTriangle size={13} /> {a.title}
                 </div>
-                <div className="mt-1 text-[11.5px] text-white/80">{a.detail}</div>
+                <div className="mt-1 text-[11.5px] opacity-85">{a.detail}</div>
               </Link>
             ))}
           </div>
         )}
-      </section>
+      </SwissHeroHeader>
 
-      {/* 12-Stage Live Lead & Deal Counters */}
-      <section className="rounded-3xl border border-line bg-card p-5 shadow-xs">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="m-0 text-[16px] font-bold text-ink">12-Stage Pipeline Live Counters</h2>
-          <Link to="/pipeline" className="text-xs font-bold text-[#2563eb] no-underline inline-flex items-center gap-1">
+      {/* 12-Stage Live Lead & Deal Carousel */}
+      <section className="card p-5 sm:p-6">
+        <div className="flex items-end justify-between gap-2 mb-4">
+          <div>
+            <SectionEyebrow>Pipeline Velocity</SectionEyebrow>
+            <h2 className="m-0 mt-1 text-[19px] font-medium tracking-[-0.03em] text-[#121212]">12-Stage Pipeline Live Counters</h2>
+          </div>
+          <BracketLink to="/pipeline" variant="light" size="sm">
             Open Kanban <ArrowUpRight size={13} />
-          </Link>
+          </BracketLink>
         </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <SwissCarousel ariaLabel="Command center 12-stage counters" hint="SWIPE STAGES">
           {stages.map(s => (
-            <Link key={s.code} to="/pipeline" className="rounded-2xl border border-line bg-soft/60 p-3 no-underline hover:border-ink/40">
+            <Link key={s.code} to="/pipeline" className="w-[196px] shrink-0 snap-start rounded-[20px] border border-black/[0.08] bg-white/95 p-3.5 no-underline transition-all hover:-translate-y-0.5 hover:border-[#121212]/30 hover:shadow-[0_16px_36px_rgba(12,56,96,0.11)]">
               <div className="flex items-center justify-between">
-                <span className="inline-flex size-6 items-center justify-center rounded-lg text-[11px] font-bold text-white" style={{ background: s.color }}>
+                <span className="inline-flex h-6 px-2 items-center justify-center rounded-full bg-[#121212] font-mono text-[10px] font-semibold text-[#51fec0]">
                   {String(s.step).padStart(2, '0')}
                 </span>
-                <b className="text-lg font-extrabold text-ink tabular-nums">{s.count}</b>
+                <b className="font-mono text-xl font-semibold text-[#121212] tabular-nums">{s.count}</b>
               </div>
-              <div className="mt-1.5 truncate text-xs font-bold text-ink">{s.shortLabel}</div>
-              <div className="text-[11px] text-emerald-700 font-semibold tabular-nums">{aed(s.deal_value_aed)}</div>
+              <div className="mt-2.5 truncate text-xs font-medium text-[#121212]">{s.shortLabel}</div>
+              <div className="mt-1 font-mono text-[11px] text-[#0e9f6e] font-semibold tabular-nums">{aed(s.deal_value_aed)}</div>
             </Link>
           ))}
-        </div>
+        </SwissCarousel>
       </section>
 
       {/* Tasks Monitor: My Tasks Today + Team Tasks + Individual Breakdown */}
       <section className="grid gap-5 lg:grid-cols-3">
-        <div className="rounded-3xl border border-line bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="m-0 text-[15px] font-bold text-ink flex items-center gap-2"><ClipboardList size={16} className="text-[#2563eb]" /> My Tasks Today ({tasks.my_tasks.length})</h3>
-            <Link to="/my-work" className="text-xs font-semibold text-[#2563eb] no-underline">View all</Link>
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="m-0 text-[15px] font-medium tracking-[-0.02em] text-[#121212] flex items-center gap-2 min-w-0 truncate"><ClipboardList size={15} className="text-[#121212] shrink-0" /> <span className="truncate">My Tasks Today ({tasks.my_tasks.length})</span></h3>
+            <Link to="/my-work" className="text-xs font-medium text-[#0e9f6e] hover:text-[#121212] no-underline shrink-0">View all</Link>
           </div>
           <div className="space-y-2 max-h-[260px] overflow-auto">
             {tasks.my_tasks.length === 0 ? <p className="text-xs text-muted">All caught up on personal tasks.</p> : tasks.my_tasks.map((t: any) => (
-              <Link key={t.id} to={`/e/tasks/${t.id}`} className="block rounded-xl border border-line p-2.5 text-xs no-underline hover:bg-soft">
-                <div className="font-bold text-ink">{t.title}</div>
+              <Link key={t.id} to={`/e/tasks/${t.id}`} className="block rounded-xl border border-line bg-white/80 p-2.5 text-xs no-underline hover:bg-soft">
+                <div className="font-semibold text-ink">{t.title}</div>
                 <div className="mt-0.5 text-muted flex justify-between"><span>{t.priority || 'Normal'}</span><span>Due {t.due_date || 'Today'}</span></div>
               </Link>
             ))}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-line bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="m-0 text-[15px] font-bold text-ink flex items-center gap-2"><Users size={16} className="text-[#8a621c]" /> Individual Staff Task Monitor</h3>
-            <Link to="/e/tasks" className="text-xs font-semibold text-[#2563eb] no-underline">All tasks</Link>
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="m-0 text-[15px] font-medium tracking-[-0.02em] text-[#121212] flex items-center gap-2 min-w-0 truncate"><Users size={15} className="text-[#121212] shrink-0" /> <span className="truncate">Individual Staff Tasks</span></h3>
+            <Link to="/e/tasks" className="text-xs font-medium text-[#0e9f6e] hover:text-[#121212] no-underline shrink-0">All tasks</Link>
           </div>
           <div className="space-y-2 max-h-[260px] overflow-auto">
             {tasks.individual_summary.length === 0 ? <p className="text-xs text-muted">No open team tasks.</p> : tasks.individual_summary.map((s: any) => (
-              <div key={s.name} className="rounded-xl border border-line p-2.5 flex items-center justify-between text-xs">
+              <div key={s.name} className="rounded-xl border border-line bg-white/80 p-2.5 flex items-center justify-between text-xs">
                 <b className="text-ink">{s.name}</b>
                 <div className="flex gap-1.5">
-                  <span className="rounded-full bg-soft px-2 py-0.5 font-bold">{s.total} open</span>
-                  {s.overdue > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 font-bold text-rose-700">{s.overdue} overdue</span>}
+                  <span className="rounded-full bg-soft px-2 py-0.5 font-semibold">{s.total} open</span>
+                  {s.overdue > 0 && <span className="rounded-full bg-rose-50 px-2 py-0.5 font-semibold text-rose-700">{s.overdue} overdue</span>}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-line bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="m-0 text-[15px] font-bold text-ink flex items-center gap-2"><Landmark size={16} className="text-emerald-700" /> Mortgage &amp; Valuation Deadlines</h3>
-            <Link to="/mortgage-desk" className="text-xs font-semibold text-[#2563eb] no-underline">Mortgage Desk</Link>
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="m-0 text-[15px] font-medium tracking-[-0.02em] text-[#121212] flex items-center gap-2 min-w-0 truncate"><Landmark size={15} className="text-[#0e9f6e] shrink-0" /> <span className="truncate">Mortgage &amp; Valuation</span></h3>
+            <Link to="/mortgage-desk" className="text-xs font-medium text-[#0e9f6e] hover:text-[#121212] no-underline shrink-0">Mortgage Desk</Link>
           </div>
           <div className="space-y-2 max-h-[260px] overflow-auto">
             {mort.length === 0 ? <p className="text-xs text-muted">No pending valuation/bank deadlines.</p> : mort.map((m: any) => (
-              <div key={m.id} className="rounded-xl border border-line p-2.5 text-xs">
-                <div className="flex justify-between font-bold text-ink"><span>{m.client_name}</span><span className="text-[#8a621c]">{m.due_date}</span></div>
+              <div key={m.id} className="rounded-xl border border-line bg-white/80 p-2.5 text-xs">
+                <div className="flex justify-between font-semibold text-ink"><span>{m.client_name}</span><span className="font-mono text-[#0e9f6e]">{m.due_date}</span></div>
                 <div className="text-muted mt-0.5">{m.event_type} · {m.bank_name} · {m.status}</div>
               </div>
             ))}
@@ -157,20 +160,20 @@ export default function CommandCenterPage() {
 
       {/* Attendance Board + Field GPS + Assigned Clients */}
       <section className="grid gap-5 lg:grid-cols-12">
-        <div className="lg:col-span-5 rounded-3xl border border-line bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="m-0 text-[15px] font-bold text-ink flex items-center gap-2"><Clock size={16} className="text-emerald-700" /> Office Attendance Today ({att.checked_in}/{att.total})</h3>
-            <Link to="/reception-qr" className="text-xs font-semibold text-[#2563eb] no-underline">QR Screen</Link>
+        <div className="lg:col-span-5 card p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="m-0 text-[15px] font-medium tracking-[-0.02em] text-[#121212] flex items-center gap-2 min-w-0 truncate"><Clock size={15} className="text-[#0e9f6e] shrink-0" /> <span className="truncate">Office Attendance Today ({att.checked_in}/{att.total})</span></h3>
+            <Link to="/reception-qr" className="text-xs font-medium text-[#0e9f6e] hover:text-[#121212] no-underline shrink-0">QR Screen</Link>
           </div>
           <div className="space-y-2 max-h-[300px] overflow-auto">
             {att.board.map((row: any) => (
-              <div key={row.employee_id} className="flex items-center justify-between rounded-xl border border-line px-3 py-2 text-xs">
+              <div key={row.employee_id} className="flex items-center justify-between rounded-xl border border-line bg-white/80 px-3 py-2 text-xs">
                 <div>
                   <b className="text-ink">{row.name}</b>
                   <span className="ml-1.5 text-muted">{row.designation}</span>
                 </div>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-bold ${
-                  row.checked_in ? 'bg-emerald-50 text-emerald-700' : 'bg-soft text-muted'
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
+                  row.checked_in ? 'bg-[#ecfdf5] text-[#047857]' : 'bg-soft text-muted'
                 }`}>
                   {row.checked_in && <CheckCircle2 size={11} />}
                   {row.checked_in ? `${row.status}` : 'Not In'}
@@ -180,10 +183,10 @@ export default function CommandCenterPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-7 rounded-3xl border border-line bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="m-0 text-[15px] font-bold text-ink">Assigned Clients (Referrals &amp; Staff Desk)</h3>
-            <Link to="/e/leads" className="text-xs font-semibold text-[#2563eb] no-underline">All CRM Leads</Link>
+        <div className="lg:col-span-7 card p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="m-0 text-[15px] font-medium tracking-[-0.02em] text-[#121212] min-w-0 truncate">Assigned Clients (Referrals &amp; Staff Desk)</h3>
+            <Link to="/e/leads" className="text-xs font-medium text-[#0e9f6e] hover:text-[#121212] no-underline shrink-0">All CRM Leads</Link>
           </div>
           <div className="overflow-x-auto max-h-[300px]">
             <table className="w-full text-xs">

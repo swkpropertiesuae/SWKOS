@@ -18,6 +18,7 @@ import {
 import { get, post } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { CORE_MASTER_REGISTRIES } from '@shared/swk-pipeline'
+import { BracketButton, BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 const GROUPS = [
   'All',
@@ -104,51 +105,43 @@ export default function MasterLogPage() {
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-6 pb-10">
-      {/* Header */}
-      <section className="rounded-[28px] border border-line bg-gradient-to-br from-[#0b1f2a] via-[#122d3c] to-[#0a1a24] p-6 text-white shadow-lg">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#d4a752]/40 bg-[#d4a752]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">
-              <Database size={13} /> CORE Headquarters · Single Source of Truth
-            </div>
-            <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white">
-              Master Log (CORE)
-            </h1>
-            <p className="mt-1 max-w-2xl text-[13.5px] text-slate-300">
-              All 20 foundational SWK Properties registries. Only Owner Shabib &amp; System Admin edit directly; Office Admin Meenakshi submits additions/edits into the Owner Approval Gate.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setProposeOpen(v => !v)} className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] border-0 cursor-pointer hover:bg-[#e5be6e]">
-              <Plus size={14} /> {requiresApproval ? 'Request Master Add (Needs Approval)' : 'Propose Master Change'}
-            </button>
-            <Link to="/e/branches" className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-              <MapPin size={14} className="text-[#f3d27a]" /> Office Geofence
-            </Link>
-          </div>
-        </div>
-
+      {/* Swiss Architectural Header */}
+      <SwissHeroHeader
+        eyebrow="CORE Headquarters · Single Source of Truth"
+        title="Master Log (CORE)"
+        subtitle="All 20 foundational SWK Properties registries. Only Owner Shabib & System Admin edit directly; Office Admin Meenakshi submits additions/edits into the Owner Approval Gate."
+        actions={
+          <>
+            <BracketButton type="button" onClick={() => setProposeOpen(v => !v)} variant="dark" size="sm">
+              <Plus size={13} className="text-[#51fec0]" /> {requiresApproval ? 'Request Master Add (Needs Approval)' : 'Propose Master Change'}
+            </BracketButton>
+            <BracketLink to="/e/branches" variant="light" size="sm">
+              <MapPin size={13} className="text-[#0e9f6e]" /> Office Geofence
+            </BracketLink>
+          </>
+        }
+      >
         {/* Head Office Geofence & Wi-Fi Strip */}
         {ho && (
-          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-xs">
-            <span className="inline-flex items-center gap-1.5 font-bold text-[#f3d27a]"><Building2 size={14} /> {ho.name}</span>
-            <span className="text-slate-300">{ho.address}</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-slate-200">
-              <Wifi size={12} className="text-emerald-400" /> Wi-Fi: {ho.wifi_ssid} ({ho.wifi_locked ? 'IP Locked' : 'Setup Pending'})
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-black/[0.08] bg-[#f4f7fa]/85 px-4 py-3 text-xs">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-[#121212]"><Building2 size={14} className="text-[#0e9f6e]" /> {ho.name}</span>
+            <span className="text-[#5b6778]">{ho.address}</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-black/[0.08] bg-white px-2.5 py-0.5 text-[#121212]">
+              <Wifi size={12} className="text-[#0e9f6e]" /> Wi-Fi: {ho.wifi_ssid} ({ho.wifi_locked ? 'IP Locked' : 'Setup Pending'})
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-slate-200">
-              <MapPin size={12} className="text-sky-300" /> Geofence: {ho.gps_lat}, {ho.gps_lng} ({ho.geofence_radius_m}m)
+            <span className="inline-flex items-center gap-1 rounded-full border border-black/[0.08] bg-white px-2.5 py-0.5 text-[#121212]">
+              <MapPin size={12} className="text-[#1b6aa7]" /> Geofence: {ho.gps_lat}, {ho.gps_lng} ({ho.geofence_radius_m}m)
             </span>
           </div>
         )}
-      </section>
+      </SwissHeroHeader>
 
       {/* Office Admin Approval Proposal Drawer */}
       {proposeOpen && (
-        <form onSubmit={submitProposal} className="rounded-3xl border border-[#d4a752]/50 bg-[#fefaf0] dark:bg-card p-5 space-y-3 shadow-sm">
+        <form onSubmit={submitProposal} className="card p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="m-0 text-[16px] font-bold text-ink flex items-center gap-2">
-              <Send size={16} className="text-[#8a621c]" /> Submit CORE Master Log Request for Owner Approval
+            <h2 className="m-0 text-[16px] font-semibold text-[#121212] flex items-center gap-2">
+              <Send size={15} className="text-[#0e9f6e]" /> Submit CORE Master Log Request for Owner Approval
             </h2>
             <button type="button" onClick={() => setProposeOpen(false)} className="text-xs underline bg-transparent border-0 cursor-pointer text-muted">Close</button>
           </div>
@@ -165,8 +158,8 @@ export default function MasterLogPage() {
           <input className="input" required placeholder="Business reason for Owner Shabib's approval *" value={propReason} onChange={e => setPropReason(e.target.value)} />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setProposeOpen(false)} className="btn outline">Cancel</button>
-            <button disabled={busy} type="submit" className="btn bg-[#0b1f2a] text-[#f3d27a]">
-              <Send size={14} /> Send for Owner Sign-Off
+            <button disabled={busy} type="submit" className="btn">
+              <Send size={14} className="text-[#51fec0]" /> Send for Owner Sign-Off
             </button>
           </div>
         </form>
@@ -180,7 +173,7 @@ export default function MasterLogPage() {
             type="button"
             onClick={() => setGroup(g)}
             className={`rounded-full border px-3.5 py-1.5 text-xs font-bold cursor-pointer transition-colors ${
-              group === g ? 'border-[#0b1f2a] bg-[#0b1f2a] text-[#f3d27a]' : 'border-line bg-card text-ink hover:border-ink/30'
+              group === g ? 'border-[#0b1f2a] bg-[#121212] text-[#51fec0]' : 'border-line bg-card text-ink hover:border-ink/30'
             }`}
           >
             {g}

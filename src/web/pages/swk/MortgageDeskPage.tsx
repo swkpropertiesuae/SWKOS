@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { get, post, put } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
@@ -86,29 +87,23 @@ export default function MortgageDeskPage() {
 
   return (
     <div className="mx-auto max-w-[1380px] space-y-6 pb-10">
-      {/* Header */}
-      <section className="rounded-[28px] bg-gradient-to-br from-[#0b1f2a] via-[#133240] to-[#08151d] p-6 text-white shadow-lg">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#d4a752]/20 border border-[#d4a752]/40 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">
-              <Landmark size={13} /> Mortgage Exclusive Business Desk · UAE CBUAE Ready
-            </div>
-            <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white">Mortgage &amp; Valuation Business Desk</h1>
-            <p className="mt-1 text-xs text-slate-300 max-w-2xl">
-              Manage schedules, Form F &amp; Pre-Approval deadlines, independent bank valuations, Bank RM follow-ups, UAE partner bank rate cards, and CBUAE 50% DBR stress tests.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/e/mortgage_cases?new=1" className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6e]">
-              <Plus size={14} /> New Mortgage Case
-            </Link>
-            <Link to="/client-vault" className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-              <ShieldCheck size={14} className="text-[#f3d27a]" /> 13-Doc Client Vault
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* Swiss Architectural Header */}
+      <SwissHeroHeader
+        eyebrow="Mortgage Exclusive Business Desk · UAE CBUAE Ready"
+        title="Mortgage & Valuation Business Desk"
+        subtitle="Manage schedules, Form F & Pre-Approval deadlines, independent bank valuations, Bank RM follow-ups, UAE partner bank rate cards, and CBUAE 50% DBR stress tests."
+        actions={
+          <>
+            <BracketLink to="/e/mortgage_cases?new=1" variant="dark" size="sm">
+              <Plus size={13} className="text-[#51fec0]" /> New Mortgage Case
+            </BracketLink>
+            <BracketLink to="/client-vault" variant="light" size="sm">
+              <ShieldCheck size={13} className="text-[#0e9f6e]" /> 13-Doc Client Vault
+            </BracketLink>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {[
             ['Active Mortgage Cases', s.active_cases],
             ['Active Loan Book', aed(s.total_loan_book_aed)],
@@ -116,13 +111,13 @@ export default function MortgageDeskPage() {
             ['Pending Valuations', s.upcoming_valuations],
             ['Overdue Deadlines', s.overdue_deadlines],
           ].map(([lbl, val]) => (
-            <div key={String(lbl)} className="rounded-2xl border border-white/15 bg-white/8 p-3.5">
-              <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-300">{lbl}</div>
-              <div className="mt-1.5 text-[18px] font-bold text-white tabular-nums">{val}</div>
+            <div key={String(lbl)} className="rounded-2xl border border-black/[0.08] bg-white/95 p-3.5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#5b6778]">{lbl}</div>
+              <div className="mt-1.5 font-mono text-[18px] font-semibold text-[#121212] tabular-nums">{val}</div>
             </div>
           ))}
         </div>
-      </section>
+      </SwissHeroHeader>
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Book Valuation / Deadline / RM Follow-up */}
@@ -146,7 +141,7 @@ export default function MortgageDeskPage() {
             <input className="input" type="number" placeholder="Valuation Fee (AED)" value={ev.valuation_fee_aed} onChange={e => setEv({ ...ev, valuation_fee_aed: e.target.value })} />
           </div>
           <textarea className="input min-h-[60px]" placeholder="Schedule notes, access contact, trustee timing…" value={ev.notes} onChange={e => setEv({ ...ev, notes: e.target.value })} />
-          <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#0b1f2a] text-[#f3d27a]">
+          <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
             <Plus size={14} /> Schedule &amp; Track Follow-Up
           </button>
         </form>
@@ -208,7 +203,7 @@ export default function MortgageDeskPage() {
             <label className="block"><span className="text-muted">Monthly Income (AED)</span><input className="input mt-1" type="number" value={monthlyIncome} onChange={e => setMonthlyIncome(Number(e.target.value) || 0)} /></label>
             <label className="block"><span className="text-muted">Existing Liabilities / 5% CC</span><input className="input mt-1" type="number" value={existingEmi} onChange={e => setExistingEmi(Number(e.target.value) || 0)} /></label>
           </div>
-          <div className="rounded-2xl bg-[#0b1f2a] text-white p-4 space-y-2 text-xs">
+          <div className="rounded-2xl bg-[#121212] text-white p-4 space-y-2 text-xs">
             <div className="flex justify-between"><span>Loan Amount ({ltvPct}%)</span><b className="text-[#f3d27a]">{aed(calc.loan)}</b></div>
             <div className="flex justify-between"><span>Monthly EMI (@ {ratePct}%)</span><b>{aed(calc.emi)} / mo</b></div>
             <div className="flex justify-between"><span>CBUAE +2% Stress EMI</span><b>{aed(calc.stressEmi)} / mo</b></div>

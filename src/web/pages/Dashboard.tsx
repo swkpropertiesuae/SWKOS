@@ -51,6 +51,7 @@ import { aed, num } from '../swk/ui'
 import { COMMUNITIES } from '../swk/uae'
 import { buildSwkAnalyticsBentoProps } from '../swk/executive-analytics'
 import { canAccessCrmVault, canAccessDocumentTemplates, canAccessSwkAdminLogic, isOwnerSwkUser, isRestrictedStaffUser } from '@shared/swk-staff-access'
+import { BracketLink, LiveStatusDot, SectionEyebrow, SwissCarousel, SwissHeroHeader } from '../components/ui/SwissPrimitives'
 
 type RoleProfile = 'owner' | 'admin' | 'manager' | 'hr' | 'office_admin' | 'agent'
 type QueueTab = 'leads' | 'offers' | 'closes' | 'renewals'
@@ -235,11 +236,11 @@ export function Dashboard() {
   if (d.portal) {
     return (
       <div className="mx-auto max-w-[1380px] grid gap-5 pb-10">
-        <div className="rounded-3xl bg-gradient-to-br from-[#0b1f2a] to-[#153547] p-6 sm:p-8 text-white shadow-xl">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#e5c07b]">SWK PROPERTIES · CLIENT PORTAL</div>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-white">Welcome, {me?.name}</h1>
-          <p className="mt-1 text-sm text-slate-300">Live view of your active property transactions, completed handovers, and account balance.</p>
-        </div>
+        <SwissHeroHeader
+          eyebrow="SWK PROPERTIES · CLIENT PORTAL"
+          title={`Welcome, ${me?.name}`}
+          subtitle="Live view of your active property transactions, completed handovers, and account balance."
+        />
         <div className="grid gap-4 sm:grid-cols-3">
           <KpiCard label="Active Files" value={num(k.open_jobs ?? 0)} hint="In progress with SWK" icon={<Briefcase size={18} />} tone="navy" />
           <KpiCard label="Completed Handovers" value={num(k.delivered ?? 0)} hint="Title deed / keys delivered" icon={<CheckCircle2 size={18} />} tone="emerald" />
@@ -344,180 +345,173 @@ export function Dashboard() {
 
   return (
     <div className="mx-auto max-w-[1560px] grid gap-6 pb-12">
-      {/* ============================================================ 1. CORPORATE EXECUTIVE HEADER BAR */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className={`relative overflow-hidden rounded-[26px] bg-gradient-to-br ${roleInfo.accent} p-6 sm:p-7 text-white shadow-[0_24px_60px_-28px_rgba(11,31,42,0.55)] border border-white/10`}
-      >
-        {/* Subtle Art Deco geometric corner lines */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.14]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 86% 18%, rgba(212,167,82,0.55), transparent 44%), linear-gradient(125deg, transparent 58%, rgba(212,167,82,0.22) 58.3%, transparent 59%), linear-gradient(125deg, transparent 64%, rgba(212,167,82,0.16) 64.3%, transparent 65%)',
-          }}
-        />
-        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d4a752]/40 bg-[#d4a752]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#f3d27a]">
-                <BadgeCheck size={13} /> {roleInfo.badge}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11.5px] font-medium text-slate-200 font-mono">
-                <Clock3 size={12} className="text-[#f3d27a]" /> {dubaiNowLabel()} GST
-              </span>
-            </div>
-            <h1 className="mt-3 text-2xl sm:text-[30px] font-bold tracking-[-0.025em] text-white leading-tight">
-              {roleInfo.title}
-            </h1>
-            <p className="mt-1.5 max-w-3xl text-[14.5px] text-slate-200/90 leading-relaxed">
-              Signed in as <strong className="text-white">{me?.name}</strong> ({me?.role || d.role_label || roleProfile}) — {roleInfo.subtitle}
-            </p>
-          </div>
-
-          {/* Role-Pinpoint Executive Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+      {/* ============================================================ 1. SWISS ARCHITECTURAL EXECUTIVE HEADER */}
+      <SwissHeroHeader
+        eyebrow={roleInfo.badge}
+        badge={
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1 font-mono text-[11px] font-medium text-[#121212]">
+            <LiveStatusDot />
+            {dubaiNowLabel()} GST
+          </span>
+        }
+        title={roleInfo.title}
+        subtitle={
+          <>
+            Signed in as <strong className="font-semibold text-[#121212]">{me?.name}</strong> ({me?.role || d.role_label || roleProfile}) — {roleInfo.subtitle}
+          </>
+        }
+        actions={
+          <>
             {roleProfile === 'owner' && (
               <>
-                <Link to="/shabibs-corner" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <ShieldCheck size={15} /> Shabib&apos;s Corner
-                </Link>
-                <Link to="/master-log" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Layers size={15} /> Master Log
-                </Link>
+                <BracketLink to="/shabibs-corner" variant="dark" size="sm">
+                  <ShieldCheck size={14} className="text-[#51fec0]" /> Shabib&apos;s Corner
+                </BracketLink>
+                <BracketLink to="/master-log" variant="light" size="sm">
+                  <Layers size={14} /> Master Log
+                </BracketLink>
                 <button
                   type="button"
                   disabled={sendingBrief !== null}
                   onClick={() => void triggerBrief('morning')}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white cursor-pointer hover:bg-white/20 transition-colors"
+                  className="btn outline sm"
                 >
-                  <FileBarChart size={15} /> {sendingBrief === 'morning' ? 'Dispatching…' : 'Owner Morning Brief'}
+                  <FileBarChart size={14} /> {sendingBrief === 'morning' ? 'Dispatching…' : 'Owner Morning Brief'}
                 </button>
                 <button
                   type="button"
                   disabled={sendingBrief !== null}
                   onClick={() => void triggerBrief('attendance-1030')}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white cursor-pointer hover:bg-white/20 transition-colors"
+                  className="btn outline sm"
                 >
-                  <Clock3 size={15} /> {sendingBrief === 'attendance-1030' ? 'Running…' : '10:30 Attendance'}
+                  <Clock3 size={14} /> {sendingBrief === 'attendance-1030' ? 'Running…' : '10:30 Attendance'}
                 </button>
-                <Link to="/crm-vault" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <ShieldCheck size={15} /> CRM Vault
+                <Link to="/crm-vault" className="btn outline sm no-underline">
+                  <ShieldCheck size={14} /> CRM Vault
                 </Link>
               </>
             )}
             {roleProfile === 'admin' && (
               <>
-                <Link to="/e/properties" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <Building2 size={15} /> Inventory
-                </Link>
-                <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <FileCode2 size={15} /> Document Templates
-                </Link>
-                <Link to="/crm-vault" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <ShieldCheck size={15} /> CRM Vault
+                <BracketLink to="/e/properties" variant="dark" size="sm">
+                  <Building2 size={14} className="text-[#51fec0]" /> Inventory
+                </BracketLink>
+                <BracketLink to="/studio" variant="light" size="sm">
+                  <FileCode2 size={14} /> Document Templates
+                </BracketLink>
+                <Link to="/crm-vault" className="btn outline sm no-underline">
+                  <ShieldCheck size={14} /> CRM Vault
                 </Link>
               </>
             )}
             {roleProfile === 'manager' && (
               <>
-                <Link to="/crm-vault" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <ShieldCheck size={15} /> Dispatch CRM Vault
-                </Link>
-                <Link to="/field-live" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Navigation size={15} /> Live Field Map
-                </Link>
-                <Link to="/pipeline" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Briefcase size={15} /> Pipeline
+                <BracketLink to="/crm-vault" variant="dark" size="sm">
+                  <ShieldCheck size={14} className="text-[#51fec0]" /> Dispatch CRM Vault
+                </BracketLink>
+                <BracketLink to="/field-live" variant="light" size="sm">
+                  <Navigation size={14} /> Live Field Map
+                </BracketLink>
+                <Link to="/pipeline" className="btn outline sm no-underline">
+                  <Briefcase size={14} /> Pipeline
                 </Link>
               </>
             )}
             {roleProfile === 'hr' && (
               <>
-                <Link to="/e/leave_requests" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <Plane size={15} /> Leave Approvals
-                </Link>
-                <Link to="/e/attendance" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Clock3 size={15} /> Attendance Log
-                </Link>
-                <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <FileCode2 size={15} /> HR Templates
+                <BracketLink to="/e/leave_requests" variant="dark" size="sm">
+                  <Plane size={14} className="text-[#51fec0]" /> Leave Approvals
+                </BracketLink>
+                <BracketLink to="/e/attendance" variant="light" size="sm">
+                  <Clock3 size={14} /> Attendance Log
+                </BracketLink>
+                <Link to="/studio" className="btn outline sm no-underline">
+                  <FileCode2 size={14} /> HR Templates
                 </Link>
               </>
             )}
             {roleProfile === 'office_admin' && (
               <>
-                <Link to="/reception-display" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <QrCode size={15} /> Generate Reception QR
+                <BracketLink to="/reception-display" variant="dark" size="sm">
+                  <QrCode size={14} className="text-[#51fec0]" /> Generate Reception QR
+                </BracketLink>
+                <BracketLink to="/master-log" variant="light" size="sm">
+                  <Layers size={14} /> Master Log (Request Edit)
+                </BracketLink>
+                <Link to="/e/leads?new=1" className="btn outline sm no-underline">
+                  <UserPlus size={14} /> Log Walk-In Lead
                 </Link>
-                <Link to="/master-log" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Layers size={15} /> Master Log (Request Edit)
-                </Link>
-                <Link to="/e/leads?new=1" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <UserPlus size={15} /> Log Walk-In Lead
-                </Link>
-                <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <FileCode2 size={15} /> Letter Studio
+                <Link to="/studio" className="btn outline sm no-underline">
+                  <FileCode2 size={14} /> Letter Studio
                 </Link>
               </>
             )}
             {roleProfile === 'agent' && (
               <>
-                <Link to="/reception-qr?scan=1" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <QrCode size={15} /> Scan Office QR
+                <BracketLink to="/reception-qr?scan=1" variant="dark" size="sm">
+                  <QrCode size={14} className="text-[#51fec0]" /> Scan Office QR
+                </BracketLink>
+                <BracketLink to="/my-deals" variant="light" size="sm">
+                  <Briefcase size={14} /> My Deals
+                </BracketLink>
+                <Link to="/phone" className="btn outline sm no-underline">
+                  <PhoneCall size={14} /> SWK Phone
                 </Link>
-                <Link to="/my-deals" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Briefcase size={15} /> My Deals
-                </Link>
-                <Link to="/phone" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <PhoneCall size={15} /> SWK Phone
-                </Link>
-                <Link to="/field-duty" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Navigation size={15} /> Field GPS
+                <Link to="/field-duty" className="btn outline sm no-underline">
+                  <Navigation size={14} /> Field GPS
                 </Link>
               </>
             )}
-          </div>
-        </div>
-      </motion.section>
+          </>
+        }
+      />
 
-      {/* ============================================================ 2. 21ST.DEV 4-CARD ROLE KPI BENTO */}
+      {/* ============================================================ 2. 4-CARD ROLE KPI BENTO */}
       <section aria-label="Key role metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpiCards.map(c => (
           <KpiCard key={c.label} {...c} />
         ))}
       </section>
 
-      {/* ============================================================ 2B. 12-STAGE LIVE PIPELINE COUNTERS */}
+      {/* ============================================================ 2B. 12-STAGE LIVE PIPELINE VELOCITY CAROUSEL */}
       {!restricted && (stage12Q.data?.stages?.length ?? 0) > 0 && (
-        <section aria-label="12-stage pipeline counters" className="card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <section aria-label="12-stage pipeline counters" className="card p-5 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
             <div>
-              <h2 className="m-0 text-[16px] font-bold text-ink">12-Stage Pipeline Playbook · Live Counts</h2>
-              <p className="m-0 text-xs text-muted">Live deals &amp; AED volume at every stage from Inventory through Final Closure &amp; Client Care.</p>
+              <SectionEyebrow>12-Stage Pipeline Playbook</SectionEyebrow>
+              <h2 className="m-0 mt-1 text-[20px] font-medium tracking-[-0.03em] text-[#121212]">
+                Live Deal Velocity &amp; Stage Counters
+              </h2>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link to="/command-center" className="btn outline sm no-underline">Command Center</Link>
-              <Link to="/pipeline" className="btn sm bg-[#0b1f2a] text-[#f3d27a] no-underline">Open 12-Stage Kanban</Link>
+              <BracketLink to="/pipeline" variant="dark" size="sm">Open 12-Stage Kanban</BracketLink>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+
+          <SwissCarousel ariaLabel="12-stage pipeline carousel" hint="SWIPE ALL 12 STAGES">
             {(stage12Q.data.stages as any[]).map((st: any) => (
-              <Link key={st.code} to="/pipeline" className="rounded-2xl border border-line bg-soft/60 p-3 no-underline hover:border-ink/40 transition-colors">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex size-6 items-center justify-center rounded-lg text-[10.5px] font-extrabold text-white" style={{ background: st.color }}>
+              <Link
+                key={st.code}
+                to="/pipeline"
+                className="group w-[212px] shrink-0 snap-start rounded-[20px] border border-black/[0.08] bg-white/95 p-4 no-underline transition-all duration-300 hover:-translate-y-0.5 hover:border-[#121212]/30 hover:shadow-[0_18px_42px_rgba(12,56,96,0.12)]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex h-7 px-2.5 items-center justify-center rounded-full bg-[#121212] font-mono text-[10.5px] font-semibold text-[#51fec0]">
                     {String(st.step).padStart(2, '0')}
                   </span>
-                  <b className="text-base font-extrabold text-ink tabular-nums">{st.count}</b>
+                  <b className="font-mono text-[22px] font-semibold text-[#121212] tabular-nums leading-none">
+                    {st.count}
+                  </b>
                 </div>
-                <div className="mt-1.5 truncate text-xs font-bold text-ink">{st.shortLabel}</div>
-                <div className="text-[11px] font-semibold text-emerald-700 tabular-nums">{aed(st.deal_value_aed)}</div>
+                <div className="mt-3 truncate text-[13.5px] font-medium text-[#121212]">{st.shortLabel}</div>
+                <div className="mt-1 flex items-center justify-between gap-2 border-t border-black/[0.06] pt-2">
+                  <span className="font-mono text-[11.5px] font-semibold text-[#0e9f6e] tabular-nums">{aed(st.deal_value_aed)}</span>
+                  <ArrowUpRight size={13} className="text-[#64748b] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#121212]" />
+                </div>
               </Link>
             ))}
-          </div>
+          </SwissCarousel>
         </section>
       )}
 
@@ -625,8 +619,14 @@ export function Dashboard() {
           </div>
           <AnalyticsBento
             {...analyticsProps}
-            fontFamily="'Manrope Variable', 'Manrope', system-ui, sans-serif"
-            monoFamily="'JetBrains Mono Variable', 'JetBrains Mono', monospace"
+            colors={{
+              revenue: ['#0e9f6e', '#121212'],
+              desktop: ['#1b6aa7', '#121212'],
+              mobile: ['#57d2f4', '#0e9f6e'],
+              radar: '#0e9f6e',
+            }}
+            fontFamily="'Switzer', 'Plus Jakarta Sans', system-ui, sans-serif"
+            monoFamily="'Geist Mono Variable', 'JetBrains Mono Variable', monospace"
             credit={false}
           />
         </section>
@@ -669,8 +669,8 @@ export function Dashboard() {
                         <span className="font-mono text-ink">{st.count}</span>
                       </div>
                       <div className="mt-1.5 font-mono text-[16px] font-bold text-ink">{aed(st.value ?? 0)}</div>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-line overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-[#0e9f6e] to-[#d4a752]" style={{ width: `${Math.max(st.count > 0 ? 12 : 0, pct)}%` }} />
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-black/[0.06] overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#121212] to-[#0e9f6e]" style={{ width: `${Math.max(st.count > 0 ? 12 : 0, pct)}%` }} />
                       </div>
                     </div>
                   )
@@ -696,8 +696,8 @@ export function Dashboard() {
                       key={key}
                       type="button"
                       onClick={() => setQueueTab(key)}
-                      className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold border-0 cursor-pointer transition-colors ${
-                        queueTab === key ? 'bg-[#0b1f2a] text-white dark:bg-[#d4a752] dark:text-[#0b1f2a]' : 'bg-transparent text-muted hover:text-ink'
+                      className={`rounded-full px-3.5 py-1.5 text-[12px] font-medium border-0 cursor-pointer transition-colors ${
+                        queueTab === key ? 'bg-[#121212] text-white' : 'bg-transparent text-muted hover:text-ink'
                       }`}
                     >
                       {label}
@@ -799,7 +799,7 @@ export function Dashboard() {
                   {leaderboard.slice(0, 6).map((ag: any, idx: number) => (
                     <div key={ag.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-soft/60 px-3.5 py-2.5">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold font-mono ${idx === 0 ? 'bg-amber-500 text-[#0b1f2a]' : 'bg-card border border-line text-ink'}`}>
+                        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-semibold font-mono ${idx === 0 ? 'bg-[#121212] text-[#51fec0]' : 'bg-white border border-black/[0.08] text-ink'}`}>
                           {idx + 1}
                         </span>
                         <div className="min-w-0">
@@ -862,7 +862,7 @@ export function Dashboard() {
                     key={wd.key}
                     className={`rounded-xl py-2 text-center border ${
                       wd.isToday
-                        ? 'bg-[#0b1f2a] text-white border-[#d4a752] dark:bg-[#d4a752] dark:text-[#0b1f2a]'
+                        ? 'bg-[#121212] text-white border-[#121212]'
                         : 'bg-soft/70 text-ink border-line'
                     }`}
                   >
@@ -1101,38 +1101,41 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* ============================================================ 6. DUBAI DLD MARKET BENCHMARKS STRIP */}
+      {/* ============================================================ 6. DUBAI DLD MARKET BENCHMARKS CAROUSEL */}
       <section className="card p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex flex-wrap items-end justify-between gap-2 mb-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">DUBAI LAND DEPARTMENT BENCHMARKS</div>
-            <h2 className="m-0 mt-0.5 text-[17px] font-bold text-ink">Prime Dubai Community PSF &amp; Gross Yield Reference</h2>
+            <SectionEyebrow>Dubai Land Department Benchmarks</SectionEyebrow>
+            <h2 className="m-0 mt-1 text-[20px] font-medium tracking-[-0.03em] text-[#121212]">
+              Prime Dubai Community PSF &amp; Gross Yield Reference
+            </h2>
           </div>
-          <Link to="/market" className="btn outline sm">
-            Open Full Market Pulse <ArrowRight size={14} />
-          </Link>
+          <BracketLink to="/market" variant="light" size="sm">
+            Open Full Market Pulse <ArrowRight size={12} />
+          </BracketLink>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {COMMUNITIES.slice(0, 6).map(c => (
+
+        <SwissCarousel ariaLabel="Dubai community benchmarks carousel" hint="COMPARE DISTRICTS">
+          {COMMUNITIES.slice(0, 10).map(c => (
             <Link
               key={c.name}
               to="/market"
-              className="rounded-2xl border border-line bg-soft/65 p-3.5 no-underline hover:border-line-strong hover:bg-hover transition-colors"
+              className="group w-[224px] shrink-0 snap-start rounded-[20px] border border-black/[0.08] bg-white/95 p-4 no-underline transition-all duration-300 hover:-translate-y-0.5 hover:border-[#121212]/30 hover:shadow-[0_18px_42px_rgba(12,56,96,0.12)]"
             >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[13px] font-bold text-ink truncate">{c.name}</span>
-                <MapPin size={13} className="text-[#b78328] shrink-0" />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[13.5px] font-medium text-[#121212] truncate">{c.name}</span>
+                <MapPin size={13} className="text-[#0e9f6e] shrink-0" />
               </div>
-              <div className="mt-2 font-mono text-[16px] font-bold text-ink">
-                AED {c.ppsf.toLocaleString('en-US')}<span className="text-[11px] font-normal text-muted">/sf</span>
+              <div className="mt-2.5 font-mono text-[18px] font-semibold text-[#121212] tabular-nums">
+                AED {c.ppsf.toLocaleString('en-US')}<span className="text-[11px] font-normal text-[#64748b]">/sf</span>
               </div>
-              <div className="mt-1 flex items-center justify-between text-[12px]">
-                <span className="text-emerald-700 dark:text-emerald-300 font-semibold">{c.yieldPct}% yield</span>
-                <span className="text-muted">{c.segment}</span>
+              <div className="mt-2 flex items-center justify-between border-t border-black/[0.06] pt-2 text-[11.5px]">
+                <span className="font-semibold text-[#0e9f6e]">{c.yieldPct}% yield</span>
+                <span className="text-[#64748b]">{c.segment}</span>
               </div>
             </Link>
           ))}
-        </div>
+        </SwissCarousel>
       </section>
     </div>
   )
@@ -1154,24 +1157,24 @@ function KpiCard({
   to?: string
 }) {
   const iconBg: Record<string, string> = {
-    navy: 'bg-[#0b1f2a] text-[#f3d27a]',
-    emerald: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-300',
-    gold: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    amber: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    rose: 'bg-rose-600/15 text-rose-700 dark:text-rose-300',
-    slate: 'bg-soft text-ink',
+    navy: 'bg-[#121212] text-[#51fec0]',
+    emerald: 'bg-[#ecfdf5] text-[#0e9f6e] border border-[#a7f3d0]',
+    gold: 'bg-[#f4f7fa] text-[#121212] border border-black/[0.08]',
+    amber: 'bg-[#f4f7fa] text-[#121212] border border-black/[0.08]',
+    rose: 'bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]',
+    slate: 'bg-[#f4f7fa] text-[#121212] border border-black/[0.08]',
   }
   const inner = (
-    <div className="card p-5 h-full flex flex-col justify-between gap-3 hover:border-line-strong transition-all">
+    <div className="card p-5 h-full flex flex-col justify-between gap-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#121212]/25 hover:shadow-[0_24px_60px_rgba(12,56,96,0.13)]">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12.5px] font-semibold uppercase tracking-[0.06em] text-muted">{label}</span>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#5b6778]">{label}</span>
         <span className={`grid h-9 w-9 place-items-center rounded-xl shrink-0 ${iconBg[tone]}`}>{icon}</span>
       </div>
       <div>
-        <div className="font-mono text-[24px] sm:text-[26px] font-bold tracking-[-0.03em] text-ink leading-tight">
+        <div className="font-mono text-[24px] sm:text-[26px] font-semibold tracking-[-0.035em] text-[#121212] leading-tight tabular-nums">
           {value}
         </div>
-        <div className="mt-1.5 text-[12.5px] text-muted leading-snug">{hint}</div>
+        <div className="mt-1.5 text-[12px] text-[#5b6778] leading-snug">{hint}</div>
       </div>
     </div>
   )

@@ -1,18 +1,28 @@
-import { useEffect,useState,type FormEvent } from 'react'
-import { Link,useNavigate } from 'react-router-dom'
-import { ArrowUpRight,Eye,EyeOff,Lock,Mail,MapPin,QrCode,ShieldCheck } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowUpRight, Eye, EyeOff, Lock, Mail, MapPin, QrCode, ShieldCheck } from 'lucide-react'
 import { SWK_TEAM_PROFILES } from '@shared/swk-team-profiles'
-import { SWK_COMPANY_ADDRESS,SWK_COMPANY_EMAIL,SWK_COMPANY_HOURS,SWK_COMPANY_NAME,SWK_COMPANY_PHONE,SWK_RERA_ORN,SWK_TRADE_LICENSE } from '@shared/corporate-footer'
-import { get,post } from '../lib/api'
+import {
+  SWK_COMPANY_ADDRESS,
+  SWK_COMPANY_EMAIL,
+  SWK_COMPANY_HOURS,
+  SWK_COMPANY_NAME,
+  SWK_COMPANY_PHONE,
+  SWK_RERA_ORN,
+  SWK_TRADE_LICENSE,
+} from '@shared/corporate-footer'
+import { get, post } from '../lib/api'
 import { useMeta } from '../lib/meta'
-import { clearMobileSession,getMobileDeviceAuthPayload,isNativeMobile,setMobileSession } from '../lib/mobileBridge'
+import { clearMobileSession, getMobileDeviceAuthPayload, isNativeMobile, setMobileSession } from '../lib/mobileBridge'
+import { SwissAtmosphereBackdrop } from '../components/ui/ShaderBackground'
+import { BracketButton, LiveStatusDot, SectionEyebrow } from '../components/ui/SwissPrimitives'
 
 const WEBSITE_TEAM = SWK_TEAM_PROFILES.filter(m => m.onWebsite && m.photo)
 
 /**
  * SWK Properties OS sign-in — exact visual continuation of swkpropertiesuae.com:
- * sky-gradient canvas, architectural vertical hairline grid, frosted glass header,
- * Switzer typography, petrol & crest-gold palette, corner-bracketed primary CTA,
+ * live WebGL sky-ice ShaderBackground, architectural vertical hairline grid, frosted glass header,
+ * Switzer typography, obsidian #121212 & emerald/mint accents, corner-bracketed CTA,
  * flagship Dubai skyline showcase, and RERA ORN 51517 / DET Licence 1511391 credentials.
  */
 export function Login() {
@@ -71,38 +81,37 @@ export function Login() {
   }
 
   return (
-    <div
-      className="relative flex min-h-svh w-full flex-col overflow-x-clip text-[#0b1f2a]"
-      style={{ background: 'radial-gradient(920px 440px at 12% -8%, rgba(212,167,82,0.16), transparent 60%), radial-gradient(880px 420px at 88% -6%, rgba(56,189,248,0.14), transparent 60%), linear-gradient(180deg, #fafbfe 0%, #f3f6fb 100%)' }}
-    >
-      {/* Frosted Glass Header */}
-      <header className="sticky top-0 z-30 w-full border-b border-[#e2e8f0]/80 bg-white/88 shadow-[0_8px_28px_rgba(11,31,42,0.06)] backdrop-blur-2xl">
-        <div className="mx-auto flex h-[76px] max-w-[1260px] items-center justify-between gap-4 px-4 sm:px-8">
+    <div className="relative flex min-h-svh w-full flex-col overflow-x-clip text-[#121212]">
+      <SwissAtmosphereBackdrop />
+
+      {/* Frosted Glass Header matching swkpropertiesuae.com SiteHeader */}
+      <header className="sticky top-0 z-30 w-full border-b border-white/75 bg-white/82 shadow-[0_12px_36px_rgba(12,56,96,0.08)] backdrop-blur-2xl">
+        <div className="mx-auto flex h-[74px] max-w-[1260px] items-center justify-between gap-4 px-4 sm:px-8">
           <div className="flex items-center gap-3">
             <a
               href="https://www.swkpropertiesuae.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex shrink-0 items-center gap-2.5 rounded-2xl px-1.5 py-1 no-underline transition-colors hover:bg-white/70"
+              className="group flex shrink-0 items-center gap-2.5 rounded-2xl px-1.5 py-1 no-underline transition-colors hover:bg-black/[0.03]"
               aria-label="SWK Properties Dubai"
             >
               <img
                 src="/brand/web/swk-icon-192.webp"
-                width={44}
-                height={44}
+                width={42}
+                height={42}
                 alt="SWK Properties Emblem"
-                className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 object-contain drop-shadow-[0_4px_14px_rgba(196,154,70,0.42)] transition-transform duration-300 group-hover:scale-[1.06]"
+                className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 object-contain drop-shadow-[0_4px_12px_rgba(12,56,96,0.16)] transition-transform duration-300 group-hover:scale-[1.05]"
               />
               <img
                 src="/brand/web/swk-logo-light.webp"
                 width={132}
                 height={58}
                 alt="SWK Properties"
-                className="h-9 sm:h-10 w-auto object-contain drop-shadow-[0_2px_10px_rgba(184,134,42,0.2)]"
+                className="h-9 sm:h-10 w-auto object-contain"
               />
             </a>
             <span className="hidden h-6 w-px bg-black/10 sm:inline-block" aria-hidden />
-            <span className="hidden rounded-full border border-black/10 bg-[#f8f5ef] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#0c233a] sm:inline-flex">
+            <span className="hidden rounded-full border border-black/[0.08] bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#121212] sm:inline-flex">
               OS Workspace
             </span>
           </div>
@@ -110,27 +119,24 @@ export function Login() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/reception-qr"
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11.5px] font-medium uppercase tracking-[0.12em] text-[#0f2a33]/80 no-underline transition-all hover:-translate-y-0.5 hover:bg-[#0c233a]/[0.07] hover:text-[#0f2a33]"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[#121212]/80 no-underline transition-all hover:-translate-y-0.5 hover:bg-black/[0.05] hover:text-[#121212]"
             >
-              <QrCode size={14} className="text-[#8a621c]" aria-hidden />
+              <QrCode size={14} className="text-[#0e9f6e]" aria-hidden />
               <span>Reception QR</span>
             </Link>
             <a
               href="https://www.swkpropertiesuae.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[11.5px] font-medium uppercase tracking-[0.12em] text-[#0f2a33]/80 no-underline transition-all hover:-translate-y-0.5 hover:bg-[#0c233a]/[0.07] hover:text-[#0f2a33] md:inline-flex"
+              className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[#121212]/80 no-underline transition-all hover:-translate-y-0.5 hover:bg-black/[0.05] hover:text-[#121212] md:inline-flex"
             >
-              <span className="text-[#8a621c]" aria-hidden>+</span>
+              <span className="text-[#0e9f6e]" aria-hidden>+</span>
               <span>Main Website</span>
               <ArrowUpRight size={13} aria-hidden />
             </a>
-            <div className="hidden items-center gap-2 rounded-full border border-white/85 bg-white/85 px-3.5 py-1.5 shadow-[0_8px_24px_rgba(12,56,96,0.08)] lg:inline-flex">
-              <span className="relative flex h-2 w-2" aria-hidden>
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#8a621c] opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8a621c]" />
-              </span>
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#0c233a]">
+            <div className="hidden items-center gap-2 rounded-full border border-white/88 bg-white/88 px-3.5 py-1.5 shadow-[0_8px_24px_rgba(12,56,96,0.08)] lg:inline-flex">
+              <LiveStatusDot />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#121212]">
                 RERA ORN {SWK_RERA_ORN} · LICENCE {SWK_TRADE_LICENSE}
               </span>
             </div>
@@ -143,18 +149,14 @@ export function Login() {
         <div className="grid w-full grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12">
           {/* Sign-In Card (shown first on mobile, right column on desktop) */}
           <div className="order-1 lg:order-2 lg:col-span-5">
-            <div className="relative rounded-[28px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_64px_rgba(11,31,42,0.1)] sm:p-9">
-
+            <div className="relative rounded-[28px] border border-white/90 bg-white/90 p-6 shadow-[0_28px_72px_rgba(12,56,96,0.14)] backdrop-blur-2xl sm:p-9">
               <div className="mb-6">
-                <div className="inline-flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[#8a621c]">
-                  <span className="inline-block h-[5px] w-[5px] bg-[#8a621c]" aria-hidden />
-                  <span>Staff Sign-In</span>
-                </div>
-                <h1 className="mt-2.5 text-[30px] font-medium leading-[1.08] tracking-[-0.035em] text-[#0a1624] sm:text-[34px]">
-                  Welcome back
+                <SectionEyebrow>Staff Sign-In</SectionEyebrow>
+                <h1 className="mt-2.5 m-0 text-[30px] font-medium leading-[1.06] tracking-[-0.04em] text-[#121212] sm:text-[36px]">
+                  Welcome back<span className="text-[#64748b]">.</span>
                 </h1>
-                <p className="mt-2 text-[14px] leading-relaxed text-[#3d4a51]">
-                  Sign in to your SWK Properties OS workspace.
+                <p className="mt-2 mb-0 text-[14px] leading-relaxed text-[#475569]">
+                  Sign in to your SWK Properties OS corporate workspace.
                 </p>
               </div>
 
@@ -169,11 +171,11 @@ export function Login() {
 
               <form onSubmit={onSubmit} className="space-y-4" noValidate>
                 <div>
-                  <label htmlFor="login-email" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#3d4a51]">
+                  <label htmlFor="login-email" className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#475569]">
                     Work email
                   </label>
                   <div className="relative">
-                    <Mail size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5b676e]" />
+                    <Mail size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748b]" />
                     <input
                       id="login-email"
                       name="email"
@@ -183,26 +185,26 @@ export function Login() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="you@swk.properties"
-                      className="h-12 w-full rounded-xl border border-[#d9d2c4] bg-[#f8f5ef]/80 pl-10 pr-4 text-[14.5px] text-[#0f2a33] outline-none no-focus-outline transition-all placeholder:text-[#5b676e] focus:border-[#0f2a33] focus:bg-white focus:ring-4 focus:ring-[#d4a752]/35"
+                      className="h-12 w-full rounded-xl border border-black/[0.12] bg-white pl-10 pr-4 text-[14.5px] text-[#121212] outline-none no-focus-outline transition-all placeholder:text-[#64748b] focus:border-[#121212] focus:ring-4 focus:ring-[#121212]/10"
                     />
                   </div>
                 </div>
 
                 <div>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <label htmlFor="login-password" className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#3d4a51]">
+                    <label htmlFor="login-password" className="block text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#475569]">
                       Password
                     </label>
                     <button
                       type="button"
                       onClick={() => nav('/accept-invite')}
-                      className="cursor-pointer border-0 bg-transparent p-0 text-[12px] font-medium text-[#8a621c] hover:text-[#0a1624] hover:underline"
+                      className="cursor-pointer border-0 bg-transparent p-0 text-[12px] font-medium text-[#0e9f6e] hover:text-[#121212] hover:underline"
                     >
                       Forgot password?
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5b676e]" />
+                    <Lock size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748b]" />
                     <input
                       id="login-password"
                       name="password"
@@ -212,13 +214,13 @@ export function Login() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="h-12 w-full rounded-xl border border-[#d9d2c4] bg-[#f8f5ef]/80 pl-10 pr-11 text-[14.5px] text-[#0f2a33] outline-none no-focus-outline transition-all placeholder:text-[#5b676e] focus:border-[#0f2a33] focus:bg-white focus:ring-4 focus:ring-[#d4a752]/35"
+                      className="h-12 w-full rounded-xl border border-black/[0.12] bg-white pl-10 pr-11 text-[14.5px] text-[#121212] outline-none no-focus-outline transition-all placeholder:text-[#64748b] focus:border-[#121212] focus:ring-4 focus:ring-[#121212]/10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPw(v => !v)}
                       aria-label={showPw ? 'Hide password' : 'Show password'}
-                      className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-[#5b676e] hover:bg-[#ece6da] hover:text-[#0f2a33]"
+                      className="absolute right-2.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-[#64748b] hover:bg-[#f4f7fa] hover:text-[#121212]"
                     >
                       {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -227,7 +229,7 @@ export function Login() {
 
                 {needTotp && (
                   <div>
-                    <label htmlFor="login-totp" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#3d4a51]">
+                    <label htmlFor="login-totp" className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#475569]">
                       Authenticator code
                     </label>
                     <input
@@ -240,32 +242,28 @@ export function Login() {
                       value={totp}
                       onChange={e => setTotp(e.target.value.replace(/\D/g, ''))}
                       placeholder="6-digit code"
-                      className="h-12 w-full rounded-xl border border-[#d9d2c4] bg-white px-4 text-center font-mono text-[16px] tracking-[0.4em] text-[#0f2a33] outline-none no-focus-outline focus:border-[#0f2a33] focus:ring-4 focus:ring-[#d4a752]/35"
+                      className="h-12 w-full rounded-xl border border-black/[0.12] bg-white px-4 text-center font-mono text-[16px] tracking-[0.4em] text-[#121212] outline-none no-focus-outline focus:border-[#121212] focus:ring-4 focus:ring-[#121212]/10"
                     />
-                    <p className="mt-1.5 text-[12px] text-[#5b676e]">
+                    <p className="mt-1.5 text-[12px] text-[#64748b]">
                       Open your authenticator app and enter the 6-digit code for SWK OS.
                     </p>
                   </div>
                 )}
 
-                <label className="flex cursor-pointer items-center gap-2.5 pt-0.5 text-[13px] text-[#3d4a51]">
+                <label className="flex cursor-pointer items-center gap-2.5 pt-0.5 text-[13px] text-[#475569]">
                   <input
                     type="checkbox"
                     checked={remember}
                     onChange={e => setRemember(e.target.checked)}
-                    className="h-4 w-4 rounded accent-[#8a621c]"
+                    className="h-4 w-4 rounded accent-[#121212]"
                   />
                   <span>Remember my email on this device</span>
                 </label>
 
                 <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={busy}
-                    className="relative inline-flex h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-full border-0 bg-[#0b1f2a] px-6 text-[13px] font-semibold tracking-[0.04em] text-white shadow-[0_14px_34px_rgba(11,31,42,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b78328] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                  >
-                    <span>{busy ? 'Signing in…' : 'Sign in'}</span>
-                  </button>
+                  <BracketButton type="submit" disabled={busy} variant="dark" size="lg" className="w-full">
+                    {busy ? 'Signing in…' : 'Sign in'}
+                  </BracketButton>
                 </div>
 
                 {demo?.enabled && (
@@ -276,19 +274,19 @@ export function Login() {
                       setDemoBusy(true); setError('')
                       try { await signIn(demo.email, demo.password) } catch (err: any) { setError(err?.message || 'Demo sign-in unavailable.'); setDemoBusy(false) }
                     }}
-                    className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-[#0f2a33]/15 bg-white/90 px-5 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#0f2a33] transition-all hover:-translate-y-0.5 hover:border-[#0f2a33] hover:bg-[#0f2a33] hover:text-white disabled:opacity-55"
+                    className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-black/[0.12] bg-white px-5 text-[11px] font-medium uppercase tracking-[0.16em] text-[#121212] transition-all hover:-translate-y-0.5 hover:border-[#121212] hover:bg-[#121212] hover:text-white disabled:opacity-55"
                   >
                     {demoBusy ? 'Opening demo…' : 'Explore the demo workspace'}
                   </button>
                 )}
               </form>
 
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-black/[0.07] pt-4 text-[11.5px] text-[#5b676e]">
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-black/[0.07] pt-4 text-[11.5px] text-[#5b6778]">
                 <span className="inline-flex items-center gap-1.5">
-                  <ShieldCheck size={13} className="text-[#8a621c]" aria-hidden />
+                  <ShieldCheck size={13} className="text-[#0e9f6e]" aria-hidden />
                   Encrypted session · Activity audited
                 </span>
-                <Link to="/reception-qr" className="font-medium text-[#0f2a33] no-underline hover:text-[#8a621c]">
+                <Link to="/reception-qr" className="font-medium text-[#121212] no-underline hover:text-[#0e9f6e]">
                   Office QR check-in →
                 </Link>
               </div>
@@ -298,42 +296,39 @@ export function Login() {
           {/* Brand & Flagship Dubai Showcase (left column on desktop, below form on mobile) */}
           <div className="order-2 flex flex-col gap-5 lg:order-1 lg:col-span-7">
             <div>
-              <div className="inline-flex items-center gap-2.5 rounded-full border border-white/80 bg-white/74 px-4 py-1.5 shadow-[0_8px_24px_rgba(12,56,96,0.08)] backdrop-blur-xl">
-                <span className="relative flex h-2 w-2" aria-hidden>
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#8a621c] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8a621c]" />
-                </span>
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#0c233a]">
+              <div className="inline-flex items-center gap-2.5 rounded-full border border-white/88 bg-white/82 px-4 py-1.5 shadow-[0_8px_24px_rgba(12,56,96,0.08)] backdrop-blur-xl">
+                <LiveStatusDot />
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#121212]">
                   SWK PROPERTIES · SHEIKH ZAYED ROAD HQ
                 </span>
               </div>
 
-              <h2 className="mt-4 text-[38px] font-medium leading-[0.98] tracking-[-0.045em] text-[#0a1624] sm:text-[52px] xl:text-[62px]">
+              <h2 className="mt-4 m-0 text-[38px] font-medium leading-[0.98] tracking-[-0.045em] text-[#121212] sm:text-[52px] xl:text-[62px]">
                 Own the{' '}
-                <span className="italic font-light text-[#0f3457]">workspace</span>
+                <span className="italic font-light text-[#475569]">workspace</span>
                 <br />
                 behind the skyline
               </h2>
-              <p className="mt-3.5 max-w-[540px] text-[15px] leading-[1.6] text-[#273849]">
-                Every enquiry, verified listing, RERA contract, Document Studio template, Inside team thread, and handover ledger in one brokerage desk.
+              <p className="mt-3.5 mb-0 max-w-[540px] text-[15px] leading-[1.6] text-[#334155]">
+                Every enquiry, verified listing, RERA contract, Mortgage Desk workflow, Document Studio template, and handover ledger in one brokerage desk.
               </p>
             </div>
 
             {/* Flagship Dubai Skyline Frame matching swkpropertiesuae.com hero reel */}
-            <div className="relative overflow-hidden rounded-3xl border border-white/85 bg-[#0a1624] shadow-[0_24px_60px_rgba(12,56,96,0.16)]">
+            <div className="relative overflow-hidden rounded-[26px] border border-white/90 bg-[#121212] shadow-[0_24px_60px_rgba(12,56,96,0.16)]">
               <img
                 src="/brand/web/uae-skyline-flagship.webp"
                 alt="Dubai architectural skyline — SWK Properties LLC, Sheikh Zayed Road"
-                className="h-[280px] w-full object-cover sm:h-[290px]"
+                className="h-[270px] w-full object-cover sm:h-[290px]"
               />
               <div
                 aria-hidden
                 className="absolute inset-0"
-                style={{ background: 'linear-gradient(180deg, rgba(10,22,36,0.34) 0%, rgba(10,22,36,0.08) 42%, rgba(10,22,36,0.88) 100%)' }}
+                style={{ background: 'linear-gradient(180deg, rgba(12,18,28,0.28) 0%, rgba(12,18,28,0.08) 45%, rgba(12,18,28,0.88) 100%)' }}
               />
 
-              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-[#0f2a33]/72 px-3.5 py-1.5 text-[10.5px] font-medium uppercase tracking-[0.18em] text-white backdrop-blur-md">
-                <MapPin size={12} className="text-[#d4a752]" aria-hidden />
+              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-[#121212]/72 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white backdrop-blur-md">
+                <MapPin size={12} className="text-[#51fec0]" aria-hidden />
                 <span>25th Floor · Al Saqr Building · Sheikh Zayed Road</span>
               </div>
 
@@ -344,16 +339,16 @@ export function Login() {
                   { v: SWK_TRADE_LICENSE, l: 'DET Trade Licence' },
                   { v: '5', l: 'UAE Emirates' },
                 ].map(s => (
-                  <div key={s.l} className="rounded-2xl border border-white/15 bg-[#0f2a33]/70 px-3.5 py-2.5 text-white backdrop-blur-md">
-                    <div className="text-[18px] font-semibold leading-none tracking-[-0.03em] text-[#d4a752] tabular-nums">{s.v}</div>
-                    <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/75">{s.l}</div>
+                  <div key={s.l} className="rounded-2xl border border-white/15 bg-[#121212]/72 px-3.5 py-2.5 text-white backdrop-blur-md">
+                    <div className="font-mono text-[18px] font-semibold leading-none tracking-[-0.03em] text-[#51fec0] tabular-nums">{s.v}</div>
+                    <div className="mt-1 text-[9.5px] font-medium uppercase tracking-[0.14em] text-white/75">{s.l}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Advisory Team Strip matching swkpropertiesuae.com hero */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/85 bg-white/82 px-4 py-3 shadow-[0_14px_38px_rgba(12,56,96,0.09)] backdrop-blur-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/88 bg-white/84 px-4 py-3 shadow-[0_14px_38px_rgba(12,56,96,0.09)] backdrop-blur-2xl">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex items-center -space-x-2">
                   {WEBSITE_TEAM.slice(0, 8).map(member => (
@@ -367,33 +362,33 @@ export function Login() {
                   ))}
                 </div>
                 <div>
-                  <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a621c]">Our Dubai Team</p>
-                  <p className="m-0 mt-0.5 text-[12.5px] font-medium text-[#0a1624]">
-                    Leads · Listings · Leasing · Finance · Document Studio
+                  <SectionEyebrow accent="emerald">Our Dubai Team</SectionEyebrow>
+                  <p className="m-0 mt-0.5 text-[12.5px] font-medium text-[#121212]">
+                    Leads · Listings · Leasing · Mortgage · Document Studio
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] text-[#5b676e]">{SWK_COMPANY_HOURS}</span>
+              <span className="text-[11px] font-mono text-[#5b6778]">{SWK_COMPANY_HOURS}</span>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Compact Obsidian Footer Band — continuation of swkpropertiesuae.com SiteFooter */}
-      <footer className="relative z-10 mt-auto border-t border-white/10 bg-[#0f2a33] text-white">
+      {/* Compact Obsidian Footer Band matching swkpropertiesuae.com SiteFooter */}
+      <footer className="relative z-10 mt-auto border-t border-white/10 bg-[#121212] text-white">
         <div className="mx-auto flex max-w-[1260px] flex-wrap items-center justify-between gap-4 px-4 py-4 text-[11.5px] text-white/75 sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
             <img src="/brand/web/swk-logo-dark.webp" alt={SWK_COMPANY_NAME} className="h-7 w-auto object-contain" />
             <span className="hidden text-white/25 sm:inline" aria-hidden>|</span>
             <span>
-              © {new Date().getFullYear()} {SWK_COMPANY_NAME} · RERA ORN <strong className="text-[#d4a752]">{SWK_RERA_ORN}</strong> · DET Licence <strong className="text-white">{SWK_TRADE_LICENSE}</strong>
+              © {new Date().getFullYear()} {SWK_COMPANY_NAME} · RERA ORN <strong className="text-[#51fec0]">{SWK_RERA_ORN}</strong> · DET Licence <strong className="text-white">{SWK_TRADE_LICENSE}</strong>
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/70">
             <span>{SWK_COMPANY_ADDRESS}</span>
-            <a href={`tel:${SWK_COMPANY_PHONE.replace(/\s+/g, '')}`} className="text-white/85 no-underline hover:text-[#d4a752]">{SWK_COMPANY_PHONE}</a>
-            <a href={`mailto:${SWK_COMPANY_EMAIL}`} className="text-white/85 no-underline hover:text-[#d4a752]">{SWK_COMPANY_EMAIL}</a>
-            <a href="https://www.swkpropertiesuae.com" target="_blank" rel="noopener noreferrer" className="font-medium text-[#d4a752] no-underline hover:underline">
+            <a href={`tel:${SWK_COMPANY_PHONE.replace(/\s+/g, '')}`} className="text-white/85 no-underline hover:text-[#51fec0]">{SWK_COMPANY_PHONE}</a>
+            <a href={`mailto:${SWK_COMPANY_EMAIL}`} className="text-white/85 no-underline hover:text-[#51fec0]">{SWK_COMPANY_EMAIL}</a>
+            <a href="https://www.swkpropertiesuae.com" target="_blank" rel="noopener noreferrer" className="font-medium text-[#51fec0] no-underline hover:underline">
               www.swkpropertiesuae.com
             </a>
           </div>

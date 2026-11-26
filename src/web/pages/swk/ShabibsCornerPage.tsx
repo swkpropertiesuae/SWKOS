@@ -24,6 +24,7 @@ import {
 import { del, get, post, put } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { PIPELINE_12_STAGES } from '@shared/swk-pipeline'
+import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 type Tab = 'fast-track' | 'playbook' | 'approvals' | 'bulk-ai' | 'ledger'
 
@@ -179,61 +180,58 @@ export default function ShabibsCornerPage() {
 
   return (
     <div className="mx-auto max-w-[1380px] space-y-6 pb-10">
-      {/* Executive Owner Hero */}
-      <section className="rounded-[28px] border border-[#d4a752]/40 bg-gradient-to-br from-[#0b1f2a] via-[#102b3a] to-[#08151d] p-6 text-white shadow-[0_22px_54px_-22px_rgba(8,21,29,0.65)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#d4a752]/40 bg-[#d4a752]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">
-              <Crown size={13} /> Owner Exclusive · Zero-Leak Private Command
-            </div>
-            <h1 className="mt-2.5 text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-white">
-              Shabib&apos;s Corner
-            </h1>
-            <p className="mt-1 max-w-2xl text-[14px] text-slate-300">
-              Direct Owner workspace: Privacy Fast Track (bypass Master Log for urgent cash &amp; VIP deals), 12-Stage Gold-Rush Playbook, Bulk AI Upload, Master Log Governance, and Owner Consolidated Ledger. Invisible to all staff and admin.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/master-log" className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-              <Database size={14} className="text-[#f3d27a]" /> Master Log (CORE)
-            </Link>
-            <Link to="/pipeline" className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6e]">
-              <KanbanSquare size={14} /> 12-Stage Kanban
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div className="rounded-2xl border border-rose-400/30 bg-rose-500/15 p-4">
-            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-rose-200">
+      {/* Swiss Architectural Executive Owner Hero */}
+      <SwissHeroHeader
+        eyebrow="Owner Exclusive · Zero-Leak Private Command"
+        badge={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#121212] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#51fec0]">
+            <Crown size={12} /> Owner Vault Lock
+          </span>
+        }
+        title="Shabib's Corner"
+        subtitle="Direct Owner workspace: Privacy Fast Track (bypass Master Log for urgent cash & VIP deals), 12-Stage Gold-Rush Playbook, Bulk AI Upload, Master Log Governance, and Owner Consolidated Ledger. Invisible to all staff and admin."
+        actions={
+          <>
+            <BracketLink to="/master-log" variant="light" size="sm">
+              <Database size={13} /> Master Log (CORE)
+            </BracketLink>
+            <BracketLink to="/pipeline" variant="dark" size="sm">
+              <KanbanSquare size={13} className="text-[#51fec0]" /> 12-Stage Kanban
+            </BracketLink>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-2xl border border-[#fecaca] bg-[#fef2f2]/85 p-4">
+            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#b91c1c]">
               <span>Immediate Cash Rush</span> <Flame size={14} />
             </div>
-            <div className="mt-2 text-[22px] font-bold tabular-nums text-white">{aed(ft.immediate_cash_aed)}</div>
-            <div className="mt-0.5 text-xs text-rose-100/80">{ft.immediate_cash_count} urgent private file(s)</div>
+            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{aed(ft.immediate_cash_aed)}</div>
+            <div className="mt-0.5 text-xs text-[#7f1d1d]">{ft.immediate_cash_count} urgent private file(s)</div>
           </div>
-          <div className="rounded-2xl border border-[#d4a752]/30 bg-white/8 p-4">
-            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#f3d27a]">
-              <span>Gold-Rush Weighted Cash</span> <Wallet size={14} />
+          <div className="rounded-2xl border border-black/[0.08] bg-white/95 p-4">
+            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#5b6778]">
+              <span>Gold-Rush Weighted Cash</span> <Wallet size={14} className="text-[#121212]" />
             </div>
-            <div className="mt-2 text-[22px] font-bold tabular-nums text-white">{aed(pl.totals.weighted_gold_rush_aed)}</div>
-            <div className="mt-0.5 text-xs text-slate-300">{pl.totals.total_deals} deals across 12 stages</div>
+            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{aed(pl.totals.weighted_gold_rush_aed)}</div>
+            <div className="mt-0.5 text-xs text-[#5b6778]">{pl.totals.total_deals} deals across 12 stages</div>
           </div>
-          <div className="rounded-2xl border border-amber-400/30 bg-amber-500/15 p-4">
-            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-amber-200">
-              <span>Owner Approvals Waiting</span> <ShieldCheck size={14} />
+          <div className="rounded-2xl border border-black/[0.08] bg-white/95 p-4">
+            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#5b6778]">
+              <span>Owner Approvals Waiting</span> <ShieldCheck size={14} className="text-[#121212]" />
             </div>
-            <div className="mt-2 text-[22px] font-bold tabular-nums text-white">{ap.total_pending}</div>
-            <div className="mt-0.5 text-xs text-amber-100/80">{ap.master_requests.length} Master Log · {ap.seal_requests.length} Seals</div>
+            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{ap.total_pending}</div>
+            <div className="mt-0.5 text-xs text-[#5b6778]">{ap.master_requests.length} Master Log · {ap.seal_requests.length} Seals</div>
           </div>
-          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/15 p-4">
-            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-emerald-200">
+          <div className="rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5]/85 p-4">
+            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#047857]">
               <span>Consolidated Gross + VAT</span> <Lock size={14} />
             </div>
-            <div className="mt-2 text-[22px] font-bold tabular-nums text-white">{aed(led.combined_total_aed)}</div>
-            <div className="mt-0.5 text-xs text-emerald-100/80">VAT 201 Est: {aed(led.combined_vat_aed)}</div>
+            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{aed(led.combined_total_aed)}</div>
+            <div className="mt-0.5 text-xs text-[#047857]">VAT 201 Est: {aed(led.combined_vat_aed)}</div>
           </div>
         </div>
-      </section>
+      </SwissHeroHeader>
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2">
@@ -248,13 +246,13 @@ export default function ShabibsCornerPage() {
             key={t.id}
             type="button"
             onClick={() => switchTab(t.id as Tab)}
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-bold cursor-pointer transition-all ${
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[12.5px] font-medium cursor-pointer transition-all ${
               tab === t.id
-                ? 'border-[#0b1f2a] bg-[#0b1f2a] text-[#f3d27a] shadow-sm'
-                : 'border-line bg-card text-ink hover:border-ink/30'
+                ? 'border-[#121212] bg-[#121212] text-white shadow-sm'
+                : 'border-white/88 bg-white/85 text-[#121212] backdrop-blur-xl hover:border-[#121212]/30'
             }`}
           >
-            <t.icon size={15} /> {t.label}
+            <t.icon size={14} className={tab === t.id ? 'text-[#51fec0]' : 'text-[#5b6778]'} /> {t.label}
           </button>
         ))}
       </div>
@@ -288,7 +286,7 @@ export default function ShabibsCornerPage() {
                 <input className="input" type="date" value={ftJob.target_cash_date} onChange={e => setFtJob({ ...ftJob, target_cash_date: e.target.value })} />
               </div>
               <textarea className="input min-h-[68px]" placeholder="Confidential instructions / cash arrangement notes…" value={ftJob.notes} onChange={e => setFtJob({ ...ftJob, notes: e.target.value })} />
-              <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#0b1f2a] text-[#f3d27a]">
+              <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
                 <Plus size={15} /> Create Private Fast-Track File
               </button>
             </form>
@@ -357,7 +355,7 @@ export default function ShabibsCornerPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-mono text-xs font-bold text-[#8a621c]">{j.ref_code}</span>
                             <span className={`rounded-full px-2.5 py-0.5 text-[10.5px] font-bold ${
-                              j.urgency === 'CASH_IMMEDIATE' ? 'bg-rose-600 text-white' : 'bg-[#0b1f2a] text-[#f3d27a]'
+                              j.urgency === 'CASH_IMMEDIATE' ? 'bg-rose-600 text-white' : 'bg-[#121212] text-[#51fec0]'
                             }`}>
                               {j.urgency === 'CASH_IMMEDIATE' ? 'CASH NEEDED IMMEDIATELY' : j.urgency.replace('_', ' ')}
                             </span>
@@ -462,7 +460,7 @@ export default function ShabibsCornerPage() {
               <h2 className="m-0 text-[18px] font-bold text-ink">12-Stage Deal Playbook · Gold-Rush Cash Velocity</h2>
               <p className="m-0 text-xs text-muted">Live deal count, total value, and weighted expected commission at every stage from Inventory to Final Closure.</p>
             </div>
-            <Link to="/pipeline" className="btn bg-[#0b1f2a] text-[#f3d27a] no-underline">
+            <Link to="/pipeline" className="btn bg-[#121212] text-[#51fec0] no-underline">
               Open Interactive 12-Stage Kanban <ArrowUpRight size={14} />
             </Link>
           </div>
@@ -574,7 +572,7 @@ export default function ShabibsCornerPage() {
             <button disabled={busy || !bulkText.trim()} type="button" onClick={() => void runBulkAi(true)} className="btn outline">
               Preview Parsed Rows
             </button>
-            <button disabled={busy || !bulkText.trim()} type="button" onClick={() => void runBulkAi(false)} className="btn bg-[#0b1f2a] text-[#f3d27a]">
+            <button disabled={busy || !bulkText.trim()} type="button" onClick={() => void runBulkAi(false)} className="btn bg-[#121212] text-[#51fec0]">
               <Upload size={14} /> Commit Bulk Import Now
             </button>
           </div>

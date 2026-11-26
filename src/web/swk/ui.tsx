@@ -10,11 +10,11 @@ import { ArrowUpRight,TrendingDown,TrendingUp } from 'lucide-react'
 import { cls } from '../lib/format'
 
 export const SWK = {
-  navy: '#0b1f2a', midnight: '#091821', ocean: '#2563eb', sky: '#0ea5e9', champ: '#b78328', champDeep: '#8a5f14',
-  champSoft: '#fef7e6', sand: '#f5f7fb', oasis: '#0e9f6e', dune: '#dc2626', ink: '#0b1f2a', muted: '#526273', line: '#e2e8f0',
+  navy: '#121212', midnight: '#0c1622', ocean: '#1b6aa7', sky: '#57d2f4', champ: '#0e9f6e', champDeep: '#047857',
+  champSoft: '#ecfdf5', sand: '#f4f7fa', oasis: '#0e9f6e', dune: '#dc2626', ink: '#121212', muted: '#5b6778', line: '#e5e7eb',
 }
-/** Ordered vibrant corporate chart palette — midnight → sapphire → emerald → gold → coral → sky → violet */
-export const CHART = ['#0b1f2a', '#2563eb', '#0e9f6e', '#d4a752', '#dc2626', '#0ea5e9', '#7c3aed', '#64748b']
+/** Restrained Swiss corporate chart palette — obsidian → deep emerald → architectural sky → slate → crimson */
+export const CHART = ['#121212', '#0e9f6e', '#1b6aa7', '#475569', '#0284c7', '#64748b', '#047857', '#dc2626']
 
 export const aed = (n: number | null | undefined, opts: { compact?: boolean; decimals?: number } = {}) => {
   const v = Number(n ?? 0)
