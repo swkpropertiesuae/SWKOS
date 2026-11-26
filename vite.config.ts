@@ -20,6 +20,11 @@ export default defineConfig({
         manualChunks(id: string) {
           if (!id.includes('node_modules')) return
           if (/recharts|d3-|victory/.test(id)) return 'charts'
+          if (/motion|framer-motion/.test(id)) return 'motion'
+          if (/lucide-react/.test(id)) return 'icons'
+          if (/sip\.js/.test(id)) return 'sip'
+          if (/leaflet/.test(id)) return 'leaflet'
+          if (/pdf-lib|pdfjs-dist|mammoth|docx|read-excel-file|tesseract/.test(id)) return 'doc-engines'
           if (/react-dom|react-router|@tanstack|scheduler|\/react\//.test(id)) return 'vendor'
         }
       }

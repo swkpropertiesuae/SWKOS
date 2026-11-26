@@ -5,7 +5,10 @@ import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -28,6 +31,20 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         // Prevent screenshots, screen capture & OS Recents thumbnail leaks of CRM/PII data.
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        // Hardware-accelerate Chromium WebView compositing & HTTP cache for 60-120fps scrolling.
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
+                webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                WebSettings ws = webView.getSettings();
+                ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+                ws.setDomStorageEnabled(true);
+                ws.setDatabaseEnabled(true);
+                ws.setMediaPlaybackRequiresUserGesture(false);
+            }
+        } catch (Throwable ignored) {
+        }
         try {
             ensureAllNotificationChannels(this);
         } catch (Throwable ignored) {

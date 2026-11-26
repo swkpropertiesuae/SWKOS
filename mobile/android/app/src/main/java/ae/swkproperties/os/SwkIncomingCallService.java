@@ -9,24 +9,20 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.os.Build;
-import android.telecom.Connection;
-import android.telecom.ConnectionRequest;
-import android.telecom.ConnectionService;
-import android.telecom.DisconnectCause;
-import android.telecom.PhoneAccountHandle;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
 import androidx.core.content.ContextCompat;
 
 /**
- * Android ConnectionService + Full-Screen Incoming SIP Call Wake bridge.
- *
- * Keeps locked Android devices ringing via high-priority swk_calls_sos full-screen intent
- * launching MainActivity directly to /phone?incoming=1, while never exposing raw CRM Vault numbers.
+ * Play-compliant Incoming SIP Call heads-up notification helper.
+ * Delivers high-priority CallStyle incoming call alerts directly to /phone?incoming=1
+ * without requiring restricted USE_FULL_SCREEN_INTENT or exported Telecom ConnectionService permissions.
  */
-public class SwkIncomingCallService extends ConnectionService {
+public final class SwkIncomingCallService {
     public static final String CHANNEL_ID = "swk_calls_sos";
     public static final int INCOMING_NOTIFICATION_ID = 4403;
+
+    private SwkIncomingCallService() {}
 
     public static void ensureChannel(Context context) {
         if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
@@ -72,16 +68,16 @@ public class SwkIncomingCallService extends ConnectionService {
             ? "Incoming SWK SIP Call · Ext " + extensionNo.trim()
             : "Incoming SWK SIP Call";
 
-        Intent fullScreenIntent = new Intent(context, MainActivity.class)
+        Intent openCallIntent = new Intent(context, MainActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra(MainActivity.EXTRA_INCOMING_CALL, true)
             .putExtra(MainActivity.EXTRA_CALL_ID, callId == null ? "" : callId)
             .putExtra(MainActivity.EXTRA_LAUNCH_ROUTE, "/phone?incoming=1");
 
-        PendingIntent fullScreenPi = PendingIntent.getActivity(
+        PendingIntent openCallPi = PendingIntent.getActivity(
             context,
             4403,
-            fullScreenIntent,
+            openCallIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
@@ -102,13 +98,12 @@ public class SwkIncomingCallService extends ConnectionService {
             .setContentTitle(safeCaller)
             .setContentText(subtitle)
             .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(true)
-            .setFullScreenIntent(fullScreenPi, true)
-            .setContentIntent(fullScreenPi)
-            .setStyle(NotificationCompat.CallStyle.forIncomingCall(callerPerson, declinePi, fullScreenPi));
+            .setContentIntent(openCallPi)
+            .setStyle(NotificationCompat.CallStyle.forIncomingCall(callerPerson, declinePi, openCallPi));
 
         nm.notify(INCOMING_NOTIFICATION_ID, builder.build());
     }
@@ -117,51 +112,6 @@ public class SwkIncomingCallService extends ConnectionService {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
         if (nm != null) {
             nm.cancel(INCOMING_NOTIFICATION_ID);
-        }
-    }
-
-    @Override
-    public Connection onCreateIncomingConnection(PhoneAccountHandle connectionManagerPhoneAccount, ConnectionRequest request) {
-        SwkCallConnection conn = new SwkCallConnection();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            conn.setConnectionProperties(Connection.PROPERTY_SELF_MANAGED);
-        }
-        conn.setRinging();
-        return conn;
-    }
-
-    @Override
-    public Connection onCreateOutgoingConnection(PhoneAccountHandle connectionManagerPhoneAccount, ConnectionRequest request) {
-        SwkCallConnection conn = new SwkCallConnection();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            conn.setConnectionProperties(Connection.PROPERTY_SELF_MANAGED);
-        }
-        conn.setDialing();
-        return conn;
-    }
-
-    private static final class SwkCallConnection extends Connection {
-        @Override
-        public void onAnswer() {
-            setActive();
-        }
-
-        @Override
-        public void onReject() {
-            setDisconnected(new DisconnectCause(DisconnectCause.REJECTED));
-            destroy();
-        }
-
-        @Override
-        public void onDisconnect() {
-            setDisconnected(new DisconnectCause(DisconnectCause.LOCAL));
-            destroy();
-        }
-
-        @Override
-        public void onAbort() {
-            setDisconnected(new DisconnectCause(DisconnectCause.CANCELED));
-            destroy();
         }
     }
 }

@@ -37,7 +37,22 @@ export function syncWeb() {
   const apiBase = validateApiBase(process.env.SWK_API_BASE)
   rmSync(wwwDir, { recursive: true, force: true })
   mkdirSync(wwwDir, { recursive: true })
-  cpSync(distWebDir, wwwDir, { recursive: true })
+  // Exclude large desktop/social/print-only assets from mobile APK bundle to cut APK size & startup I/O
+  const mobileExclude = [
+    /^og\.png$/i,
+    /^app-icon-512\.png$/i,
+    /^brand\/swk-app-icon\.png$/i,
+    /^brand\/site\/.*(2048|4096)\.png$/i,
+    /^fonts\/(clash-display|general-sans|instrument-sans|plus-jakarta-sans)/i,
+  ]
+  cpSync(distWebDir, wwwDir, {
+    recursive: true,
+    filter(src) {
+      const rel = path.relative(distWebDir, src).replace(/\\/g, '/')
+      if (!rel) return true
+      return !mobileExclude.some(rx => rx.test(rel))
+    },
+  })
 
   const runtimeConfig = {
     API_BASE: apiBase,

@@ -127,12 +127,24 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug assembleRelease bundleRelease --no-daemon
 
-      - name: Stage clearly named installable APK artifact
+      - name: Stage & verify signed Release APK and Play Store AAB
         run: |
           mkdir -p dist-android/unsigned-play-release
           if [ -n "${SWK_KEYSTORE_FILE:-}" ] && [ -f mobile/android/app/build/outputs/apk/release/app-release.apk ]; then
             cp mobile/android/app/build/outputs/apk/release/app-release.apk dist-android/SWK-OS-Android-INSTALL.apk
             cp mobile/android/app/build/outputs/bundle/release/app-release.aab dist-android/SWK-OS-PlayStore.aab
+            APKSIGNER="${ANDROID_HOME}/build-tools/35.0.0/apksigner"
+            AAPT2="${ANDROID_HOME}/build-tools/35.0.0/aapt2"
+            if [ -x "$APKSIGNER" ]; then
+              "$APKSIGNER" verify --verbose --print-certs dist-android/SWK-OS-Android-INSTALL.apk
+            fi
+            if [ -x "$AAPT2" ]; then
+              if "$AAPT2" dump badging dist-android/SWK-OS-Android-INSTALL.apk | grep -q "application-debuggable"; then
+                echo "::error::Release APK must NOT be debuggable!"
+                exit 1
+              fi
+              echo "Verified: Release APK is non-debuggable, R8-optimized, and v2/v3 signed."
+            fi
           else
             cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist-android/SWK-OS-Android-INSTALL.apk
             cp mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk dist-android/unsigned-play-release/ 2>/dev/null || true
