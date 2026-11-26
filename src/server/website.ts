@@ -16,6 +16,7 @@ import { q } from './db'
 import { createRecord,getDef,SYSTEM_CTX } from './engine'
 import { HttpError,fromCents,nowIso } from './util'
 import { WEBSITE_REPO_DEFAULT } from '../shared/entities/website'
+import { normalizeMediaList } from '../shared/media'
 import { SWK_TEAM_PROFILES } from '../shared/swk-team-profiles'
 import { assertZeroShabibPublicPayload, findShabibViolations, isRestrictedPublicProfile } from '../shared/zero-shabib-guard'
 import seedListings from './seed/website/listings.json'
@@ -138,12 +139,18 @@ export function buildWebsiteExport() {
   const problems: string[] = []
   const listings = rows.map(r => {
     const base = asJson(r.payload)
+    const mediaList = normalizeMediaList(r.media)
+    const mediaPhotos = mediaList.filter(m => m.kind === 'photo').map(m => m.url)
+    const mediaVideos = mediaList.filter(m => m.kind === 'video').map(m => ({ title: m.title || 'Project Video', url: m.url, category: m.category }))
+    const mediaTours3d = mediaList.filter(m => m.kind === 'tour3d').map(m => ({ title: m.title || '3D / 360° Tour', url: m.url, category: m.category }))
+    const mediaFloorPlans = mediaList.filter(m => m.kind === 'floorplan').map(m => ({ title: m.title || 'Floor Plan', url: m.url, category: m.category }))
+    const mediaBrochures = mediaList.filter(m => m.kind === 'brochure').map(m => ({ title: m.title || 'Brochure', url: m.url, category: m.category }))
     const agent = SWK_TEAM_PROFILES.find(p => p.slug === r.agent_slug) ?? SWK_TEAM_PROFILES.find(p => p.slug === 'mohammad-haseeb')!
     const area = Number(r.area_sqft) || 0
-    const image = String(r.image_url || base.images?.[0] || '')
+    const image = String(r.image_url || mediaPhotos[0] || base.images?.[0] || '')
     if (!image) problems.push(`${r.reference}: add a main image`)
     if (!r.slug) problems.push(`${r.reference}: add a URL slug`)
-    const images = image ? [image, ...((base.images ?? []) as string[]).filter(i => i !== image)] : []
+    const images = [...new Set([image, ...mediaPhotos, ...((base.images ?? []) as string[])].filter(Boolean))]
     const out: Record<string, any> = {
       // defaults for listings created in the OS (an imported listing keeps its own values from `base`)
       views: [], amenities: [], accessibility: [], petPolicy: 'Subject to landlord approval', nearMetro: false, isRender: false,
@@ -163,6 +170,15 @@ export function buildWebsiteExport() {
       agentPhone: base.agentPhone ?? COMPANY_PHONE,
       lastChecked: today, listedAt: r.listed_at || today, images, description: lines(r.description), features: lines(r.features),
     }
+    if (r.video_url || mediaVideos[0]?.url) out.videoUrl = r.video_url || mediaVideos[0]!.url
+    if (r.virtual_tour_url || mediaTours3d[0]?.url) out.virtualTourUrl = r.virtual_tour_url || mediaTours3d[0]!.url
+    if (r.model_3d_url) out.model3dUrl = r.model_3d_url
+    if (r.floor_plan_url || mediaFloorPlans[0]?.url) out.floorPlanUrl = r.floor_plan_url || mediaFloorPlans[0]!.url
+    if (r.brochure_url || mediaBrochures[0]?.url) out.brochureUrl = r.brochure_url || mediaBrochures[0]!.url
+    if (mediaVideos.length) out.videos = mediaVideos
+    if (mediaTours3d.length) out.tours3d = mediaTours3d
+    if (mediaFloorPlans.length) out.floorPlans = mediaFloorPlans
+    if (mediaBrochures.length) out.brochures = mediaBrochures
     if (r.badge) out.badge = r.badge; else delete out.badge
     if (r.payment_plan) out.paymentPlan = r.payment_plan; else delete out.paymentPlan
     if (r.down_payment_pct != null && r.down_payment_pct !== '') out.downPaymentPct = Number(r.down_payment_pct); else delete out.downPaymentPct

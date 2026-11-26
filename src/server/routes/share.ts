@@ -17,8 +17,19 @@ import { websiteImage } from '../../shared/entities/website'
 import { hardcodedAccountFor } from '../../shared/swk-staff-access'
 import { teamProfileByEmail } from '../../shared/swk-team-profiles'
 import { watermarkPropertyImage } from '../domain/watermark'
+import { sendStoredAttachment } from './files'
+import { normalizeMediaList, type ProjectMediaKind } from '../../shared/media'
 
 export const SHAREABLE = ['properties', 'units', 'website_listings'] as const
+
+type SharedAssetRef = {
+  kind: ProjectMediaKind
+  title: string
+  category?: string
+  url: string
+  attachmentId?: number
+  mime?: string
+}
 
 const CURATED_DUBAI_GALLERY = [
   '/media/properties/marina-sky-penthouse-1.webp',
@@ -65,18 +76,70 @@ type RawItem = {
   description: string[]
   features: string[]
   rawImages: string[]
+  rawAssets: SharedAssetRef[]
   reference?: string
   floor_plan?: string
   tour?: string
+  model_3d_url?: string
+  brochure_url?: string
   video_url?: string
 }
 
 const lines = (v: unknown) => String(v ?? '').split(/\r?\n|•|,/).map(s => s.trim()).filter(Boolean)
 const aed = (n?: number | null) => (n ? `AED ${Math.round(n).toLocaleString('en-US')}` : '')
-const mediaUrls = (m: unknown) =>
-  (safeJson<any[]>(m as string, []) ?? [])
-    .map(x => (typeof x === 'string' ? x : x?.url))
-    .filter((u: unknown): u is string => typeof u === 'string' && (/^https:\/\//.test(u) || /^\/media\//.test(u)))
+
+function attachmentIdFromUrl(url: string | null | undefined): number | undefined {
+  if (!url) return undefined
+  const m = /^\/api\/files\/(\d+)\/download(?:$|\?)/.exec(url.trim())
+  return m?.[1] ? Number(m[1]) : undefined
+}
+
+function extractMediaBundle(
+  mediaRaw: unknown,
+  extras: {
+    video_url?: string | null
+    virtual_tour_url?: string | null
+    model_3d_url?: string | null
+    floor_plan_url?: string | null
+    brochure_url?: string | null
+  },
+) {
+  const list = normalizeMediaList(mediaRaw)
+  const photoUrls = list
+    .filter(m => m.kind === 'photo')
+    .sort((a, b) => Number(!!b.is_cover) - Number(!!a.is_cover) || a.order - b.order)
+    .map(m => m.url)
+
+  const rawAssets: SharedAssetRef[] = []
+  const seen = new Set<string>()
+  const pushAsset = (kind: ProjectMediaKind, url: string | null | undefined, title: string, category?: string, mime?: string, attId?: number) => {
+    if (!url || !url.trim()) return
+    const clean = url.trim()
+    const key = `${kind}|${clean}`
+    if (seen.has(key)) return
+    seen.add(key)
+    rawAssets.push({
+      kind,
+      title,
+      category,
+      url: clean,
+      attachmentId: attId ?? attachmentIdFromUrl(clean),
+      mime,
+    })
+  }
+
+  for (const m of list) {
+    if (m.kind === 'photo') continue
+    pushAsset(m.kind, m.url, m.title || m.category || m.kind, m.category, m.mime, m.attachment_id)
+  }
+  pushAsset('video', extras.video_url, 'Official Project Video', 'Project Launch Film')
+  pushAsset('tour3d', extras.virtual_tour_url, '360° / 3D Virtual Tour', '360° Virtual Tour')
+  pushAsset('tour3d', extras.model_3d_url, 'Interactive 3D Model', 'Interactive 3D Model')
+  pushAsset('floorplan', extras.floor_plan_url, 'Official Floor Plan', 'Floor Plan')
+  pushAsset('brochure', extras.brochure_url, 'Developer Brochure', 'Official Brochure')
+
+  return { photoUrls, rawAssets }
+}
 
 function fallbackImagesFor(seed: number, text: string, existing: string[]): string[] {
   const out = [...new Set(existing)]
@@ -102,7 +165,16 @@ function fallbackImagesFor(seed: number, text: string, existing: string[]): stri
 function toRawItem(entity: string, r: any): RawItem {
   if (entity === 'website_listings') {
     const base = safeJson<any>(r.payload, {}) ?? {}
-    const imgs = [r.image_url, ...(base.images ?? [])].filter(Boolean).map((i: string) => websiteImage(i))
+    const bundle = extractMediaBundle(r.media, {
+      video_url: r.video_url || base.video_url || base.videoUrl,
+      virtual_tour_url: r.virtual_tour_url || base.virtual_tour_url || base.virtualTourUrl,
+      model_3d_url: r.model_3d_url || base.model_3d_url || base.model3dUrl,
+      floor_plan_url: r.floor_plan_url || base.floor_plan_url || base.floorPlanUrl,
+      brochure_url: r.brochure_url || base.brochure_url || base.brochureUrl,
+    })
+    const imgs = [...bundle.photoUrls, r.image_url, ...(base.images ?? [])]
+      .filter(Boolean)
+      .map((i: string) => (i.startsWith('/api/files/') || i.startsWith('/media/') ? i : websiteImage(i)))
     const price = Number(r.price_aed || 0) || undefined
     const area = Number(r.area_sqft || 0) || null
     const ppsf = price && area ? Math.round(price / area) : null
@@ -133,22 +205,35 @@ function toRawItem(entity: string, r: any): RawItem {
       description: String(r.description ?? '').split(/\r?\n/).map(s => s.trim()).filter(Boolean),
       features: lines(r.features),
       rawImages: fallbackImagesFor(Number(r.id || 1), `${r.title} ${r.community}`, imgs),
+      rawAssets: bundle.rawAssets,
       reference: r.reference,
-      video_url: typeof base.video_url === 'string' && /^https:\/\//.test(base.video_url) ? base.video_url : undefined,
+      floor_plan: r.floor_plan_url || base.floor_plan_url || base.floorPlanUrl || undefined,
+      tour: r.virtual_tour_url || base.virtual_tour_url || base.virtualTourUrl || undefined,
+      model_3d_url: r.model_3d_url || base.model_3d_url || base.model3dUrl || undefined,
+      brochure_url: r.brochure_url || base.brochure_url || base.brochureUrl || undefined,
+      video_url: r.video_url || base.video_url || base.videoUrl || undefined,
     }
   }
   if (entity === 'units') {
     const prop = r.property_id
-      ? q.get<any>(`SELECT id, title, media, sub_community, building_name, address, rera_permit_no, tenure FROM properties WHERE id = ? AND deleted_at IS NULL`, r.property_id)
+      ? q.get<any>(`SELECT id, title, media, sub_community, building_name, address, rera_permit_no, tenure, video_url, virtual_tour_url, model_3d_url, floor_plan_url, brochure_url FROM properties WHERE id = ? AND deleted_at IS NULL`, r.property_id)
       : null
     const rent = r.rent_annual && !r.sale_price
     const price = Number(r.sale_price || r.rent_annual || 0) || undefined
     const area = Number(r.area_sqft || 0) || null
     const ppsf = !rent && price && area ? Math.round(price / area) : null
+    const unitBundle = extractMediaBundle(r.media, {
+      video_url: r.video_url || prop?.video_url,
+      virtual_tour_url: r.virtual_tour_url || prop?.virtual_tour_url,
+      model_3d_url: prop?.model_3d_url,
+      floor_plan_url: r.floor_plan_url || prop?.floor_plan_url,
+      brochure_url: prop?.brochure_url,
+    })
+    const propBundle = prop ? extractMediaBundle(prop.media, {}) : { photoUrls: [], rawAssets: [] }
     const rawImgs = fallbackImagesFor(
       Number(r.id || 1),
       `${prop?.title || ''} ${prop?.sub_community || ''}`,
-      prop ? mediaUrls(prop.media) : [],
+      [...unitBundle.photoUrls, ...propBundle.photoUrls],
     )
     return {
       id: Number(r.id || 0),
@@ -181,9 +266,13 @@ function toRawItem(entity: string, r: any): RawItem {
         r.parking_slots && `${r.parking_slots} Covered Parking`,
       ].filter(Boolean) as string[],
       rawImages: rawImgs,
+      rawAssets: [...unitBundle.rawAssets, ...propBundle.rawAssets],
       reference: r.unit_no ? `UNIT-${r.unit_no}` : `U-${r.id}`,
-      floor_plan: r.floor_plan_url || undefined,
-      tour: r.virtual_tour_url || undefined,
+      floor_plan: r.floor_plan_url || prop?.floor_plan_url || undefined,
+      tour: r.virtual_tour_url || prop?.virtual_tour_url || undefined,
+      model_3d_url: prop?.model_3d_url || undefined,
+      brochure_url: prop?.brochure_url || undefined,
+      video_url: r.video_url || prop?.video_url || undefined,
     }
   }
   const rent = r.department_division === 'Leasing' || (!r.price && r.rent_annual)
@@ -192,7 +281,14 @@ function toRawItem(entity: string, r: any): RawItem {
   const ppsf = !rent && price && area ? Math.round(price / area) : Number(r.price_per_sqft || 0) || null
   const roi = r.price && r.rent_annual ? Math.round((Number(r.rent_annual) / Number(r.price)) * 1000) / 10 : 7.1
   const location = [r.building_name, r.sub_community, r._labels?.community_ref].filter(Boolean).join(', ')
-  const rawImgs = fallbackImagesFor(Number(r.id || 1), `${r.title || ''} ${location}`, mediaUrls(r.media))
+  const bundle = extractMediaBundle(r.media, {
+    video_url: r.video_url,
+    virtual_tour_url: r.virtual_tour_url,
+    model_3d_url: r.model_3d_url,
+    floor_plan_url: r.floor_plan_url,
+    brochure_url: r.brochure_url,
+  })
+  const rawImgs = fallbackImagesFor(Number(r.id || 1), `${r.title || ''} ${location}`, bundle.photoUrls)
   return {
     id: Number(r.id || 0),
     title: r.title,
@@ -202,7 +298,7 @@ function toRawItem(entity: string, r: any): RawItem {
     location,
     community: r._labels?.community_ref || r.sub_community || undefined,
     building_name: r.building_name || undefined,
-    developer: r._labels?.developer_ref,
+    developer: r._labels?.developer_ref || (isNaN(Number(r.developer_id)) ? r.developer_id : undefined),
     price,
     price_label: rent ? `${aed(r.rent_annual)} / year` : aed(r.price),
     price_per_sqft: ppsf,
@@ -223,10 +319,13 @@ function toRawItem(entity: string, r: any): RawItem {
     description: String(r.description ?? '').split(/\r?\n/).map(s => s.trim()).filter(Boolean),
     features: [...lines(r.features), ...lines(r.amenities)].slice(0, 18),
     rawImages: rawImgs,
+    rawAssets: bundle.rawAssets,
     reference: r.property_no || `SWK-${r.id}`,
     floor_plan: r.floor_plan_url || undefined,
     tour: r.virtual_tour_url || undefined,
-    video_url: typeof r.video_url === 'string' && /^https:\/\//.test(r.video_url) ? r.video_url : undefined,
+    model_3d_url: r.model_3d_url || undefined,
+    brochure_url: r.brochure_url || undefined,
+    video_url: r.video_url || undefined,
   }
 }
 
@@ -324,18 +423,72 @@ export default async function (app: FastifyInstance) {
     },
   )
 
+  /** SCOPED PUBLIC MEDIA STREAMER: Streams uploaded videos, PDF floor plans, brochures, and .glb 3D files ONLY when bound to a valid share link. */
+  app.get(
+    '/api/public/share/:token/asset/:itemIdx/:assetIdx',
+    { config: { rateLimit: { max: 240, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const p = req.params as any
+      const l = load(String(p.token))
+      const itemIdx = Number(p.itemIdx)
+      const assetIdx = Number(p.assetIdx)
+      if (!Number.isInteger(itemIdx) || itemIdx < 0 || !Number.isInteger(assetIdx) || assetIdx < 0) {
+        throw new HttpError(404, 'Asset not found')
+      }
+      const items = loadShareRawItems(l)
+      const asset = items[itemIdx]?.rawAssets[assetIdx]
+      if (!asset?.attachmentId) throw new HttpError(404, 'Asset not found')
+      const att = q.get<any>(`SELECT * FROM attachments WHERE id = ? AND deleted_at IS NULL`, asset.attachmentId)
+      if (!att) throw new HttpError(404, 'Asset not found')
+      return sendStoredAttachment(att, req, reply, { cachePublic: true })
+    },
+  )
+
   app.get('/api/public/share/:token', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req, reply) => {
     reply.header('cache-control', 'no-store')
     const token = String((req.params as any).token)
     const l = load(token)
     const rawItems = loadShareRawItems(l)
-    // Strictly replace every image URL with our server-watermarked endpoint!
+    // Strictly replace every image URL with our server-watermarked endpoint and proxy uploaded assets via token-scoped URLs!
     const items = rawItems.map((it, itemIdx) => {
-      const { rawImages, ...rest } = it
+      const { rawImages, rawAssets, ...rest } = it
+      const resolveAssetUrl = (asset: SharedAssetRef, assetIdx: number) =>
+        asset.attachmentId
+          ? `/api/public/share/${encodeURIComponent(token)}/asset/${itemIdx}/${assetIdx}`
+          : asset.url
+      const mappedAssets = rawAssets.map((a, assetIdx) => ({
+        kind: a.kind,
+        title: a.title,
+        category: a.category,
+        mime: a.mime,
+        url: resolveAssetUrl(a, assetIdx),
+      }))
+      const resolveSingle = (rawUrl?: string) => {
+        if (!rawUrl) return undefined
+        const idx = rawAssets.findIndex(a => a.url === rawUrl)
+        if (idx >= 0) return resolveAssetUrl(rawAssets[idx]!, idx)
+        if (rawUrl.startsWith('/api/files/')) return undefined
+        return rawUrl
+      }
+      const isModel3dAsset = (a: { url: string; mime?: string }) =>
+        /\.(glb|gltf|usdz)(\?|#|$)/i.test(a.url) || Boolean(a.mime && /gltf|model\//i.test(a.mime))
+      const videos = mappedAssets.filter(a => a.kind === 'video')
+      const tours3d = mappedAssets.filter(a => a.kind === 'tour3d')
+      const floor_plans = mappedAssets.filter(a => a.kind === 'floorplan')
+      const brochures = mappedAssets.filter(a => a.kind === 'brochure')
       return {
         ...rest,
         watermarked: true,
         images: rawImages.map((_, imgIdx) => `/api/public/share/${encodeURIComponent(token)}/image/${itemIdx}/${imgIdx}`),
+        video_url: resolveSingle(rest.video_url) || videos[0]?.url,
+        tour: resolveSingle(rest.tour) || tours3d.find(t => !isModel3dAsset(t))?.url || tours3d[0]?.url,
+        model_3d_url: resolveSingle(rest.model_3d_url) || tours3d.find(isModel3dAsset)?.url,
+        floor_plan: resolveSingle(rest.floor_plan) || floor_plans[0]?.url,
+        brochure_url: resolveSingle(rest.brochure_url) || brochures[0]?.url,
+        videos,
+        tours3d,
+        floor_plans,
+        brochures,
       }
     })
     q.run(`UPDATE share_links SET views = views + 1, last_viewed_at = ? WHERE id = ?`, nowIso(), l.id)

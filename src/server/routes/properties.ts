@@ -1,9 +1,25 @@
 import type { FastifyInstance } from 'fastify'
+import crypto from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
+import { pipeline } from 'node:stream/promises'
 import { z } from 'zod'
 import { q, tx } from '../db'
-import { assertCan, createRecord, getDef, getRecord, listRecords, patchRecord } from '../engine'
-import { bad, parseCsv, toCsv, todayStr } from '../util'
+import { dirs, config } from '../config'
+import { assertCan, audit, can, createRecord, getDef, getRecord, insertRow, listRecords, patchRecord } from '../engine'
+import { bad, nowIso, parseCsv, toCsv, todayStr } from '../util'
 import { idOf, need } from './helpers'
+import { BLOCKED_UPLOAD_EXTS, verifyFileMagicBytes } from './files'
+import { persistUpload, removeStored } from '../integrations/storage'
+import { assertZeroShabibPublicPayload } from '../../shared/zero-shabib-guard'
+import {
+  coverPhotoUrl,
+  inferMediaKindFromFile,
+  isSafeMediaUrl,
+  normalizeMediaList,
+  type ProjectMediaItem,
+  type ProjectMediaKind,
+} from '../../shared/media'
 
 const PROPERTY_TYPES = ['Apartment', 'Villa', 'Townhouse', 'Studio', 'Penthouse', 'Duplex', 'Loft', 'Bungalow', 'Compound', 'Bulk'] as const
 const PROPERTY_STATUS = ['Available', 'Under Offer', 'Sold', 'Off-Plan', 'Rented', 'Reserved', 'Withdrawn'] as const
@@ -137,42 +153,593 @@ export default async function (app: FastifyInstance) {
     return { id, unit: getRecord(unitDef(), id, req.ctx, { children: { media: true } }) }
   }
 
-  // Property media upload/delete
+  const MEDIA_ENTITIES = new Set(['properties', 'units', 'website_listings'])
+
+  const loadMediaTarget = (req: any, edit = false) => {
+    const entity = String((req.params as any).entity || '')
+    if (!MEDIA_ENTITIES.has(entity)) throw bad('Media Studio supports properties, units, and website_listings only')
+    const def = getDef(entity)
+    const id = idOf((req.params as any).id)
+    if (edit) assertCan(req.ctx, def.module, 'edit')
+    const rec = getRecord(def, id, req.ctx, { children: false })
+    return { entity, def, id, rec }
+  }
+
+  const isModel3dMedia = (i: ProjectMediaItem) =>
+    i.kind === 'tour3d' &&
+    (/\.(glb|gltf|usdz)(\?|#|$)/i.test(i.url) || Boolean(i.mime && /gltf|model\//i.test(i.mime)) || Boolean(i.attachment_id))
+
+  const syncPrimaryMediaFields = (entity: string, rec: Record<string, any>, list: ProjectMediaItem[]): Record<string, any> => {
+    const patch: Record<string, any> = { media: list }
+    const cover = coverPhotoUrl(list)
+    const firstVideo = list.find(i => i.kind === 'video')?.url
+    const firstTour = list.find(i => i.kind === 'tour3d' && !isModel3dMedia(i))?.url
+    const firstModel3d = list.find(isModel3dMedia)?.url
+    const firstFloor = list.find(i => i.kind === 'floorplan')?.url
+    const firstBrochure = list.find(i => i.kind === 'brochure')?.url
+
+    if (entity === 'website_listings') {
+      if (cover && (!rec.image_url || String(rec.image_url).startsWith('/api/files/') || list.some(i => i.url === rec.image_url))) {
+        patch.image_url = cover
+      }
+      if (firstVideo && !rec.video_url) patch.video_url = firstVideo
+      if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
+      if (firstModel3d && !rec.model_3d_url) patch.model_3d_url = firstModel3d
+      if (firstFloor && !rec.floor_plan_url) patch.floor_plan_url = firstFloor
+      if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+    } else if (entity === 'properties') {
+      if (firstVideo && !rec.video_url) patch.video_url = firstVideo
+      if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
+      if (firstModel3d && !rec.model_3d_url) patch.model_3d_url = firstModel3d
+      if (firstFloor && !rec.floor_plan_url) patch.floor_plan_url = firstFloor
+      if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+    } else if (entity === 'units') {
+      if (firstVideo && !rec.video_url) patch.video_url = firstVideo
+      if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
+      if (firstFloor && !rec.floor_plan_url) patch.floor_plan_url = firstFloor
+    }
+    return patch
+  }
+
+  // Unified Project Media Studio API (properties, units, website_listings)
+  app.get('/api/media/:entity/:id', async (req) => {
+    const { entity, rec } = loadMediaTarget(req, false)
+    const items = normalizeMediaList(rec.media)
+    return {
+      entity,
+      id: rec.id,
+      title: rec._title ?? rec.title ?? rec.unit_no ?? '',
+      items,
+      video_url: rec.video_url ?? null,
+      virtual_tour_url: rec.virtual_tour_url ?? null,
+      model_3d_url: rec.model_3d_url ?? null,
+      floor_plan_url: rec.floor_plan_url ?? null,
+      brochure_url: rec.brochure_url ?? null,
+      image_url: rec.image_url ?? coverPhotoUrl(items),
+    }
+  })
+
+  app.post('/api/media/:entity/:id/upload', async (req) => {
+    if (!req.isMultipart()) throw bad('Expected a multipart upload')
+    const { entity, def, id, rec } = loadMediaTarget(req, true)
+    const fields: Record<string, string> = {}
+    const saved: { name: string; stored: string; size: number; mime: string }[] = []
+    const pending: string[] = []
+    const monthDir = todayStr().slice(0, 7)
+    fs.mkdirSync(path.join(dirs.uploads, monthDir), { recursive: true })
+
+    try {
+      for await (const part of req.parts()) {
+        if (part.type === 'field') {
+          fields[part.fieldname] = String(part.value)
+          continue
+        }
+        const orig = path.basename(part.filename || 'media').replace(/[^\w.\- ()]+/g, '_').slice(0, 150)
+        const ext = path.extname(orig).slice(1).toLowerCase()
+        if (BLOCKED_UPLOAD_EXTS.has(ext)) {
+          part.file.resume()
+          throw bad(`Files of type .${ext} are not allowed`)
+        }
+        const stored = path.join(monthDir, crypto.randomBytes(16).toString('hex') + (ext ? '.' + ext : ''))
+        const full = path.join(dirs.uploads, stored)
+        pending.push(stored)
+        await pipeline(part.file, fs.createWriteStream(full))
+        if ((part.file as any).truncated) throw bad(`File exceeds the ${Math.max(config.maxUploadMb, 50)} MB upload limit`)
+        verifyFileMagicBytes(full, ext)
+        const size = fs.statSync(full).size
+        const kept = await persistUpload(stored, part.mimetype)
+        pending[pending.indexOf(stored)] = kept
+        saved.push({ name: orig, stored: kept, size, mime: part.mimetype })
+      }
+      if (!saved.length) throw bad('Select at least one image, video, 3D model, or PDF to upload')
+    } catch (e) {
+      await Promise.all(pending.map(n => removeStored(n)))
+      throw e
+    }
+
+    const prefKind = fields.kind as ProjectMediaKind | undefined
+    const category = (fields.category || '').trim().slice(0, 60) || undefined
+    const caption = (fields.caption || '').trim().slice(0, 240) || undefined
+    const current = normalizeMediaList(rec.media)
+    const added: ProjectMediaItem[] = []
+    const attCategoryMap: Record<ProjectMediaKind, string> = {
+      photo: 'Property Photo',
+      video: 'Property Video',
+      tour3d: '3D Model / Tour',
+      floorplan: 'Floor Plan',
+      brochure: 'Project Brochure',
+    }
+
+    for (const f of saved) {
+      const kind = inferMediaKindFromFile(f.name, f.mime, prefKind)
+      const prev = q.get(`SELECT MAX(doc_version) v FROM attachments WHERE file_name = ? AND link_entity = ? AND link_id = ? AND deleted_at IS NULL`, f.name, entity, id)
+      const attId = insertRow(
+        getDef('attachments'),
+        {
+          file_name: f.name,
+          stored_name: f.stored,
+          size: f.size,
+          mime: f.mime,
+          category: attCategoryMap[kind] || 'General',
+          link_entity: entity,
+          link_id: id,
+          link_label: rec._title ?? null,
+          note: caption ?? null,
+          doc_version: (prev?.v ?? 0) + 1,
+        },
+        req.ctx,
+      )
+      audit(req.ctx, getDef('attachments'), attId, 'upload', { file: [null, f.name] }, f.name)
+      const item: ProjectMediaItem = {
+        id: `att-${attId}`,
+        kind,
+        url: `/api/files/${attId}/download`,
+        attachment_id: attId,
+        title: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, 140),
+        caption,
+        category: category || (kind === 'photo' ? 'Exterior' : kind === 'video' ? 'Project Launch Film' : kind === 'floorplan' ? 'Typical Floor Plate' : kind === 'tour3d' ? 'Interactive 3D Model' : 'Official Brochure'),
+        is_cover: kind === 'photo' && !current.some(x => x.kind === 'photo') && !added.some(x => x.kind === 'photo'),
+        order: current.length + added.length,
+        mime: f.mime,
+        size: f.size,
+        created_at: nowIso(),
+      }
+      added.push(item)
+    }
+
+    const next = normalizeMediaList([...current, ...added])
+    const updated = patchRecord(def, id, syncPrimaryMediaFields(entity, rec, next), req.ctx)
+    return { items: normalizeMediaList(updated.media), added, record: updated }
+  })
+
+  app.post('/api/media/:entity/:id/link', async (req) => {
+    const { entity, def, id, rec } = loadMediaTarget(req, true)
+    const b = z
+      .object({
+        kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']),
+        url: z.string().trim().min(4).max(2000),
+        title: z.string().trim().max(160).optional(),
+        caption: z.string().trim().max(240).optional(),
+        category: z.string().trim().max(60).optional(),
+        set_primary: z.boolean().optional(),
+      })
+      .parse(req.body ?? {})
+    if (!isSafeMediaUrl(b.url)) throw bad('Enter a valid https:// media, YouTube, Vimeo, Matterport, or 3D tour URL')
+    const current = normalizeMediaList(rec.media)
+    const item: ProjectMediaItem = {
+      id: `lnk-${crypto.randomBytes(6).toString('hex')}`,
+      kind: b.kind,
+      url: b.url,
+      title: b.title || undefined,
+      caption: b.caption || undefined,
+      category: b.category || undefined,
+      is_cover: b.kind === 'photo' && (Boolean(b.set_primary) || !current.some(x => x.kind === 'photo')),
+      order: current.length,
+      created_at: nowIso(),
+    }
+    const next = normalizeMediaList(
+      b.kind === 'photo' && b.set_primary
+        ? [item, ...current.map((x, idx) => ({ ...x, is_cover: false, order: idx + 1 }))]
+        : [...current, item],
+    )
+    const patch = syncPrimaryMediaFields(entity, rec, next)
+    if (b.set_primary || !rec.video_url) {
+      if (b.kind === 'video') patch.video_url = b.url
+    }
+    if (b.kind === 'tour3d') {
+      if (/\.(glb|gltf|usdz)(\?|#|$)/i.test(b.url)) {
+        if (entity !== 'units' && (b.set_primary || !rec.model_3d_url)) patch.model_3d_url = b.url
+      } else if (b.set_primary || !rec.virtual_tour_url) {
+        patch.virtual_tour_url = b.url
+      }
+    }
+    if (b.kind === 'floorplan' && (b.set_primary || !rec.floor_plan_url)) patch.floor_plan_url = b.url
+    if (b.kind === 'brochure' && entity !== 'units' && (b.set_primary || !rec.brochure_url)) patch.brochure_url = b.url
+    const updated = patchRecord(def, id, patch, req.ctx)
+    return { items: normalizeMediaList(updated.media), added: item, record: updated }
+  })
+
+  app.put('/api/media/:entity/:id/reorder', async (req) => {
+    const { entity, def, id, rec } = loadMediaTarget(req, true)
+    const b = z
+      .object({
+        items: z.array(
+          z.object({
+            id: z.string().min(1).max(80),
+            kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']),
+            url: z.string().min(1).max(2000),
+            attachment_id: z.number().int().positive().optional(),
+            title: z.string().max(160).optional(),
+            caption: z.string().max(240).optional(),
+            category: z.string().max(60).optional(),
+            is_cover: z.boolean().optional(),
+            order: z.number().int().min(0).optional(),
+            mime: z.string().max(120).optional(),
+            size: z.number().int().min(0).optional(),
+            created_at: z.string().max(60).optional(),
+          }),
+        ).max(200),
+        video_url: z.string().trim().max(2000).nullable().optional(),
+        virtual_tour_url: z.string().trim().max(2000).nullable().optional(),
+        model_3d_url: z.string().trim().max(2000).nullable().optional(),
+        floor_plan_url: z.string().trim().max(2000).nullable().optional(),
+        brochure_url: z.string().trim().max(2000).nullable().optional(),
+      })
+      .parse(req.body ?? {})
+
+    const next = normalizeMediaList(b.items.map((it, idx) => ({ ...it, order: idx })))
+    const patch = syncPrimaryMediaFields(entity, rec, next)
+    if (b.video_url !== undefined) patch.video_url = b.video_url || null
+    if (b.virtual_tour_url !== undefined) patch.virtual_tour_url = b.virtual_tour_url || null
+    if (b.floor_plan_url !== undefined) patch.floor_plan_url = b.floor_plan_url || null
+    if (entity !== 'units') {
+      if (b.model_3d_url !== undefined) patch.model_3d_url = b.model_3d_url || null
+      if (b.brochure_url !== undefined) patch.brochure_url = b.brochure_url || null
+    }
+    const updated = patchRecord(def, id, patch, req.ctx)
+    return { items: normalizeMediaList(updated.media), record: updated }
+  })
+
+  // One-Step Developer Project Launch Wizard API (e.g., Shahrukhz by Danube + Unit Mix + Media + Optional Website Publish)
+  app.post('/api/projects/launch', async (req) => {
+    need(req, 'properties', 'create')
+    const b = z
+      .object({
+        title: z.string().trim().min(2).max(180),
+        subtitle: z.string().trim().max(240).optional(),
+        developer_id: z.number().int().positive().nullable().optional(),
+        developer_name: z.string().trim().max(140).optional(),
+        community_id: z.number().int().positive().nullable().optional(),
+        community_name: z.string().trim().max(140).optional(),
+        sub_community: z.string().trim().max(140).optional(),
+        building_name: z.string().trim().max(140).optional(),
+        property_type: z.string().trim().max(60).default('Apartment'),
+        starting_price: z.number().min(0).optional(),
+        bedrooms: z.number().min(0).max(20).optional(),
+        bathrooms: z.number().min(0).max(20).optional(),
+        area_sqft: z.number().min(0).optional(),
+        completion_year: z.number().int().min(2024).max(2035).optional(),
+        handover_label: z.string().trim().max(80).optional(),
+        payment_plan: z.string().trim().max(160).optional(),
+        down_payment_pct: z.number().min(0).max(100).optional(),
+        roi_percent: z.number().min(0).max(100).optional(),
+        furnishing: z.string().trim().max(60).optional(),
+        tenure: z.string().trim().max(60).default('Freehold'),
+        rera_permit_no: z.string().trim().max(100).optional(),
+        permit_expiry: z.string().trim().max(20).optional(),
+        is_exclusive: z.boolean().default(true),
+        description: z.string().trim().max(10000).optional(),
+        features: z.string().trim().max(4000).optional(),
+        amenities: z.string().trim().max(4000).optional(),
+        video_url: z.string().trim().max(2000).optional(),
+        virtual_tour_url: z.string().trim().max(2000).optional(),
+        model_3d_url: z.string().trim().max(2000).optional(),
+        floor_plan_url: z.string().trim().max(2000).optional(),
+        brochure_url: z.string().trim().max(2000).optional(),
+        media_links: z
+          .array(
+            z.object({
+              kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']),
+              url: z.string().trim().min(4).max(2000),
+              title: z.string().trim().max(160).optional(),
+              caption: z.string().trim().max(240).optional(),
+              category: z.string().trim().max(60).optional(),
+            }),
+          )
+          .max(60)
+          .optional(),
+        units: z
+          .array(
+            z.object({
+              unit_no: z.string().trim().min(1).max(80),
+              unit_type: z.string().trim().max(60).default('Residential'),
+              bedrooms: z.number().min(0).max(20).optional(),
+              bathrooms: z.number().min(0).max(20).optional(),
+              area_sqft: z.number().min(0).optional(),
+              sale_price: z.number().min(0).optional(),
+              floor_no: z.number().int().optional(),
+              view: z.string().trim().max(120).optional(),
+              furnishing: z.string().trim().max(60).optional(),
+              floor_plan_url: z.string().trim().max(2000).optional(),
+              virtual_tour_url: z.string().trim().max(2000).optional(),
+              video_url: z.string().trim().max(2000).optional(),
+            }),
+          )
+          .max(50)
+          .optional(),
+        publish_to_website: z.boolean().default(false),
+        hot_offer: z.boolean().default(false),
+        create_spotlight: z.boolean().default(false),
+      })
+      .parse(req.body ?? {})
+
+    if (b.publish_to_website || b.create_spotlight) {
+      need(req, 'website', 'edit')
+    }
+
+    const mediaList: ProjectMediaItem[] = normalizeMediaList([
+      ...(b.media_links ?? []).map((m, idx) => ({
+        id: `lnk-${idx}-${crypto.randomBytes(4).toString('hex')}`,
+        kind: m.kind,
+        url: m.url,
+        title: m.title,
+        caption: m.caption,
+        category: m.category,
+        order: idx,
+        created_at: nowIso(),
+      })),
+      ...(b.video_url && isSafeMediaUrl(b.video_url) ? [{ id: 'lnk-video-main', kind: 'video' as const, url: b.video_url, title: `${b.title} — Official Video`, category: 'Project Launch Film', order: 100, created_at: nowIso() }] : []),
+      ...(b.virtual_tour_url && isSafeMediaUrl(b.virtual_tour_url) ? [{ id: 'lnk-tour-main', kind: 'tour3d' as const, url: b.virtual_tour_url, title: `${b.title} — 360° / 3D Virtual Tour`, category: '360° Virtual Tour', order: 101, created_at: nowIso() }] : []),
+      ...(b.model_3d_url && isSafeMediaUrl(b.model_3d_url) ? [{ id: 'lnk-model3d-main', kind: 'tour3d' as const, url: b.model_3d_url, title: `${b.title} — Interactive 3D Model`, category: 'Interactive 3D Model', order: 102, created_at: nowIso() }] : []),
+      ...(b.floor_plan_url && isSafeMediaUrl(b.floor_plan_url) ? [{ id: 'lnk-fp-main', kind: 'floorplan' as const, url: b.floor_plan_url, title: `${b.title} — Floor Plan`, category: 'Typical Floor Plate', order: 103, created_at: nowIso() }] : []),
+      ...(b.brochure_url && isSafeMediaUrl(b.brochure_url) ? [{ id: 'lnk-brochure-main', kind: 'brochure' as const, url: b.brochure_url, title: `${b.title} — Official Brochure`, category: 'Official Brochure', order: 104, created_at: nowIso() }] : []),
+    ])
+
+    const result = tx(() => {
+      // 1. Resolve or create Developer
+      let devRef: number | null = b.developer_id ?? null
+      let devName = (b.developer_name || '').trim()
+      if (devRef) {
+        const existingDev = q.get<{ id: number; name: string }>(`SELECT id, name FROM developers WHERE id = ? AND deleted_at IS NULL`, devRef)
+        if (existingDev) devName = existingDev.name
+        else devRef = null
+      }
+      if (!devRef && devName) {
+        const match = q.get<{ id: number; name: string }>(`SELECT id, name FROM developers WHERE lower(name) = lower(?) AND deleted_at IS NULL LIMIT 1`, devName)
+        if (match) {
+          devRef = match.id
+          devName = match.name
+        } else if (can(req.user, 'masters', 'create')) {
+          const baseCode = devName.replace(/[^A-Za-z0-9]+/g, '').toUpperCase().slice(0, 10) || 'DEV'
+          let code = baseCode
+          let n = 1
+          while (q.val(`SELECT 1 FROM developers WHERE lower(code) = lower(?) AND deleted_at IS NULL`, code)) code = `${baseCode.slice(0, 8)}${++n}`
+          const createdDev = createRecord(developerDef(), { code, name: devName, emirate: 'Dubai', active: true }, req.ctx)
+          devRef = createdDev.id
+        }
+      }
+
+      // 2. Resolve or create Community
+      let commRef: number | null = b.community_id ?? null
+      let commName = (b.community_name || '').trim()
+      if (commRef) {
+        const existingComm = q.get<{ id: number; name: string }>(`SELECT id, name FROM communities WHERE id = ? AND deleted_at IS NULL`, commRef)
+        if (existingComm) commName = existingComm.name
+        else commRef = null
+      }
+      if (!commRef && commName) {
+        const match = q.get<{ id: number; name: string }>(`SELECT id, name FROM communities WHERE lower(name) = lower(?) AND deleted_at IS NULL LIMIT 1`, commName)
+        if (match) {
+          commRef = match.id
+          commName = match.name
+        } else if (can(req.user, 'masters', 'create')) {
+          const baseCode = commName.replace(/[^A-Za-z0-9]+/g, '').toUpperCase().slice(0, 10) || 'COMM'
+          let code = baseCode
+          let n = 1
+          while (q.val(`SELECT 1 FROM communities WHERE lower(code) = lower(?) AND deleted_at IS NULL`, code)) code = `${baseCode.slice(0, 8)}${++n}`
+          const createdComm = createRecord(communityDef(), { code, name: commName, emirate: 'Dubai', area: 'Dubai', active: true }, req.ctx)
+          commRef = createdComm.id
+        }
+      }
+
+      const unitMinPrice = (b.units ?? []).map(u => u.sale_price ?? 0).filter(n => n > 0)
+      const startingPrice = b.starting_price || (unitMinPrice.length ? Math.min(...unitMinPrice) : null)
+
+      // 3. Create Off-Plan Property record
+      const prop = createRecord(
+        propertyDef(),
+        {
+          title: b.title,
+          department_division: 'Sales of Off-Plan Projects',
+          inventory_source_type: 'Direct Developer',
+          property_type: normalizePropertyType(b.property_type),
+          status: 'Off-Plan',
+          seller_finance_status: 'Off-Plan Payment Plan (Oqood)',
+          developer_ref: devRef,
+          developer_id: devName || null,
+          community_ref: commRef,
+          community_id: commName || null,
+          sub_community: b.sub_community || (!commRef && commName ? commName : null),
+          building_name: b.building_name || b.title,
+          furnishing: b.furnishing || 'Fully Furnished',
+          tenure: b.tenure || 'Freehold',
+          bedrooms: b.bedrooms ?? b.units?.[0]?.bedrooms ?? null,
+          bathrooms: b.bathrooms ?? b.units?.[0]?.bathrooms ?? null,
+          area_sqft: b.area_sqft ?? b.units?.[0]?.area_sqft ?? null,
+          price: startingPrice,
+          roi_percent: b.roi_percent ?? 5,
+          completion_year: b.completion_year ?? new Date().getFullYear() + 3,
+          payment_plan: b.payment_plan || '60/40',
+          is_off_plan: true,
+          is_exclusive: b.is_exclusive,
+          rera_permit_no: b.rera_permit_no || null,
+          permit_expiry: b.permit_expiry || null,
+          address: [b.building_name || b.title, b.sub_community, commName || 'Dubai', 'UAE'].filter(Boolean).join(', '),
+          description: b.description || `${b.title}${devName ? ` by ${devName}` : ''} — new Dubai off-plan launch${commName ? ` in ${commName}` : ''}.`,
+          features: b.features || null,
+          amenities: b.amenities || null,
+          video_url: b.video_url || null,
+          virtual_tour_url: b.virtual_tour_url || null,
+          model_3d_url: b.model_3d_url || null,
+          floor_plan_url: b.floor_plan_url || null,
+          brochure_url: b.brochure_url || null,
+          media: mediaList,
+          listed_date: todayStr(),
+          active: true,
+        },
+        req.ctx,
+      )
+
+      // 4. Create Unit Typologies / Units
+      const createdUnits: any[] = []
+      for (const u of b.units ?? []) {
+        const unit = createRecord(
+          unitDef(),
+          {
+            unit_no: u.unit_no,
+            property_id: prop.id,
+            unit_type: u.unit_type || 'Residential',
+            status: 'Available',
+            bedrooms: u.bedrooms ?? null,
+            bathrooms: u.bathrooms ?? null,
+            area_sqft: u.area_sqft ?? null,
+            sale_price: u.sale_price ?? startingPrice ?? null,
+            floor_no: u.floor_no ?? null,
+            view: u.view || null,
+            furnishing: u.furnishing || b.furnishing || 'Fully Furnished',
+            floor_plan_url: u.floor_plan_url || b.floor_plan_url || null,
+            virtual_tour_url: u.virtual_tour_url || b.virtual_tour_url || null,
+            video_url: u.video_url || b.video_url || null,
+            active: true,
+          },
+          req.ctx,
+        )
+        createdUnits.push(unit)
+      }
+
+      // 5. Optional: Publish to Website Studio (`website_listings` + `website_promotions`)
+      let websiteListing: any = null
+      let websitePromotion: any = null
+      if (b.publish_to_website) {
+        const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        const baseSlug = slugify(`${b.title}-${devName || commName || 'dubai'}`).slice(0, 80) || `launch-${prop.id}`
+        let slug = baseSlug
+        let n = 1
+        while (q.val(`SELECT 1 FROM website_listings WHERE slug = ? AND deleted_at IS NULL`, slug)) slug = `${baseSlug}-${++n}`
+        const baseRef = `SWK-OP-${new Date().getFullYear()}-${prop.id}`
+        let reference = baseRef
+        let rn = 1
+        while (q.val(`SELECT 1 FROM website_listings WHERE reference = ? AND deleted_at IS NULL`, reference)) reference = `${baseRef}-${++rn}`
+        const cover = coverPhotoUrl(mediaList) || '/media/properties/business-bay-executive-tower-2.webp'
+        const webType = ['Apartment', 'Villa', 'Townhouse', 'Penthouse', 'Duplex', 'Office'].includes(b.property_type)
+          ? b.property_type
+          : 'Apartment'
+
+        const wlPayload = {
+          reference,
+          slug,
+          title: b.title,
+          subtitle: b.subtitle || `${devName ? `${devName} · ` : ''}${commName || 'Dubai'} · ${b.payment_plan || 'Flexible Developer Payment Plan'}`,
+          purpose: 'off-plan',
+          status: 'available',
+          property_type: webType,
+          published: true,
+          hot_offer: b.hot_offer,
+          badge: 'New Launch',
+          sort_order: b.hot_offer ? 1 : 20,
+          community: commName || 'Dubai',
+          community_slug: slugify(commName || 'dubai'),
+          building: b.building_name || b.title,
+          developer: devName || 'Master Developer',
+          developer_slug: slugify(devName || 'developer'),
+          price_aed: startingPrice || 0,
+          bedrooms: b.bedrooms ?? b.units?.[0]?.bedrooms ?? 1,
+          bathrooms: b.bathrooms ?? b.units?.[0]?.bathrooms ?? 2,
+          area_sqft: b.area_sqft ?? b.units?.[0]?.area_sqft ?? 0,
+          furnished: b.furnishing === 'Unfurnished' ? 'Unfurnished' : b.furnishing === 'Semi-Furnished' ? 'Partly furnished' : 'Furnished',
+          completion: 'Off-Plan',
+          handover: b.handover_label || (b.completion_year ? `Q4 ${b.completion_year}` : '2029'),
+          payment_plan: b.payment_plan || null,
+          down_payment_pct: b.down_payment_pct ?? 10,
+          agent_slug: 'mohammad-haseeb',
+          image_url: cover,
+          video_url: b.video_url || null,
+          virtual_tour_url: b.virtual_tour_url || null,
+          model_3d_url: b.model_3d_url || null,
+          floor_plan_url: b.floor_plan_url || null,
+          brochure_url: b.brochure_url || null,
+          description: b.description || `${b.title}${devName ? ` by ${devName}` : ''}`,
+          features: [b.features, b.amenities].filter(Boolean).join('\n'),
+          listed_at: todayStr(),
+          media: mediaList,
+        }
+        assertZeroShabibPublicPayload(wlPayload, 'Developer Project Launch Website Listing')
+        websiteListing = createRecord(getDef('website_listings'), wlPayload, req.ctx)
+
+        if (b.create_spotlight) {
+          const promoPayload = {
+            title: b.title,
+            short_title: b.title.split(/\s+/).slice(0, 3).join(' '),
+            eyebrow: `NEW LAUNCH · ${(devName || commName || 'DUBAI').toUpperCase()}`,
+            tab: 'off-plan',
+            active: true,
+            sort_order: 1,
+            developer: devName || '',
+            community: commName || 'Dubai',
+            price_guide: startingPrice ? `From AED ${Math.round(startingPrice).toLocaleString('en-US')}` : 'Prices On Request',
+            plan_highlight: `${b.payment_plan || 'Direct Developer Plan'} · 0% Buyer Fee`,
+            image: cover,
+            href: `/properties/${slug}`,
+            benefits: [b.features, b.amenities].filter(Boolean).join('\n').split(/\r?\n|,/).map(s => s.trim()).filter(Boolean).slice(0, 5).join('\n'),
+          }
+          assertZeroShabibPublicPayload(promoPayload, 'Developer Project Launch Promotion')
+          websitePromotion = createRecord(getDef('website_promotions'), promoPayload, req.ctx)
+        }
+      }
+
+      return { property: prop, units: createdUnits, websiteListing, websitePromotion, developerId: devRef, communityId: commRef }
+    })
+
+    return result
+  })
+
+  // Legacy property/unit media upload/delete endpoints (preserved for backwards compatibility)
   app.post('/api/properties/:id/media', async (req) => {
     const { id } = loadProperty(req, true)
-    const b = z.object({ url: z.string().url(), caption: z.string().max(200).optional(), order: z.number().int().min(0).optional() }).parse(req.body)
+    const b = z.object({ url: z.string().min(4), caption: z.string().max(200).optional(), order: z.number().int().min(0).optional(), kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']).optional() }).parse(req.body)
+    if (!isSafeMediaUrl(b.url)) throw bad('Invalid media URL')
     const prop = getRecord(propertyDef(), id, req.ctx)
-    const media = prop.media ? JSON.parse(prop.media) : []
-    media.push({ url: b.url, caption: b.caption, order: b.order ?? media.length, created_at: new Date().toISOString() })
-    return patchRecord(propertyDef(), id, { media: JSON.stringify(media) }, req.ctx)
+    const media = normalizeMediaList(prop.media)
+    media.push({ id: `m-${crypto.randomBytes(4).toString('hex')}`, kind: b.kind ?? 'photo', url: b.url, caption: b.caption, order: b.order ?? media.length, created_at: nowIso() })
+    return patchRecord(propertyDef(), id, { media: normalizeMediaList(media) }, req.ctx)
   })
 
   app.delete('/api/properties/:id/media/:mediaId', async (req) => {
     const { id } = loadProperty(req, true)
     const mediaId = idOf((req.params as any).mediaId)
     const prop = getRecord(propertyDef(), id, req.ctx)
-    const media = prop.media ? JSON.parse(prop.media) : []
-    const filtered = media.filter((m: any, i: number) => i !== mediaId)
-    return patchRecord(propertyDef(), id, { media: JSON.stringify(filtered) }, req.ctx)
+    const media = normalizeMediaList(prop.media)
+    const filtered = media.filter((_, i) => i !== mediaId)
+    return patchRecord(propertyDef(), id, { media: filtered }, req.ctx)
   })
 
-  // Unit media upload/delete
   app.post('/api/units/:id/media', async (req) => {
     const { id } = loadUnit(req, true)
-    const b = z.object({ url: z.string().url(), caption: z.string().max(200).optional(), order: z.number().int().min(0).optional() }).parse(req.body)
+    const b = z.object({ url: z.string().min(4), caption: z.string().max(200).optional(), order: z.number().int().min(0).optional(), kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']).optional() }).parse(req.body)
+    if (!isSafeMediaUrl(b.url)) throw bad('Invalid media URL')
     const unit = getRecord(unitDef(), id, req.ctx)
-    const media = unit.media ? JSON.parse(unit.media) : []
-    media.push({ url: b.url, caption: b.caption, order: b.order ?? media.length, created_at: new Date().toISOString() })
-    return patchRecord(unitDef(), id, { media: JSON.stringify(media) }, req.ctx)
+    const media = normalizeMediaList(unit.media)
+    media.push({ id: `m-${crypto.randomBytes(4).toString('hex')}`, kind: b.kind ?? 'photo', url: b.url, caption: b.caption, order: b.order ?? media.length, created_at: nowIso() })
+    return patchRecord(unitDef(), id, { media: normalizeMediaList(media) }, req.ctx)
   })
 
   app.delete('/api/units/:id/media/:mediaId', async (req) => {
     const { id } = loadUnit(req, true)
     const mediaId = idOf((req.params as any).mediaId)
     const unit = getRecord(unitDef(), id, req.ctx)
-    const media = unit.media ? JSON.parse(unit.media) : []
-    const filtered = media.filter((m: any, i: number) => i !== mediaId)
-    return patchRecord(unitDef(), id, { media: JSON.stringify(filtered) }, req.ctx)
+    const media = normalizeMediaList(unit.media)
+    const filtered = media.filter((_, i) => i !== mediaId)
+    return patchRecord(unitDef(), id, { media: filtered }, req.ctx)
   })
 
   // Bulk status updates

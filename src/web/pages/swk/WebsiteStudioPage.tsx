@@ -7,11 +7,13 @@ import {
   ArrowUpRight,
   Bath,
   BedDouble,
+  Box,
   CheckCircle2,
   Download,
   Expand,
   Eye,
   EyeOff,
+  Film,
   Flame,
   GitCommitHorizontal,
   Globe,
@@ -24,13 +26,15 @@ import {
   Share2,
   ShieldCheck,
 } from 'lucide-react'
+import { AuthImg } from '../../components/AuthMedia'
+import { DeveloperProjectLaunchModal } from '../../components/DeveloperProjectLaunchModal'
 import { ShareWithClient } from '../../components/ShareWithClient'
 import { downloadAuthFile, get, post, put } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { useMeta } from '../../lib/meta'
 import { websiteImage, WEBSITE_URL } from '@shared/entities/website'
 
-type Listing = { id: number; version: number; reference: string; slug: string; title: string; purpose: string; status: string; property_type: string; published: boolean; hot_offer: boolean; badge?: string | null; community: string; building?: string; developer?: string; price_aed: number; bedrooms?: number; bathrooms?: number; area_sqft?: number; image_url?: string }
+type Listing = { id: number; version: number; reference: string; slug: string; title: string; purpose: string; status: string; property_type: string; published: boolean; hot_offer: boolean; badge?: string | null; community: string; building?: string; developer?: string; price_aed: number; bedrooms?: number; bathrooms?: number; area_sqft?: number; image_url?: string; video_url?: string; virtual_tour_url?: string; model_3d_url?: string }
 type Promo = { id: number; version: number; title: string; eyebrow?: string; tab: string; active: boolean; price_guide?: string; plan_highlight?: string; image?: string; href?: string; community?: string }
 type Status = { config: { repo: string; branch: string; tokenSet: boolean; hookSet: boolean }; last: Record<string, any> | null; published: number; hot: number; promotions: number; siteUpdates?: any; zeroShabibGuard?: boolean; problems: string[] }
 
@@ -43,10 +47,19 @@ function ListingCard({ l, onToggle, onShare }: { l: Listing; onToggle: (field: '
   return (
     <article className={`web-card hoverable group flex h-full flex-col overflow-hidden ${l.published ? '' : 'opacity-60'}`}>
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#eaf2f8]">
-        {l.image_url ? <img src={websiteImage(l.image_url)} alt={l.title} loading="lazy" className="size-full object-cover transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:brightness-[0.86]" /> : <div className="grid size-full place-items-center text-[12px] text-[#5b6778]">No image yet</div>}
+        {l.image_url ? (
+          <AuthImg
+            src={l.image_url.startsWith('/api/files/') || l.image_url.startsWith('/media/') ? l.image_url : websiteImage(l.image_url)}
+            alt={l.title}
+            loading="lazy"
+            className="size-full object-cover transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:brightness-[0.86]"
+          />
+        ) : <div className="grid size-full place-items-center text-[12px] text-[#5b6778]">No image yet</div>}
         <div className="pointer-events-none absolute left-3.5 top-3.5 flex flex-wrap items-center gap-1.5">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#121212]/82 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white backdrop-blur-md"><span className="size-1.5 rounded-[2px]" style={{ background: statusDot(l) }} aria-hidden="true" />{statusText(l)}</span>
           {l.hot_offer && <span className="inline-flex items-center gap-1 rounded-full bg-[#121212] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#51fec0]"><Flame size={11} /> Hot offer</span>}
+          {l.video_url && <span className="inline-flex items-center gap-1 rounded-full bg-[#121212]/85 px-2.5 py-1 text-[10px] font-semibold text-white"><Film size={10} /> Video</span>}
+          {(l.virtual_tour_url || l.model_3d_url) && <span className="inline-flex items-center gap-1 rounded-full bg-[#121212]/85 px-2.5 py-1 text-[10px] font-semibold text-[#51fec0]"><Box size={10} /> 3D</span>}
           {!l.published && <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-medium text-[#121212]">Hidden</span>}
         </div>
         <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5">
@@ -107,6 +120,7 @@ export default function WebsiteStudioPage() {
   const [deploying, setDeploying] = useState(false)
   const [savingUpdates, setSavingUpdates] = useState(false)
   const [share, setShare] = useState<Listing | null>(null)
+  const [launchOpen, setLaunchOpen] = useState(false)
 
   const listingsQ = useQuery({ queryKey: ['website', 'listings'], queryFn: () => get<{ rows: Listing[] }>('/api/e/website_listings', { pageSize: 1000, sort: 'sort_order', dir: 'asc' }) })
   const promosQ = useQuery({ queryKey: ['website', 'promotions'], queryFn: () => get<{ rows: Promo[] }>('/api/e/website_promotions', { pageSize: 200, sort: 'sort_order', dir: 'asc' }) })
@@ -201,6 +215,7 @@ export default function WebsiteStudioPage() {
           <p className="web-lead">Manage inventory, hot offers, live site announcements, and social media campaigns directly from SWK OS and publish to swkpropertiesuae.com in one click.</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {canEdit && <button type="button" onClick={() => setLaunchOpen(true)} className="web-btn light"><Plus size={14} /> Launch Developer Project</button>}
           <a href={WEBSITE_URL} target="_blank" rel="noopener noreferrer" className="web-btn light"><Globe size={14} /> Open website</a>
           <button type="button" onClick={() => void downloadAuthFile('/api/website/export.json', 'website-export.json').catch(e => toast.error(e.message))} className="web-btn light"><Download size={14} /> Download data</button>
           {canEdit && <button type="button" className="web-btn" onClick={() => void deploy()} disabled={deploying || !st?.config.tokenSet}><Rocket size={14} /> {deploying ? 'Deploying…' : 'Publish & deploy'}</button>}
@@ -340,6 +355,7 @@ export default function WebsiteStudioPage() {
       )}
 
       {share && <ShareWithClient entity="website_listings" ids={[share.id]} label={share.title} onClose={() => setShare(null)} />}
+      {launchOpen && <DeveloperProjectLaunchModal onClose={() => setLaunchOpen(false)} onCreated={() => refresh()} />}
     </div>
   )
 }
