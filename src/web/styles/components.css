@@ -226,7 +226,7 @@
     padding-right: 44px;
   }
   .ref-select .input {
-    padding-inline-end: 56px;
+    padding-inline-end: 74px;
   }
   .ref-select-actions {
     inset-inline-end: 6px;
@@ -234,6 +234,42 @@
   .ref-select:focus-within {
     z-index: 40;
     position: relative;
+  }
+  .swk-custom-select {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+  }
+  .swk-custom-select-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+  .swk-custom-select-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    min-height: 32px;
+    border-radius: 10px;
+    border: 1px solid var(--line-strong);
+    background: var(--soft);
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.14s, color 0.14s, background-color 0.14s;
+  }
+  .swk-custom-select-btn:hover {
+    border-color: #0b1f2a;
+    background: var(--card);
+    color: var(--ink);
+  }
+  .swk-custom-select.compact .swk-custom-select-btn {
+    width: 28px;
+    min-height: 28px;
+    border-radius: 8px;
   }
   .label {
     display: block;

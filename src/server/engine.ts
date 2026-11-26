@@ -114,7 +114,20 @@ export function rowToApi(def: EntityDef, row: Row, light = false): Rec {
 
 // ------------------------------------------------------------------ validation
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-function coerceIn(f: FieldDef, v: any): any {
+/** System / ledger / regulatory state-machine select fields that must stay within their canonical enum values. */
+const STRICT_SELECT_FIELDS: Record<string, ReadonlySet<string>> = {
+  automation_rules: new Set(['trigger', 'action', 'operator']),
+  ai_agents: new Set(['autonomy', 'schedule']),
+  accounts: new Set(['type']),
+  vat_codes: new Set(['category']),
+  job_charges: new Set(['kind']),
+  dld_filings: new Set(['status']),
+  aml_reports: new Set(['status']),
+  invoices: new Set(['status', 'doc_type']),
+  bills: new Set(['status']),
+  journal_entries: new Set(['status']),
+}
+function coerceIn(f: FieldDef, v: any, entityKey?: string): any {
   if (v === undefined) return undefined
   if (v === null || v === '') return null
   switch (f.type) {
@@ -137,9 +150,13 @@ function coerceIn(f: FieldDef, v: any): any {
     }
     case 'bool': return v === true || v === 1 || v === '1' || v === 'true' || v === 'on' || v === 'yes' || v === 'Yes'
     case 'select': {
-      const s = String(v)
-      const ok = (f.options ?? []).map(optValue)
-      if (!ok.includes(s)) throw bad(`${f.label}: "${s}" is not a valid option`)
+      const s = String(v).trim().slice(0, f.maxLength ?? 200)
+      if (!s) return null
+      const strict = Boolean(entityKey && STRICT_SELECT_FIELDS[entityKey]?.has(f.name))
+      if (strict) {
+        const ok = (f.options ?? []).map(optValue)
+        if (!ok.includes(s)) throw bad(`${f.label}: "${s}" is not a valid option`)
+      }
       return s
     }
     case 'ref': { const n = Number(v); if (!Number.isInteger(n) || n <= 0) throw bad(`${f.label}: invalid reference`); return n }
@@ -486,11 +503,11 @@ function applyPayload(def: EntityDef, base: Rec, payload: Rec, isNew: boolean, c
     const writable = !f.readonly && !f.computed && !f.virtual
     if (f.virtual) { if (payload[f.name] !== undefined) out[f.name] = payload[f.name]; continue }
     if (!writable && !ctx.system) continue
-    if (payload[f.name] !== undefined) out[f.name] = coerceIn(f, payload[f.name])
+    if (payload[f.name] !== undefined) out[f.name] = coerceIn(f, payload[f.name], def.key)
   }
   if (isNew) for (const f of def.fields) if (out[f.name] === undefined || (out[f.name] === null && !f.computed && f.default !== undefined && payload[f.name] === undefined)) {
     const d = defaultValue(f, ctx)
-    if (d !== undefined && !f.virtual) out[f.name] = coerceIn(f, d)
+    if (d !== undefined && !f.virtual) out[f.name] = coerceIn(f, d, def.key)
   }
   return out
 }
@@ -569,11 +586,11 @@ function saveChildren(def: EntityDef, parentId: number, incoming: Record<string,
       const rec: Rec = { ...base }
       for (const f of cdef.fields) {
         if (f.secret || f.virtual) continue
-        if (raw[f.name] !== undefined) rec[f.name] = coerceIn(f, raw[f.name])
+        if (raw[f.name] !== undefined) rec[f.name] = coerceIn(f, raw[f.name], cdef.key)
       }
       rec[c.fk] = parentId
       if (cdef.fields.some(f => f.name === 'seq') && !rec.seq) rec.seq = seq
-      if (!rid) for (const f of cdef.fields) if (rec[f.name] === undefined) { const d = defaultValue(f, ctx); if (d !== undefined) rec[f.name] = coerceIn(f, d) }
+      if (!rid) for (const f of cdef.fields) if (rec[f.name] === undefined) { const d = defaultValue(f, ctx); if (d !== undefined) rec[f.name] = coerceIn(f, d, cdef.key) }
       checkRequired(cdef, rec)
       assertRefs(cdef, rec)
       if (rid) {

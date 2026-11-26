@@ -5,6 +5,7 @@ import { BarChart3, Download, Play, Printer, Check } from 'lucide-react'
 import { buildApiPath, downloadAuthFile, get } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { RefSelect } from '../components/RefSelect'
+import { CustomSelect } from '../components/CustomSelect'
 import { Empty, ErrorBox, Loading, PageHeader, Spinner, Badge } from '../ui/kit'
 import { cls, fmtDate, fmtDateTime, fmtMoney, fmtNum } from '../lib/format'
 
@@ -185,10 +186,10 @@ export function ReportsPage({ fixed }: { fixed?: string[] }) {
                       ) : pd.type === 'ref' ? (
                         <RefSelect entity={pd.ref} value={params[pd.name] ? Number(params[pd.name]) : null} onChange={id => setParams(p => ({ ...p, [pd.name]: id ? String(id) : '' }))} />
                       ) : pd.type === 'select' ? (
-                        <select className="select" value={params[pd.name] ?? ''} onChange={e => setParams(p => ({ ...p, [pd.name]: e.target.value }))}>
+                        <CustomSelect className="select" value={params[pd.name] ?? ''} onChange={e => setParams(p => ({ ...p, [pd.name]: e.target.value }))}>
                           <option value="">All</option>
                           {pd.options.map((o: string) => <option key={o}>{o}</option>)}
-                        </select>
+                        </CustomSelect>
                       ) : (
                         <input className="input" type={pd.type === 'number' ? 'number' : 'text'} value={params[pd.name] ?? ''} onChange={e => setParams(p => ({ ...p, [pd.name]: e.target.value }))} />
                       )}

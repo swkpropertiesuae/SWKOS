@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -274,16 +275,16 @@ export default function ShabibsCornerPage() {
                 <input className="input" placeholder="Private Phone" value={ftJob.client_phone} onChange={e => setFtJob({ ...ftJob, client_phone: e.target.value })} />
                 <input className="input col-span-2" required placeholder="Property / Unit Label *" value={ftJob.property_label} onChange={e => setFtJob({ ...ftJob, property_label: e.target.value })} />
                 <input className="input" placeholder="Community (e.g. Marina)" value={ftJob.community} onChange={e => setFtJob({ ...ftJob, community: e.target.value })} />
-                <select className="select" value={ftJob.urgency} onChange={e => setFtJob({ ...ftJob, urgency: e.target.value })}>
+                <CustomSelect className="select" value={ftJob.urgency} onChange={e => setFtJob({ ...ftJob, urgency: e.target.value })}>
                   <option value="CASH_IMMEDIATE">CASH NEEDED IMMEDIATELY</option>
                   <option value="VIP_PRIVATE">VIP PRIVATE FAST LANE</option>
                   <option value="CONFIDENTIAL">CONFIDENTIAL OWNER FILE</option>
-                </select>
+                </CustomSelect>
                 <input className="input" type="number" placeholder="Deal Value (AED)" value={ftJob.deal_value_aed} onChange={e => setFtJob({ ...ftJob, deal_value_aed: e.target.value })} />
                 <input className="input" type="number" placeholder="Expected Cash / Fee (AED)" value={ftJob.expected_cash_aed} onChange={e => setFtJob({ ...ftJob, expected_cash_aed: e.target.value })} />
-                <select className="select" value={ftJob.stage_12} onChange={e => setFtJob({ ...ftJob, stage_12: e.target.value })}>
+                <CustomSelect className="select" value={ftJob.stage_12} onChange={e => setFtJob({ ...ftJob, stage_12: e.target.value })}>
                   {PIPELINE_12_STAGES.map(s => <option key={s.code} value={s.code}>{s.label}</option>)}
-                </select>
+                </CustomSelect>
                 <input className="input" type="date" value={ftJob.target_cash_date} onChange={e => setFtJob({ ...ftJob, target_cash_date: e.target.value })} />
               </div>
               <textarea className="input min-h-[68px]" placeholder="Confidential instructions / cash arrangement notes…" value={ftJob.notes} onChange={e => setFtJob({ ...ftJob, notes: e.target.value })} />
@@ -298,13 +299,13 @@ export default function ShabibsCornerPage() {
                 <Receipt size={16} className="text-[#8a621c]" /> Issue Custom Private UAE VAT Invoice
               </h3>
               <div className="grid grid-cols-2 gap-2.5">
-                <select className="select col-span-2" value={ftInv.job_id} onChange={e => {
+                <CustomSelect className="select col-span-2" value={ftInv.job_id} onChange={e => {
                   const job = ft.jobs.find((j: any) => String(j.id) === e.target.value)
                   setFtInv({ ...ftInv, job_id: e.target.value, client_name: job ? job.client_name : ftInv.client_name })
                 }}>
                   <option value="">Standalone Custom Invoice (or link Fast-Track File)</option>
                   {ft.jobs.map((j: any) => <option key={j.id} value={j.id}>{j.ref_code} · {j.client_name} ({j.property_label})</option>)}
-                </select>
+                </CustomSelect>
                 <input className="input" required placeholder="Billed To (Client) *" value={ftInv.client_name} onChange={e => setFtInv({ ...ftInv, client_name: e.target.value })} />
                 <input className="input" placeholder="Client TRN (optional)" value={ftInv.client_trn} onChange={e => setFtInv({ ...ftInv, client_trn: e.target.value })} />
                 <input className="input col-span-2" required placeholder="Service / Advisory Description *" value={ftInv.description} onChange={e => setFtInv({ ...ftInv, description: e.target.value })} />
@@ -323,9 +324,9 @@ export default function ShabibsCornerPage() {
               </h3>
               <div className="grid grid-cols-2 gap-2.5">
                 <input className="input" required placeholder="Document Title *" value={ftDoc.title} onChange={e => setFtDoc({ ...ftDoc, title: e.target.value })} />
-                <select className="select" value={ftDoc.doc_type} onChange={e => setFtDoc({ ...ftDoc, doc_type: e.target.value })}>
+                <CustomSelect className="select" value={ftDoc.doc_type} onChange={e => setFtDoc({ ...ftDoc, doc_type: e.target.value })}>
                   {['Private Memo', 'Mandate', 'Agreement', 'MOU', 'NOC', 'Invoice', 'KYC'].map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                </CustomSelect>
               </div>
               <textarea className="input min-h-[76px]" required placeholder="Private terms, payment undertaking, or VIP client instructions…" value={ftDoc.content_text} onChange={e => setFtDoc({ ...ftDoc, content_text: e.target.value })} />
               <button disabled={busy} type="submit" className="btn outline w-full justify-center">
@@ -371,8 +372,9 @@ export default function ShabibsCornerPage() {
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 pt-2.5 border-t border-line">
-                        <select
-                          className="select text-xs h-8 py-0 max-w-[230px]"
+                        <CustomSelect
+                          compact
+                          className="select text-xs h-8 py-0 max-w-[260px]"
                           value={j.stage_12}
                           onChange={async e => {
                             await put(`/api/privacy-fast-track/jobs/${j.id}`, { stage_12: e.target.value })
@@ -381,9 +383,10 @@ export default function ShabibsCornerPage() {
                           }}
                         >
                           {PIPELINE_12_STAGES.map(s => <option key={s.code} value={s.code}>{s.label}</option>)}
-                        </select>
-                        <select
-                          className="select text-xs h-8 py-0 max-w-[150px]"
+                        </CustomSelect>
+                        <CustomSelect
+                          compact
+                          className="select text-xs h-8 py-0 max-w-[180px]"
                           value={j.status}
                           onChange={async e => {
                             await put(`/api/privacy-fast-track/jobs/${j.id}`, { status: e.target.value })
@@ -392,7 +395,7 @@ export default function ShabibsCornerPage() {
                           }}
                         >
                           {['Active', 'Cash Collected', 'Closed', 'On Hold'].map(st => <option key={st} value={st}>{st}</option>)}
-                        </select>
+                        </CustomSelect>
                         <div className="flex-1" />
                         <button
                           type="button"

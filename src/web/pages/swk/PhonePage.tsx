@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import {
   Check,
   Copy,
@@ -1120,7 +1121,7 @@ export default function PhonePage() {
               </div>
               <div>
                 <label className="label">Caller ID Policy</label>
-                <select
+                <CustomSelect
                   className="select"
                   value={cfgForm.sip_caller_id_mode}
                   onChange={(e) => setCfgForm((f) => ({ ...f, sip_caller_id_mode: e.target.value }))}
@@ -1128,7 +1129,7 @@ export default function PhonePage() {
                   <option value="company_main">Company Main DID (Recommended)</option>
                   <option value="extension_did">Extension Assigned DID</option>
                   <option value="anonymous">Private / Anonymous</option>
-                </select>
+                </CustomSelect>
               </div>
               <div>
                 <label className="label">Masked Vault Dial Prefix</label>

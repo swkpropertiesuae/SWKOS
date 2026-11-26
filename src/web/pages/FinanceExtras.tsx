@@ -6,6 +6,7 @@ import { downloadAuthFile, get, post } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { PageHeader,Loading,ErrorBox,Badge,Empty } from '../ui/kit'
 import { useDialogs } from '../ui/kit'
+import { CustomSelect } from '../components/CustomSelect'
 import { fmtMoney } from '../lib/format'
 
 export function BankImportPage() {
@@ -19,7 +20,7 @@ export function BankImportPage() {
     <div className="fade-in max-w-3xl">
       <PageHeader icon={<FileUp size={20} />} title="Bank statement import" subtitle="Upload a CSV or SWIFT MT940 statement. Lines are de-duplicated and automatically matched to posted receipts and payments (same amount within 10 days)." actions={<Link className="btn outline" to="/e/bank_transactions">Open reconciliation</Link>} />
       <div className="card p-4 md:p-5 grid gap-4">
-        <div><label className="label">Bank account</label><select className="select" value={bank} onChange={e => setBank(e.target.value)}><option value="">Choose…</option>{banks.data.rows.map((b: any) => <option key={b.id} value={b.id}>{b.name} {b.iban ? `(${b.iban})` : ''}</option>)}</select></div>
+        <div><label className="label">Bank account</label><CustomSelect className="select" value={bank} onChange={e => setBank(e.target.value)}><option value="">Choose…</option>{banks.data.rows.map((b: any) => <option key={b.id} value={b.id}>{b.name} {b.iban ? `(${b.iban})` : ''}</option>)}</CustomSelect></div>
         <div><label className="label">Statement file (.csv, .txt, .sta, .mt940)</label><input className="input" type="file" accept=".csv,.txt,.sta,.mt940,.940" onChange={e => void pick(e.target.files?.[0])} />
           <div className="text-xs text-muted mt-1">CSV needs a header row with Date and Debit/Credit (or Amount) columns; day-first dates (31/12/2026) are understood. {name && <b>Loaded: {name} ({text.length.toLocaleString()} characters)</b>}</div></div>
         <div className="flex gap-2 items-center"><button className="btn green" disabled={!bank || !text || busy} onClick={() => void run()}><FileUp /> {busy ? 'Importing…' : 'Import & auto-match'}</button>
@@ -49,8 +50,8 @@ export function YearEndPage() {
     <div className="fade-in max-w-4xl">
       <PageHeader icon={<CalendarCheck2 size={20} />} title="Year-end close" subtitle="Close the books: transfer profit or loss to retained earnings and lock the period." actions={<span className="text-sm text-muted flex items-center gap-1"><Lock size={14} /> Locked up to: <b>{settings.data?.lock_date || 'none'}</b></span>} />
       <div className="card p-4 md:p-5 grid gap-4">
-        <div className="grid gap-3 sm:grid-cols-3"><div><label className="label">Financial year (Jan–Dec)</label><select className="select" value={year} onChange={e => setYear(Number(e.target.value))}>{Array.from({ length: 8 }, (_, i) => thisYear - i).map(y => <option key={y}>{y}</option>)}</select></div>
-          <div><label className="label">Legal entity</label><select className="select" value={entity} onChange={e => setEntity(e.target.value)}><option value="">All / default</option>{ents.data?.rows.map((e: any) => <option key={e.id} value={e.id}>{e.code} – {e.name}</option>)}</select></div></div>
+        <div className="grid gap-3 sm:grid-cols-3"><div><label className="label">Financial year (Jan–Dec)</label><CustomSelect className="select" value={year} onChange={e => setYear(Number(e.target.value) || thisYear - 1)}>{Array.from({ length: 8 }, (_, i) => thisYear - i).map(y => <option key={y}>{y}</option>)}</CustomSelect></div>
+          <div><label className="label">Legal entity</label><CustomSelect className="select" value={entity} onChange={e => setEntity(e.target.value)}><option value="">All / default</option>{ents.data?.rows.map((e: any) => <option key={e.id} value={e.id}>{e.code} – {e.name}</option>)}</CustomSelect></div></div>
         {prev.error ? <ErrorBox error={prev.error} /> : !prev.data ? <Loading /> : <>
           <div className="flex gap-3 flex-wrap items-center"><div className="rounded-xl bg-soft border border-line px-4 py-2"><div className="text-xs text-muted">Net profit / (loss) {year}</div><div className="text-[22px] font-extrabold font-display">{fmtMoney(prev.data.net_result)}</div></div>
             {prev.data.already_closed ? <Badge value="Already closed" tone="green" /> : <button className="btn green" disabled={busy || !prev.data.accounts.length} onClick={() => void close()}><Lock /> Close {year}</button>}

@@ -6,6 +6,7 @@ import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
 import { Badge,Loading,Modal,PageHeader } from '../../ui/kit'
 import { useToast } from '../../lib/toast'
+import { CustomSelect } from '../../components/CustomSelect'
 
 export default function RecycleBinPage() {
   const { me } = useMeta()
@@ -449,13 +450,13 @@ export default function RecycleBinPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Decision Category</label>
-                <select className="input" value={decForm.category} onChange={e => setDecForm(f => ({ ...f, category: e.target.value }))}>
+                <CustomSelect className="input" value={decForm.category} onChange={e => setDecForm(f => ({ ...f, category: e.target.value }))}>
                   <option>Operational Policy / Budget Decision</option>
                   <option>HR / Staff Visa / Onboarding Decision</option>
                   <option>Portal Marketing Spend (Bayut / Dubizzle)</option>
                   <option>Special Commission / A2A Split Exception</option>
                   <option>Client Refund / Deal Settlement</option>
-                </select>
+                </CustomSelect>
               </div>
               <div>
                 <label className="label">Financial Impact (AED)</label>

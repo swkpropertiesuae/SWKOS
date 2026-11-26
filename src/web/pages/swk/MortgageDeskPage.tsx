@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -131,13 +132,13 @@ export default function MortgageDeskPage() {
           </h2>
           <div className="grid grid-cols-2 gap-2.5">
             <input className="input col-span-2" required placeholder="Client Name *" value={ev.client_name} onChange={e => setEv({ ...ev, client_name: e.target.value })} />
-            <select className="select" value={ev.event_type} onChange={e => setEv({ ...ev, event_type: e.target.value })}>
+            <CustomSelect className="select" value={ev.event_type} onChange={e => setEv({ ...ev, event_type: e.target.value })}>
               {['Valuation Booking', 'Pre-Approval Deadline', 'Form F Expiry', 'FOL Signing', 'DLD Trustee Date', 'Bank RM Follow-up'].map(x => <option key={x} value={x}>{x}</option>)}
-            </select>
+            </CustomSelect>
             <input className="input" type="date" required value={ev.due_date} onChange={e => setEv({ ...ev, due_date: e.target.value })} />
-            <select className="select" value={ev.bank_name} onChange={e => setEv({ ...ev, bank_name: e.target.value })}>
+            <CustomSelect className="select" value={ev.bank_name} onChange={e => setEv({ ...ev, bank_name: e.target.value })}>
               {['Emirates NBD', 'FAB', 'ADCB', 'Mashreq', 'DIB', 'CBD', 'HSBC', 'RAKBANK', 'Standard Chartered', 'Ajman Bank'].map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
+            </CustomSelect>
             <input className="input" type="number" placeholder="Loan Amount (AED)" value={ev.loan_amount_aed} onChange={e => setEv({ ...ev, loan_amount_aed: e.target.value })} />
             <input className="input" placeholder="Bank RM Name" value={ev.rm_name} onChange={e => setEv({ ...ev, rm_name: e.target.value })} />
             <input className="input" placeholder="Bank RM Phone" value={ev.rm_phone} onChange={e => setEv({ ...ev, rm_phone: e.target.value })} />
@@ -174,8 +175,9 @@ export default function MortgageDeskPage() {
                       {item.rm_name && <span className="inline-flex items-center gap-1"><PhoneCall size={11} /> RM: {item.rm_name} {item.rm_phone || ''}</span>}
                     </div>
                   </div>
-                  <select
-                    className="select h-8 py-0 text-xs w-[124px]"
+                  <CustomSelect
+                    compact
+                    className="select h-8 py-0 text-xs w-[158px]"
                     value={item.status}
                     onChange={async e => {
                       await put(`/api/mortgage-desk/events/${item.id}`, { status: e.target.value })
@@ -184,7 +186,7 @@ export default function MortgageDeskPage() {
                     }}
                   >
                     {['Scheduled', 'Urgent', 'Overdue', 'Completed'].map(st => <option key={st} value={st}>{st}</option>)}
-                  </select>
+                  </CustomSelect>
                 </div>
               ))}
             </div>

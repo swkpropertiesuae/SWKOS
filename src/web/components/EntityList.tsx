@@ -12,6 +12,7 @@ import { canViewEmployeeRecords } from '@shared/swk-staff-access'
 import { useMeta,type MetaEntity } from '../lib/meta'
 import { buildApiPath, del, get, post, put, downloadAuthFile } from '../lib/api'
 import { CellValue } from './Fields'
+import { CustomSelect } from './CustomSelect'
 import { EntityFormModal } from './EntityForm'
 import { Badge,Empty,ErrorBox,Modal,PageHeader,Pagination,useDialogs,Loading } from '../ui/kit'
 import { iconByName } from '../lib/icons'
@@ -124,7 +125,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
       <div className="entity-surface card overflow-hidden">
         <div className="flex items-center gap-2 p-3 flex-wrap border-b border-line">
           <div className="relative flex-1 min-w-[200px] max-w-[420px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" /><input className="input pl-9" placeholder={`Search ${def.plural.toLowerCase()}…`} value={search} onChange={e => setSearch(e.target.value)} aria-label="Search" /></div>
-          {statusOpts.length > 0 && <select className="select" style={{ width: 170 }} value={status} onChange={e => setParam({ status: e.target.value, page: null })} aria-label="Status filter"><option value="">All statuses</option>{statusOpts.map(o => <option key={o}>{o}</option>)}</select>}
+          {statusOpts.length > 0 && <CustomSelect compact className="select" style={{ width: 200 }} value={status} onChange={e => setParam({ status: e.target.value, page: null })} aria-label="Status filter"><option value="">All statuses</option>{statusOpts.map(o => <option key={o}>{o}</option>)}</CustomSelect>}
           <button className={cls('btn outline', filters.length > 0 && 'ring-2 ring-emerald/40')} onClick={() => setShowFilters(s => !s)}><Filter /> Filters{filters.length ? ` (${filters.length})` : ''}</button>
           {(selectFields.length > 0 || dateFields.length > 0) && <div className="flex gap-1" role="tablist" aria-label="View">
             <button role="tab" aria-selected={view === 'list'} className={cls('btn sm', view === 'list' ? 'dark' : 'outline')} onClick={() => setView('list')}><Table2 /> Table</button>
@@ -143,7 +144,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
           <div className="flex items-center gap-2 px-3 py-2 bg-mint text-fold text-sm font-semibold flex-wrap"><span>{selected.size} selected</span>
             {bulkActions?.map((b, i) => <button key={i} className="btn sm dark" onClick={() => void b.run([...selected])}>{b.label}</button>)}
             {SHAREABLE_ENTITIES.has(entity) && <button className="btn sm dark" onClick={() => setSharing([...selected])}><Share2 size={14} /> Share with client</button>}
-            {statusOpts.length > 0 && can(def.module, 'edit') && <select className="select" style={{ width: 170, minHeight: 30 }} value="" onChange={e => { if (e.target.value) void runBulk('status', e.target.value) }}><option value="">Set {def.statusField?.replace(/_/g, ' ')}…</option>{statusOpts.map(o => <option key={o}>{o}</option>)}</select>}
+            {statusOpts.length > 0 && can(def.module, 'edit') && <CustomSelect compact className="select" style={{ width: 200, minHeight: 30 }} value="" onChange={e => { if (e.target.value) void runBulk('status', e.target.value) }}><option value="">Set {def.statusField?.replace(/_/g, ' ')}…</option>{statusOpts.map(o => <option key={o}>{o}</option>)}</CustomSelect>}
             {canDelete && <button className="btn sm red" onClick={() => void runBulk('delete')}><Trash2 /> Delete</button>}
             <button className="btn sm ghost" onClick={() => setSelected(new Set())}><X /> Clear</button></div>)}
         {view !== 'list' && query.data && query.data.total > rows.length && <div className="px-3 pt-2 text-xs text-muted">Showing the first {rows.length} of {query.data.total.toLocaleString()}. Search or filter to narrow it down.</div>}
@@ -199,7 +200,7 @@ function FilterBuilder({ def, value, onApply }: { def: MetaEntity; value: Flt[];
           <div key={i} className="flex gap-2 mb-2 flex-wrap items-center">
             <select className="select" style={{ width: 200 }} value={r.field} onChange={e => { const nf = fields.find(x => x.name === e.target.value)!; upd(i, { field: nf.name, op: OPS[opKind(nf)][0][0], value: '' }) }}>{fields.map(x => <option key={x.name} value={x.name}>{x.label}</option>)}</select>
             <select className="select" style={{ width: 170 }} value={r.op} onChange={e => upd(i, { op: e.target.value })}>{ops.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-            {!['null', 'notnull'].includes(r.op) && (kind === 'select' && f ? <select className="select" style={{ width: 200 }} value={r.value} onChange={e => upd(i, { value: e.target.value })}><option value="">Select…</option>{(f.options ?? []).map(o => <option key={optValue(o)}>{optValue(o)}</option>)}</select>
+            {!['null', 'notnull'].includes(r.op) && (kind === 'select' && f ? <CustomSelect compact className="select" style={{ width: 220 }} value={r.value} onChange={e => upd(i, { value: e.target.value })}><option value="">Select or type custom…</option>{(f.options ?? []).map(o => <option key={optValue(o)}>{optValue(o)}</option>)}</CustomSelect>
               : kind === 'bool' ? <select className="select" style={{ width: 120 }} value={r.value} onChange={e => upd(i, { value: e.target.value })}><option value="">Select…</option><option value="1">Yes</option><option value="0">No</option></select>
               : <input className="input" style={{ width: 240 }} type={kind === 'date' && r.op !== 'between' ? 'date' : kind === 'num' && r.op !== 'between' ? 'number' : 'text'} placeholder={r.op === 'between' ? 'from..to' : 'Value'} value={r.value} onChange={e => upd(i, { value: e.target.value })} />)}
             <button className="btn ghost icon sm" onClick={() => setRows(x => x.filter((_, k) => k !== i))} aria-label="Remove filter"><X /></button>
@@ -287,7 +288,7 @@ function InlineCell({ entity, f, rec, statusField, onSaved }: { entity: string; 
   if (f.type === 'bool') return <input type="checkbox" aria-label={f.label} checked={!!rec[f.name]} onClick={e => e.stopPropagation()} onChange={e => void save(e.target.checked)} />
   if (!edit) return <span role="button" tabIndex={0} title="Double-click to edit" className="block min-h-[20px] rounded px-1 -mx-1 hover:bg-hover hover:outline hover:outline-1 hover:outline-line" onClick={e => e.stopPropagation()} onDoubleClick={() => { setVal(rec[f.name] ?? ''); setEdit(true) }} onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setVal(rec[f.name] ?? ''); setEdit(true) } }}><CellValue f={f} rec={rec} statusField={statusField} /></span>
   const common = { autoFocus: true, 'aria-label': f.label, onClick: (e: any) => e.stopPropagation(), onKeyDown: (e: any) => { if (e.key === 'Escape') setEdit(false); if (e.key === 'Enter') void save(val) } }
-  if (f.type === 'select') return <select className="select" style={{ minHeight: 30 }} {...common} value={val} onChange={e => void save(e.target.value)} onBlur={() => setEdit(false)}><option value="">—</option>{(f.options ?? []).map(o => <option key={optValue(o)}>{optValue(o)}</option>)}</select>
+  if (f.type === 'select') return <CustomSelect compact className="select" style={{ minHeight: 30 }} {...common} value={val} onChange={e => setVal(e.target.value)} onBlur={() => void save(val)}><option value="">—</option>{(f.options ?? []).map(o => <option key={optValue(o)}>{optValue(o)}</option>)}</CustomSelect>
   return <input className="input" style={{ minHeight: 30 }} {...common} type={f.type === 'date' ? 'date' : ['int', 'number', 'money', 'percent'].includes(f.type) ? 'number' : 'text'} step="any" value={val} onChange={e => setVal(e.target.value)} onBlur={() => void save(val)} />
 }
 

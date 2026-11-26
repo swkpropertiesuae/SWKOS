@@ -6,6 +6,7 @@ import { AnimatePresence,motion } from 'motion/react';
 import { useCallback,useEffect,useRef,useState,type ReactNode } from 'react';
 import { CheckCircle2,Info,Search,X } from 'lucide-react';
 import { SWK } from '../../../swk/ui';
+import { CustomSelect } from '../../../components/CustomSelect';
 
 /** Clearly labels indicative / sample data so it is never faked silently. */
 export function SamplePill({ title = 'Indicative sample data — not stored in SWK OS', label = 'Sample' }: { title?: string; label?: string }) {
@@ -77,7 +78,7 @@ export function SelectField({ label, value, onChange, options, className }: { la
   return (
     <label className={`swk-field ${className ?? ''}`}>
       <span className="swk-field-label">{label}</span>
-      <span className="swk-field-box"><select value={value} onChange={e => onChange(e.target.value)} aria-label={label}>{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></span>
+      <span className="swk-field-box"><CustomSelect compact value={value} onChange={e => onChange(e.target.value)} aria-label={label} options={options} /></span>
     </label>
   )
 }

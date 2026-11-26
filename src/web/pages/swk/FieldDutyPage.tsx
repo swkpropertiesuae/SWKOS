@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -710,26 +711,26 @@ export default function FieldDutyPage() {
               <div className="space-y-3 pt-1">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1" htmlFor="fd-purpose">Visit Purpose</label>
-                  <select
+                  <CustomSelect
                     id="fd-purpose"
                     className="select w-full"
                     value={purpose}
                     onChange={e => setPurpose(e.target.value as (typeof PURPOSES)[number])}
                   >
                     {PURPOSES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1" htmlFor="fd-community">Dubai Community / Site</label>
-                  <select
+                  <CustomSelect
                     id="fd-community"
                     className="select w-full"
                     value={communityChoice}
                     onChange={e => setCommunityChoice(e.target.value)}
                   >
                     {DUBAI_COMMUNITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 {communityChoice === 'Other / Custom' && (

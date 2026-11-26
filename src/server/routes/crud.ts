@@ -99,6 +99,85 @@ export default async function (app: FastifyInstance) {
     return res.rows.map(r => ({ id: r.id, label: r._title, sub: def.fields.find(f => f.name === 'status')?.type === 'select' ? r.status : undefined }))
   })
 
+  // ------------------------------------------------------------ quick-create (custom value from any RefSelect dropdown)
+  const QUICK_CREATE_BLOCKED = new Set([
+    'users', 'roles', 'invoices', 'bills', 'receipts', 'payments',
+    'journal_entries', 'payslips', 'dld_filings', 'aml_reports', 'audit_log', 'sessions',
+  ])
+  app.post('/api/e/:entity/quick-create', async (req, reply) => {
+    const def = guard(getDef((req.params as any).entity))
+    const user = req.user!
+    if (user.party_id) throw forbidden('Portal users cannot quick-create records')
+    if (def.readonlyApi || QUICK_CREATE_BLOCKED.has(def.key)) {
+      throw bad(`Create ${def.label} from its dedicated form instead of quick-add.`)
+    }
+    assertHrPiiRouteAccess(def, req.ctx)
+    assertMasterLogMutationGate(def, req.ctx)
+    assertCan(req.ctx, def.module, 'create')
+    const b = body<{ label?: string; filter?: Record<string, any> }>(req)
+    const label = String(b.label ?? '').trim().slice(0, 200)
+    if (!label) throw bad('Enter a custom value to create.')
+
+    // Primary text title field (e.g. name, title, deal_name, company, unit_no, subject, code)
+    const primaryCol =
+      def.title.find(c => {
+        const fd = def.fields.find(x => x.name === c)
+        return fd && !fd.readonly && !fd.computed && fd.type !== 'ref' && fd.name !== def.numbering?.field
+      }) ??
+      def.fields.find(x => !x.readonly && !x.computed && x.type === 'text' && x.name !== def.numbering?.field)?.name
+    if (!primaryCol) throw bad(`Quick-add is not available for ${def.label}.`)
+
+    // Deduplicate against an existing active row with identical primary label
+    const existing = q.get<{ id: number }>(
+      `SELECT id FROM ${qi(def.key)} WHERE lower(${qi(primaryCol)}) = lower(?) AND deleted_at IS NULL LIMIT 1`,
+      label,
+    )
+    if (existing) {
+      const rec = getRecord(def, existing.id, { ...req.ctx, system: true })
+      return { id: rec.id, label: rec._title, created: false }
+    }
+
+    const payload: Record<string, any> = { [primaryCol]: label }
+    // Apply caller refFilter values (e.g. { is_customer: 1 }, { property_id: 42 })
+    if (b.filter && typeof b.filter === 'object') {
+      for (const [k, v] of Object.entries(b.filter)) {
+        const fd = def.fields.find(x => x.name === k)
+        if (fd && !fd.readonly && !fd.computed && !fd.secret) payload[k] = v
+      }
+    }
+    // Auto-generate short unique code when `code` is required & not auto-numbered
+    const codeField = def.fields.find(x => x.name === 'code' && x.required && !x.readonly && x.name !== def.numbering?.field)
+    if (codeField && !payload.code) {
+      const base = label.replace(/[^A-Za-z0-9]+/g, '').toUpperCase().slice(0, 10) || 'CUST'
+      let candidate = base
+      let n = 1
+      while (q.val(`SELECT 1 FROM ${qi(def.key)} WHERE lower(code) = lower(?) AND deleted_at IS NULL`, candidate)) {
+        candidate = `${base.slice(0, 8)}${++n}`
+      }
+      payload.code = candidate
+    }
+    // Fill any other required writable fields with clean defaults
+    for (const f of def.fields) {
+      if (!f.required || f.readonly || f.computed || f.virtual || payload[f.name] !== undefined) continue
+      if (f.default !== undefined && f.default !== null) continue
+      if (f.type === 'select' && f.options?.length) payload[f.name] = optValue(f.options[0])
+      else if (f.type === 'date') payload[f.name] = todayStr()
+      else if (f.type === 'datetime') payload[f.name] = nowLocal()
+      else if (f.type === 'bool') payload[f.name] = false
+      else if (f.type === 'int' || f.type === 'number' || f.type === 'money' || f.type === 'percent') payload[f.name] = f.min ?? 0
+      else if (f.type === 'ref' && f.ref) {
+        const refId = q.val<number>(`SELECT id FROM ${qi(f.ref)} WHERE deleted_at IS NULL ORDER BY id ASC LIMIT 1`)
+        if (refId) payload[f.name] = refId
+      } else if (f.type === 'text' || f.type === 'textarea') {
+        payload[f.name] = label
+      }
+    }
+
+    const created = createRecord(def, syncJobPipelinePayload(def, payload), req.ctx)
+    reply.status(201)
+    return { id: created.id, label: created._title, created: true }
+  })
+
   // ------------------------------------------------------------ list
   app.get('/api/e/:entity', async (req) => {
     const def = guard(getDef((req.params as any).entity))

@@ -7,6 +7,7 @@ import { del,get,openAuthFile,post,put,resolveApiUrl,upload } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { Badge,Loading,useDialogs } from '../ui/kit'
 import { RefSelect } from './RefSelect'
+import { CustomSelect } from './CustomSelect'
 import { useToast } from '../lib/toast'
 import { cls,fmtDate,fmtIsoStamp,fmtDateTime,todayIso } from '../lib/format'
 import { recordPath } from './EntityList'
@@ -96,7 +97,7 @@ export function Attachments({ entity, id, refresh }: any) {
   const [cat, setCat] = useState('General'); const [exp, setExp] = useState(''); const [busy, setBusy] = useState(false); const [drag, setDrag] = useState(false)
   const go = async (files: FileList | File[]) => { if (!files.length) return; setBusy(true); try { await upload([...files], { link_entity: entity, link_id: id, category: cat, expiry_date: exp }); toast.ok('Uploaded'); void qc.invalidateQueries({ queryKey: ['attach', entity, id] }); refresh() } catch (e: any) { toast.error(e.message) } finally { setBusy(false) } }
   return (<div>
-    <div className="grid grid-cols-2 gap-2 mb-2"><select className="select" value={cat} onChange={e => setCat(e.target.value)} aria-label="Category">{cats.map(c => <option key={c}>{c}</option>)}</select><input className="input" type="date" value={exp} onChange={e => setExp(e.target.value)} title="Expiry date (optional)" aria-label="Expiry date" /></div>
+    <div className="grid grid-cols-2 gap-2 mb-2"><CustomSelect className="select" value={cat} onChange={e => setCat(e.target.value)} aria-label="Category">{cats.map(c => <option key={c}>{c}</option>)}</CustomSelect><input className="input" type="date" value={exp} onChange={e => setExp(e.target.value)} title="Expiry date (optional)" aria-label="Expiry date" /></div>
     <label className={cls('block border-2 border-dashed rounded-xl p-5 text-center cursor-pointer text-sm', drag ? 'border-emerald bg-mint' : 'border-line-strong hover:bg-hover')} onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); void go(e.dataTransfer.files) }}>
       <input type="file" multiple hidden onChange={e => { if (e.target.files) void go(e.target.files); e.target.value = '' }} />{busy ? 'Uploading…' : <><b>Drop files here</b> or click to browse<div className="text-xs text-muted mt-1">Max 25 MB per file · PDF, images, Office files, ZIP…</div></>}</label>
     <div className="mt-3">{!q.data ? <Loading /> : q.data.rows.length === 0 ? <p className="text-sm text-muted text-center py-6">No documents attached.</p> : q.data.rows.map(f => (
@@ -112,7 +113,7 @@ function Refs({ entity, id, refresh }: any) {
   const types = ['Mandate no.', 'Title deed', 'Ejari no.', 'RERA permit / Trakheesi', 'Listing ref', 'Cheque no.', 'Contract no.', 'Passport / Emirates ID', 'Mortgage ref', 'Other']
   const add = async () => { try { await post(`/api/panel/${entity}/${id}/refs`, { ref_type: type, ref_value: val, note: note || undefined }); setVal(''); setNote(''); void qc.invalidateQueries({ queryKey: ['refs', entity, String(id)] }); refresh() } catch (e: any) { toast.error(e.message) } }
   return (<div>
-    <div className="grid gap-2"><select className="select" value={type} onChange={e => setType(e.target.value)}>{types.map(t => <option key={t}>{t}</option>)}</select><input className="input" placeholder="Reference number" value={val} onChange={e => setVal(e.target.value)} /><input className="input" placeholder="Note (optional)" value={note} onChange={e => setNote(e.target.value)} /><button className="btn green sm self-end" disabled={!val.trim()} onClick={() => void add()}><Plus /> Add reference</button></div>
+    <div className="grid gap-2"><CustomSelect className="select" value={type} onChange={e => setType(e.target.value)}>{types.map(t => <option key={t}>{t}</option>)}</CustomSelect><input className="input" placeholder="Reference number" value={val} onChange={e => setVal(e.target.value)} /><input className="input" placeholder="Note (optional)" value={note} onChange={e => setNote(e.target.value)} /><button className="btn green sm self-end" disabled={!val.trim()} onClick={() => void add()}><Plus /> Add reference</button></div>
     <div className="mt-3">{!q.data ? <Loading /> : q.data.length === 0 ? <p className="text-sm text-muted text-center py-6">No references.</p> : q.data.map(r => <Row key={r.id} onDelete={async () => { await del(`/api/panel/${entity}/${id}/refs/${r.id}`); void qc.invalidateQueries({ queryKey: ['refs', entity, String(id)] }); refresh() }}><div className="text-xs text-muted">{r.ref_type}</div><div className="font-bold text-ink">{r.ref_value}</div>{r.note && <div className="text-xs">{r.note}</div>}</Row>)}</div>
   </div>)
 }
@@ -157,7 +158,7 @@ function Complaints({ entity, id, refresh }: any) {
   }
   return (<div>
     <div className="grid gap-2"><input className="input" placeholder="Complaint / issue summary" value={subject} onChange={e => setSubject(e.target.value)} /><textarea className="textarea" rows={2} placeholder="Details" value={desc} onChange={e => setDesc(e.target.value)} />
-      <div className="flex gap-2"><select className="select" value={prio} onChange={e => setPrio(e.target.value)}>{['Low', 'Medium', 'High', 'Urgent'].map(p => <option key={p}>{p}</option>)}</select><button className="btn red sm" disabled={!subject.trim()} onClick={() => void add()}><Plus /> Log complaint</button></div></div>
+      <div className="flex gap-2"><CustomSelect className="select" value={prio} onChange={e => setPrio(e.target.value)}>{['Low', 'Medium', 'High', 'Urgent'].map(p => <option key={p}>{p}</option>)}</CustomSelect><button className="btn red sm" disabled={!subject.trim()} onClick={() => void add()}><Plus /> Log complaint</button></div></div>
     <div className="mt-3">{!q.data ? <Loading /> : q.data.rows.length === 0 ? <p className="text-sm text-muted text-center py-6">No complaints recorded.</p> : q.data.rows.map(t => <Row key={t.id}><Link className="link" to={`/e/tickets/${t.id}`}>{t.ticket_no}</Link> <Badge value={t.status} /> <Badge value={t.priority} /><div className="text-[13.5px]">{t.subject}</div></Row>)}</div>
   </div>)
 }

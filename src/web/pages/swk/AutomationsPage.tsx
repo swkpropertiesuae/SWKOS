@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -703,12 +704,12 @@ function RuleBuilder({
               </select>
             )}
             {field?.type === 'select' ? (
-              <select className={sel} aria-label="Value" value={r.value ?? ''} onChange={e => set({ value: e.target.value })}>
+              <CustomSelect className={sel} aria-label="Value" value={r.value ?? ''} onChange={e => set({ value: e.target.value })}>
                 <option value="">Value…</option>
                 {(field.options ?? []).map(o => (
                   <option key={optValue(o)}>{optValue(o)}</option>
                 ))}
-              </select>
+              </CustomSelect>
             ) : (
               <input className="input" aria-label="Value" placeholder="Value" value={r.value ?? ''} onChange={e => set({ value: e.target.value })} disabled={!r.field} />
             )}

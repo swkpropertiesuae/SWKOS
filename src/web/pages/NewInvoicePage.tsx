@@ -7,6 +7,7 @@ import { useMeta } from '../lib/meta'
 import { useToast } from '../lib/toast'
 import { ErrorBox,Loading,PageHeader,useDialogs } from '../ui/kit'
 import { RefSelect } from '../components/RefSelect'
+import { CustomSelect } from '../components/CustomSelect'
 import { fmtMoney,fmtRoe,todayIso } from '../lib/format'
 import { amountInWords } from '@shared/words'
 
@@ -103,9 +104,9 @@ export function NewInvoicePage() {
           <div className="grid gap-3 md:grid-cols-3">
             <div className="md:col-span-2"><label className="label">Customer<span className="req">*</span></label><RefSelect entity="parties" filter={{ is_customer: 1 }} value={h.party_id} label={h._labels?.party_id} onChange={(v, l) => setHead({ party_id: v, _labels: { ...h._labels, party_id: l } })} placeholder="Search customers…" />
               {can('crm', 'create') && <div className="help"><Link to="/e/parties?new=1">Add a new customer</Link></div>}</div>
-            <div><label className="label" htmlFor="ni-type">Document</label><select id="ni-type" className="select" value={h.doc_type} onChange={e => setHead({ doc_type: e.target.value })}><option>Tax Invoice</option><option>Proforma Invoice</option><option>Debit Note</option></select></div>
+            <div><label className="label" htmlFor="ni-type">Document</label><CustomSelect id="ni-type" className="select" value={h.doc_type} onChange={e => setHead({ doc_type: e.target.value })}><option>Tax Invoice</option><option>Proforma Invoice</option><option>Debit Note</option></CustomSelect></div>
             <F k="invoice_date" label="Invoice date" type="date" /><F k="supply_date" label="Date of supply (if different)" type="date" /><F k="due_date" label="Due date (blank = from payment terms)" type="date" />
-            <div><label className="label" htmlFor="ni-cur">Invoice currency</label><select id="ni-cur" className="select" value={h.currency} onChange={e => setHead({ currency: e.target.value })}>{CUR.map(c => <option key={c}>{c}</option>)}</select>{foreignDoc && <div className="help">Pay-in currency. Lines are priced in the same currency.</div>}</div>
+            <div><label className="label" htmlFor="ni-cur">Invoice currency</label><CustomSelect id="ni-cur" className="select" value={h.currency} onChange={e => setHead({ currency: e.target.value })}>{CUR.map(c => <option key={c}>{c}</option>)}</CustomSelect>{foreignDoc && <div className="help">Pay-in currency. Lines are priced in the same currency.</div>}</div>
             {foreignDoc && <F k="ex_rate" label={`Exchange rate: 1 ${h.currency} = … ${settings.base_currency ?? 'AED'}`} type="number" />}
             <F k="reference" label="Customer reference" />
             <div><label className="label" htmlFor="ni-no">Own invoice number (optional)</label><input id="ni-no" className="input" value={h.custom_no} maxLength={40} onChange={e => setHead({ custom_no: e.target.value })} placeholder="e.g. INV-A-1042" /><div className="help">Blank = next number in your series when posted.</div></div>
@@ -120,7 +121,7 @@ export function NewInvoicePage() {
               <td><input className="input" aria-label={`Line ${i + 1} description`} value={l.description} onChange={e => setLine(l.key, { description: e.target.value })} /></td>
               <td><input className="input" type="number" min="0" step="any" aria-label={`Line ${i + 1} quantity`} value={l.qty} onChange={e => setLine(l.key, { qty: e.target.value })} /></td>
               <td><input className="input" type="number" min="0" step="any" aria-label={`Line ${i + 1} rate`} value={l.rate} onChange={e => setLine(l.key, { rate: e.target.value })} /></td>
-              <td><select className="select" aria-label={`Line ${i + 1} currency`} value={l.line_ccy} onChange={e => setCcy(l.key, e.target.value)}><option value="">{h.currency}</option>{CUR.filter(c => c !== h.currency).map(c => <option key={c}>{c}</option>)}</select></td>
+              <td><CustomSelect compact className="select" aria-label={`Line ${i + 1} currency`} value={l.line_ccy} onChange={e => setCcy(l.key, e.target.value)}><option value="">{h.currency}</option>{CUR.filter(c => c !== h.currency).map(c => <option key={c}>{c}</option>)}</CustomSelect></td>
               <td><input className="input" type="number" min="0" step="any" aria-label={`Line ${i + 1} rate of exchange`} disabled={!other} value={other ? l.line_roe : ''} placeholder={other ? '3.685' : ''} onChange={e => setLine(l.key, { line_roe: e.target.value })} /></td>
               <td><select className="select" aria-label={`Line ${i + 1} VAT`} value={l.vat_code_id ?? ''} onChange={e => setLine(l.key, { vat_code_id: e.target.value ? Number(e.target.value) : null })}><option value="">Choose…</option>{vats.data!.rows.map(v => <option key={v.id} value={v.id}>{v.code} · {v.rate}%</option>)}</select></td>
               <td style={{ textAlign: 'right' }}>{fmtMoney(calc.rows[i]?.net)}{other && Number(l.rate) > 0 && <div className="text-xs text-muted">{l.line_ccy} {fmtMoney(calc.rows[i]?.own)} × {fmtRoe(Number(l.line_roe) || 0)}</div>}</td>
