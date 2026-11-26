@@ -15,6 +15,8 @@ export const platform: EntityDef[] = [
       T('code', 'Branch code', { required: true, unique: true, list: true, search: true, help: 'Used as the job-number prefix, e.g. DXB', section: 'Branch' }),
       T('name', 'Branch name', { required: true, list: true, search: true }),
       T('address', 'Address', { span: 3 }), T('city', 'City', { list: true }), T('country', 'Country', { default: 'United Arab Emirates' }),
+      T('wifi_ssid', 'Office Wi-Fi SSID', { list: true }), T('wifi_public_ips', 'Allowed Office WAN IP / CIDR'),
+      T('gps_lat', 'Geofence Latitude'), T('gps_lng', 'Geofence Longitude'), I('geofence_radius_m', 'Geofence Radius (m)', { default: 100 }),
       PH('phone', 'Phone'), E('email', 'Email'), T('trn', 'Tax registration no. (TRN)'), R('legal_entity_id', 'Legal entity', 'legal_entities', { list: true }),
       T('trade_license', 'Trade licence no.'), B('is_head_office', 'Head office', { list: true }), B('active', 'Active', { default: true, list: true }),
     ],

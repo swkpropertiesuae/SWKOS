@@ -627,6 +627,157 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
     );
     CREATE INDEX IF NOT EXISTS ix_qr_nonce_exp ON qr_used_nonces(expires_at);
   ` },
+  { id: '014_swkos_v4_executive_os', sql: `
+    CREATE TABLE IF NOT EXISTS master_change_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity TEXT NOT NULL,
+      action TEXT NOT NULL DEFAULT 'create',
+      record_id INTEGER,
+      record_label TEXT,
+      payload_json TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      requested_by INTEGER NOT NULL,
+      requested_by_name TEXT NOT NULL,
+      requested_by_email TEXT NOT NULL,
+      requested_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      decided_by INTEGER,
+      decided_by_name TEXT,
+      decided_at TEXT,
+      decision_note TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_mcr_status ON master_change_requests(status, requested_at);
+    CREATE INDEX IF NOT EXISTS ix_mcr_entity ON master_change_requests(entity, status);
+
+    CREATE TABLE IF NOT EXISTS privacy_fast_track_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ref_code TEXT NOT NULL UNIQUE,
+      client_name TEXT NOT NULL,
+      client_phone TEXT,
+      client_email TEXT,
+      property_label TEXT NOT NULL,
+      community TEXT,
+      deal_type TEXT NOT NULL DEFAULT 'Secondary Sale',
+      deal_value_aed REAL NOT NULL DEFAULT 0,
+      expected_cash_aed REAL NOT NULL DEFAULT 0,
+      urgency TEXT NOT NULL DEFAULT 'CASH_IMMEDIATE',
+      stage_12 TEXT NOT NULL DEFAULT '05_offer',
+      target_cash_date TEXT,
+      status TEXT NOT NULL DEFAULT 'Active',
+      notes TEXT,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_pft_jobs_status ON privacy_fast_track_jobs(status, urgency);
+
+    CREATE TABLE IF NOT EXISTS privacy_fast_track_invoices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER,
+      invoice_no TEXT NOT NULL UNIQUE,
+      client_name TEXT NOT NULL,
+      client_trn TEXT,
+      description TEXT NOT NULL,
+      subtotal_aed REAL NOT NULL DEFAULT 0,
+      vat_rate REAL NOT NULL DEFAULT 5,
+      vat_aed REAL NOT NULL DEFAULT 0,
+      total_aed REAL NOT NULL DEFAULT 0,
+      due_date TEXT,
+      status TEXT NOT NULL DEFAULT 'Issued',
+      paid_at TEXT,
+      notes TEXT,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_pft_inv_job ON privacy_fast_track_invoices(job_id, status);
+
+    CREATE TABLE IF NOT EXISTS privacy_fast_track_docs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER,
+      title TEXT NOT NULL,
+      doc_type TEXT NOT NULL DEFAULT 'Private Memo',
+      content_text TEXT NOT NULL,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_pft_docs_job ON privacy_fast_track_docs(job_id);
+
+    CREATE TABLE IF NOT EXISTS client_vault_checklists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      party_id INTEGER NOT NULL,
+      doc_key TEXT NOT NULL,
+      doc_label TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Missing',
+      attachment_id INTEGER,
+      file_name TEXT,
+      expiry_date TEXT,
+      verified_by INTEGER,
+      verified_by_name TEXT,
+      verified_at TEXT,
+      notes TEXT,
+      updated_at TEXT NOT NULL,
+      UNIQUE(party_id, doc_key)
+    );
+    CREATE INDEX IF NOT EXISTS ix_cvc_party ON client_vault_checklists(party_id, status);
+
+    CREATE TABLE IF NOT EXISTS mortgage_desk_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      mortgage_case_id INTEGER,
+      client_name TEXT NOT NULL,
+      bank_name TEXT NOT NULL DEFAULT 'Emirates NBD',
+      event_type TEXT NOT NULL DEFAULT 'Valuation Booking',
+      due_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Scheduled',
+      rm_name TEXT,
+      rm_phone TEXT,
+      valuation_company TEXT,
+      valuation_fee_aed REAL DEFAULT 0,
+      loan_amount_aed REAL DEFAULT 0,
+      notes TEXT,
+      owner_id INTEGER,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_mde_due ON mortgage_desk_events(due_date, status);
+
+    CREATE TABLE IF NOT EXISTS ai_case_studies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      category TEXT NOT NULL DEFAULT 'Secondary Resale',
+      title TEXT NOT NULL,
+      client_profile TEXT NOT NULL,
+      property_context TEXT NOT NULL,
+      challenge TEXT NOT NULL,
+      strategy_applied TEXT NOT NULL,
+      winning_outcome TEXT NOT NULL,
+      lessons_learned TEXT NOT NULL,
+      tags TEXT,
+      trained_by INTEGER,
+      trained_by_name TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_acs_cat ON ai_case_studies(category, is_active);
+
+    CREATE TABLE IF NOT EXISTS website_social_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'Instagram',
+      status TEXT NOT NULL DEFAULT 'Scheduled',
+      publish_date TEXT,
+      target_url TEXT,
+      caption TEXT NOT NULL,
+      offer_highlight TEXT,
+      budget_aed REAL DEFAULT 0,
+      leads_count INTEGER DEFAULT 0,
+      created_by INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  ` },
 ]
 
 /** Translate SQLite-dialect DDL to PostgreSQL-compatible DDL. */

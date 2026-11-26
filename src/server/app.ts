@@ -178,7 +178,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/daily'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'), import('./routes/sip'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/executive-os'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))

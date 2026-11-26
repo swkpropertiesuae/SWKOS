@@ -11,6 +11,7 @@ import { listAgentAssignedProperties } from '../domain/crm-vault'
 import { getSetting } from '../settings'
 import { MODES } from '../../shared/entities/crm'
 import { currentCall,setOutcome } from './voice-context'
+import { searchRelevantCaseStudies } from '../routes/executive-os'
 
 export type Risk = 'read' | 'internal' | 'external'
 export interface ToolContext { agent: string; user?: SessionUser | null }
@@ -292,6 +293,9 @@ export const TOOLS: Tool[] = [
       const submitted = !!report && ['Submitted (Frozen)', 'Approved by Manager', 'Exemption Logged'].includes(report.status)
       return { date: day, submitted, report: report ?? null }
     } },
+  { name: 'search_case_studies', risk: 'read', description: 'Search the trained SWK Properties & UAE Mortgage Case-Study Library for winning strategies, valuation/mortgage playbooks, off-plan assignments, Form F/NOC rescues, and RERA/AML precedents.',
+    parameters: obj({ query: S('deal scenario, client profile, or challenge keywords'), limit: Nn('max case studies (default 4)') }, ['query']),
+    run: (a) => searchRelevantCaseStudies(String(a?.query || ''), Math.min(Math.max(Number(a?.limit) || 4, 1), 10)) },
 ]
 export const toolByName = (n: string) => TOOLS.find(t => t.name === n)
 export const toolNow = nowLocal

@@ -381,22 +381,7 @@ export const SWK_TEAM_PROFILES: readonly SwkTeamProfile[] = [
     "email": "meenakshi@swk.properties",
     "name": "Meenakshi",
     "title": "Office Admin",
-    "bio": "Runs the 25th Floor Al Saqr Building front office: reception and walk-in enquiries, visitor and viewing calendar, company documents and support tickets."
-  },
-  {
-    "photo": "",
-    "deals": "",
-    "experience": "",
-    "developers": [],
-    "projects": [],
-    "specialties": [],
-    "languages": [],
-    "onWebsite": false,
-    "slug": "samarth",
-    "email": "samarth@swk.properties",
-    "name": "Samarth",
-    "title": "Property Consultant",
-    "bio": "Property consultant at SWK Properties, Sheikh Zayed Road."
+    "bio": "Runs the 25th Floor Al Saqr Building front office: reception QR attendance console, walk-in enquiries, visitor and viewing calendar, company documents and support tickets."
   }
 ]
 

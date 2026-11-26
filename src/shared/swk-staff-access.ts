@@ -148,23 +148,10 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     controlledBy: 'shabib@swk.properties',
   },
   {
-    email: 'samarth@swk.properties',
-    displayEmail: 'samarth@swk.properties',
-    aliases: ['samarth@swk.property', 'samarth@swkpropertiesuae.com'],
-    name: 'Samarth',
-    empNo: 'EMP-SAMARTH',
-    roleName: 'Staff (Attendance & General)',
-    departmentCode: 'SAL',
-    designation: 'Property Consultant',
-    phone: '+971 50 100 0008',
-    fullAccess: false,
-    controlledBy: 'shabib@swk.properties',
-  },
-  {
     email: 'sanketh@swk.rent',
     displayEmail: 'sanketh@swk.rent',
     aliases: ['sanketh@swk.properties', 'sanketh@swk.property', 'sanketh@swkpropertiesuae.com'],
-    name: 'Sanketh',
+    name: 'Sanket Katariya',
     empNo: 'EMP-SANKETH',
     roleName: 'Staff (Attendance & General)',
     departmentCode: 'SAL',
@@ -181,7 +168,7 @@ export const SWK_STAFF_ACCOUNTS: readonly SwkHardcodedStaffAccount[] = [
     empNo: 'EMP-MEENAKSHI',
     roleName: 'Office Admin',
     departmentCode: 'OPS',
-    designation: 'Office Admin',
+    designation: 'Office Admin (Reception QR & Front Desk)',
     phone: '+971 50 100 0010',
     fullAccess: false,
     controlledBy: 'shabib@swk.properties',
@@ -255,15 +242,54 @@ export function hasWildcardPermission(perms: unknown): boolean {
 
 const QR_VIEWER_EMAILS: ReadonlySet<string> = CANONICAL_ELEVATED_EMAILS
 
+/** Accounts explicitly removed from the SWK Properties roster (purged on boot). */
+export const RETIRED_STAFF_EMAILS: readonly string[] = [
+  'samarth@swk.properties',
+  'samarth@swk.property',
+  'samarth@swkpropertiesuae.com',
+]
+
+export const OFFICE_ADMIN_QR_EMAILS: ReadonlySet<string> = new Set([
+  'meenakshi@swk.properties',
+  'meenakshi@swk.property',
+  'meenakshi@swkpropertiesuae.com',
+])
+
+export function isOfficeAdminMeenakshi(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id) return false
+  const email = String(user.email || '').trim().toLowerCase()
+  if (!OFFICE_ADMIN_QR_EMAILS.has(email)) return false
+  const role = String(user.role_name || user.role || '').trim().toLowerCase()
+  return !role || role === 'office admin'
+}
+
 /**
- * HARD RULE: ONLY Owner Shabib, Admin and Manager Haseeb can view, print or change the Office Attendance QR code.
+ * HARD RULE: ONLY Owner Shabib, Admin, Manager Haseeb, and Office Admin Meenakshi (reception desk)
+ * can view, generate, print or rotate the Office Attendance QR code.
  * Everyone else only scans it with the camera inside the check-in page.
  */
 export function canPrintReceptionQr(
   user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
-  return isElevatedCanonicalEmail(user.email)
+  return isElevatedCanonicalEmail(user.email) || isOfficeAdminMeenakshi(user)
+}
+
+/** Master Log (CORE) access: Owner & Admin (full direct) + Office Admin Meenakshi (read & submit approval proposals). */
+export function canAccessMasterLog(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  if (!user || user.party_id) return false
+  return isOwnerSwkUser(user) || isAdminSwkUser(user) || isOfficeAdminMeenakshi(user)
+}
+
+/** Shabib's Corner & Privacy Fast Track: STRICTLY locked to Supreme Owner Shabib Siraj only. */
+export function canAccessShabibsCorner(
+  user: { email?: string | null; role?: string | null; role_name?: string | null; name?: string | null; party_id?: number | null } | null | undefined,
+): boolean {
+  return isOwnerSwkUser(user)
 }
 
 /**
@@ -305,7 +331,7 @@ export function canAccessSwkAdminLogic(
   } | null | undefined,
 ): boolean {
   if (!user || user.party_id) return false
-  if (canPrintReceptionQr(user)) return true
+  if (isElevatedCanonicalEmail(user.email)) return true
   if (isRestrictedStaffUser(user)) return false
   if (isOwnerSwkUser(user) || isAdminSwkUser(user)) return true
   const perms = user.permissions
@@ -334,9 +360,6 @@ const RESTRICTED_STAFF_EMAILS = new Set<string>([
   'saifullah@swk.property',
   'saifullah@swk.properties',
   'saifullah@swkpropertiesuae.com',
-  'samarth@swk.property',
-  'samarth@swk.properties',
-  'samarth@swkpropertiesuae.com',
   'sanketh@swk.property',
   'sanketh@swk.properties',
   'sanketh@swkpropertiesuae.com',
@@ -428,7 +451,7 @@ export function isRestrictedStaffUser(
   const email = String(user.email || '').trim().toLowerCase()
   const role = String(user.role_name || user.role || '').trim().toLowerCase()
   if (role === 'staff (attendance & general)') return true
-  if (canPrintReceptionQr(user)) return false
+  if (isElevatedCanonicalEmail(email)) return false
   if (email === 'demo@swkpropertiesuae.com' && role === 'admin') return false
   if (isSwkCompanyEmail(email)) {
     const fixed = hardcodedAccountFor(email)

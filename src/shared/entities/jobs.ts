@@ -43,6 +43,7 @@ export const jobs: EntityDef[] = [
       D('target_close', 'Target Close Date', { list: true }),
       D('actual_close', 'Actual Close Date', { list: true }),
       S('operational_status', 'Stage', ['Inquiry', 'Viewing', 'Offer', 'Negotiation', 'Contract', 'DLD Process', 'Handover', 'Closed'], { section: 'Pipeline', list: true, key: true }),
+      S('stage_12', '12-Stage Playbook', ['01_inventory', '02_marketing', '03_lead', '04_viewing', '05_offer', '06_form_f', '07_mortgage_val', '08_noc', '09_dld_transfer', '10_handover', '11_commission', '12_client_care'], { section: 'Pipeline', default: '03_lead', list: true }),
       M('total_revenue', 'Revenue (AED)', { computed: true, key: true }), M('total_cost', 'Cost (AED)', { computed: true, key: true }), M('profit', 'Profit (AED)', { computed: true, key: true }),
       R('sales_contract_id', 'Sales Contract', 'sales_contracts'),
       R('lease_id', 'Lease', 'leases'),

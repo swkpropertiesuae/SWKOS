@@ -36,7 +36,7 @@ try {
   await page.getByLabel('Search apps and features').press('Enter')
   await page.waitForURL('**/e/leases')
   // The app's pages replace the sidebar as a strip under the top bar.
-  const sub = page.getByRole('navigation', { name: /Leasing & management pages/ })
+  const sub = page.getByRole('navigation', { name: /Sales & Services pages/ })
   await sub.waitFor()
   await sub.getByRole('link', { name: 'Rent Schedules' }).click()
   await page.waitForURL('**/e/rent_schedules')
@@ -45,8 +45,8 @@ try {
   await page.getByRole('link', { name: 'All apps', exact: true }).first().click()
   await page.waitForURL('**/home')
   await page.getByRole('link', { name: 'Rent Schedules' }).first().waitFor()
-  await tiles.filter({ hasText: 'Sales & mandates' }).click()
-  await page.waitForURL(/\/e\/(properties|mandates|esign_requests)/)
+  await tiles.filter({ hasText: 'Sales & Services' }).click()
+  await page.waitForURL(/\/e\/(jobs|properties|mandates|esign_requests)/)
   // Mobile: tiles fit the viewport and the app strip stays reachable.
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto(base + '/home')
   await tiles.first().waitFor(); await page.waitForTimeout(300)
