@@ -3,6 +3,7 @@ import { Copy,ExternalLink,Mail,Share2 } from 'lucide-react'
 import { post } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { Modal } from '../ui/kit'
+import { CustomSelect } from './CustomSelect'
 
 export const SHAREABLE_ENTITIES = new Set(['properties', 'units', 'website_listings'])
 
@@ -26,7 +27,7 @@ export function ShareWithClient({ entity, ids, label, onClose }: { entity: strin
           </p>
           <label><span className="label">Client name (optional)</span><input className="input" value={client} onChange={e => setClient(e.target.value)} placeholder="e.g. Mr Ahmed" /></label>
           <label><span className="label">Brochure title</span><input className="input" value={title} onChange={e => setTitle(e.target.value)} maxLength={120} /></label>
-          <label><span className="label">Link valid for</span><select className="select" value={days} onChange={e => setDays(Number(e.target.value))}>{[7, 14, 30, 60, 90].map(d => <option key={d} value={d}>{d} days</option>)}</select></label>
+          <label><span className="label">Link valid for</span><CustomSelect className="select" value={days} onChange={e => setDays(Number(e.target.value) || 0)}>{[7, 14, 30, 60, 90].map(d => <option key={d} value={d}>{d} days</option>)}</CustomSelect></label>
           <p className="m-0 text-[12px] text-muted">{ids.length} {ids.length === 1 ? 'listing' : 'listings'} selected. Watermark protection &amp; expiry are enforced server-side.</p>
         </div>
       ) : (

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
@@ -337,7 +338,7 @@ export default function TranslatorPage({ embedded = false }: { embedded?: boolea
       <div className="rounded-2xl border border-line bg-card p-4 grid gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-[260px]">
-            <select
+            <CustomSelect
               className="select"
               value={sourceLang}
               onChange={e => setSourceLang(e.target.value as SourceLang)}
@@ -347,7 +348,7 @@ export default function TranslatorPage({ embedded = false }: { embedded?: boolea
               {LANGUAGES.map(l => (
                 <option key={l.code} value={l.code}>{l.label}</option>
               ))}
-            </select>
+            </CustomSelect>
 
             <button
               type="button"
@@ -360,7 +361,7 @@ export default function TranslatorPage({ embedded = false }: { embedded?: boolea
               <ArrowLeftRight size={16} />
             </button>
 
-            <select
+            <CustomSelect
               className="select"
               value={targetLang}
               onChange={e => setTargetLang(e.target.value as TargetLang)}
@@ -369,12 +370,12 @@ export default function TranslatorPage({ embedded = false }: { embedded?: boolea
               {LANGUAGES.map(l => (
                 <option key={l.code} value={l.code}>{l.label}</option>
               ))}
-            </select>
+            </CustomSelect>
           </div>
 
-          <select
+          <CustomSelect
             className="select"
-            style={{ width: 'auto', minWidth: 200 }}
+            style={{ width: 'auto', minWidth: 220 }}
             value={tone}
             onChange={e => setTone(e.target.value as TonePreset)}
             aria-label="Translation tone"
@@ -382,7 +383,7 @@ export default function TranslatorPage({ embedded = false }: { embedded?: boolea
             {TONES.map(t => (
               <option key={t.value} value={t.value}>{t.label} — {t.desc}</option>
             ))}
-          </select>
+          </CustomSelect>
 
           <label className="swk-toggle text-xs">
             <input type="checkbox" checked={glossaryLock} onChange={e => setGlossaryLock(e.target.checked)} />

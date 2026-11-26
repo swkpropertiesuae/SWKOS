@@ -1,5 +1,5 @@
 import EmailPage from './pages/EmailPage'
-import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
+import { Navigate,Route,Routes,useLocation,useParams,Link } from 'react-router-dom'
 import { Suspense,lazy,useCallback,useState,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
 import { canAccessSwkAdminLogic,canAccessMasterLog,canAccessShabibsCorner,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
@@ -77,6 +77,10 @@ function Guard({ module, children }: { module: string; children: ReactNode }) {
     return <ErrorBox error={new Error('Administration access is restricted until proper role access is granted by the Owner.')} />
   }
   return can(module, 'view') ? <>{children}</> : <ErrorBox error={new Error('You do not have access to this page. Ask an administrator to grant the permission.')} />
+}
+function JobAliasRedirect() {
+  const { id } = useParams()
+  return <Navigate to={id ? `/e/jobs/${id}` : '/e/jobs'} replace />
 }
 /** Staff-only guard: prevents portal accounts from loading internal staff tools and eliminates 403 API probes. */
 function StaffGuard({ children }: { children: ReactNode }) {
@@ -251,6 +255,7 @@ export default function App() {
           <Route path="/workspace-tools" element={<WorkspaceUtilities />} />
           <Route path="/e/:entity" element={<EntityListPage />} />
           <Route path="/e/:entity/:id" element={<EntityRecordPage />} />
+          <Route path="/jobs/:id" element={<JobAliasRedirect />} />
           <Route path="/work/queues" element={<Guard module="projects"><WorkQueuePage /></Guard>} />
           <Route path="/work/handovers" element={<Guard module="projects"><HandoverPage /></Guard>} />
           <Route path="/email" element={<EmailPage />} />

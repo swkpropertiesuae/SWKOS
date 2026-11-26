@@ -194,6 +194,102 @@ async function run() {
     assert.equal(pubCms.statusCode, 200)
     assert.equal(/shabib|siraj/i.test(pubCms.body), false, 'Public website CMS MUST NEVER contain Shabib/Siraj')
 
+    // 7. Universal Empty / Custom Dropdown Editing & Empty-Search Quick-Create
+    const customLead = await app.inject({
+      method: 'POST',
+      url: '/api/e/leads',
+      headers: hdr(cOwner),
+      payload: {
+        company: 'Custom Dropdown Client LLC',
+        department_division: 'Private Ultra-Prime Desk',
+        source: 'Monaco Yacht Show VIP Intro',
+        status: 'VIP Fast Evaluation',
+      },
+    })
+    assert.equal(customLead.statusCode, 201, `Custom select values on leads must succeed: ${customLead.body}`)
+    assert.equal(customLead.json().source, 'Monaco Yacht Show VIP Intro')
+    assert.equal(customLead.json().department_division, 'Private Ultra-Prime Desk')
+
+    // Clearing optional select to empty succeeds
+    const clearedLead = await app.inject({
+      method: 'PUT',
+      url: `/api/e/leads/${customLead.json().id}`,
+      headers: hdr(cOwner),
+      payload: { source: null, version: customLead.json().version, _audit_reason: 'Test empty select' },
+    })
+    assert.equal(clearedLead.statusCode, 200, clearedLead.body)
+    assert.equal(clearedLead.json().source, null)
+
+    // Strict ledger/system selects remain protected
+    const badAcc = await app.inject({
+      method: 'POST',
+      url: '/api/e/accounts',
+      headers: hdr(cOwner),
+      payload: { code: '9999', name: 'Invalid Ledger Type Test', type: 'BogusType', subtype: 'Other' },
+    })
+    assert.equal(badAcc.statusCode, 400, 'Strict accounting enum accounts.type must still reject invalid values')
+
+    // Quick-create from empty search on RefSelect (parties, communities, developers)
+    const qcParty = await app.inject({
+      method: 'POST',
+      url: '/api/e/parties/quick-create',
+      headers: hdr(cOwner),
+      payload: { label: 'Empty Search Quick Client LLC', filter: { is_customer: 1 } },
+    })
+    assert.equal(qcParty.statusCode, 201, qcParty.body)
+    assert.equal(qcParty.json().created, true)
+    assert.ok(qcParty.json().id > 0)
+
+    // Deduplicates cleanly on repeated quick-create
+    const qcPartyDup = await app.inject({
+      method: 'POST',
+      url: '/api/e/parties/quick-create',
+      headers: hdr(cOwner),
+      payload: { label: 'Empty Search Quick Client LLC', filter: { is_customer: 1 } },
+    })
+    assert.equal(qcPartyDup.statusCode, 200, qcPartyDup.body)
+    assert.equal(qcPartyDup.json().id, qcParty.json().id)
+    assert.equal(qcPartyDup.json().created, false)
+
+    // Quick-create custom Community auto-generates unique code
+    const qcComm = await app.inject({
+      method: 'POST',
+      url: '/api/e/communities/quick-create',
+      headers: hdr(cOwner),
+      payload: { label: 'Palm Jebel Ali Reserve' },
+    })
+    assert.equal(qcComm.statusCode, 201, qcComm.body)
+    assert.ok(qcComm.json().id > 0)
+
+    // Office Admin Meenakshi is STILL blocked from quick-creating on gated CORE Master entities
+    const qcMeenBlock = await app.inject({
+      method: 'POST',
+      url: '/api/e/communities/quick-create',
+      headers: hdr(cMeenakshi),
+      payload: { label: 'Unauthorized Community' },
+    })
+    assert.equal(qcMeenBlock.statusCode, 403, 'Office Admin must NOT bypass Master Log approval via quick-create')
+
+    // Blocked system entity refuses quick-create
+    const qcUserBlock = await app.inject({
+      method: 'POST',
+      url: '/api/e/users/quick-create',
+      headers: hdr(cOwner),
+      payload: { label: 'Nope' },
+    })
+    assert.equal(qcUserBlock.statusCode, 400, 'users must refuse bare quick-create')
+
+    // Executive OS v4 endpoints accept custom dropdown labels
+    const customFt = await app.inject({
+      method: 'POST',
+      url: '/api/privacy-fast-track/jobs',
+      headers: hdr(cOwner),
+      payload: { client_name: 'Custom VIP', property_label: 'Bulgari Sky Villa', urgency: 'SAME_DAY_ESCROW', stage_12: 'Custom Closing Lane' },
+    })
+    assert.equal(customFt.statusCode, 201, customFt.body)
+    assert.equal(customFt.json().urgency, 'SAME_DAY_ESCROW')
+    assert.equal(customFt.json().stage_12, 'Custom Closing Lane')
+
     console.log('ALL SWK OS v4 RESTRUCTURE E2E TESTS PASSED!')
   } finally {
     await app.close()

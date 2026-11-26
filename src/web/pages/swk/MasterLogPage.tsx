@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -152,11 +153,11 @@ export default function MasterLogPage() {
             <button type="button" onClick={() => setProposeOpen(false)} className="text-xs underline bg-transparent border-0 cursor-pointer text-muted">Close</button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <select className="select" value={propEntity} onChange={e => setPropEntity(e.target.value)}>
+            <CustomSelect className="select" value={propEntity} onChange={e => setPropEntity(e.target.value)}>
               {CORE_MASTER_REGISTRIES.filter(m => m.adminCanPropose).map(m => (
                 <option key={m.key} value={m.key}>{m.title}</option>
               ))}
-            </select>
+            </CustomSelect>
             <input className="input" placeholder="Code (e.g. JVC, EMAAR)" value={propCode} onChange={e => setPropCode(e.target.value)} />
             <input className="input" required placeholder="Name / Title *" value={propName} onChange={e => setPropName(e.target.value)} />
             <input className="input" placeholder={propEntity === 'communities' ? 'Avg AED / sq.ft' : propEntity === 'developers' ? 'RERA Dev ID' : 'Description / Details'} value={propExtra} onChange={e => setPropExtra(e.target.value)} />

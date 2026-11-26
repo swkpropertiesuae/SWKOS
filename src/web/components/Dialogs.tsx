@@ -2,6 +2,7 @@ import { useEffect,useState } from 'react'
 import { get,post } from '../lib/api'
 import { Modal,Loading } from '../ui/kit'
 import { RefSelect } from './RefSelect'
+import { CustomSelect } from './CustomSelect'
 import { useToast } from '../lib/toast'
 import { fmtMoney,todayIso } from '../lib/format'
 
@@ -24,7 +25,7 @@ export function QuickPayDialog({ kind, doc, onClose, onDone }: { kind: 'receipt'
       <div className="grid gap-3 grid-cols-2">
         <div className="col-span-2 text-sm text-muted">Open balance: <b className="text-ink">{doc.currency} {fmtMoney(doc.balance)}</b></div>
         <div><label className="label">Date</label><input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
-        <div><label className="label">Method</label><select className="select" value={method} onChange={e => setMethod(e.target.value)}>{['Bank transfer', 'Cheque', 'Cash', 'Card', 'Online / gateway', 'Set-off'].map(m => <option key={m}>{m}</option>)}</select></div>
+        <div><label className="label">Method</label><CustomSelect className="select" value={method} onChange={e => setMethod(e.target.value)}>{['Bank transfer', 'Cheque', 'Cash', 'Card', 'Online / gateway', 'Set-off'].map(m => <option key={m}>{m}</option>)}</CustomSelect></div>
         <div className="col-span-2"><label className="label">{kind === 'receipt' ? 'Deposit to' : 'Paid from'}<span className="req">*</span></label><RefSelect entity="bank_accounts" value={bank} onChange={setBank} /></div>
         <div><label className="label">Amount ({doc.currency})</label><input className="input text-right" type="number" step="0.01" max={doc.balance} value={amount} onChange={e => setAmount(Number(e.target.value))} /></div>
         <div><label className="label">Reference / cheque no.</label><input className="input" value={ref} onChange={e => setRef(e.target.value)} /></div>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { api, buildClientHeaders, get, getFetchCredentials, post, resolveApiUrl } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { HandoverCustody } from './HandoverCustody'
+import { CustomSelect } from '../../components/CustomSelect'
 import {
   ShieldCheck, Lock, PhoneCall, Upload, Users, Building2, Search,
   CheckSquare, Square, Send, RefreshCw, MapPinned, History, Settings2, X,
@@ -591,7 +592,7 @@ export default function CrmVaultPage() {
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="font-semibold text-body block mb-1">Bridge Provider</label>
-                <select
+                <CustomSelect
                   value={bridge.masked_call_provider}
                   onChange={e => setBridge({ ...bridge, masked_call_provider: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-ink"
@@ -599,7 +600,7 @@ export default function CrmVaultPage() {
                   <option value="none">Disabled (Strict Fail-Closed — Number Stays Hidden)</option>
                   <option value="twilio">Twilio Voice Two-Leg Masked Bridge</option>
                   <option value="webhook">Custom UAE SIP / Ziwo / Etisalat-du PBX Webhook Bridge</option>
-                </select>
+                </CustomSelect>
               </div>
               <div>
                 <label className="font-semibold text-body block mb-1">SWK Company Caller ID (Shown on Agent &amp; Owner Phones)</label>
@@ -656,12 +657,12 @@ export default function CrmVaultPage() {
             </div>
             <div className="text-xs">
               <label className="font-bold text-body block mb-1">Select Sales / Leasing Agent</label>
-              <select value={targetAgentId} onChange={e => setTargetAgentId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-line bg-soft text-ink">
+              <CustomSelect value={targetAgentId} onChange={e => setTargetAgentId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-line bg-soft text-ink">
                 <option value="">-- Choose Agent --</option>
                 {agents.map(a => (
                   <option key={a.id} value={String(a.id)}>{a.name} ({a.email})</option>
                 ))}
-              </select>
+              </CustomSelect>
             </div>
             <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-950 flex items-start gap-2">
               <Lock className="w-4 h-4 text-[#8a621c] shrink-0 mt-0.5" />

@@ -5,6 +5,7 @@ import { optValue } from '@shared/types'
 import { post,upload } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { Modal } from '../ui/kit'
+import { CustomSelect } from './CustomSelect'
 import type { MetaEntity } from '../lib/meta'
 
 type Result = { file: string; text: string; method: string; pages: number; records: Record<string, any>[]; by: 'ai' | 'rules'; warning?: string }
@@ -46,7 +47,7 @@ export function SmartImport({ def, onClose, onDone }: { def: MetaEntity; onClose
     if (errs.length) toast.error(errs.slice(0, 3).join(' · ')); else onClose()
   }
   const input = (f: FieldDef, v: any, onChange: (v: any) => void) =>
-    f.type === 'select' ? <select className="select" style={{ minHeight: 32 }} value={v ?? ''} onChange={e => onChange(e.target.value || undefined)}><option value="">—</option>{(f.options ?? []).map(o => <option key={optValue(o)}>{optValue(o)}</option>)}</select>
+    f.type === 'select' ? <CustomSelect compact className="select" style={{ minHeight: 32 }} value={v ?? ''} onChange={e => onChange(e.target.value || undefined)}><option value="">—</option>{(f.options ?? []).map(o => <option key={optValue(o)}>{optValue(o)}</option>)}</CustomSelect>
       : f.type === 'bool' ? <input type="checkbox" checked={!!v} onChange={e => onChange(e.target.checked)} />
       : <input className="input" style={{ minHeight: 32, minWidth: 140 }} type={f.type === 'date' ? 'date' : ['money', 'number', 'int', 'percent'].includes(f.type) ? 'number' : 'text'} value={v ?? ''} onChange={e => onChange(e.target.value === '' ? undefined : ['money', 'number', 'int', 'percent'].includes(f.type) ? Number(e.target.value) : e.target.value)} />
 

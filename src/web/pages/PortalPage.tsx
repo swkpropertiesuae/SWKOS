@@ -4,6 +4,7 @@ import { Wrench } from 'lucide-react'
 import { get,post } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { PageHeader,Loading,ErrorBox,Empty } from '../ui/kit'
+import { CustomSelect } from '../components/CustomSelect'
 
 const CATS = ['Plumbing', 'Electrical', 'HVAC', 'Appliances', 'Carpentry', 'Painting', 'Cleaning', 'Pest Control', 'Structural', 'Security', 'Common Area', 'Other']
 
@@ -22,7 +23,7 @@ export function PortalPage() {
     <PageHeader icon={<Wrench size={22} />} title="Service requests" subtitle="Report a problem, approve a quote or update a work order." />
     {!!leases.data?.rows.length && <form className="swk-card p-4 grid gap-2 md:grid-cols-4" onSubmit={e => { e.preventDefault(); void run(() => post('/api/portal/maintenance', { ...form, lease_id: form.lease_id || leases.data!.rows[0].id }), 'Request sent').then(() => setForm(f => ({ ...f, description: '' }))) }}>
       <select className="select" value={form.lease_id || leases.data.rows[0].id} onChange={e => setForm({ ...form, lease_id: Number(e.target.value) })}>{leases.data.rows.map(l => <option key={l.id} value={l.id}>{l._title ?? l.lease_no ?? l.id}</option>)}</select>
-      <select className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>{CATS.map(c => <option key={c}>{c}</option>)}</select>
+      <CustomSelect className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>{CATS.map(c => <option key={c}>{c}</option>)}</CustomSelect>
       <input className="input md:col-span-2" required minLength={5} placeholder="What is the problem?" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
       <button className="btn orange md:col-span-4" type="submit">Send request</button>
     </form>}

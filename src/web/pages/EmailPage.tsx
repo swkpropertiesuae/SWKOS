@@ -1,4 +1,5 @@
 import { AIWriting } from '../components/AIWriting'
+import { CustomSelect } from '../components/CustomSelect'
 import { useToast } from '../lib/toast'
 import { useEffect,useState } from 'react'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
@@ -13,7 +14,7 @@ type Account = { email: string; provider: 'smtp' | 'resend'; host: string; port:
 export function SenderSelect({ value, onChange, preferred }: { value: string; onChange: (v: string) => void; preferred?: string }) {
   const q = useQuery({ queryKey: ['email-senders'], queryFn: () => get<Sender[]>('/api/email/senders') })
   useEffect(() => { if (!value && q.data?.some(s => s.ready)) onChange((q.data.find(s => s.ready && s.email === preferred) || q.data.find(s => s.ready))!.email) }, [q.data, value, onChange, preferred])
-  return <div><label className="label" htmlFor="email-from">From</label><select id="email-from" className="select" value={value} onChange={e => onChange(e.target.value)}><option value="">Choose a connected sender</option>{q.data?.map(s => <option key={s.email} value={s.email} disabled={!s.ready}>{s.email}{s.ready ? '' : ' — not connected'}</option>)}</select>{q.error && <ErrorBox error={q.error} />}{q.data && !q.data.some(s => s.ready) && <p className="text-sm text-muted">No sender is connected yet. An administrator can connect one in Email → Sender settings.</p>}</div>
+  return <div><label className="label" htmlFor="email-from">From</label><CustomSelect id="email-from" className="select" value={value} onChange={e => onChange(e.target.value)}><option value="">Choose a connected sender</option>{q.data?.map(s => <option key={s.email} value={s.email} disabled={!s.ready}>{s.email}{s.ready ? '' : ' — not connected'}</option>)}</CustomSelect>{q.error && <ErrorBox error={q.error} />}{q.data && !q.data.some(s => s.ready) && <p className="text-sm text-muted">No sender is connected yet. An administrator can connect one in Email → Sender settings.</p>}</div>
 }
 export default function EmailPage() {
   const { can } = useMeta(), toast = useToast(), qc = useQueryClient(), dialogs = useDialogs()

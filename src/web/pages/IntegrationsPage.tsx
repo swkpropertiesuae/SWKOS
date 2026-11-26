@@ -6,6 +6,7 @@ import { canOpenEmployeeRecords } from '@shared/swk-staff-access'
 import { downloadAuthFile, get, post, put } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { PageHeader, Loading, ErrorBox } from '../ui/kit'
+import { CustomSelect } from '../components/CustomSelect'
 import { iconByName } from '../lib/icons'
 import { cls } from '../lib/format'
 import { useMeta } from '../lib/meta'
@@ -153,7 +154,7 @@ function FieldInput({ f, v, onChange }: { f: Field; v: any; onChange: (v: any) =
   return (
     <div className={f.type === 'textarea' ? 'md:col-span-2' : ''}>
       <label className="label">{f.label}</label>
-      {f.type === 'select' ? <select className="select" value={v ?? ''} onChange={e => onChange(e.target.value)}>{f.options!.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+      {f.type === 'select' ? <CustomSelect className="select" value={v ?? ''} onChange={e => onChange(e.target.value)}>{f.options!.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</CustomSelect>
         : f.type === 'textarea' ? <textarea className="textarea" rows={4} value={v ?? ''} onChange={e => onChange(e.target.value)} />
         : <input className="input" type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'} autoComplete="off" placeholder={f.placeholder} value={v ?? ''} onChange={e => onChange(f.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)} />}
       {f.help && <div className="text-xs text-muted mt-1">{f.help}</div>}

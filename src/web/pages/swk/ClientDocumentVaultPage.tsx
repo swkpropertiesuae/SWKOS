@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -216,8 +217,9 @@ export default function ClientDocumentVaultPage() {
                               <Upload size={12} /> {busyKey === doc.key ? 'Saving…' : 'Upload'}
                               <input type="file" className="hidden" onChange={e => void uploadForDoc(doc.key, doc.label, e.target.files?.[0])} />
                             </label>
-                            <select
-                              className="select h-8 py-0 text-xs w-[112px]"
+                            <CustomSelect
+                              compact
+                              className="select h-8 py-0 text-xs w-[148px]"
                               value={doc.status}
                               disabled={busyKey === doc.key}
                               onChange={e => void updateItem(doc.key, { status: e.target.value, expiry_date: doc.expiry_date })}
@@ -226,7 +228,7 @@ export default function ClientDocumentVaultPage() {
                               <option value="Uploaded">Uploaded</option>
                               <option value="Verified">Verified</option>
                               <option value="Expired">Expired</option>
-                            </select>
+                            </CustomSelect>
                           </div>
                         </div>
                       ))}

@@ -5,6 +5,7 @@ import { Scale,Plus,CheckCircle2,ShieldCheck,XCircle,Banknote,FileText } from 'l
 import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
 import { RefSelect } from '../../components/RefSelect'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Badge,Loading,Modal,PageHeader } from '../../ui/kit'
 import { useToast } from '../../lib/toast'
 import { fmtMoney } from '../../lib/format'
@@ -261,11 +262,11 @@ export default function WithdrawalsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="label">Department Division</label>
-              <select className="input" value={form.department_division} onChange={e => setForm(f => ({ ...f, department_division: e.target.value }))}>
+              <CustomSelect className="input" value={form.department_division} onChange={e => setForm(f => ({ ...f, department_division: e.target.value }))}>
                 <option>Sales of Off-Plan Projects</option>
                 <option>Secondary Projects</option>
                 <option>Leasing</option>
-              </select>
+              </CustomSelect>
             </div>
             <div>
               <label className="label">Client / Buyer / Tenant <span className="req">*</span></label>
@@ -281,24 +282,24 @@ export default function WithdrawalsPage() {
             </div>
             <div>
               <label className="label">Withdrawn By</label>
-              <select className="input" value={form.withdrawn_by} onChange={e => handleSituationChange(e.target.value, form.situation_category)}>
+              <CustomSelect className="input" value={form.withdrawn_by} onChange={e => handleSituationChange(e.target.value, form.situation_category)}>
                 <option>Client / Buyer</option>
                 <option>Developer</option>
                 <option>Secondary Seller / Landlord</option>
                 <option>Mutual Agreement</option>
-              </select>
+              </CustomSelect>
             </div>
             <div>
               <label className="label">Situation Category</label>
-              <select className="input" value={form.situation_category} onChange={e => handleSituationChange(form.withdrawn_by, e.target.value)}>
+              <CustomSelect className="input" value={form.situation_category} onChange={e => handleSituationChange(form.withdrawn_by, e.target.value)}>
                 {SITUATIONS.map(s => <option key={s}>{s}</option>)}
-              </select>
+              </CustomSelect>
             </div>
             <div>
               <label className="label">Original Legal Payment Mode Received</label>
-              <select className="input" value={form.payment_mode_received} onChange={e => setForm(f => ({ ...f, payment_mode_received: e.target.value }))}>
+              <CustomSelect className="input" value={form.payment_mode_received} onChange={e => setForm(f => ({ ...f, payment_mode_received: e.target.value }))}>
                 {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
-              </select>
+              </CustomSelect>
             </div>
             <div>
               <label className="label">Amount Paid by Client (AED) <span className="req">*</span></label>
@@ -310,14 +311,14 @@ export default function WithdrawalsPage() {
             </div>
             <div>
               <label className="label">Refund Settlement Channel</label>
-              <select className="input" value={form.refund_payment_mode} onChange={e => setForm(f => ({ ...f, refund_payment_mode: e.target.value }))}>
+              <CustomSelect className="input" value={form.refund_payment_mode} onChange={e => setForm(f => ({ ...f, refund_payment_mode: e.target.value }))}>
                 <option>SWK Company Bank Wire (IBAN)</option>
                 <option>Developer Escrow Refund Cheque</option>
                 <option>Manager Cheque to Client</option>
                 <option>Return of Undeposited PDC Cheques</option>
                 <option>Licensed UAE Exchange House Refund</option>
                 <option>VARA-Licensed USDT / Crypto Return to Verified Client Wallet</option>
-              </select>
+              </CustomSelect>
             </div>
             <div className="md:col-span-2 p-3 rounded-xl bg-soft border border-line flex items-center justify-between flex-wrap gap-3">
               <div>

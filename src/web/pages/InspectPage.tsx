@@ -6,6 +6,7 @@ import { get,put,post } from '../lib/api'
 import { enqueue } from '../lib/offlineQueue'
 import { useToast } from '../lib/toast'
 import { PageHeader,Loading,ErrorBox,Empty } from '../ui/kit'
+import { RefSelect } from '../components/RefSelect'
 import { cls } from '../lib/format'
 
 type Item = { name: string; state: 'ok' | 'issue' | 'na' | ''; note: string; photos: string[] }
@@ -33,7 +34,7 @@ export function InspectList() {
   }
   return <div className="space-y-4">
     <PageHeader icon={<ClipboardCheck size={22} />} title="Inspections" subtitle="Tick each item, add photos and a signature. Works offline and saves when you are back online." />
-    <div className="swk-card p-4 flex gap-2 flex-wrap"><select className="select" value={t} onChange={e => setT(Number(e.target.value))}>{tpl.data?.rows.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select><select className="select" value={u} onChange={e => setU(Number(e.target.value))}>{units.data?.rows.map(x => <option key={x.id} value={x.id}>{x.unit_no} · {x.property_title}</option>)}</select><button className="btn orange" onClick={() => void make()}>Start inspection</button></div>
+    <div className="swk-card p-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-center"><RefSelect entity="inspection_templates" value={t || null} onChange={id => setT(id ?? 0)} placeholder="Search or add template…" /><RefSelect entity="units" value={u || null} onChange={id => setU(id ?? 0)} placeholder="Search or add unit…" /><button className="btn orange" onClick={() => void make()}>Start inspection</button></div>
     {!list.data.rows.length ? <Empty title="No inspections yet" hint="Start one from a template." /> : list.data.rows.map(r => <Link key={r.id} to={`/inspect/${r.id}`} className="swk-card p-4 flex gap-3 items-center"><b>{r.inspection_no}</b><span className="text-muted text-sm">{r.unit_title} · {r.inspection_type}</span><span className="ml-auto text-sm font-semibold">{r.status}</span></Link>)}
   </div>
 }

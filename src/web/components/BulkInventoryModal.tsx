@@ -3,6 +3,7 @@ import { ArrowDownWideNarrow, CheckCircle2, Download, FileSpreadsheet, Layers, L
 import { downloadAuthFile, post } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { Modal } from '../ui/kit'
+import { CustomSelect } from './CustomSelect'
 
 type SortBy = 'community_building_price' | 'department_community' | 'price_desc' | 'price_asc' | 'original'
 type DedupeMode = 'skip' | 'update' | 'create'
@@ -195,21 +196,21 @@ export function BulkInventoryModal({ onClose, onDone }: { onClose: () => void; o
             </div>
             <div>
               <label className="label">Default Core Department</label>
-              <select className="select" value={defaultDepartment} onChange={e => refreshPreview({ defaultDepartment: e.target.value })}>
+              <CustomSelect className="select" value={defaultDepartment} onChange={e => refreshPreview({ defaultDepartment: e.target.value })}>
                 <option value="">Auto-detect per row (Recommended)</option>
                 <option value="Secondary Projects">Secondary Projects</option>
                 <option value="Sales of Off-Plan Projects">Sales of Off-Plan Projects</option>
                 <option value="Leasing">Leasing</option>
-              </select>
+              </CustomSelect>
             </div>
             <div>
               <label className="label">Default Status</label>
-              <select className="select" value={defaultStatus} onChange={e => refreshPreview({ defaultStatus: e.target.value })}>
+              <CustomSelect className="select" value={defaultStatus} onChange={e => refreshPreview({ defaultStatus: e.target.value })}>
                 <option value="Available">Available</option>
                 <option value="Off-Plan">Off-Plan</option>
                 <option value="Under Offer">Under Offer</option>
                 <option value="Reserved">Reserved</option>
-              </select>
+              </CustomSelect>
             </div>
           </div>
         </div>

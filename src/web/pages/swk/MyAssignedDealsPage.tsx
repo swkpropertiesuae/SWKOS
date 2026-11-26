@@ -3,6 +3,7 @@ import { api, get, post } from '../../lib/api'
 import { sipClient } from '../../lib/sipClient'
 import { useToast } from '../../lib/toast'
 import { MyHandoverDocs } from './HandoverCustody'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Lock, PhoneCall, MessageCircle, MapPinned, Building2, RefreshCw, Save, ShieldCheck } from 'lucide-react'
 
 const AED = (v: any) => {
@@ -241,13 +242,14 @@ export default function MyAssignedDealsPage() {
 
                 {/* Agent Status & Notes */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line">
-                  <select
+                  <CustomSelect
+                    compact
                     value={statusDraft[r.id] ?? r.vault_status}
                     onChange={e => setStatusDraft(s => ({ ...s, [r.id]: e.target.value }))}
-                    className="px-2.5 py-1.5 text-xs rounded-lg border border-line bg-soft text-ink font-semibold"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-line bg-soft text-ink font-semibold max-w-[190px]"
                   >
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  </CustomSelect>
                   <input
                     value={notesDraft[r.id] ?? r.agent_notes ?? ''}
                     onChange={e => setNotesDraft(n => ({ ...n, [r.id]: e.target.value }))}

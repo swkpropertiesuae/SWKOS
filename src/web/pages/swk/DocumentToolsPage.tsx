@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -447,17 +448,17 @@ export default function DocumentToolsPage({ embedded = false }: { embedded?: boo
             aria-label="Watermark text"
           />
           <div className="grid grid-cols-2 gap-2">
-            <select className="select text-xs" value={wmOpacity} onChange={e => setWmOpacity(e.target.value)} aria-label="Watermark opacity">
+            <CustomSelect compact className="select text-xs" value={wmOpacity} onChange={e => setWmOpacity(e.target.value)} aria-label="Watermark opacity">
               <option value="0.12">Light (12%)</option>
               <option value="0.18">Standard (18%)</option>
               <option value="0.30">Medium (30%)</option>
               <option value="0.45">Strong (45%)</option>
-            </select>
-            <select className="select text-xs" value={wmAngle} onChange={e => setWmAngle(e.target.value)} aria-label="Watermark angle">
+            </CustomSelect>
+            <CustomSelect compact className="select text-xs" value={wmAngle} onChange={e => setWmAngle(e.target.value)} aria-label="Watermark angle">
               <option value="45">Diagonal 45°</option>
               <option value="30">Diagonal 30°</option>
               <option value="0">Horizontal 0°</option>
-            </select>
+            </CustomSelect>
           </div>
           {pick('application/pdf', false, f => void watermarkPdf(f?.[0]), 'Watermark PDF', 'watermark')}
         </Tool>

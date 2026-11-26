@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Brain, Plus, Search, Sparkles } from 'lucide-react'
 import { get, post } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { CustomSelect } from '../../components/CustomSelect'
 
 const CATEGORIES = ['All', 'Secondary Resale', 'Mortgage & Valuation', 'Off-Plan', 'Distressed Exit', 'Golden Visa', 'A2A Co-Broke', 'Leasing & Ejari', 'Compliance & RERA']
 
@@ -116,9 +117,9 @@ export default function AiCaseStudyPage() {
         <form onSubmit={saveCaseStudy} className="rounded-3xl border border-[#d4a752]/50 bg-[#fefaf0] dark:bg-card p-5 space-y-3 shadow-sm">
           <h2 className="m-0 text-[16px] font-bold text-ink">Train New Real-World Case Study into AI Model</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <select className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+            <CustomSelect className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
               {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </CustomSelect>
             <input className="input" required placeholder="Case Study Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <input className="input" placeholder="Client Profile (Salaried, Self-Employed, Non-Resident, Cash…)" value={form.client_profile} onChange={e => setForm({ ...form, client_profile: e.target.value })} />
             <input className="input" placeholder="Property / Community / Developer Context" value={form.property_context} onChange={e => setForm({ ...form, property_context: e.target.value })} />

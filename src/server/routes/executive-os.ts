@@ -497,8 +497,8 @@ export default async function (app: FastifyInstance) {
     const clientName = String(b.client_name || '').trim()
     const propertyLabel = String(b.property_label || '').trim()
     if (!clientName || !propertyLabel) throw bad('client_name and property_label are required')
-    const stage12 = PIPELINE_STAGE_MAP.has(String(b.stage_12 || '')) ? String(b.stage_12) : '05_offer'
-    const urgency = ['CASH_IMMEDIATE', 'VIP_PRIVATE', 'CONFIDENTIAL'].includes(String(b.urgency)) ? String(b.urgency) : 'CASH_IMMEDIATE'
+    const stage12 = String(b.stage_12 || '').trim().slice(0, 60) || '05_offer'
+    const urgency = String(b.urgency || '').trim().slice(0, 60) || 'CASH_IMMEDIATE'
     const refCode = nextFastTrackCode('FT')
     const ts = nowIso()
     const id = q.insert(
@@ -518,7 +518,7 @@ export default async function (app: FastifyInstance) {
     const cur = q.get<any>(`SELECT * FROM privacy_fast_track_jobs WHERE id = ? AND deleted_at IS NULL`, id)
     if (!cur) throw notFound('Fast-track job not found')
     const b = body<Record<string, any>>(req)
-    const stage12 = b.stage_12 && PIPELINE_STAGE_MAP.has(String(b.stage_12)) ? String(b.stage_12) : cur.stage_12
+    const stage12 = b.stage_12 !== undefined ? (String(b.stage_12).trim().slice(0, 60) || cur.stage_12) : cur.stage_12
     q.run(
       `UPDATE privacy_fast_track_jobs SET
         client_name = ?, client_phone = ?, client_email = ?, property_label = ?, community = ?,
@@ -872,7 +872,7 @@ export default async function (app: FastifyInstance) {
     const b = body<{ doc_key?: string; status?: string; attachment_id?: number | null; file_name?: string | null; expiry_date?: string | null; notes?: string }>(req)
     const spec = CLIENT_VAULT_REQUIRED_DOCS.find(d => d.key === b.doc_key)
     if (!spec) throw bad('Invalid document checklist key')
-    const status = ['Missing', 'Uploaded', 'Verified', 'Expired'].includes(String(b.status)) ? String(b.status) : 'Uploaded'
+    const status = String(b.status || '').trim().slice(0, 60) || 'Uploaded'
     const ts = nowIso()
     const verifiedBy = status === 'Verified' ? req.user!.id : null
     const verifiedByName = status === 'Verified' ? req.user!.name : null

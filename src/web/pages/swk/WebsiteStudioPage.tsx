@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CustomSelect } from '../../components/CustomSelect'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -310,9 +311,9 @@ export default function WebsiteStudioPage() {
             <h2 className="m-0 text-base font-bold text-[#0f2a33] flex items-center gap-2"><Megaphone size={16} /> Schedule Social Media Post / Campaign</h2>
             <input className="input" required placeholder="Campaign Title *" value={socialForm.title} onChange={e => setSocialForm({ ...socialForm, title: e.target.value })} />
             <div className="grid grid-cols-2 gap-2.5">
-              <select className="select" value={socialForm.channel} onChange={e => setSocialForm({ ...socialForm, channel: e.target.value })}>
+              <CustomSelect className="select" value={socialForm.channel} onChange={e => setSocialForm({ ...socialForm, channel: e.target.value })}>
                 {['Instagram', 'LinkedIn', 'TikTok', 'YouTube', 'WhatsApp Broadcast', 'Facebook'].map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              </CustomSelect>
               <input className="input" type="date" value={socialForm.publish_date} onChange={e => setSocialForm({ ...socialForm, publish_date: e.target.value })} />
             </div>
             <input className="input" placeholder="Offer Highlight (e.g. 1% Monthly · 0% Commission)" value={socialForm.offer_highlight} onChange={e => setSocialForm({ ...socialForm, offer_highlight: e.target.value })} />

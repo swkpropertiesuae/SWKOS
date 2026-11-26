@@ -4,6 +4,7 @@ import { SWK_STAFF_ACCOUNTS } from '@shared/swk-staff-access'
 import { useToast } from '../../lib/toast'
 import { Modal } from '../../ui/kit'
 import { AuthImg } from '../../components/ui/auth-media'
+import { CustomSelect } from '../../components/CustomSelect'
 import { FileText, Lock, Send, Undo2, Eye, ShieldCheck, Upload, Trash2 } from 'lucide-react'
 
 const STAGE_TONE: Record<string, string> = {
@@ -94,8 +95,8 @@ export function HandoverCustody({ onChanged }: { onChanged?: () => void }) {
           <div className="font-bold text-[13px] text-ink flex items-center gap-2"><Upload className="w-4 h-4 text-[#8a621c] dark:text-[#d4a752]" /> Upload documents into Admin Custody</div>
           <p className="m-0 text-muted">SWK file names (playbooks, field guides, calling booklets, roster index) are recognised automatically. Dialer workbooks are not stored: their leads are already in the Master Vault. For any other file, choose its type and staff member first. Files are stored in Cloudflare storage; uploading a file with the same name replaces it.</p>
           <div className="flex flex-wrap items-center gap-2">
-            <select value={kind} onChange={e => setKind(e.target.value)} className="px-2.5 py-2 rounded-lg border border-line bg-soft text-ink" aria-label="Document type"><option value="">Type: detect from name</option>{KINDS.map(k => <option key={k}>{k}</option>)}</select>
-            <select value={staff} onChange={e => setStaff(e.target.value)} className="px-2.5 py-2 rounded-lg border border-line bg-soft text-ink" aria-label="Staff member"><option value="">Staff: detect from name</option>{SWK_STAFF_ACCOUNTS.filter(a => a.roleName !== 'Owner' && a.roleName !== 'Admin').map(a => <option key={a.email} value={a.email}>{a.name}</option>)}</select>
+            <CustomSelect compact value={kind} onChange={e => setKind(e.target.value)} className="px-2.5 py-2 rounded-lg border border-line bg-soft text-ink max-w-[230px]" aria-label="Document type"><option value="">Type: detect from name</option>{KINDS.map(k => <option key={k}>{k}</option>)}</CustomSelect>
+            <CustomSelect compact value={staff} onChange={e => setStaff(e.target.value)} className="px-2.5 py-2 rounded-lg border border-line bg-soft text-ink max-w-[230px]" aria-label="Staff member"><option value="">Staff: detect from name</option>{SWK_STAFF_ACCOUNTS.filter(a => a.roleName !== 'Owner' && a.roleName !== 'Admin').map(a => <option key={a.email} value={a.email}>{a.name}</option>)}</CustomSelect>
             <label className={`px-3 py-2 rounded-lg bg-[#12303a] text-white font-bold flex items-center gap-1.5 cursor-pointer ${busy ? 'opacity-50 pointer-events-none' : ''}`}><Upload className="w-3.5 h-3.5" /> Choose files<input type="file" multiple accept=".pdf,.xlsx" className="sr-only" disabled={busy} onChange={e => { uploadFiles(e.target.files); e.target.value = '' }} /></label>
             {progress && <span className="text-muted" role="status">{progress}</span>}
           </div>

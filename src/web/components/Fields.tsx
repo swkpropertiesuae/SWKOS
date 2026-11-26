@@ -1,6 +1,7 @@
 import type { FieldDef } from '@shared/types'
 import { optLabel,optValue } from '@shared/types'
 import { RefSelect } from './RefSelect'
+import { CustomSelect } from './CustomSelect'
 import { cls,fmtDate,fmtDateTime,fmtMoney,fmtNum } from '../lib/format'
 import { Badge } from '../ui/kit'
 import { AIWriting } from './AIWriting'
@@ -15,10 +16,16 @@ export function FieldInput({ f, value, label, onChange, disabled, invalid, compa
     case 'date': return <input className={cls('input', invalid && 'invalid')} {...common} type="date" value={value ?? ''} onChange={e => onChange(e.target.value || null)} />
     case 'datetime': return <input className={cls('input', invalid && 'invalid')} {...common} type="datetime-local" value={value ?? ''} onChange={e => onChange(e.target.value || null)} />
     case 'select': return (
-      <select className={cls('select', invalid && 'invalid')} {...common} value={value ?? ''} onChange={e => onChange(e.target.value || null)}>
-        <option value="">{f.required ? 'Select…' : '—'}</option>
-        {(f.options ?? []).map(o => <option key={optValue(o)} value={optValue(o)}>{optLabel(o)}</option>)}
-      </select>)
+      <CustomSelect
+        compact={compact}
+        className={cls('select', invalid && 'invalid')}
+        {...common}
+        value={value ?? ''}
+        emptyLabel={f.required ? 'Select or type custom…' : '— Empty —'}
+        customPlaceholder={`Type custom ${f.label.toLowerCase()}…`}
+        onChange={e => onChange(e.target.value || null)}
+        options={(f.options ?? []).map(o => ({ value: optValue(o), label: optLabel(o) }))}
+      />)
     case 'bool': return (
       <label className={cls('swk-bool-box', compact && 'compact', disabled && 'opacity-60 cursor-not-allowed')}>
         <input type="checkbox" className="w-4 h-4 accent-emerald" {...common} checked={!!value} onChange={e => onChange(e.target.checked)} /><span className="text-[14px] font-medium text-ink">{value ? 'Yes' : 'No'}</span>
