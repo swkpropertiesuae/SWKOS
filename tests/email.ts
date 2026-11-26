@@ -80,7 +80,10 @@ try {
     check('writing has no business tools or automatic data access', !aiBody.tools && aiBody.messages.length === 2 && aiBody.messages[1].content.includes(writeInput.text) && !JSON.stringify(aiBody).includes('mock-private-key'))
     check('unknown module rejected', (await request('/api/ai/write', 'POST', { ...writeInput, module: 'unknown' })).statusCode === 403)
   } finally { globalThis.fetch = originalFetch }
-  const other = q.get('SELECT id FROM users WHERE id<>? LIMIT 1', login.json().user.id)!
+  const other = q.get(
+    `SELECT u.id FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id <> ? AND u.deleted_at IS NULL AND u.active = 1 AND r.name IN ('Owner', 'Manager', 'Admin') ORDER BY u.id ASC LIMIT 1`,
+    login.json().user.id,
+  )!
   q.run('UPDATE users SET must_change_password=0 WHERE id=?', other.id)
   const otherKey = newApiKey()
   q.run('INSERT INTO api_keys(name,user_id,key_hash,active,created_at,updated_at) VALUES (?,?,?,1,?,?)', 'Other mail fixture', other.id, otherKey.hash, new Date().toISOString(), new Date().toISOString())
