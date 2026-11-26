@@ -478,7 +478,7 @@ export default function CrmVaultPage() {
           <div className="flex items-center gap-3">
             <select value={routeCaptain} onChange={e => setRouteCaptain(e.target.value)} className="px-3 py-2 text-xs rounded-lg border border-line bg-card text-ink">
               <option value="all">All Territory Captains</option>
-              {['Saifullah', 'Talha Shabbir', 'Shahid', 'Fareed', 'Umar', 'Sanketh'].map(c => <option key={c} value={c}>{c}</option>)}
+              {['Saifullah', 'Talha Shabbir', 'Shahid', 'Fareed', 'Umar', 'Sanket Katariya'].map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <span className="text-xs text-muted">{routes.length} scheduled daily routes</span>
           </div>

@@ -2,7 +2,7 @@ import EmailPage from './pages/EmailPage'
 import { Navigate,Route,Routes,useLocation,Link } from 'react-router-dom'
 import { Suspense,lazy,useCallback,useState,type ReactNode } from 'react'
 import { useMeta } from './lib/meta'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canAccessMasterLog,canAccessShabibsCorner,canPrintReceptionQr,canAccessCrmVault,canAccessDocumentTemplates,canAccessFieldLiveMap,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access'
 import { Shell } from './components/Shell'
 import { BrandSplashScreen } from './components/BrandSplashScreen'
 import { Login } from './pages/Login'
@@ -64,6 +64,12 @@ const UnifiedSearchPage = lazy(() => import('./pages/swk/UnifiedSearchPage'))
 const PhonePage = lazy(() => import('./pages/swk/PhonePage'))
 const FieldDutyPage = lazy(() => import('./pages/swk/FieldDutyPage'))
 const FieldLiveMapPage = lazy(() => import('./pages/swk/FieldLiveMapPage'))
+const ShabibsCornerPage = lazy(() => import('./pages/swk/ShabibsCornerPage'))
+const MasterLogPage = lazy(() => import('./pages/swk/MasterLogPage'))
+const CommandCenterPage = lazy(() => import('./pages/swk/CommandCenterPage'))
+const ClientDocumentVaultPage = lazy(() => import('./pages/swk/ClientDocumentVaultPage'))
+const MortgageDeskPage = lazy(() => import('./pages/swk/MortgageDeskPage'))
+const AiCaseStudyPage = lazy(() => import('./pages/swk/AiCaseStudyPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -105,6 +111,20 @@ function DocTemplateGuard({ children }: { children: ReactNode }) {
   return canAccessDocumentTemplates(me)
     ? <>{children}</>
     : <ErrorBox error={new Error('Document Templates & Letter Studio are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
+}
+function OwnerOnlyGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessShabibsCorner(me)
+    ? <>{children}</>
+    : <ErrorBox error={new Error("Shabib's Corner & Privacy Fast Track are locked exclusively to Owner Shabib Siraj.")} />
+}
+function MasterLogGuard({ children }: { children: ReactNode }) {
+  const { me } = useMeta()
+  if (!me) return <Loading />
+  return canAccessMasterLog(me)
+    ? <>{children}</>
+    : <ErrorBox error={new Error('Master Log (CORE) is restricted exclusively to Owner Shabib, System Admin, and Office Admin.')} />
 }
 const Statements = () => <ReportsPage fixed={['trial_balance', 'profit_loss', 'balance_sheet', 'general_ledger', 'vat_return', 'ar_aging', 'ap_aging', 'tax_invoice_register']} />
 
@@ -190,6 +210,12 @@ export default function App() {
         <Route element={<Shell />}>
           <Route index element={<Navigate to={defaultLanding} replace />} />
           <Route path="/home" element={<Launcher />} />
+          <Route path="/shabibs-corner" element={<OwnerOnlyGuard><ShabibsCornerPage /></OwnerOnlyGuard>} />
+          <Route path="/master-log" element={<MasterLogGuard><MasterLogPage /></MasterLogGuard>} />
+          <Route path="/command-center" element={<StaffGuard><CommandCenterPage /></StaffGuard>} />
+          <Route path="/client-vault" element={<Guard module="documents"><ClientDocumentVaultPage /></Guard>} />
+          <Route path="/mortgage-desk" element={<Guard module="crm"><MortgageDeskPage /></Guard>} />
+          <Route path="/ai-training" element={<Guard module="ai"><AiCaseStudyPage /></Guard>} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />

@@ -155,6 +155,13 @@ export function Dashboard() {
     enabled: can('properties', 'view') && !restricted,
   })
   const pulse = useQuery({ queryKey: ['pulse'], queryFn: () => get<any>('/api/dashboard/pulse'), refetchInterval: 30_000, retry: false })
+  const stage12Q = useQuery({
+    queryKey: ['dash-pipeline-12'],
+    queryFn: () => get<any>('/api/pipeline/12-stage'),
+    enabled: !restricted && !me?.party_id,
+    staleTime: 60_000,
+    retry: false,
+  })
 
   const triggerBrief = async (kind: 'morning' | 'attendance-1030') => {
     setSendingBrief(kind)
@@ -375,11 +382,17 @@ export function Dashboard() {
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {roleProfile === 'owner' && (
               <>
+                <Link to="/shabibs-corner" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <ShieldCheck size={15} /> Shabib&apos;s Corner
+                </Link>
+                <Link to="/master-log" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Layers size={15} /> Master Log
+                </Link>
                 <button
                   type="button"
                   disabled={sendingBrief !== null}
                   onClick={() => void triggerBrief('morning')}
-                  className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] border-0 cursor-pointer hover:bg-[#e5be6d] transition-colors"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white cursor-pointer hover:bg-white/20 transition-colors"
                 >
                   <FileBarChart size={15} /> {sendingBrief === 'morning' ? 'Dispatching…' : 'Owner Morning Brief'}
                 </button>
@@ -437,11 +450,14 @@ export function Dashboard() {
             )}
             {roleProfile === 'office_admin' && (
               <>
-                <Link to="/e/leads?new=1" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
-                  <UserPlus size={15} /> Log Walk-In Lead
+                <Link to="/reception-display" className="inline-flex items-center gap-2 rounded-full bg-[#d4a752] px-4 py-2.5 text-[13px] font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6d] transition-colors">
+                  <QrCode size={15} /> Generate Reception QR
                 </Link>
-                <Link to="/e/tickets" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
-                  <Ticket size={15} /> Support Desk
+                <Link to="/master-log" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <Layers size={15} /> Master Log (Request Edit)
+                </Link>
+                <Link to="/e/leads?new=1" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
+                  <UserPlus size={15} /> Log Walk-In Lead
                 </Link>
                 <Link to="/studio" className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20 transition-colors">
                   <FileCode2 size={15} /> Letter Studio
@@ -474,6 +490,36 @@ export function Dashboard() {
           <KpiCard key={c.label} {...c} />
         ))}
       </section>
+
+      {/* ============================================================ 2B. 12-STAGE LIVE PIPELINE COUNTERS */}
+      {!restricted && (stage12Q.data?.stages?.length ?? 0) > 0 && (
+        <section aria-label="12-stage pipeline counters" className="card p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h2 className="m-0 text-[16px] font-bold text-ink">12-Stage Pipeline Playbook · Live Counts</h2>
+              <p className="m-0 text-xs text-muted">Live deals &amp; AED volume at every stage from Inventory through Final Closure &amp; Client Care.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link to="/command-center" className="btn outline sm no-underline">Command Center</Link>
+              <Link to="/pipeline" className="btn sm bg-[#0b1f2a] text-[#f3d27a] no-underline">Open 12-Stage Kanban</Link>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {(stage12Q.data.stages as any[]).map((st: any) => (
+              <Link key={st.code} to="/pipeline" className="rounded-2xl border border-line bg-soft/60 p-3 no-underline hover:border-ink/40 transition-colors">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex size-6 items-center justify-center rounded-lg text-[10.5px] font-extrabold text-white" style={{ background: st.color }}>
+                    {String(st.step).padStart(2, '0')}
+                  </span>
+                  <b className="text-base font-extrabold text-ink tabular-nums">{st.count}</b>
+                </div>
+                <div className="mt-1.5 truncate text-xs font-bold text-ink">{st.shortLabel}</div>
+                <div className="text-[11px] font-semibold text-emerald-700 tabular-nums">{aed(st.deal_value_aed)}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ============================================================ 3. OWNER SEAL & SIGNATURE GOVERNANCE DESK */}
       {roleProfile === 'owner' && (

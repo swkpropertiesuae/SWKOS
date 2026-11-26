@@ -4,7 +4,7 @@ import { inDemo } from '../db'
 import { canAccessCrmVault, isAdminSwkUser, isOwnerSwkUser, isRestrictedStaffUser } from '../../shared/swk-staff-access'
 
 /** Only reviewed tool capabilities may execute. New tools fail closed until reviewed here (tests/ai-controls.ts checks every tool is listed). */
-const READ = new Set(['business_snapshot','search_deals','get_deal','search_parties','overdue_invoices','party_statement','bills_due','pipeline_summary','rent_roll','expiring_leases','mandate_health','list_leads','stale_opportunities','list_tasks','open_tickets','expiring_documents','lookup_listings','find_caller','market_pulse_lookup','my_assigned_deals_masked','my_attendance_status','my_daily_report_status'])
+const READ = new Set(['business_snapshot','search_deals','get_deal','search_parties','overdue_invoices','party_statement','bills_due','pipeline_summary','rent_roll','expiring_leases','mandate_health','list_leads','stale_opportunities','list_tasks','open_tickets','expiring_documents','lookup_listings','find_caller','market_pulse_lookup','my_assigned_deals_masked','my_attendance_status','my_daily_report_status','search_case_studies'])
 const INTERNAL = new Set(['create_task','add_note','create_lead','add_deal_event','alert_team','capture_lead','request_viewing','report_maintenance_issue','request_callback','transfer_call'])
 const EXTERNAL = new Set(['send_email','send_whatsapp'])
 const ALL_REVIEWED_TOOLS = new Set([...READ, ...INTERNAL, ...EXTERNAL])
@@ -13,9 +13,9 @@ export const ROLE_AI_TOOL_ALLOWLIST: Record<string, ReadonlySet<string>> = {
   Owner: ALL_REVIEWED_TOOLS,
   Admin: ALL_REVIEWED_TOOLS,
   Manager: ALL_REVIEWED_TOOLS,
-  HR: new Set(['expiring_documents', 'list_tasks', 'lookup_listings', 'market_pulse_lookup', 'my_attendance_status', 'my_daily_report_status']),
-  'Office Admin': new Set(['lookup_listings', 'list_tasks', 'open_tickets', 'create_lead', 'request_viewing', 'market_pulse_lookup', 'my_attendance_status', 'my_daily_report_status']),
-  'Staff (Attendance & General)': new Set(['lookup_listings', 'market_pulse_lookup', 'my_assigned_deals_masked', 'my_attendance_status', 'my_daily_report_status']),
+  HR: new Set(['expiring_documents', 'list_tasks', 'lookup_listings', 'market_pulse_lookup', 'my_attendance_status', 'my_daily_report_status', 'search_case_studies']),
+  'Office Admin': new Set(['lookup_listings', 'list_tasks', 'open_tickets', 'create_lead', 'request_viewing', 'market_pulse_lookup', 'my_attendance_status', 'my_daily_report_status', 'search_case_studies']),
+  'Staff (Attendance & General)': new Set(['lookup_listings', 'market_pulse_lookup', 'my_assigned_deals_masked', 'my_attendance_status', 'my_daily_report_status', 'search_case_studies']),
 }
 
 export type RbacRoleTier =

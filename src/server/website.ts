@@ -17,13 +17,80 @@ import { createRecord,getDef,SYSTEM_CTX } from './engine'
 import { HttpError,fromCents,nowIso } from './util'
 import { WEBSITE_REPO_DEFAULT } from '../shared/entities/website'
 import { SWK_TEAM_PROFILES } from '../shared/swk-team-profiles'
+import { assertZeroShabibPublicPayload, findShabibViolations, isRestrictedPublicProfile } from '../shared/zero-shabib-guard'
 import seedListings from './seed/website/listings.json'
 import seedPromotions from './seed/website/promotions.json'
 
 const SEED_KEY = 'seed:website_content_v1'
 const LAST_DEPLOY_KEY = 'website:last_deploy'
+const SITE_UPDATES_KEY = 'website:site_updates'
 const COMPANY_PHONE = '+971564330448'
 const OFFICE_GEO = { lat: 25.213925, lng: 55.277978 }
+
+export interface WebsiteSiteUpdates {
+  announcement: string
+  hero_offer_badge: string
+  hero_offer_title: string
+  hero_offer_subtitle: string
+  hero_offer_cta_label: string
+  hero_offer_cta_href: string
+  updated_at: string
+}
+
+const DEFAULT_SITE_UPDATES: WebsiteSiteUpdates = {
+  announcement: '18+ Years UAE Experience · Direct Master Developer Access · Nakheel, Emaar, Binghatti, DAMAC, Azizi, Tarrad & More Across the UAE',
+  hero_offer_badge: '0% Primary Buyer Fee',
+  hero_offer_title: 'Direct Dubai Off-Plan & Verified Ready Allocations',
+  hero_offer_subtitle: 'Updated directly from SWK Properties OS · RERA ORN 51517 · 25th Floor, Al Saqr Building, Sheikh Zayed Road',
+  hero_offer_cta_label: 'Explore Featured Deals',
+  hero_offer_cta_href: '/off-plan',
+  updated_at: '2026-11-26T00:00:00.000Z',
+}
+
+function enforceZeroShabib(payload: unknown, label: string) {
+  try {
+    assertZeroShabibPublicPayload(payload, label)
+  } catch (e: any) {
+    throw new HttpError(400, e?.message || 'Blocked by public website privacy lock.')
+  }
+}
+
+export function getWebsiteSiteUpdates(): WebsiteSiteUpdates {
+  const raw = q.val<string>(`SELECT value FROM settings WHERE key = ?`, SITE_UPDATES_KEY)
+  const parsed = raw ? asJson(raw) : {}
+  const merged: WebsiteSiteUpdates = {
+    announcement: String(parsed.announcement || DEFAULT_SITE_UPDATES.announcement),
+    hero_offer_badge: String(parsed.hero_offer_badge || DEFAULT_SITE_UPDATES.hero_offer_badge),
+    hero_offer_title: String(parsed.hero_offer_title || DEFAULT_SITE_UPDATES.hero_offer_title),
+    hero_offer_subtitle: String(parsed.hero_offer_subtitle || DEFAULT_SITE_UPDATES.hero_offer_subtitle),
+    hero_offer_cta_label: String(parsed.hero_offer_cta_label || DEFAULT_SITE_UPDATES.hero_offer_cta_label),
+    hero_offer_cta_href: String(parsed.hero_offer_cta_href || DEFAULT_SITE_UPDATES.hero_offer_cta_href),
+    updated_at: String(parsed.updated_at || DEFAULT_SITE_UPDATES.updated_at),
+  }
+  enforceZeroShabib(merged, 'website_site_updates')
+  return merged
+}
+
+export function saveWebsiteSiteUpdates(patch: Partial<WebsiteSiteUpdates>): WebsiteSiteUpdates {
+  const cur = getWebsiteSiteUpdates()
+  const next: WebsiteSiteUpdates = {
+    announcement: String(patch.announcement ?? cur.announcement).trim() || DEFAULT_SITE_UPDATES.announcement,
+    hero_offer_badge: String(patch.hero_offer_badge ?? cur.hero_offer_badge).trim(),
+    hero_offer_title: String(patch.hero_offer_title ?? cur.hero_offer_title).trim(),
+    hero_offer_subtitle: String(patch.hero_offer_subtitle ?? cur.hero_offer_subtitle).trim(),
+    hero_offer_cta_label: String(patch.hero_offer_cta_label ?? cur.hero_offer_cta_label).trim() || 'Explore Offers',
+    hero_offer_cta_href: String(patch.hero_offer_cta_href ?? cur.hero_offer_cta_href).trim() || '/off-plan',
+    updated_at: nowIso(),
+  }
+  enforceZeroShabib(next, 'website_site_updates')
+  q.run(
+    `INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    SITE_UPDATES_KEY,
+    JSON.stringify(next),
+    next.updated_at,
+  )
+  return next
+}
 
 const lines = (v: unknown): string[] => String(v ?? '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)
 const asJson = (v: unknown): Record<string, any> => {
@@ -115,7 +182,20 @@ export function buildWebsiteExport() {
   const promos = q.all<Record<string, any>>(`SELECT * FROM website_promotions WHERE deleted_at IS NULL AND active = 1 ORDER BY sort_order, id`)
     .filter(p => (!p.starts_on || p.starts_on <= today) && (!p.ends_on || p.ends_on >= today))
     .map(p => ({ id: slugify(p.title), tab: p.tab, eyebrow: p.eyebrow ?? '', title: p.title, shortTitle: p.short_title || String(p.title).split(/\s+/).slice(0, 3).join(' '), developer: p.developer ?? '', community: p.community ?? '', priceGuide: p.price_guide ?? '', planHighlight: p.plan_highlight ?? '', image: p.image ?? '', href: p.href ?? '/off-plan', benefits: lines(p.benefits) }))
-  return { listings: listings.map(l => l.out), promotions: [...hotDeals, ...promos], problems }
+  const publicTeam = SWK_TEAM_PROFILES.filter(p => p.onWebsite && !isRestrictedPublicProfile(p))
+  const siteUpdates = getWebsiteSiteUpdates()
+  const exportListings = listings.map(l => l.out)
+  const exportPromotions = [...hotDeals, ...promos]
+  const shabibHits = [
+    ...findShabibViolations(exportListings, 'listings'),
+    ...findShabibViolations(exportPromotions, 'promotions'),
+    ...findShabibViolations(siteUpdates, 'siteUpdates'),
+    ...findShabibViolations(publicTeam, 'team'),
+  ]
+  for (const hit of shabibHits.slice(0, 5)) {
+    problems.push(`HARD LOCK VIOLATION: Remove restricted owner name from ${hit}`)
+  }
+  return { listings: exportListings, promotions: exportPromotions, siteUpdates, publicTeam, problems }
 }
 
 export function websiteDeployConfig() {
@@ -146,7 +226,8 @@ async function gh(path: string, init: RequestInit = {}) {
 export async function deployWebsite(by: { name?: string | null; email?: string | null } | null) {
   const cfg = websiteDeployConfig()
   if (!cfg.tokenSet) throw new HttpError(400, 'Website deploy is not connected yet. Set WEBSITE_GITHUB_TOKEN on the server (a GitHub token with Contents read & write on ' + cfg.repo + ').')
-  const { listings, promotions, problems } = buildWebsiteExport()
+  const { listings, promotions, siteUpdates, publicTeam, problems } = buildWebsiteExport()
+  enforceZeroShabib({ listings, promotions, siteUpdates, publicTeam }, 'Website Deploy Export')
   if (problems.length) throw new HttpError(400, `Fix before deploying: ${problems.slice(0, 5).join('; ')}${problems.length > 5 ? ` (+${problems.length - 5} more)` : ''}`)
   if (!listings.length) throw new HttpError(400, 'No published listings: the website would be empty.')
   const ref = await gh(`/repos/${cfg.repo}/git/ref/heads/${encodeURIComponent(cfg.branch)}`)
@@ -154,6 +235,7 @@ export async function deployWebsite(by: { name?: string | null; email?: string |
   const files = [
     { path: 'src/data/listings-expanded.json', content: JSON.stringify(listings, null, 2) + '\n' },
     { path: 'src/data/promotions.json', content: JSON.stringify(promotions, null, 2) + '\n' },
+    { path: 'src/data/site-updates.json', content: JSON.stringify({ ...siteUpdates, published_team_count: publicTeam.length }, null, 2) + '\n' },
   ]
   const tree = await gh(`/repos/${cfg.repo}/git/trees`, { method: 'POST', body: JSON.stringify({ base_tree: parent.tree.sha, tree: files.map(f => ({ path: f.path, mode: '100644', type: 'blob', content: f.content })) }) })
   if (tree.sha === parent.tree.sha) return record({ status: 'unchanged', listings: listings.length, promotions: promotions.length, by: by?.name ?? null, at: nowIso() })

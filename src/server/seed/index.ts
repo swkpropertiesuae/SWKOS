@@ -7,7 +7,8 @@ import { seedCompanyDocuments } from './company-documents'
 import { seedCompliance } from './compliance'
 import { syncStudioLibrary } from '../studio/library'
 import { hashPassword,verifyPassword } from '../auth'
-import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,hardcodedAccountFor,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
+import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RETIRED_STAFF_EMAILS,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,hardcodedAccountFor,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
+import { SWK_COMPANY_ADDRESS,SWK_COMPANY_EMAIL,SWK_COMPANY_PHONE,SWK_TRADE_LICENSE } from '../../shared/corporate-footer'
 import crypto from 'node:crypto'
 
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
@@ -33,8 +34,49 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
   const mk = (key: string, payload: Record<string, any>) => createRecord(getDef(key), payload, SYSTEM_CTX)
 
   if (!done('branches')) {
-    mk('branches', { code: 'DXB', name: 'Dubai – Head Office', city: 'Dubai', country: 'United Arab Emirates', is_head_office: true, active: true })
+    mk('branches', {
+      code: 'DXB',
+      name: 'Dubai – Head Office (Al Saqr Building, SZR)',
+      address: SWK_COMPANY_ADDRESS,
+      city: 'Dubai',
+      country: 'United Arab Emirates',
+      wifi_ssid: 'SWK-Office-SZR',
+      gps_lat: '25.213925',
+      gps_lng: '55.277978',
+      geofence_radius_m: 100,
+      phone: SWK_COMPANY_PHONE,
+      email: SWK_COMPANY_EMAIL,
+      trade_license: SWK_TRADE_LICENSE,
+      is_head_office: true,
+      active: true,
+    })
     mark('branches')
+  }
+  if (!done('branches_szr_v4')) {
+    const dxbId = idOf('branches', 'code', 'DXB')
+    if (dxbId) {
+      q.run(
+        `UPDATE branches SET
+          name = CASE WHEN name = 'Dubai – Head Office' OR name IS NULL OR name = '' THEN ? ELSE name END,
+          address = CASE WHEN address IS NULL OR address = '' THEN ? ELSE address END,
+          gps_lat = COALESCE(NULLIF(gps_lat, ''), '25.213925'),
+          gps_lng = COALESCE(NULLIF(gps_lng, ''), '55.277978'),
+          geofence_radius_m = COALESCE(geofence_radius_m, 100),
+          phone = COALESCE(NULLIF(phone, ''), ?),
+          email = COALESCE(NULLIF(email, ''), ?),
+          trade_license = COALESCE(NULLIF(trade_license, ''), ?),
+          updated_at = ?
+         WHERE id = ?`,
+        'Dubai – Head Office (Al Saqr Building, SZR)',
+        SWK_COMPANY_ADDRESS,
+        SWK_COMPANY_PHONE,
+        SWK_COMPANY_EMAIL,
+        SWK_TRADE_LICENSE,
+        nowIso(),
+        dxbId,
+      )
+    }
+    mark('branches_szr_v4')
   }
   if (!done('legal_entity')) {
     const id = mk('legal_entities', { code: 'SWK', name: 'SWK Properties L.L.C.', base_currency: config.baseCurrency, is_default: true, active: true }).id
@@ -68,6 +110,16 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
       if (!idOf('departments', 'code', code)) mk('departments', { code, name })
     }
     mark('departments_swk_v2')
+  }
+  if (!done('departments_swk_v4')) {
+    for (const [code, name] of [
+      ['BDM', 'Business Development (BDM)'],
+      ['MKT', 'Digital Marketing'],
+      ['FIN', 'Finance'],
+    ]) {
+      if (!idOf('departments', 'code', code)) mk('departments', { code, name })
+    }
+    mark('departments_swk_v4')
   }
   if (!done('roles')) {
     const V = ['view'], VE = ['view', 'export'], CRUD = ['view', 'create', 'edit', 'delete', 'export'], CE = ['view', 'create', 'edit', 'export'], ALL_MOD = ['view', 'create', 'edit', 'delete', 'approve', 'export']
@@ -223,10 +275,25 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
       ['BINGHATTI', 'Binghatti', 'DEV-008', 'https://www.binghatti.com'],
       ['OMNIYAT', 'Omniyat', 'DEV-009', 'https://www.omniyat.com'],
       ['ALDAR', 'Aldar Properties', 'DEV-010', 'https://www.aldar.com'],
+      ['AZIZI', 'Azizi Developments', 'DEV-011', 'https://www.azizidevelopments.com'],
+      ['DANUBE', 'Danube Properties', 'DEV-012', 'https://www.danubeproperties.com'],
+      ['IMTIAZ', 'Imtiaz Developments', 'DEV-013', 'https://www.imtiaz.ae'],
+      ['SAMANA', 'Samana Developers', 'DEV-014', 'https://www.samanadevelopers.com'],
     ] as const) {
-      mk('developers', { code, name, rera_id, website, active: true })
+      mk('developers', { code, name, emirate: code === 'ALDAR' ? 'Abu Dhabi' : 'Dubai', rera_id, website, active: true })
     }
     mark('developers')
+  }
+  if (!done('developers_swk_v4')) {
+    for (const [code, name, emirate, rera_id, website] of [
+      ['AZIZI', 'Azizi Developments', 'Dubai', 'DEV-011', 'https://www.azizidevelopments.com'],
+      ['DANUBE', 'Danube Properties', 'Dubai', 'DEV-012', 'https://www.danubeproperties.com'],
+      ['IMTIAZ', 'Imtiaz Developments', 'Dubai', 'DEV-013', 'https://www.imtiaz.ae'],
+      ['SAMANA', 'Samana Developers', 'Dubai', 'DEV-014', 'https://www.samanadevelopers.com'],
+    ] as const) {
+      if (!idOf('developers', 'code', code)) mk('developers', { code, name, emirate, rera_id, website, active: true })
+    }
+    mark('developers_swk_v4')
   }
   if (!done('compliance')) { seedCompliance({ demo: opts.demo }); mark('compliance') }
   if (!opts.demo && !done('company_documents_20261123')) {
@@ -402,10 +469,30 @@ export function applyPasswordReset() {
 }
 
 /**
- * Runs on every start. Moves a staff user whose official email changed (fareed@swk.properties -> fareed@swk.rent)
- * and creates any roster account that has no user yet (including Owner, Admin, Manager and staff). Never changes an existing user's password or role.
+ * Removes explicitly deleted staff (e.g. Samarth) from active users, sessions, chat groups & employees.
+ * Idempotent on every start so existing production DBs reflect the roster immediately.
+ */
+export function retireDeletedSwkStaff() {
+  const ts = nowIso()
+  for (const email of RETIRED_STAFF_EMAILS) {
+    const users = q.all<{ id: number }>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, email.toLowerCase())
+    for (const u of users) {
+      q.run(`DELETE FROM sessions WHERE user_id = ?`, u.id)
+      try { q.run(`DELETE FROM chat_members WHERE user_id = ?`, u.id) } catch { /* chat tables optional in tests */ }
+      q.run(`UPDATE users SET active = 0, deleted_at = ?, updated_at = ? WHERE id = ?`, ts, ts, u.id)
+    }
+    q.run(`UPDATE employees SET status = 'Terminated', deleted_at = ?, updated_at = ? WHERE lower(email) = ? AND deleted_at IS NULL`, ts, ts, email.toLowerCase())
+  }
+  q.run(`UPDATE employees SET status = 'Terminated', deleted_at = ?, updated_at = ? WHERE emp_no = 'EMP-SAMARTH' AND deleted_at IS NULL`, ts, ts)
+}
+
+/**
+ * Runs on every start. Moves a staff user whose official email changed (fareed@swk.properties -> fareed@swk.rent),
+ * retires removed staff (Samarth), syncs display names (Sanketh -> Sanket Katariya),
+ * and creates any roster account that has no user yet. NEVER changes any existing user's password or email.
  */
 export function syncSwkStaffRoster() {
+  retireDeletedSwkStaff()
   const staffRoleId = idOf('roles', 'name', 'Staff (Attendance & General)')
   const dxb = idOf('branches', 'code', 'DXB') ?? 1
   const dept = (code: string) => idOf('departments', 'code', code) ?? idOf('departments', 'code', 'MGT') ?? 1
@@ -415,11 +502,15 @@ export function syncSwkStaffRoster() {
     if (!userId) {
       const oldId = acc.aliases.map(userIdBy).find(Boolean)
       if (oldId) {
-        q.run(`UPDATE users SET email = ?, updated_at = ? WHERE id = ?`, acc.displayEmail, nowIso(), oldId)
-        q.run(`UPDATE employees SET email = ?, updated_at = ? WHERE user_id = ? AND deleted_at IS NULL`, acc.displayEmail, nowIso(), oldId)
+        q.run(`UPDATE users SET email = ?, name = ?, updated_at = ? WHERE id = ?`, acc.displayEmail, acc.name, nowIso(), oldId)
+        q.run(`UPDATE employees SET email = ?, name = ?, updated_at = ? WHERE user_id = ? AND deleted_at IS NULL`, acc.displayEmail, acc.name, nowIso(), oldId)
         console.log(`Staff email moved to ${acc.displayEmail}.`)
         continue
       }
+    } else if (acc.empNo === 'EMP-SANKETH') {
+      // Sync Sanket Katariya display name without touching email or password
+      q.run(`UPDATE users SET name = ?, updated_at = ? WHERE id = ? AND name <> ?`, acc.name, nowIso(), userId, acc.name)
+      q.run(`UPDATE employees SET name = ?, updated_at = ? WHERE (user_id = ? OR emp_no = 'EMP-SANKETH') AND deleted_at IS NULL AND name <> ?`, acc.name, nowIso(), userId, acc.name)
     }
     const roleId = idOf('roles', 'name', acc.roleName) ?? staffRoleId
     if (userId || !roleId) continue
@@ -447,6 +538,7 @@ export function syncSwkStaffRoster() {
 }
 
 export function ensureHardcodedSwkStaffAccounts() {
+  retireDeletedSwkStaff()
   const mk = (key: string, payload: Record<string, any>) => createRecord(getDef(key), payload, SYSTEM_CTX)
   const dxb = idOf('branches', 'code', 'DXB') ?? 1
   const dept = (code: string) => idOf('departments', 'code', code) ?? idOf('departments', 'code', 'MGT') ?? 1

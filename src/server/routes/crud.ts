@@ -4,7 +4,8 @@ import { q,qi,tx } from '../db'
 import { ENTITIES } from '../../shared/entities'
 import { optValue,recordTitle,type EntityDef,type FieldDef } from '../../shared/types'
 import { attachLabels,createRecord,deleteRecord,requestDeleteOrExecute,getDef,getRecord,labelsFor,listRecords,rowToApi,updateRecord,can,assertCan,maskRecs,maskedFieldsFor,MASK,titleCols,customFieldsFor,invalidateCustomFields,type Ctx } from '../engine'
-import { canAccessDocumentTemplates, canViewEmployeeRecords, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
+import { canAccessDocumentTemplates, canViewEmployeeRecords, isOfficeAdminMeenakshi, RESTRICTED_HR_PII_ENTITIES } from '../../shared/swk-staff-access'
+import { legacyStageFor12, OFFICE_ADMIN_GATED_MASTER_ENTITIES, OWNER_ONLY_MASTER_ENTITIES, resolveStage12Code } from '../../shared/swk-pipeline'
 import { bad,HttpError,forbidden,notFound,parseCsv,safeJson,toCsv,nowLocal,nowIso,todayStr } from '../util'
 import { body,idOf,parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
@@ -63,6 +64,24 @@ function assertHrPiiRouteAccess(def: EntityDef, ctx: Ctx) {
   if (!ctx.system && def.key === 'doc_templates' && !canAccessDocumentTemplates(ctx.user)) {
     throw forbidden('Document templates are restricted to Owner, Admin, HR, and Office Admin only.')
   }
+}
+
+function assertMasterLogMutationGate(def: EntityDef, ctx: Ctx) {
+  if (ctx.system) return
+  if (isOfficeAdminMeenakshi(ctx.user) && (OFFICE_ADMIN_GATED_MASTER_ENTITIES.has(def.key) || OWNER_ONLY_MASTER_ENTITIES.has(def.key))) {
+    throw forbidden('Office Admin cannot modify CORE Master Log records directly. Submit a Master Log change request for Owner approval.')
+  }
+}
+
+function syncJobPipelinePayload(def: EntityDef, payload: Record<string, any>) {
+  if (def.key !== 'jobs') return payload
+  const out = { ...payload }
+  if (out.stage_12 && !out.operational_status) {
+    out.operational_status = legacyStageFor12(String(out.stage_12))
+  } else if (out.operational_status && !out.stage_12) {
+    out.stage_12 = resolveStage12Code(null, String(out.operational_status), out.job_status)
+  }
+  return out
 }
 
 export default async function (app: FastifyInstance) {
@@ -243,7 +262,8 @@ export default async function (app: FastifyInstance) {
   app.post('/api/e/:entity', async (req, reply) => {
     const def = guard(getDef((req.params as any).entity))
     assertHrPiiRouteAccess(def, req.ctx)
-    const rec = createRecord(def, body(req), req.ctx)
+    assertMasterLogMutationGate(def, req.ctx)
+    const rec = createRecord(def, syncJobPipelinePayload(def, body(req)), req.ctx)
     reply.status(201)
     return rec
   })
@@ -251,8 +271,9 @@ export default async function (app: FastifyInstance) {
     const p = req.params as any
     const def = guard(getDef(p.entity))
     assertHrPiiRouteAccess(def, req.ctx)
+    assertMasterLogMutationGate(def, req.ctx)
     // A masked field comes back as the placeholder; sending it back must not overwrite the real value.
-    const b = body<Record<string, any>>(req)
+    const b = syncJobPipelinePayload(def, body<Record<string, any>>(req))
     for (const f of maskedFieldsFor(def, req.ctx)) if (b[f] === MASK) delete b[f]
     return maskRecs(def, [updateRecord(def, idOf(p.id), b, req.ctx)], req.ctx)[0]
   })

@@ -1,218 +1,384 @@
-import type { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react'
 import {
-LayoutDashboard,LineChart,KanbanSquare,CalendarDays,Sparkles,Building2,Home,Rocket,Map,Landmark as DevIcon,Megaphone,
-UserPlus,Users,Target,PhoneCall,MessageCircle,Mail,FilePen,CalendarCheck,HandCoins,FileSignature,FileCheck,ShieldCheck,
-KeyRound,CalendarClock,Wallet,ReceiptText,Wrench,ClipboardCheck,DoorOpen,UserRoundCog,FileBarChart,Percent,Receipt,FileInput,
-Banknote,Scale,BadgeCheck,ScrollText,FileStack,Trophy,IdCard,Clock,Plane,Calculator,FileCode2,BarChart3,Settings,
-ShieldHalf,History,Plug,DatabaseBackup,Building,Gavel,Layers,ShieldAlert,CheckCheck,MapPinned,Briefcase,Star,PackageCheck,QrCode,Trash2,BookOpen,Globe,Flame,Contact,MessagesSquare,ListChecks,FolderKanban,Workflow,Zap,ScanText,Languages,Search,Navigation,
-MessageCircleMore,SquareCheckBig,Gauge,UsersRound,Handshake,Settings2
-} from 'lucide-react';
-import { canAccessSwkAdminLogic,canAccessCrmVault,canAccessFieldLiveMap,canAccessDocumentTemplates,isRestrictedStaffUser,isAllowedPathForRestrictedStaff } from '@shared/swk-staff-access';
+  LayoutDashboard,
+  LineChart,
+  KanbanSquare,
+  CalendarDays,
+  Sparkles,
+  Building2,
+  Home,
+  Rocket,
+  Map,
+  Landmark as DevIcon,
+  Megaphone,
+  UserPlus,
+  Users,
+  Target,
+  PhoneCall,
+  MessageCircle,
+  Mail,
+  FilePen,
+  CalendarCheck,
+  HandCoins,
+  FileSignature,
+  FileCheck,
+  ShieldCheck,
+  KeyRound,
+  CalendarClock,
+  Wallet,
+  ReceiptText,
+  Wrench,
+  ClipboardCheck,
+  DoorOpen,
+  UserRoundCog,
+  FileBarChart,
+  Percent,
+  Receipt,
+  FileInput,
+  Banknote,
+  Scale,
+  BadgeCheck,
+  ScrollText,
+  FileStack,
+  Trophy,
+  IdCard,
+  Clock,
+  Plane,
+  Calculator,
+  FileCode2,
+  BarChart3,
+  Settings,
+  ShieldHalf,
+  History,
+  Plug,
+  DatabaseBackup,
+  Building,
+  Gavel,
+  Layers,
+  ShieldAlert,
+  CheckCheck,
+  MapPinned,
+  Briefcase,
+  Star,
+  PackageCheck,
+  QrCode,
+  Trash2,
+  Globe,
+  Flame,
+  Contact,
+  MessagesSquare,
+  ListChecks,
+  FolderKanban,
+  Workflow,
+  Zap,
+  ScanText,
+  Languages,
+  Search,
+  Navigation,
+  MessageCircleMore,
+  SquareCheckBig,
+  Gauge,
+  UsersRound,
+  Handshake,
+  Settings2,
+  Crown,
+  Database,
+  FolderLock,
+  Brain,
+  Radio,
+} from 'lucide-react'
+import {
+  canAccessCrmVault,
+  canAccessDocumentTemplates,
+  canAccessFieldLiveMap,
+  canAccessMasterLog,
+  canAccessShabibsCorner,
+  canAccessSwkAdminLogic,
+  canPrintReceptionQr,
+  isAllowedPathForRestrictedStaff,
+  isRestrictedStaffUser,
+} from '@shared/swk-staff-access'
 
 export type NavItem = { label: string; to: string; icon: LucideIcon; module?: string; isNew?: boolean; desc?: string }
 export type NavSection = { key: string; label: string; items: NavItem[] }
 
 /**
-  * Simple English, workflow-ordered navigation for SWK Properties Business Workspace.
-  * Every section orders its app icons step-by-step according to daily real estate workflow.
-  */
+ * Restructured SWK OS v4 — Clean App-Icon Architecture with simple names:
+ * Shabib's Corner, Command Center, Dashboard, Master Log, Pipeline Playbook,
+ * CRM, Mortgage Desk, Sales & Services, Documents Vault, Accounts, Compliance,
+ * Website & Social, Employees, Field GPS Services, AI Case-Study Lab,
+ * Utilities & Documents, Settings + SWK Core Suite (Inside, Work, Phone).
+ */
 export const SWK_CORE_SUITE_KEYS = new Set(['messages', 'work', 'phone'])
 
 export const SWK_NAV: NavSection[] = [
-  { key: 'messages', label: 'SWK Inside', items: [
-    { label: 'SWK Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, groups & announcements' },
-  ] },
-  { key: 'work', label: 'SWK Work', items: [
-    { label: 'My Work', to: '/my-work', icon: ListChecks, module: 'projects', isNew: true, desc: 'Everything assigned to me, by due date' },
-    { label: 'Tasks', to: '/e/tasks', icon: ListChecks, module: 'projects', desc: 'Table, board & calendar of all tasks' },
-    { label: 'Projects', to: '/e/projects', icon: FolderKanban, module: 'projects', desc: 'Projects with owners, budgets & dates' },
-    { label: 'Automations', to: '/automations', icon: Zap, module: 'admin', isNew: true, desc: 'When this happens, do that — no code' },
-    { label: 'Automation Runs', to: '/e/workflow_runs', icon: Workflow, module: 'admin', desc: 'History of every automation run' },
-  ] },
-  { key: 'phone', label: 'SWK Phone', items: [
-    { label: 'SWK Phone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'WebRTC SIP extension, colleague directory & Masked Vault calling' },
-  ] },
-  { key: 'command', label: 'Dashboards', items: [
-    { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, module: 'dashboard', desc: 'Daily business summary' },
-    { label: 'Deal Pipeline', to: '/pipeline', icon: KanbanSquare, module: 'sales', desc: 'Track deals step by step' },
-    { label: 'Approvals', to: '/e/universal_approvals', icon: CheckCheck, module: 'admin', desc: 'Items waiting for sign-off' },
-    { label: 'Delete Bin', to: '/recycle-bin', icon: Trash2, module: 'admin', desc: 'Owner approval for deletions' },
-    { label: 'Calendar', to: '/calendar', icon: CalendarDays, desc: 'Viewings & meetings' },
-    { label: 'Daily Operations', to: '/enterprise/master-os', icon: ShieldCheck, module: 'admin', desc: 'Company workflow control' },
-    { label: 'Market Pulse', to: '/market', icon: LineChart, desc: 'Dubai prices & yields' },
-    { label: 'Attendance Check-In', to: '/reception-qr', icon: QrCode, desc: 'Office reception scan & check-in' },
-    { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Smart daily helper' },
-  ] },
-  { key: 'inventory', label: 'Properties', items: [
-    { label: 'New Submissions', to: '/e/inventory_submissions', icon: Building2, module: 'properties', desc: 'Step 1 · Agent property intake' },
-    { label: 'Owner Permits', to: '/e/listing_mandates', icon: FileSignature, module: 'mandates', desc: 'Step 2 · Signed owner forms' },
-    { label: 'Properties', to: '/e/properties', icon: Building2, module: 'properties', desc: 'Step 3 · Approved buildings & villas' },
-    { label: 'Units', to: '/e/units', icon: Home, module: 'properties', desc: 'Step 4 · Apartments & offices' },
-    { label: 'Listing Studio', to: '/listings', icon: Megaphone, module: 'properties', desc: 'Step 5 · Publish to portals' },
-    { label: 'Off-Plan', to: '/offplan', icon: Rocket, module: 'properties', desc: 'New developer launches' },
-    { label: 'Inspection App', to: '/inspect', icon: Building2, module: 'leases', desc: 'Checklist, photos, signature' },
-    { label: 'Inspection Templates', to: '/e/inspection_templates', icon: Building2, module: 'leases', desc: 'Move-in / move-out checklists' },
-    { label: 'Service Portal', to: '/portal', icon: Building2, module: 'leases', desc: 'Tenant · landlord · vendor view' },
-    { label: 'Smart Search', to: '/smart-search', icon: Rocket, module: 'properties', desc: 'Ask in plain words + buyer shortlist' },
-    { label: 'Payment Plans', to: '/e/payment_plan_templates', icon: Rocket, module: 'properties', desc: 'Off-plan instalment plans' },
-    { label: 'Communities', to: '/e/communities', icon: Map, module: 'masters', desc: 'Dubai areas & districts' },
-    { label: 'Developers', to: '/e/developers', icon: DevIcon, module: 'masters', desc: 'Master developers' },
-  ] },
-  { key: 'clients', label: 'CRM', items: [
-    { label: 'CRM Property Vault', to: '/crm-vault', icon: ShieldCheck, module: 'admin', isNew: true, desc: 'Leadership Vault · 3,600+ properties & masked dispatch' },
-    { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Dispatched deals & hard-masked calling' },
-    { label: 'Softphone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'WebRTC SIP extension, colleague directory & Masked Vault calling' },
-    { label: 'Leads', to: '/e/leads', icon: UserPlus, module: 'crm', desc: 'Step 1 · New enquiries' },
-    { label: 'Phone Calls', to: '/e/voice_calls', icon: PhoneCall, module: 'ai', desc: 'Step 2 · Call log & notes' },
-    { label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle, module: 'crm', desc: 'Step 3 · Live WhatsApp chat' },
-    { label: 'Email', to: '/email', icon: Mail, module: 'crm', desc: 'Step 4 · Client email inbox' },
-    { label: 'Follow-Ups', to: '/e/activities', icon: CalendarCheck, module: 'crm', desc: 'Step 5 · Tasks & callbacks' },
-    { label: 'Opportunities', to: '/e/opportunities', icon: Target, module: 'crm', desc: 'Step 6 · Active requirements' },
-    { label: 'Contacts', to: '/e/parties', icon: Users, module: 'crm', desc: 'Buyers, sellers & tenants' },
-    { label: 'Messages Log', to: '/e/communications', icon: MessageCircle, module: 'crm', desc: 'All client messages' },
-    { label: 'Campaigns', to: '/e/campaigns', icon: Megaphone, module: 'crm', desc: 'Marketing campaigns' },
-    { label: 'Message Drafts', to: '/e/message_drafts', icon: MessageCircle, module: 'crm', desc: 'Approve before sending' },
-    { label: 'Follow-up Sequences', to: '/e/followup_sequences', icon: CalendarCheck, module: 'crm', desc: 'Drip follow-ups' },
-    { label: 'Sequence Enrolments', to: '/e/sequence_enrolments', icon: CalendarCheck, module: 'crm', desc: 'Who is in a sequence' },
-    { label: 'Routing Rules', to: '/e/lead_routing_rules', icon: History, module: 'crm', desc: 'Who gets new leads' },
-    { label: 'Mortgage Cases', to: '/e/mortgage_cases', icon: DevIcon, module: 'crm', desc: 'Bank referrals & milestones' },
-    { label: 'Targets', to: '/e/agent_targets', icon: Target, module: 'crm', desc: 'Monthly goals per advisor' },
-    { label: 'Lead History', to: '/e/lead_assignment_logs', icon: History, module: 'crm', desc: 'Lead routing log' },
-    { label: 'Reviews', to: '/e/qa_reviews', icon: Star, module: 'support', desc: 'Client service ratings' },
-  ] },
-  { key: 'sales', label: 'Sales & mandates', items: [
-    { label: 'E-Signatures', to: '/e/esign_requests', icon: FilePen, module: 'documents', desc: 'Send documents to sign' },
-    { label: 'Seller Form A', to: '/e/mandates', icon: FilePen, module: 'mandates', desc: 'Step 1 · Seller agreement' },
-    { label: 'Viewings', to: '/e/viewings', icon: CalendarCheck, module: 'mandates', desc: 'Step 2 · Property visits' },
-    { label: 'Buyer Offers', to: '/e/offers', icon: HandCoins, module: 'transactions', desc: 'Step 3 · Client offers' },
-    { label: 'Sale Contract (F)', to: '/e/sales_contracts', icon: FileCheck, module: 'transactions', desc: 'Step 4 · Signed Form F / MOU' },
-    { label: 'Escrow', to: '/e/escrow_accounts', icon: ShieldCheck, module: 'transactions', desc: 'Step 5 · Deposit & escrow' },
-    { label: 'Developer NOC', to: '/e/developer_requests', icon: FileCheck, module: 'transactions', desc: 'Step 6 · Developer clearance' },
-    { label: 'DLD Transfer', to: '/e/dld_filings', icon: FileCheck, module: 'transactions', desc: 'Step 7 · Title deed transfer' },
-    { label: 'Sales Tracker', to: '/e/transactions', icon: Briefcase, module: 'transactions', desc: 'Step 8 · Full sale progress' },
-    { label: 'Deal Folders', to: '/e/jobs', icon: FileSignature, module: 'sales', desc: 'Step 9 · Closing & billing file' },
-    { label: 'Withdrawals', to: '/withdrawals', icon: Scale, module: 'sales', desc: 'Step 10 · Deal cancellations & refunds' },
-  ] },
-  { key: 'leasing', label: 'Leasing & management', items: [
-    { label: 'Leases & Ejari', to: '/e/leases', icon: KeyRound, module: 'leases', desc: 'Step 1 · Tenancy contracts' },
-    { label: 'Rent Schedules', to: '/e/rent_schedules', icon: CalendarClock, module: 'leases', desc: 'Step 2 · Rent payment dates' },
-    { label: 'Rent Cheques', to: '/pdc', icon: Wallet, module: 'leases', desc: 'Step 3 · Post-dated cheques' },
-    { label: 'Rent Receipts', to: '/e/rent_receipts', icon: ReceiptText, module: 'leases', desc: 'Step 4 · Collected rent' },
-    { label: 'Inspections', to: '/e/inspections', icon: ClipboardCheck, module: 'leases', desc: 'Step 5 · Move-in & move-out' },
-    { label: 'Handovers', to: '/e/handovers', icon: DoorOpen, module: 'properties', desc: 'Step 6 · Keys & access cards' },
-    { label: 'Maintenance', to: '/e/maintenance', icon: Wrench, module: 'leases', desc: 'Step 7 · Repairs & work orders' },
-    { label: 'Service Charges', to: '/e/service_charges', icon: Layers, module: 'leases', desc: 'Step 8 · Building fees' },
-  ] },
-  { key: 'owners', label: 'Landlords', items: [
-    { label: 'Landlord Hub', to: '/owners', icon: UserRoundCog, module: 'finance', desc: 'Step 1 · Portfolios & yields' },
-    { label: 'Statements', to: '/e/owner_statements', icon: FileBarChart, module: 'finance', desc: 'Step 2 · Payout statements' },
-  ] },
-  { key: 'finance', label: 'Accounting', items: [
-    { label: 'Invoices', to: '/e/invoices', icon: Receipt, module: 'finance', desc: 'Step 1 · Client tax invoices' },
-    { label: 'Receipts', to: '/e/receipts', icon: HandCoins, module: 'finance', desc: 'Step 2 · Money received' },
-    { label: 'Commissions', to: '/e/agent_commissions', icon: Percent, module: 'finance', desc: 'Step 3 · Agent deal shares' },
-    { label: 'Agent Payouts', to: '/e/commission_entitlements', icon: Percent, module: 'finance', desc: 'Step 4 · Approved payouts' },
-    { label: 'Supplier Bills', to: '/e/bills', icon: FileInput, module: 'finance', desc: 'Step 5 · Incoming bills' },
-    { label: 'Payments', to: '/e/payments', icon: Banknote, module: 'finance', desc: 'Step 6 · Outgoing transfers' },
-    { label: 'Purchases', to: '/e/procurement_requests', icon: PackageCheck, module: 'finance', desc: 'Step 7 · Office supplies' },
-    { label: 'Bank Matching', to: '/e/bank_transactions', icon: Scale, module: 'finance', desc: 'Step 8 · Bank reconciliation' },
-    { label: 'Profit & VAT', to: '/finance/statements', icon: FileBarChart, module: 'finance', desc: 'Step 9 · Financial reports' },
-  ] },
-  { key: 'compliance', label: 'Compliance', items: [
-    { label: 'KYC Checks', to: '/e/kyc_checks', icon: ShieldCheck, module: 'compliance', desc: 'Step 1 · Client ID & screening' },
-    { label: 'RERA Centre', to: '/rera', icon: Gavel, module: 'compliance', desc: 'Step 2 · Permits & forms' },
-    { label: 'Broker Cards', to: '/e/agent_authorisations', icon: BadgeCheck, module: 'compliance', desc: 'Step 3 · Agent RERA licences' },
-    { label: 'AML Reports', to: '/e/aml_reports', icon: ShieldAlert, module: 'compliance', desc: 'Step 4 · goAML filings' },
-    { label: 'Risk Cases', to: '/e/compliance_cases', icon: ShieldAlert, module: 'compliance', desc: 'Step 5 · Compliance reviews' },
-    { label: 'Trade Licences', to: '/compliance', icon: BadgeCheck, module: 'compliance', desc: 'Company renewal dates' },
-    { label: 'Registrations', to: '/e/compliance_items', icon: ScrollText, module: 'compliance', desc: 'Official certificates' },
-    { label: 'File Vault', to: '/documents', icon: FileStack, module: 'documents', desc: 'All uploaded documents' },
-  ] },
-  { key: 'website', label: 'Website', items: [
-    { label: 'Website Studio', to: '/website', icon: Globe, module: 'website', isNew: true, desc: 'Inventory, hot offers & one-click deploy' },
-    { label: 'Website Listings', to: '/e/website_listings', icon: Building2, module: 'website', desc: 'All listings on swkpropertiesuae.com' },
-    { label: 'Trending Spotlight', to: '/e/website_promotions', icon: Flame, module: 'website', desc: 'Promotions shown on the website' },
-  ] },
-  { key: 'team', label: 'Employees', items: [
-    { label: 'Team Profiles', to: '/team', icon: Contact, desc: 'Photos, bios & role access' },
-    { label: 'Staff List', to: '/e/employees', icon: Users, module: 'hr', desc: 'Step 1 · Employee profiles' },
-    { label: 'Brokers (BRN)', to: '/e/agents', icon: IdCard, module: 'hr', desc: 'Step 2 · Sales & leasing agents' },
-    { label: 'Joining & Exit', to: '/e/hr_lifecycle_cases', icon: Users, module: 'hr', desc: 'Step 3 · Onboarding checklist' },
-    { label: 'Visas & IDs', to: '/e/immigration_cases', icon: Plane, module: 'hr', desc: 'Step 4 · Visas & Emirates ID' },
-    { label: 'Attendance', to: '/e/attendance', icon: Clock, module: 'hr', desc: 'Step 5 · Daily check-in log' },
-    { label: 'Leave', to: '/e/leave_requests', icon: Plane, module: 'hr', desc: 'Step 6 · Holiday & sick leave' },
-    { label: 'Payroll (WPS)', to: '/e/payslips', icon: Banknote, module: 'hr', desc: 'Step 7 · Monthly salary slips' },
-    { label: 'Leaderboard', to: '/agents', icon: Trophy, module: 'sales', desc: 'Top performing brokers' },
-  ] },
-  { key: 'field', label: 'Field Service', items: [
-    { label: 'Reception QR', to: '/reception-qr', icon: QrCode, desc: 'Step 1 · Office QR check-in' },
-    { label: 'Field Duty GPS', to: '/field-duty', icon: Navigation, isNew: true, desc: 'Step 2 · Live field viewing GPS, own trail & SOS' },
-    { label: 'Live Field GPS Map', to: '/field-live', icon: MapPinned, module: 'admin', isNew: true, desc: 'Leadership · Live map of all active field staff' },
-    { label: 'Gate Logs', to: '/e/attendance_events', icon: Clock, module: 'hr', desc: 'Step 3 · Arrival & exit scans' },
-    { label: 'Field Visits', to: '/e/field_sessions', icon: MapPinned, module: 'hr', desc: 'Step 4 · GPS site visits' },
-    { label: 'Daily Reports', to: '/e/daily_reports', icon: ClipboardCheck, module: 'hr', desc: 'Step 5 · End-of-day summary' },
-  ] },
-  { key: 'tools', label: 'Utilities & Documents', items: [
-    { label: 'Utility Suite Hub', to: '/utilities', icon: Wrench, isNew: true, desc: 'Word Studio, PDF/OCR, Translator, Search & Field Pack' },
-    { label: 'Word Studio (.docx)', to: '/utilities/word', icon: FileCode2, isNew: true, desc: 'Rich editor, letterhead, seal, templates & .docx/.pdf export' },
-    { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, isNew: true, desc: 'UAE real-estate glossary translation & document upload' },
-    { label: 'Unified Search', to: '/utilities/search', icon: Search, isNew: true, desc: 'Search SWK Internal, SWKPROPERTY.COM, Market & Live Web' },
-    { label: 'Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage, PDC & public QR tools' },
-    { label: 'Document Tools', to: '/document-tools', icon: ScanText, module: 'documents', isNew: true, desc: 'OCR, camera scan, PDF to Word, watermark, merge & split' },
-    { label: 'Letter Studio', to: '/studio', icon: FileCode2, module: 'documents', desc: 'Contracts & letter templates' },
-    { label: 'Reports', to: '/reports', icon: BarChart3, module: 'reports', desc: 'Custom business exports' },
-  ] },
-  { key: 'admin', label: 'Settings', items: [
-    { label: 'Company Info', to: '/admin/settings', icon: Settings, module: 'admin', desc: 'Logo, seal & company details' },
-    { label: 'Branches', to: '/e/branches', icon: Building, module: 'admin', desc: 'Office locations & geofence' },
-    { label: 'Roles & Access', to: '/admin/roles', icon: ShieldHalf, module: 'admin', desc: 'Staff permissions' },
-    { label: 'Signing Rules', to: '/e/corporate_governance_items', icon: DevIcon, module: 'admin', desc: 'Approval limits & policies' },
-    { label: 'Connections', to: '/admin/integrations', icon: Plug, module: 'admin', desc: 'WhatsApp, email & portals' },
-    { label: 'Backups', to: '/admin/backup', icon: DatabaseBackup, module: 'admin', desc: 'Database backup & restore' },
-    { label: 'Safety Checks', to: '/e/dr_exercises', icon: DatabaseBackup, module: 'admin', desc: 'Recovery drill logs' },
-    { label: 'Activity Log', to: '/e/audit_events', icon: History, module: 'admin', desc: 'Security event history' },
-    { label: 'Audit Trail', to: '/admin/audit', icon: History, module: 'admin', desc: 'Record change log' },
-  ] },
+  {
+    key: 'messages',
+    label: 'SWK Inside',
+    items: [
+      { label: 'SWK Inside Messenger', to: '/chat', icon: MessagesSquare, isNew: true, desc: 'Team chats, attendance check-in group & broadcasts' },
+    ],
+  },
+  {
+    key: 'work',
+    label: 'SWK Work',
+    items: [
+      { label: 'My Work', to: '/my-work', icon: ListChecks, module: 'projects', isNew: true, desc: 'My tasks today, by due date' },
+      { label: 'Team Tasks', to: '/e/tasks', icon: ListChecks, module: 'projects', desc: 'Table, board & calendar of all team tasks' },
+      { label: 'Projects', to: '/e/projects', icon: FolderKanban, module: 'projects', desc: 'Projects with owners, budgets & dates' },
+      { label: 'Automations', to: '/automations', icon: Zap, module: 'admin', isNew: true, desc: 'No-code workflow rules' },
+      { label: 'Automation Runs', to: '/e/workflow_runs', icon: Workflow, module: 'admin', desc: 'Execution history' },
+    ],
+  },
+  {
+    key: 'phone',
+    label: 'SWK Phone',
+    items: [
+      { label: 'SWK Phone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'WebRTC SIP extension, directory & Masked Vault calling' },
+    ],
+  },
+  {
+    key: 'shabib_corner',
+    label: "Shabib's Corner",
+    items: [
+      { label: "Shabib's Corner", to: '/shabibs-corner', icon: Crown, isNew: true, desc: 'Owner-only Privacy Fast Track, Gold Rush, Bulk AI & Approvals' },
+      { label: 'Privacy Fast Track', to: '/shabibs-corner?tab=fast-track', icon: Flame, isNew: true, desc: 'Bypass Master Log for immediate cash & VIP deals' },
+      { label: 'Owner Approvals Hub', to: '/shabibs-corner?tab=approvals', icon: CheckCheck, desc: 'Master Log, Seals, Delete Bin & Universal sign-offs' },
+      { label: 'Bulk AI Upload', to: '/shabibs-corner?tab=bulk-ai', icon: Sparkles, desc: 'Fast CSV/WhatsApp import into Fast Track or Leads' },
+      { label: 'Consolidated Ledger', to: '/shabibs-corner?tab=ledger', icon: Wallet, desc: 'Combined Standard + Private VAT & P&L view' },
+    ],
+  },
+  {
+    key: 'command',
+    label: 'Command Center',
+    items: [
+      { label: 'Command Center', to: '/command-center', icon: Radio, isNew: true, desc: '12-stage live counts, tasks, alerts, QR attendance & GPS' },
+      { label: 'Company Operations', to: '/enterprise/master-os', icon: ShieldCheck, module: 'admin', desc: 'Daily reports, NOCs, commissions & governance' },
+      { label: 'Approvals Queue', to: '/e/universal_approvals', icon: CheckCheck, module: 'admin', desc: 'Items waiting for sign-off' },
+      { label: 'Delete Bin', to: '/recycle-bin', icon: Trash2, module: 'admin', desc: 'Owner approval for deletions' },
+      { label: 'Calendar', to: '/calendar', icon: CalendarDays, desc: 'Viewings, valuations & meetings' },
+    ],
+  },
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    items: [
+      { label: 'Executive Dashboard', to: '/dashboard', icon: LayoutDashboard, module: 'dashboard', desc: 'Revenue, 12-stage counts, my tasks & team alerts' },
+      { label: 'Market Pulse', to: '/market', icon: LineChart, desc: 'Live Dubai prices, PSF & rental yields' },
+      { label: 'Reports', to: '/reports', icon: BarChart3, module: 'reports', desc: 'Executive analytics & exports' },
+    ],
+  },
+  {
+    key: 'master_log',
+    label: 'Master Log',
+    items: [
+      { label: 'CORE Master Log (20)', to: '/master-log', icon: Database, isNew: true, desc: 'HQ registries + Office Admin approval gate' },
+      { label: 'Communities', to: '/e/communities', icon: Map, module: 'masters', desc: 'Dubai communities, RERA codes & avg sq.ft' },
+      { label: 'Developers', to: '/e/developers', icon: DevIcon, module: 'masters', desc: 'Master UAE developers & RERA IDs' },
+      { label: 'Branches & Geofence', to: '/e/branches', icon: Building, module: 'admin', desc: 'Al Saqr Building SZR Wi-Fi & geofence' },
+      { label: 'Departments', to: '/e/departments', icon: Users, module: 'admin', desc: 'Management, BDM, HR, Accounts, Sales & Ops' },
+      { label: 'Properties', to: '/e/properties', icon: Building2, module: 'properties', desc: 'Master verified buildings & villas' },
+      { label: 'Property Units', to: '/e/units', icon: Home, module: 'properties', desc: 'Individual apartments, townhouses & offices' },
+      { label: 'Payment Plans', to: '/e/payment_plan_templates', icon: Rocket, module: 'properties', desc: 'Off-plan developer instalment plans' },
+    ],
+  },
+  {
+    key: 'pipeline',
+    label: 'Pipeline Playbook',
+    items: [
+      { label: '12-Stage Kanban', to: '/pipeline', icon: KanbanSquare, module: 'sales', isNew: true, desc: 'Inventory → Marketing → Form F → Mortgage → DLD → Closure' },
+      { label: 'Off-Plan Launches', to: '/offplan', icon: Rocket, module: 'properties', desc: 'Primary developer launches & allocations' },
+      { label: 'Listing Studio', to: '/listings', icon: Megaphone, module: 'properties', desc: 'Publish inventory to portals' },
+      { label: 'Smart Search', to: '/smart-search', icon: Search, module: 'properties', desc: 'Plain-language buyer shortlist matcher' },
+    ],
+  },
+  {
+    key: 'clients',
+    label: 'CRM',
+    items: [
+      { label: 'Leads & Enquiries', to: '/e/leads', icon: UserPlus, module: 'crm', desc: 'Daily enquiries, routing & assigned clients' },
+      { label: 'Contacts & Clients', to: '/e/parties', icon: Users, module: 'crm', desc: 'Buyers, sellers, landlords & tenants' },
+      { label: 'CRM Property Vault', to: '/crm-vault', icon: ShieldCheck, module: 'admin', desc: 'Leadership Vault · 3,600+ properties & masked dispatch' },
+      { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, desc: 'Dispatched deals & masked calling' },
+      { label: 'WhatsApp', to: '/whatsapp', icon: MessageCircle, module: 'crm', desc: 'Live client WhatsApp threads' },
+      { label: 'Email Inbox', to: '/email', icon: Mail, module: 'crm', desc: 'Client email inbox' },
+      { label: 'Follow-Ups & Calls', to: '/e/activities', icon: CalendarCheck, module: 'crm', desc: 'Callbacks, meetings & activity log' },
+      { label: 'Opportunities', to: '/e/opportunities', icon: Target, module: 'crm', desc: 'Qualified buyer/tenant requirements' },
+      { label: 'Routing Rules', to: '/e/lead_routing_rules', icon: History, module: 'crm', desc: 'Automated lead distribution' },
+    ],
+  },
+  {
+    key: 'mortgage_desk',
+    label: 'Mortgage Desk',
+    items: [
+      { label: 'Mortgage Business Desk', to: '/mortgage-desk', icon: DevIcon, module: 'crm', isNew: true, desc: 'Schedules, deadlines, valuations, RM follow-ups & CBUAE calc' },
+      { label: 'Mortgage Cases', to: '/e/mortgage_cases', icon: Briefcase, module: 'crm', desc: 'All active bank referrals & LTV/FOL milestones' },
+    ],
+  },
+  {
+    key: 'sales',
+    label: 'Sales & Services',
+    items: [
+      { label: 'Deal Files', to: '/e/jobs', icon: FileSignature, module: 'sales', desc: 'Master closing & 50/50 split files' },
+      { label: 'Seller Form A', to: '/e/mandates', icon: FilePen, module: 'mandates', desc: 'Seller listing mandates' },
+      { label: 'Viewings', to: '/e/viewings', icon: CalendarCheck, module: 'mandates', desc: 'Scheduled property visits' },
+      { label: 'Buyer Offers', to: '/e/offers', icon: HandCoins, module: 'transactions', desc: 'Written offers & counter-offers' },
+      { label: 'Form F / Sale Contract', to: '/e/sales_contracts', icon: FileCheck, module: 'transactions', desc: 'Signed MOU / SPA' },
+      { label: 'Developer NOC', to: '/e/developer_requests', icon: FileCheck, module: 'transactions', desc: 'SOA & Developer clearance' },
+      { label: 'DLD Transfer / Oqood', to: '/e/dld_filings', icon: FileCheck, module: 'transactions', desc: 'Trustee transfer & Title Deed' },
+      { label: 'Leases & Ejari', to: '/e/leases', icon: KeyRound, module: 'leases', desc: 'Tenancy contracts, PDC cheques & handovers' },
+      { label: 'Rent Schedules', to: '/e/rent_schedules', icon: CalendarClock, module: 'leases', desc: 'Rent payment dates & schedules' },
+      { label: 'Rent Cheques (PDC)', to: '/pdc', icon: Wallet, module: 'leases', desc: 'Post-dated cheques tracker' },
+      { label: 'Landlord Hub', to: '/owners', icon: UserRoundCog, module: 'finance', desc: 'Owner portfolios & payout statements' },
+      { label: 'Withdrawals & Refunds', to: '/withdrawals', icon: Scale, module: 'sales', desc: 'Cancellations & Owner sign-off' },
+    ],
+  },
+  {
+    key: 'vault',
+    label: 'Documents Vault',
+    items: [
+      { label: 'Per-Client 13-Doc Vault', to: '/client-vault', icon: FolderLock, module: 'documents', isNew: true, desc: 'Passport, EID, Visa, Payslips, AECB, Form F, Oqood, Title Deed, NOC' },
+      { label: 'All Uploaded PDFs', to: '/documents', icon: FileStack, module: 'documents', desc: 'Full file library & expiry search' },
+      { label: 'E-Signatures', to: '/e/esign_requests', icon: FilePen, module: 'documents', desc: 'Send client agreements to sign' },
+    ],
+  },
+  {
+    key: 'finance',
+    label: 'Accounts',
+    items: [
+      { label: 'Tax Invoices', to: '/e/invoices', icon: Receipt, module: 'finance', desc: 'Client VAT invoices & PINT AE' },
+      { label: 'Receipts', to: '/e/receipts', icon: HandCoins, module: 'finance', desc: 'Confirmed bank receipts' },
+      { label: 'Commissions (50/50)', to: '/e/agent_commissions', icon: Percent, module: 'finance', desc: 'Broker commission splits & payouts' },
+      { label: 'Supplier Bills', to: '/e/bills', icon: FileInput, module: 'finance', desc: 'Incoming vendor bills' },
+      { label: 'Payments', to: '/e/payments', icon: Banknote, module: 'finance', desc: 'Outgoing corporate transfers' },
+      { label: 'Bank Matching', to: '/e/bank_transactions', icon: Scale, module: 'finance', desc: 'Statement reconciliation' },
+      { label: 'Profit, Balance & VAT', to: '/finance/statements', icon: FileBarChart, module: 'finance', desc: 'IFRS P&L, GL & UAE VAT 201' },
+    ],
+  },
+  {
+    key: 'compliance',
+    label: 'Compliance',
+    items: [
+      { label: 'KYC Checks', to: '/e/kyc_checks', icon: ShieldCheck, module: 'compliance', desc: 'Client ID, PEP & source of funds' },
+      { label: 'RERA Centre', to: '/rera', icon: Gavel, module: 'compliance', desc: 'Trakheesi permits & RERA forms' },
+      { label: 'AML & goAML Reports', to: '/e/aml_reports', icon: ShieldAlert, module: 'compliance', desc: 'Sanctions screening & goAML filings' },
+      { label: 'Trade Licences', to: '/compliance', icon: BadgeCheck, module: 'compliance', desc: 'Company licences & statutory calendar' },
+      { label: 'Broker Cards (BRN)', to: '/e/agent_authorisations', icon: IdCard, module: 'compliance', desc: 'Agent RERA card renewals' },
+      { label: 'Risk Cases', to: '/e/compliance_cases', icon: ShieldAlert, module: 'compliance', desc: 'Compliance investigations' },
+    ],
+  },
+  {
+    key: 'website',
+    label: 'Website & Social',
+    items: [
+      { label: 'Website & Social Studio', to: '/website', icon: Globe, module: 'website', isNew: true, desc: 'Live listings, offers, updates, social & zero-Shabib lock' },
+      { label: 'Website Listings', to: '/e/website_listings', icon: Building2, module: 'website', desc: 'All listings on swkpropertiesuae.com' },
+      { label: 'Offers & Promotions', to: '/e/website_promotions', icon: Flame, module: 'website', desc: 'Trending spotlight & hot offers' },
+    ],
+  },
+  {
+    key: 'team',
+    label: 'Employees',
+    items: [
+      { label: 'Team Directory', to: '/team', icon: Contact, desc: 'Profiles, bios & role access' },
+      { label: 'Staff & HR Records', to: '/e/employees', icon: Users, module: 'hr', desc: 'Employee master directory' },
+      { label: 'Reception QR Desk', to: '/reception-qr', icon: QrCode, desc: 'Office reception QR generation & attendance check-in' },
+      { label: 'Attendance Log', to: '/e/attendance', icon: Clock, module: 'hr', desc: 'Daily check-in & check-out log' },
+      { label: 'Leave Requests', to: '/e/leave_requests', icon: Plane, module: 'hr', desc: 'Annual & sick leave approvals' },
+      { label: 'Visas & Emirates IDs', to: '/e/immigration_cases', icon: ScrollText, module: 'hr', desc: 'Visa & EID expiry tracking' },
+      { label: 'Payroll (WPS)', to: '/e/payslips', icon: Banknote, module: 'hr', desc: 'MOHRE WPS salary slips' },
+      { label: 'Broker Leaderboard', to: '/agents', icon: Trophy, module: 'sales', desc: 'Top performing advisors' },
+    ],
+  },
+  {
+    key: 'field',
+    label: 'Field GPS Services',
+    items: [
+      { label: 'Field Duty GPS', to: '/field-duty', icon: Navigation, isNew: true, desc: 'Live field viewing GPS, visit check-in & SOS' },
+      { label: 'Live Field GPS Map', to: '/field-live', icon: MapPinned, module: 'admin', isNew: true, desc: 'Leadership · Real-time map of all active field staff' },
+      { label: 'Field Visits Log', to: '/e/field_sessions', icon: MapPinned, module: 'hr', desc: 'History of verified GPS site visits' },
+      { label: 'Reception QR Check-In', to: '/reception-qr', icon: QrCode, desc: 'Office Wi-Fi & reception QR terminal' },
+      { label: 'Daily Reports', to: '/e/daily_reports', icon: ClipboardCheck, module: 'hr', desc: 'Mandatory end-of-day staff summary' },
+    ],
+  },
+  {
+    key: 'ai_lab',
+    label: 'AI Case-Study Lab',
+    items: [
+      { label: 'Case-Study Training Lab', to: '/ai-training', icon: Brain, module: 'ai', isNew: true, desc: 'Train & query real Dubai deal & mortgage scenarios' },
+      { label: 'SWK AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'AI Copilot connected to trained case studies' },
+    ],
+  },
+  {
+    key: 'tools',
+    label: 'Utilities & Documents',
+    items: [
+      { label: 'Utility Suite Hub', to: '/utilities', icon: Wrench, isNew: true, desc: 'Word Studio, PDF/OCR, Translator & Search' },
+      { label: 'Word Studio (.docx)', to: '/utilities/word', icon: FileCode2, desc: 'Letterhead, Owner seal & PDF/.docx export' },
+      { label: 'Letter Studio Templates', to: '/studio', icon: FileCode2, module: 'documents', desc: '160+ RERA forms & executive templates' },
+      { label: 'Document Tools & OCR', to: '/document-tools', icon: ScanText, module: 'documents', desc: 'Emirates ID / Passport OCR, merge, split & watermark' },
+      { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, desc: 'UAE real-estate glossary translator' },
+      { label: 'Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage & PDC calculators' },
+      { label: 'Unified Search', to: '/utilities/search', icon: Search, desc: 'Search OS, website & live market' },
+    ],
+  },
+  {
+    key: 'admin',
+    label: 'Settings',
+    items: [
+      { label: 'Company & Wi-Fi Settings', to: '/admin/settings', icon: Settings, module: 'admin', desc: 'Logo, seal, Al Saqr Wi-Fi & company details' },
+      { label: 'Office Branches & Geofence', to: '/e/branches', icon: Building, module: 'admin', desc: 'Registered Dubai office & GPS perimeter' },
+      { label: 'Roles & Permissions', to: '/admin/roles', icon: ShieldHalf, module: 'admin', desc: 'Hardcoded RBAC & access controls' },
+      { label: 'Connections & Webhooks', to: '/admin/integrations', icon: Plug, module: 'admin', desc: 'Website webhook, WhatsApp, email & portals' },
+      { label: 'Backups', to: '/admin/backup', icon: DatabaseBackup, module: 'admin', desc: 'Database backup & restore' },
+      { label: 'Audit Trail', to: '/admin/audit', icon: History, module: 'admin', desc: 'Immutable record change log' },
+      { label: 'Activity Log', to: '/e/audit_events', icon: History, module: 'admin', desc: 'Security event history' },
+    ],
+  },
 ]
 
 export const QUICK_CREATE: { label: string; desc: string; to: string; icon: LucideIcon; module: string }[] = [
-  { label: 'New Lead', desc: 'Add a buyer or tenant enquiry', to: '/e/leads?new=1', icon: UserPlus, module: 'crm' },
-  { label: 'Submit Property', desc: 'Add a new property for review', to: '/e/inventory_submissions?new=1', icon: Building2, module: 'properties' },
-  { label: 'Book Viewing', desc: 'Schedule a property visit', to: '/e/viewings?new=1', icon: CalendarCheck, module: 'mandates' },
-  { label: 'New Sale File', desc: 'Start a property sale & transfer', to: '/e/transactions?new=1', icon: Briefcase, module: 'transactions' },
+  { label: 'New Lead', desc: 'Log a buyer or tenant enquiry', to: '/e/leads?new=1', icon: UserPlus, module: 'crm' },
+  { label: 'New Deal File', desc: 'Start a 12-stage property deal', to: '/e/jobs?new=1', icon: Briefcase, module: 'sales' },
+  { label: 'New Mortgage Case', desc: 'Open a bank mortgage / valuation file', to: '/e/mortgage_cases?new=1', icon: DevIcon, module: 'crm' },
+  { label: 'Book Viewing', desc: 'Schedule a GPS-tracked viewing', to: '/e/viewings?new=1', icon: CalendarCheck, module: 'mandates' },
+  { label: 'Submit Property', desc: 'Add a property to Master Inventory', to: '/e/properties?new=1', icon: Building2, module: 'properties' },
   { label: 'New Lease (Ejari)', desc: 'Create a tenancy contract', to: '/e/leases?new=1', icon: KeyRound, module: 'leases' },
-  { label: 'Request NOC', desc: 'Apply for developer NOC', to: '/e/developer_requests?new=1', icon: FileCheck, module: 'transactions' },
   { label: 'Daily Report', desc: 'Submit today’s work summary', to: '/e/daily_reports?new=1', icon: ClipboardCheck, module: 'hr' },
 ]
 
 export function findNav(pathname: string) {
   let best: { section: NavSection; item: NavItem } | null = null
-  for (const section of SWK_NAV) for (const item of section.items) {
-    const p = item.to.split('?')[0]
-    if (pathname === p || pathname.startsWith(p + '/')) if (!best || p.length > best.item.to.length) best = { section, item }
-  }
+  for (const section of SWK_NAV)
+    for (const item of section.items) {
+      const p = item.to.split('?')[0]
+      if (pathname === p || pathname.startsWith(p + '/')) if (!best || p.length > best.item.to.length) best = { section, item }
+    }
   return best
 }
 
-/** Launcher ("Apps") presentation for each nav section — one simple icon tile per app on the post-sign-in home screen. */
 export type AppTone = 'navy' | 'champ' | 'oasis' | 'ocean' | 'dune' | 'plum'
 export const APP_META: Record<string, { blurb: string; icon: LucideIcon; tone: AppTone }> = {
-  messages: { blurb: 'Team chats, project groups, announcements & attendance reports', icon: MessageCircleMore, tone: 'oasis' },
-  work: { blurb: 'My work, tasks & projects on boards, calendars and no-code automations', icon: SquareCheckBig, tone: 'champ' },
-  phone: { blurb: 'WebRTC SIP extension, colleague directory & Masked Vault calling', icon: PhoneCall, tone: 'dune' },
-  command: { blurb: 'Overview, deal pipeline, approvals & calendar', icon: Gauge, tone: 'navy' },
-  inventory: { blurb: 'Submissions, owner permits, units & listings', icon: Building2, tone: 'champ' },
-  clients: { blurb: 'Leads, calls, WhatsApp, email & follow-ups', icon: UsersRound, tone: 'oasis' },
-  sales: { blurb: 'Form A mandates, viewings, offers, NOC & transfer', icon: Handshake, tone: 'champ' },
-  leasing: { blurb: 'Leases, Ejari, rent schedules, cheques & repairs', icon: KeyRound, tone: 'navy' },
-  owners: { blurb: 'Landlord portfolios, yields & payout statements', icon: DevIcon, tone: 'plum' },
-  finance: { blurb: 'Invoices, receipts, commissions, bills & VAT', icon: Wallet, tone: 'oasis' },
-  compliance: { blurb: 'KYC checks, RERA permits, broker cards & AML', icon: ShieldCheck, tone: 'dune' },
-  website: { blurb: 'Website inventory, hot offers, spotlight & deploy', icon: Globe, tone: 'oasis' },
-  team: { blurb: 'Staff, brokers, visas, attendance, leave & payroll', icon: Contact, tone: 'ocean' },
-  field: { blurb: 'Reception QR check-in, gate logs, Field Duty GPS & live map', icon: MapPinned, tone: 'champ' },
-  tools: { blurb: 'Word Studio, Translator, Unified Search, calculators, OCR & reports', icon: Wrench, tone: 'plum' },
-  admin: { blurb: 'Company info, branches, roles, backups & logs', icon: Settings2, tone: 'navy' },
+  messages: { blurb: 'Team chats, attendance check-in group & broadcasts', icon: MessageCircleMore, tone: 'oasis' },
+  work: { blurb: 'My tasks today, team task monitor, projects & automations', icon: SquareCheckBig, tone: 'champ' },
+  phone: { blurb: 'WebRTC SIP extension, directory & Masked Vault calling', icon: PhoneCall, tone: 'dune' },
+  shabib_corner: { blurb: 'Privacy Fast Track, Immediate Cash, Bulk AI, Approvals & Ledger', icon: Crown, tone: 'champ' },
+  command: { blurb: 'Live 12-stage counts, alerts, attendance, tasks & GPS radar', icon: Radio, tone: 'navy' },
+  dashboard: { blurb: 'Executive KPIs, 12-stage funnel, tasks & Dubai Market Pulse', icon: Gauge, tone: 'ocean' },
+  master_log: { blurb: '20 CORE headquarters registries + Office Admin approval gate', icon: Database, tone: 'champ' },
+  pipeline: { blurb: '12-stage Kanban from Inventory to Final Closure & Gold Rush', icon: KanbanSquare, tone: 'oasis' },
+  clients: { blurb: 'Leads, assigned clients, CRM Vault, WhatsApp & follow-ups', icon: UsersRound, tone: 'oasis' },
+  mortgage_desk: { blurb: 'Schedules, deadlines, valuations, Bank RMs & CBUAE calculator', icon: DevIcon, tone: 'plum' },
+  sales: { blurb: 'Deal files, Form A/F, viewings, offers, NOC, DLD & leasing', icon: Handshake, tone: 'champ' },
+  vault: { blurb: 'Per-client 13-doc compliance vault (Passport, EID, Form F, NOC)', icon: FolderLock, tone: 'navy' },
+  finance: { blurb: 'Tax invoices, receipts, 50/50 commissions, VAT 201 & P&L', icon: Wallet, tone: 'oasis' },
+  compliance: { blurb: 'KYC checks, RERA Trakheesi, goAML, licences & broker BRNs', icon: ShieldCheck, tone: 'dune' },
+  website: { blurb: 'Two-way swkpropertiesuae.com listings, offers, updates & social', icon: Globe, tone: 'oasis' },
+  team: { blurb: 'Staff directory, Meenakshi QR reception, visas, leave & WPS', icon: Contact, tone: 'ocean' },
+  field: { blurb: 'Live Field Duty GPS tracking, visit check-ins & SOS radar', icon: MapPinned, tone: 'champ' },
+  ai_lab: { blurb: 'Trained Dubai brokerage & mortgage case studies + AI Copilot', icon: Brain, tone: 'plum' },
+  tools: { blurb: 'Word Studio, 160+ templates, OCR, translator & calculators', icon: Wrench, tone: 'plum' },
+  admin: { blurb: 'Al Saqr Wi-Fi lock, geofence, roles, webhooks & backups', icon: Settings2, tone: 'navy' },
 }
 
 export type LauncherApp = { key: string; label: string; blurb: string; icon: LucideIcon; tone: AppTone; items: NavItem[]; landing: string }
@@ -221,7 +387,7 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   {
     key: 'messages',
     label: 'SWK Inside',
-    blurb: 'Team chats, project groups, announcements & attendance reports',
+    blurb: 'Team chats, live check-in updates & broadcasts',
     icon: MessageCircleMore,
     tone: 'oasis',
     landing: '/chat',
@@ -230,15 +396,15 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
   {
     key: 'phone',
     label: 'SWK Phone',
-    blurb: 'SIP softphone extension, colleague directory & Masked Vault calling',
+    blurb: 'SIP softphone extension, directory & Masked Vault calling',
     icon: PhoneCall,
     tone: 'dune',
     landing: '/phone',
-    items: [{ label: 'SWK Phone & Dialer', to: '/phone', icon: PhoneCall, desc: 'SIP extension, colleague directory & Masked Vault calling' }],
+    items: [{ label: 'SWK Phone & Dialer', to: '/phone', icon: PhoneCall, desc: 'SIP extension & Masked Vault calling' }],
   },
   {
     key: 'attendance',
-    label: 'Attendance & Field',
+    label: 'Attendance & Field GPS',
     blurb: 'Office QR check-in, Field Duty GPS, attendance history & daily reports',
     icon: Clock,
     tone: 'champ',
@@ -247,51 +413,48 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
       { label: 'Scan & Check-In Attendance', to: '/reception-qr', icon: QrCode, desc: 'Daily office attendance check-in' },
       { label: 'Field Duty GPS', to: '/field-duty', icon: Navigation, isNew: true, desc: 'Start field viewing GPS, own trail & SOS alert' },
       { label: 'My Attendance Log', to: '/e/attendance', icon: Clock, module: 'hr', desc: 'Personal daily check-in history' },
-      { label: 'Gate Scan Events', to: '/e/attendance_events', icon: Clock, module: 'hr', desc: 'Verified office Wi-Fi timestamps' },
       { label: 'Leave Requests', to: '/e/leave_requests', icon: Plane, module: 'hr', desc: 'Apply for holiday or sick leave' },
       { label: 'Daily Work Summary', to: '/e/daily_reports', icon: ClipboardCheck, module: 'hr', desc: 'End-of-day activity report' },
     ],
   },
   {
     key: 'tools',
-    label: 'Utilities Suite',
-    blurb: 'Word Studio, Translator, Unified Search & 11 UAE deal calculators',
+    label: 'Utilities & Documents',
+    blurb: 'Word Studio, Translator, Unified Search & UAE deal calculators',
     icon: Wrench,
     tone: 'navy',
     landing: '/utilities',
     items: [
       { label: 'Utility Suite Hub', to: '/utilities', icon: Wrench, isNew: true, desc: 'All personal productivity & real-estate tools' },
-      { label: 'Word Studio (.docx)', to: '/utilities/word', icon: FileCode2, isNew: true, desc: 'Draft, edit & export .docx or .pdf documents' },
-      { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, isNew: true, desc: 'RERA/DLD glossary translation & document upload' },
-      { label: 'Unified Search', to: '/utilities/search', icon: Search, isNew: true, desc: 'Search permitted records, SWKPROPERTY.COM & web' },
-      { label: 'Deal Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage, PDC & public QR tools' },
+      { label: 'Word Studio (.docx)', to: '/utilities/word', icon: FileCode2, desc: 'Draft, edit & export .docx or .pdf documents' },
+      { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, desc: 'RERA/DLD glossary translation' },
+      { label: 'Unified Search', to: '/utilities/search', icon: Search, desc: 'Search permitted records & market' },
+      { label: 'Deal Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage & PDC calculators' },
     ],
   },
   {
     key: 'market_pulse',
     label: 'Market Pulse',
-    blurb: 'Live Dubai community prices, rental yields, developers & DLD pulse',
+    blurb: 'Live Dubai community prices, rental yields & developers',
     icon: LineChart,
     tone: 'oasis',
     landing: '/market',
     items: [
       { label: 'Market Pulse Live', to: '/market', icon: LineChart, desc: 'Dubai community prices & gross yields' },
-      { label: 'Dubai Communities', to: '/e/communities', icon: Map, module: 'masters', desc: '24 prime Dubai districts' },
+      { label: 'Dubai Communities', to: '/e/communities', icon: Map, module: 'masters', desc: 'Prime Dubai districts' },
       { label: 'Master Developers', to: '/e/developers', icon: DevIcon, module: 'masters', desc: 'Emaar, Nakheel, Sobha, DAMAC & more' },
-      { label: 'Market News', to: '/e/real_estate_news', icon: Megaphone, module: 'masters', desc: 'UAE property market updates' },
     ],
   },
   {
     key: 'general',
-    label: 'Workspace & Calling',
-    blurb: 'Assigned deals, SIP softphone, AI Brain, calendar & team profiles',
-    icon: CalendarDays,
+    label: 'My Assigned Deals',
+    blurb: 'Assigned deals, AI Assistant, calendar & team profiles',
+    icon: Briefcase,
     tone: 'ocean',
     landing: '/my-deals',
     items: [
       { label: 'My Assigned Deals', to: '/my-deals', icon: Briefcase, isNew: true, desc: 'Assigned properties & hard-masked calling' },
-      { label: 'Softphone & Dialer', to: '/phone', icon: PhoneCall, isNew: true, desc: 'SIP extension, colleague directory & Masked Vault calling' },
-      { label: 'AI Brain', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Internal SWK AI assistant' },
+      { label: 'AI Assistant', to: '/ai', icon: Sparkles, module: 'ai', desc: 'Internal SWK AI assistant' },
       { label: 'Calendar', to: '/calendar', icon: CalendarDays, desc: 'Company schedule & events' },
       { label: 'Team Profiles', to: '/team', icon: Contact, desc: 'Colleagues & extensions' },
     ],
@@ -330,6 +493,9 @@ export function isNavItemVisible(
 ): boolean {
   if (!user || user.party_id) return false
   const clean = item.to.split('?')[0] || ''
+  if (clean === '/shabibs-corner') return canAccessShabibsCorner(user)
+  if (clean === '/master-log') return canAccessMasterLog(user)
+  if (clean === '/command-center') return canAccessSwkAdminLogic(user) || canPrintReceptionQr(user)
   if (clean === '/crm-vault' && !canAccessCrmVault(user)) return false
   if (clean === '/field-live' && !canAccessFieldLiveMap(user)) return false
   if ((clean === '/studio' || clean === '/e/doc_templates') && !canAccessDocumentTemplates(user)) return false
@@ -352,6 +518,8 @@ export function launcherApps(can: (module: string, action?: 'view') => boolean, 
   }
   const out: LauncherApp[] = []
   for (const s of SWK_NAV) {
+    if (s.key === 'shabib_corner' && !canAccessShabibsCorner(user)) continue
+    if (s.key === 'master_log' && !canAccessMasterLog(user)) continue
     if (s.key === 'admin' && !canAccessSwkAdminLogic(user)) continue
     const items = s.items.filter(i => isNavItemVisible(i, can, user))
     const meta = APP_META[s.key]
@@ -362,14 +530,13 @@ export function launcherApps(can: (module: string, action?: 'view') => boolean, 
 }
 
 const RECENT_KEY = 'swk.recent'
-/** Remembers the last few feature pages a user opened (per browser) so the launcher can offer a way back in. */
 export function rememberVisit(pathname: string) {
   const hit = findNav(pathname)
   if (!hit) return
   try {
     const list: string[] = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
     localStorage.setItem(RECENT_KEY, JSON.stringify([hit.item.to, ...list.filter(t => t !== hit.item.to)].slice(0, 8)))
-  } catch { /* storage unavailable — recents are a convenience only */ }
+  } catch { /* ignore */ }
 }
 export function recentItems(can: (module: string, action?: 'view') => boolean, limit = 4, user?: NavAccessUser): (NavItem & { section: string })[] {
   let list: string[] = []

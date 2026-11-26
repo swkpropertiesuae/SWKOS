@@ -124,8 +124,9 @@ export const properties: EntityDef[] = [
       T('rera_community_id', 'RERA Community ID'),
       T('description', 'Description', { span: 3 }),
       T('key_landmarks', 'Key Landmarks', { span: 3 }),
-      N('avg_price_sqft', 'Avg Price/sq ft'),
+      N('avg_price_sqft', 'Avg Price/sq ft', { list: true }),
       N('avg_rent_annual', 'Avg Annual Rent'),
+      N('gross_yield_pct', 'Avg Gross Yield %', { list: true }),
       B('active', 'Active', { default: true, list: true }),
       J('media', 'Images', { heavy: true, hidden: true }),
     ],
@@ -137,6 +138,7 @@ export const properties: EntityDef[] = [
     fields: [
       T('code', 'Code', { required: true, unique: true, list: true, search: true, section: 'Developer' }),
       T('name', 'Name', { required: true, list: true, search: true, span: 2 }),
+      S('emirate', 'Emirate', UAE_STATES, { default: 'Dubai', list: true }),
       T('rera_id', 'RERA Developer ID', { list: true, search: true }),
       T('trade_license', 'Trade Licence'),
       T('contact_person', 'Contact Person'),

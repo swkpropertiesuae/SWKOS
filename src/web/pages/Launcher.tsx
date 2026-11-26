@@ -51,11 +51,10 @@ const todayLabel = () =>
 
 const CATEGORY_FILTERS: { id: string; label: string; keys: string[] }[] = [
   { id: 'all', label: 'All Apps', keys: [] },
-  { id: 'core', label: 'Command', keys: ['command'] },
-  { id: 'deals', label: 'Sales & CRM', keys: ['clients', 'sales', 'inventory', 'website'] },
-  { id: 'leasing', label: 'Leasing & Owners', keys: ['leasing', 'owners'] },
-  { id: 'finance', label: 'Finance & Legal', keys: ['finance', 'compliance', 'admin'] },
-  { id: 'field', label: 'Team & Field', keys: ['team', 'field', 'attendance', 'tools', 'market_pulse', 'general'] },
+  { id: 'core', label: 'Executive & CORE', keys: ['shabib_corner', 'command', 'dashboard', 'master_log'] },
+  { id: 'deals', label: 'Sales, CRM & Mortgage', keys: ['pipeline', 'clients', 'mortgage_desk', 'sales', 'website'] },
+  { id: 'finance', label: 'Vault, Finance & Legal', keys: ['vault', 'finance', 'compliance', 'admin'] },
+  { id: 'field', label: 'Team, Field & AI', keys: ['team', 'field', 'attendance', 'ai_lab', 'tools', 'market_pulse', 'general'] },
 ]
 
 const CORE_SUITE_BRANDING: Record<
@@ -292,9 +291,15 @@ export function Launcher() {
                   {lastVisit ? <lastVisit.icon size={17} /> : <LayoutDashboard size={17} />}
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate text-[13.5px] font-semibold text-white">
-                    {lastVisit ? lastVisit.label : restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
-                  </div>
+                  {lastVisit ? (
+                    <Link to={lastVisit.to} className="block truncate text-[13.5px] font-semibold text-white no-underline hover:text-[#c5e86c]">
+                      {lastVisit.label}
+                    </Link>
+                  ) : (
+                    <div className="truncate text-[13.5px] font-semibold text-white">
+                      {restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
+                    </div>
+                  )}
                   <div className="truncate text-[11px] text-[#94a3b8]">
                     {lastVisit ? `Recently Visited · ${lastVisit.section}` : restricted ? 'Dispatched Vault Deals & Hard-Masked Calling' : 'Live Pipeline, Journeys & Analytics'}
                   </div>
@@ -550,7 +555,11 @@ export function Launcher() {
                 <AppCard
                   app={a}
                   badge={
-                    a.key === 'messages' && unread > 0 ? (
+                    a.key === 'shabib_corner' ? (
+                      <span className="rounded-full bg-[#0b1f2a] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#f3d27a]">
+                        Owner
+                      </span>
+                    ) : a.key === 'messages' && unread > 0 ? (
                       <span
                         className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dc2626] px-1.5 text-[10.5px] font-bold text-white"
                         aria-label={`${unread} unread messages`}

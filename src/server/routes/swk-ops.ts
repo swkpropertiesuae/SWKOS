@@ -10,7 +10,8 @@ import { COOKIE } from '../app'
 import { burnQrNonce, checkPasswordForCheckin, currentQrToken, deviceGate, inspectQrToken, newChallenge, qrMode, regenerateFixedQr, setQrMode, verifyDeviceProof, verifyOfficeGeofence } from '../domain/attendance-security'
 import { config } from '../config'
 import { need } from './helpers'
-import { canAccessSwkAdminLogic,canPrintReceptionQr,isAdminSwkUser,isOwnerSwkUser } from '../../shared/swk-staff-access'
+import { canAccessSwkAdminLogic,canPrintReceptionQr,isAdminSwkUser,isElevatedCanonicalEmail,isOwnerSwkUser } from '../../shared/swk-staff-access'
+import { attendanceClock,ensureTeamGroup,postAutomationMessage } from './chat'
 import { checkEmployeeAndDocumentExpiries,computeMonthlyTargetSummaries,notifyEmployeeTargets } from '../domain/compliance'
 
 export function computeDubaiShiftInfo(now = new Date(), clientVariableHours = false) {
@@ -1463,24 +1464,24 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
   }
   app.post('/api/public/reception-qr/wifi-config', saveWifiConfig)
   app.post('/api/swk-ops/attendance-setup', saveWifiConfig)
-  // ---- rotating QR for the reception screen: only the Owner or Manager, and only from the office network once it is locked
+  // ---- rotating QR for the reception screen: Owner, Admin, Manager Haseeb, and Office Admin Meenakshi (only from the office network once it is locked)
   app.get('/api/swk-ops/reception-token', async (req, reply) => {
     reply.header('cache-control', 'no-store')
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin and Haseeb can open the reception code screen.')
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin, Manager Haseeb, or Office Admin Meenakshi can open the reception code screen.')
     const cfg = getWifiCfg(resolveClientIp(req))
     if (cfg.office_ip_locked && !cfg.ip_matches_office) throw new HttpError(403, `Open the reception screen on the office network (${cfg.ssid}).`)
     return currentQrToken()
   })
-  // Owner/Manager: make every printed fixed code useless (use after a leak) or switch between the fixed and the 30-second rotating code
+  // Owner/Admin/Manager/Office Admin Meenakshi: regenerate fixed code or switch between fixed and 20-second rotating code
   app.post('/api/swk-ops/reception-token/regenerate', async (req, reply) => {
     reply.header('cache-control', 'no-store')
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can change the reception code.')
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin, Manager, or Office Admin Meenakshi can change the reception code.')
     regenerateFixedQr()
     return currentQrToken()
   })
   app.post('/api/swk-ops/reception-token/mode', async (req, reply) => {
     reply.header('cache-control', 'no-store')
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can change the reception code.')
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin, Manager, or Office Admin Meenakshi can change the reception code.')
     const mode = String((req.body as any)?.mode || '')
     if (mode !== 'fixed' && mode !== 'rotating') throw new HttpError(400, 'mode must be fixed or rotating')
     setQrMode(mode)
@@ -1491,11 +1492,11 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     field: q.all(`SELECT e.id, e.event_no, e.work_date, e.check_in_at, e.checkin_method, e.security_flags, e.gps_lat, e.gps_lng, e.gps_accuracy_m, emp.name FROM attendance_events e LEFT JOIN employees emp ON emp.id = e.employee_id WHERE e.field_review = 'Pending' AND e.deleted_at IS NULL ORDER BY e.id DESC LIMIT 100`),
   })
   app.get('/api/swk-ops/attendance-control', async (req) => {
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can review attendance.')
+    if (!isElevatedCanonicalEmail(req.user?.email)) throw new HttpError(403, 'Only the Owner, Admin, or Manager can review attendance control.')
     return attendanceControl()
   })
   app.post('/api/swk-ops/attendance-control/device/:id', async (req) => {
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can approve devices.')
+    if (!isElevatedCanonicalEmail(req.user?.email)) throw new HttpError(403, 'Only the Owner, Admin, or Manager can approve devices.')
     const id = Number((req.params as any).id)
     const dev = q.get<{ id: number; user_id: number; device_id: string }>(`SELECT id, user_id, device_id FROM staff_devices WHERE id = ?`, id)
     if (!dev) throw new HttpError(404, 'Device not found')
@@ -1527,7 +1528,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return attendanceControl()
   })
   app.post('/api/swk-ops/attendance-control/field/:id', async (req) => {
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can approve field check-ins.')
+    if (!isElevatedCanonicalEmail(req.user?.email)) throw new HttpError(403, 'Only the Owner, Admin, or Manager can approve field check-ins.')
     const id = Number((req.params as any).id), approve = !!(req.body as any)?.approve
     const ev = q.get<any>(`SELECT * FROM attendance_events WHERE id = ? AND field_review = 'Pending' AND deleted_at IS NULL`, id)
     if (!ev) throw new HttpError(404, 'Nothing waiting for approval')
@@ -1540,7 +1541,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     return attendanceControl()
   })
   app.get('/api/swk-ops/attendance-setup', async (req) => {
-    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner or Manager can view attendance setup.')
+    if (!canPrintReceptionQr(req.user)) throw new HttpError(403, 'Only the Owner, Admin, Manager, or Office Admin Meenakshi can view attendance setup.')
     return { ...getWifiCfg(resolveClientIp(req)), office_gps: officeGps() }
   })
 
@@ -1610,7 +1611,7 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
     qrCheck: ReturnType<typeof inspectQrToken>,
     captureSource: string,
   ) => {
-    const device = deviceGate(authUser.id, deviceId, String(b.device_name || ua), canPrintReceptionQr(authUser))
+    const device = deviceGate(authUser.id, deviceId, String(b.device_name || ua), isElevatedCanonicalEmail(authUser.email))
     if (device === 'Pending') {
       for (const em of ['shabib@swk.properties', 'haseeb@swk.properties']) { const u = q.get<any>(`SELECT id FROM users WHERE lower(email) = ? AND deleted_at IS NULL`, em); if (u) notify(u.id, `New device waiting: ${authUser.name}`, 'Approve it on the reception check-in page under Attendance control', '/reception-qr', 'approval', `dev-${authUser.id}-${deviceId.slice(0, 12)}`) }
       throw new HttpError(403, 'This device is new. The Owner or Manager must approve it before you can check in. They have been notified.')
@@ -1663,6 +1664,21 @@ export default async function swkOpsRoutes(app: FastifyInstance) {
 
       if (!q.get(`SELECT 1 AS x FROM attendance WHERE employee_id = ? AND att_date = ? AND deleted_at IS NULL`, emp.id, todayStr())) {
         createRecord(getDef('attendance'), { employee_id: emp.id, att_date: todayStr(), check_in: now, checkin_mode: 'Office QR Scan', status: shiftInfo.isLate ? 'Late' : 'Present', note: `Reception QR Check-in (${eventRecord.event_no})` }, SYSTEM_CTX)
+      }
+      // Auto-post live check-in status into the SWK Properties Team Inside group
+      if (!existingToday) {
+        try {
+          ensureTeamGroup()
+          const teamTid = q.val<number>(`SELECT id FROM chat_threads WHERE system_key = 'team' LIMIT 1`)
+          if (teamTid) {
+            const clockStr = attendanceClock(now)
+            const statusLabel = shiftInfo.isLate ? `Late (${shiftInfo.lateMinutes}m)` : 'On Duty'
+            const msg = `✅ *Office Check-In* · *${emp.name}* checked in at *${clockStr} GST* (${statusLabel} · Al Saqr Building SZR · ${wifiConfig.ssid})`
+            postAutomationMessage(teamTid, authUser.id, msg)
+          }
+        } catch {
+          // Never block attendance recording if chat group is unavailable
+        }
       }
       return {
         verified: true,

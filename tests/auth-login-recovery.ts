@@ -56,7 +56,7 @@ async function run() {
   //    - pwreset:retire-swk2026-pattern = '1' and pwreset:swk2026-pattern = '1' already set
   //    - pwsecret:admin / pwsecret:owner ALREADY match the current .env hash
   //    - Admin, Owner, and un-changed Staff were overwritten with random unknown passwords + must_change_password = 1
-  //    - One staff member (samarth) already chose a personal password (must_change_password = 0)
+  //    - One staff member (saifullah) already chose a personal password (must_change_password = 0)
   //    - Several accounts also hit lockout from failed retries
   const randomClobber = () => hashPassword(crypto.randomBytes(12).toString('base64url') + 'aA1')
   const now = new Date().toISOString()
@@ -66,7 +66,7 @@ async function run() {
   q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 5, locked_until = ? WHERE lower(email) = 'shabib@swk.properties'`, randomClobber(), futureLock)
   q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 5, locked_until = ? WHERE lower(email) = 'talha@swk.properties'`, randomClobber(), futureLock)
   q.run(`UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 5, locked_until = ? WHERE lower(email) = 'fareed@swk.rent'`, randomClobber(), futureLock)
-  q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL WHERE lower(email) = 'samarth@swk.properties'`, hashPassword('Samarth-Personal#99'))
+  q.run(`UPDATE users SET password_hash = ?, must_change_password = 0, failed_logins = 0, locked_until = NULL WHERE lower(email) = 'saifullah@swk.properties'`, hashPassword('Saifullah-Personal#99'))
 
   // Before recovery, Admin / Owner / Talha / Fareed are all broken.
   check('clobbered Admin cannot sign in before recovery', !canLogin('admin@swk.properties', 'Admin#Prod2026x'))
@@ -81,7 +81,7 @@ async function run() {
   check('recovery restores clobbered Talha to temporary pattern password', canLogin('talha@swk.properties', swkPatternPassword('talha@swk.properties')))
   check('recovery keeps Talha must_change_password = 1', q.val<number>(`SELECT must_change_password FROM users WHERE lower(email) = 'talha@swk.properties'`) === 1)
   check('recovery restores clobbered Fareed to temporary pattern password', canLogin('fareed@swk.rent', swkPatternPassword('fareed@swk.rent')))
-  check('recovery preserves Samarth personal password (must_change_password = 0)', canLogin('samarth@swk.properties', 'Samarth-Personal#99'))
+  check('recovery preserves Saifullah personal password (must_change_password = 0)', canLogin('saifullah@swk.properties', 'Saifullah-Personal#99'))
 
   // 2b. Verify recovery is idempotent (a subsequent personal password change is NOT overwritten on next restart).
   q.run(`UPDATE users SET password_hash = ?, must_change_password = 0 WHERE lower(email) = 'admin@swk.properties'`, hashPassword('Admin-NewPersonal#2026'))
@@ -105,11 +105,11 @@ async function run() {
 
   // 3. Expired lockout resets failed_logins so 1 typo does not immediately re-lock for another 15 minutes.
   const expiredLock = new Date(Date.now() - 5 * 60_000).toISOString().slice(0, 16)
-  q.run(`UPDATE users SET failed_logins = 5, locked_until = ? WHERE lower(email) = 'samarth@swk.properties'`, expiredLock)
-  check('wrong password after expired lockout still fails', !canLogin('samarth@swk.properties', 'WrongPass123!'))
-  const afterExpiredFail = q.get<{ failed_logins: number; locked_until: string | null }>(`SELECT failed_logins, locked_until FROM users WHERE lower(email) = 'samarth@swk.properties'`)!
+  q.run(`UPDATE users SET failed_logins = 5, locked_until = ? WHERE lower(email) = 'saifullah@swk.properties'`, expiredLock)
+  check('wrong password after expired lockout still fails', !canLogin('saifullah@swk.properties', 'WrongPass123!'))
+  const afterExpiredFail = q.get<{ failed_logins: number; locked_until: string | null }>(`SELECT failed_logins, locked_until FROM users WHERE lower(email) = 'saifullah@swk.properties'`)!
   check('expired lockout resets failed_logins to 1 instead of instant re-lock', afterExpiredFail.failed_logins === 1 && afterExpiredFail.locked_until === null)
-  check('Samarth can still sign in right after 1 typo post-lockout', canLogin('samarth@swk.properties', 'Samarth-Personal#99'))
+  check('Saifullah can still sign in right after 1 typo post-lockout', canLogin('saifullah@swk.properties', 'Saifullah-Personal#99'))
 
   // 4. checkPasswordForCheckin resolves aliases and isolates failures per account on shared office IP.
   q.run(`UPDATE users SET password_hash = ?, must_change_password = 0 WHERE lower(email) = 'fareed@swk.rent'`, hashPassword('Fareed-Office#2026'))

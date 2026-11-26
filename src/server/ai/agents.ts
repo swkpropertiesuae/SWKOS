@@ -25,6 +25,11 @@ export function ensureAgents() {
     createRecord(getDef('ai_agents'), { name: t.name, title: t.title, avatar: t.avatar, instructions: t.instructions, autonomy: t.autonomy, schedule: t.schedule, run_hour: t.run_hour, deliver_to: t.deliver_to, tools: t.tools, active: false, role_key: t.key }, SYSTEM_CTX)
     q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, `seed:agent:${t.key}`, nowIso())
   }
+  // Ensure existing Jarvis deployments receive newly registered read tools (e.g. search_case_studies)
+  const jarvisRow = q.get<{ id: number; tools: string | null }>(`SELECT id, tools FROM ai_agents WHERE role_key = 'jarvis' AND deleted_at IS NULL LIMIT 1`)
+  if (jarvisRow && jarvisRow.tools && jarvisRow.tools.trim() !== '*' && !jarvisRow.tools.split(',').map(s => s.trim()).includes('search_case_studies')) {
+    q.run(`UPDATE ai_agents SET tools = ?, updated_at = ? WHERE id = ?`, `${jarvisRow.tools.trim()},search_case_studies`, nowIso(), jarvisRow.id)
+  }
 }
 
 const autonomyLevel = (a: string) => Math.max(0, AGENT_AUTONOMY.indexOf(a))
