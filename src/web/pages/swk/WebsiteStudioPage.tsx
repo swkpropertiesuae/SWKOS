@@ -35,44 +35,44 @@ type Promo = { id: number; version: number; title: string; eyebrow?: string; tab
 type Status = { config: { repo: string; branch: string; tokenSet: boolean; hookSet: boolean }; last: Record<string, any> | null; published: number; hot: number; promotions: number; siteUpdates?: any; zeroShabibGuard?: boolean; problems: string[] }
 
 const aed = (n: number) => 'AED ' + Math.round(n || 0).toLocaleString('en-US')
-const statusDot = (l: Listing) => (l.purpose === 'off-plan' ? '#d4a752' : l.status === 'sold' || l.status === 'rented' ? '#a3263a' : l.status === 'reserved' ? '#a5ce3a' : '#62c584')
+const statusDot = (l: Listing) => (l.purpose === 'off-plan' ? '#51fec0' : l.status === 'sold' || l.status === 'rented' ? '#dc2626' : l.status === 'reserved' ? '#f59e0b' : '#62c584')
 const statusText = (l: Listing) => (l.purpose === 'off-plan' ? 'Off-Plan Launch' : l.purpose === 'rent' ? 'For Rent' : l.status === 'available' ? 'For Sale · Ready' : l.status)
 const beds = (l: Listing) => (l.property_type === 'Office' ? 'Commercial' : !l.bedrooms ? 'Studio' : `${l.bedrooms} ${l.bedrooms === 1 ? 'Bed' : 'Beds'}`)
 
 function ListingCard({ l, onToggle, onShare }: { l: Listing; onToggle: (field: 'published' | 'hot_offer') => void; onShare: () => void }) {
   return (
     <article className={`web-card hoverable group flex h-full flex-col overflow-hidden ${l.published ? '' : 'opacity-60'}`}>
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#efe9dd]">
-        {l.image_url ? <img src={websiteImage(l.image_url)} alt={l.title} loading="lazy" className="size-full object-cover transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:brightness-[0.82]" /> : <div className="grid size-full place-items-center text-[12px] text-[#5b676e]">No image yet</div>}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#eaf2f8]">
+        {l.image_url ? <img src={websiteImage(l.image_url)} alt={l.title} loading="lazy" className="size-full object-cover transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:brightness-[0.86]" /> : <div className="grid size-full place-items-center text-[12px] text-[#5b6778]">No image yet</div>}
         <div className="pointer-events-none absolute left-3.5 top-3.5 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#0f2a33]/80 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white backdrop-blur-md"><span className="size-1.5 rounded-[2px]" style={{ background: statusDot(l) }} aria-hidden="true" />{statusText(l)}</span>
-          {l.hot_offer && <span className="inline-flex items-center gap-1 rounded-full bg-[#d4a752] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0f2a33]"><Flame size={11} /> Hot offer</span>}
-          {!l.published && <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-medium text-[#0f2a33]">Hidden</span>}
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#121212]/82 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white backdrop-blur-md"><span className="size-1.5 rounded-[2px]" style={{ background: statusDot(l) }} aria-hidden="true" />{statusText(l)}</span>
+          {l.hot_offer && <span className="inline-flex items-center gap-1 rounded-full bg-[#121212] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#51fec0]"><Flame size={11} /> Hot offer</span>}
+          {!l.published && <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-medium text-[#121212]">Hidden</span>}
         </div>
         <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5">
           <button type="button" onClick={() => onToggle('hot_offer')} aria-pressed={l.hot_offer} aria-label={l.hot_offer ? 'Remove hot offer' : 'Promote as hot offer'} title={l.hot_offer ? 'Remove hot offer' : 'Promote as hot offer'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded-full border-0 backdrop-blur-md transition-colors ${l.hot_offer ? 'bg-[#0f2a33] text-[#d4a752]' : 'bg-white/90 text-[#0f2a33] hover:bg-[#0f2a33] hover:text-white'}`}><Flame size={14} /></button>
-          <button type="button" onClick={onShare} aria-label="Share with client" title="Share with client" className="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-white/90 text-[#0f2a33] backdrop-blur-md transition-colors hover:bg-[#0f2a33] hover:text-white"><Share2 size={14} /></button>
+            className={`flex size-8 cursor-pointer items-center justify-center rounded-full border-0 backdrop-blur-md transition-colors ${l.hot_offer ? 'bg-[#121212] text-[#51fec0]' : 'bg-white/92 text-[#121212] hover:bg-[#121212] hover:text-[#51fec0]'}`}><Flame size={14} /></button>
+          <button type="button" onClick={onShare} aria-label="Share with client" title="Share with client" className="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-white/92 text-[#121212] backdrop-blur-md transition-colors hover:bg-[#121212] hover:text-[#51fec0]"><Share2 size={14} /></button>
           <button type="button" onClick={() => onToggle('published')} aria-pressed={l.published} aria-label={l.published ? 'Hide from website' : 'Show on website'} title={l.published ? 'Hide from website' : 'Show on website'}
-            className="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-white/90 text-[#0f2a33] backdrop-blur-md transition-colors hover:bg-[#0f2a33] hover:text-white">{l.published ? <Eye size={14} /> : <EyeOff size={14} />}</button>
+            className="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-white/92 text-[#121212] backdrop-blur-md transition-colors hover:bg-[#121212] hover:text-[#51fec0]">{l.published ? <Eye size={14} /> : <EyeOff size={14} />}</button>
         </div>
-        <Link to={`/e/website_listings/${l.id}`} aria-label={`Edit ${l.title}`} className="absolute bottom-3.5 right-3.5 flex size-11 translate-y-2 items-center justify-center rounded-full bg-white text-[#0f2a33] opacity-0 shadow-lg transition-all duration-300 hover:bg-[#d4a752] group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"><Pencil size={15} /></Link>
+        <Link to={`/e/website_listings/${l.id}`} aria-label={`Edit ${l.title}`} className="absolute bottom-3.5 right-3.5 flex size-11 translate-y-2 items-center justify-center rounded-full bg-white text-[#121212] opacity-0 shadow-lg transition-all duration-300 hover:bg-[#121212] hover:text-[#51fec0] group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"><Pencil size={15} /></Link>
       </div>
       <div className="flex flex-1 flex-col justify-between p-5">
         <div>
-          <div className="flex items-center justify-between gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#8a621c]"><span className="truncate">{l.community}</span><span className="shrink-0 font-mono text-[10px] text-[#5b676e]">{l.reference}</span></div>
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#0e9f6e]"><span className="truncate">{l.community}</span><span className="shrink-0 font-mono text-[10px] text-[#5b6778]">{l.reference}</span></div>
           <div className="mt-2.5 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <Link to={`/e/website_listings/${l.id}`} className="block text-[17px] font-medium leading-[1.2] tracking-[-0.025em] text-[#0f2a33] no-underline transition-colors group-hover:text-[#8a621c]">{l.title}</Link>
-              <p className="mt-1 truncate text-xs text-[#5b676e]">{[l.building, l.developer].filter(Boolean).join(' · ')}</p>
+              <Link to={`/e/website_listings/${l.id}`} className="block text-[17px] font-medium leading-[1.2] tracking-[-0.025em] text-[#121212] no-underline transition-colors group-hover:text-[#0e9f6e]">{l.title}</Link>
+              <p className="mt-1 truncate text-xs text-[#5b6778]">{[l.building, l.developer].filter(Boolean).join(' · ')}</p>
             </div>
-            <div className="shrink-0 rounded-full border border-[#8a621c]/20 bg-[#8a621c]/10 px-3 py-1.5 text-right"><span className="block whitespace-nowrap text-sm font-semibold tabular-nums tracking-[-0.02em] text-[#7a5518]">{aed(l.price_aed)}</span>{l.purpose === 'rent' && <span className="block text-[9.5px] font-medium uppercase tracking-[0.12em] text-[#7a5518]/75">/ yr</span>}</div>
+            <div className="shrink-0 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-right"><span className="block whitespace-nowrap font-mono text-sm font-semibold tabular-nums tracking-[-0.02em] text-[#121212]">{aed(l.price_aed)}</span>{l.purpose === 'rent' && <span className="block text-[9.5px] font-medium uppercase tracking-[0.12em] text-[#5b6778]">/ yr</span>}</div>
           </div>
         </div>
-        <div className="mt-5 grid grid-cols-3 divide-x divide-[#e6e0d4] border-t border-[#e6e0d4] pt-4 text-[12px] text-[#3d4a51]">
-          <span className="flex items-center gap-1.5"><BedDouble size={14} className="text-[#5b676e]" />{beds(l)}</span>
-          <span className="flex items-center justify-center gap-1.5"><Bath size={14} className="text-[#5b676e]" />{l.bathrooms ?? 0} Baths</span>
-          <span className="flex items-center justify-end gap-1.5"><Expand size={14} className="text-[#5b676e]" />{(l.area_sqft ?? 0).toLocaleString('en-US')} ft²</span>
+        <div className="mt-5 grid grid-cols-3 divide-x divide-black/[0.07] border-t border-black/[0.07] pt-4 text-[12px] text-[#475569]">
+          <span className="flex items-center gap-1.5"><BedDouble size={14} className="text-[#5b6778]" />{beds(l)}</span>
+          <span className="flex items-center justify-center gap-1.5"><Bath size={14} className="text-[#5b6778]" />{l.bathrooms ?? 0} Baths</span>
+          <span className="flex items-center justify-end gap-1.5"><Expand size={14} className="text-[#5b6778]" />{(l.area_sqft ?? 0).toLocaleString('en-US')} ft²</span>
         </div>
       </div>
     </article>

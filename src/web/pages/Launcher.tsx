@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { useQuery } from '@tanstack/react-query'
@@ -12,11 +12,14 @@ import {
   LayoutDashboard,
   LineChart,
   MapPin,
+  MessagesSquare,
   Navigation,
+  PhoneCall,
   QrCode,
   Search,
   SlidersHorizontal,
   Sparkles,
+  Workflow,
   X,
 } from 'lucide-react'
 import { useMeta } from '../lib/meta'
@@ -25,8 +28,14 @@ import { launcherApps, recentItems, SWK_CORE_SUITE_KEYS, type LauncherApp } from
 import { aed, num } from '../swk/ui'
 import { isRestrictedStaffUser } from '@shared/swk-staff-access'
 import { useSipClient } from '../lib/sipClient'
+import {
+  BracketLink,
+  LiveStatusDot,
+  SectionEyebrow,
+  SWISS_EASE,
+  SwissCarousel,
+} from '../components/ui/SwissPrimitives'
 
-const ease = [0.22, 1, 0.36, 1] as const
 let entrancePlayed = false
 
 const PHOTOS = [
@@ -57,118 +66,80 @@ const CATEGORY_FILTERS: { id: string; label: string; keys: string[] }[] = [
   { id: 'field', label: 'Team, Field & AI', keys: ['team', 'field', 'attendance', 'ai_lab', 'tools', 'market_pulse', 'general'] },
 ]
 
-const CORE_SUITE_BRANDING: Record<
+const CORE_SUITE_META: Record<
   string,
   {
     brandName: string
+    eyebrow: string
     tagline: string
-    iconSrc: string
-    cardBg: string
-    border: string
-    pillBg: string
-    pillFg: string
+    icon: typeof MessagesSquare
     ctaLabel: string
   }
 > = {
   messages: {
     brandName: 'SWK Inside',
-    tagline: 'Encrypted team chats, project rooms, broadcasts & instant share',
-    iconSrc: '/brand/apps/swk-inside.svg',
-    cardBg: 'from-[#063228] via-[#064e3b] to-[#0a1f1c]',
-    border: 'border-[#34d399]/35 hover:border-[#f3d27a]/70',
-    pillBg: 'bg-[#34d399]/18 border-[#34d399]/35',
-    pillFg: 'text-[#a7f3d0]',
+    eyebrow: 'Internal Messaging',
+    tagline: 'Encrypted team channels, deal rooms, broadcasts & instant document share.',
+    icon: MessagesSquare,
     ctaLabel: 'Open SWK Inside',
   },
   work: {
     brandName: 'SWK Work',
-    tagline: 'Tasks, projects, team boards, calendars & visual flow automations',
-    iconSrc: '/brand/apps/swk-work.svg',
-    cardBg: 'from-[#17204d] via-[#1d4ed8] to-[#0f172a]',
-    border: 'border-[#60a5fa]/35 hover:border-[#f3d27a]/70',
-    pillBg: 'bg-[#60a5fa]/18 border-[#60a5fa]/35',
-    pillFg: 'text-[#bfdbfe]',
+    eyebrow: 'Execution & Flows',
+    tagline: 'Tasks, projects, team calendars, approvals & visual workflow automations.',
+    icon: Workflow,
     ctaLabel: 'Open SWK Work',
   },
   phone: {
     brandName: 'SWK Phone',
-    tagline: 'WebRTC SIP dialer, office directory & zero-leak Masked Vault calls',
-    iconSrc: '/brand/apps/swk-phone.svg',
-    cardBg: 'from-[#420c1d] via-[#9f1239] to-[#1a0b14]',
-    border: 'border-[#fb7185]/35 hover:border-[#f3d27a]/70',
-    pillBg: 'bg-[#fb7185]/18 border-[#fb7185]/35',
-    pillFg: 'text-[#fecdd3]',
+    eyebrow: 'Voice & Privacy Vault',
+    tagline: 'WebRTC SIP dialer, office directory & zero-leak Masked Vault calling.',
+    icon: PhoneCall,
     ctaLabel: 'Open SWK Phone',
   },
 }
 
-const TONE_ACCENT: Record<string, { bg: string; fg: string; pill: string }> = {
-  navy: { bg: '#eff6ff', fg: '#1d4ed8', pill: 'bg-[#eff6ff] text-[#1d4ed8]' },
-  champ: { bg: '#fef7e6', fg: '#92400e', pill: 'bg-[#fef7e6] text-[#92400e]' },
-  oasis: { bg: '#ecfdf5', fg: '#047857', pill: 'bg-[#ecfdf5] text-[#047857]' },
-  ocean: { bg: '#f0f9ff', fg: '#0369a1', pill: 'bg-[#f0f9ff] text-[#0369a1]' },
-  dune: { bg: '#fef2f2', fg: '#b91c1c', pill: 'bg-[#fef2f2] text-[#b91c1c]' },
-  plum: { bg: '#f5f3ff', fg: '#6d28d9', pill: 'bg-[#f5f3ff] text-[#6d28d9]' },
-}
-
-/** Tactile 21st.dev spotlight app tile — zero negative edge bleed, guaranteed contrast. */
+/** Refined Swiss architectural app tile — frosted white glass, crisp monochromatic icon anchor, obsidian+mint hover */
 function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
-  const [imgErr, setImgErr] = useState(false)
-  const accent = TONE_ACCENT[app.tone] ?? TONE_ACCENT.navy
-  const onMove = (e: PointerEvent<HTMLAnchorElement>) => {
-    const r = e.currentTarget.getBoundingClientRect()
-    e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`)
-    e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`)
-  }
+  const isOwnerApp = app.key === 'shabib_corner'
   return (
     <Link
       to={app.landing}
-      onPointerMove={onMove}
       title={app.blurb}
-      className="group relative flex h-full items-center gap-3.5 overflow-hidden rounded-[26px] border border-line bg-card/95 p-4 no-underline shadow-[0_14px_36px_-22px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-ink/35 hover:shadow-[0_18px_40px_-20px_rgba(15,23,42,0.18)]"
+      className="group relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] border border-white/88 bg-white/86 p-4 no-underline shadow-[0_14px_38px_rgba(12,56,96,0.08)] backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[#121212]/25 hover:bg-white hover:shadow-[0_22px_54px_rgba(12,56,96,0.14)]"
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_180px_at_var(--mx)_var(--my),rgba(212,167,82,0.14),transparent_72%)]"
-      />
       <div
-        className="relative z-10 flex size-[50px] shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-[1.05]"
-        style={{ background: accent.bg, color: accent.fg }}
+        className={`relative z-10 flex size-[46px] shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          isOwnerApp
+            ? 'border-[#121212] bg-[#121212] text-[#51fec0]'
+            : 'border-black/[0.07] bg-[#f4f7fa] text-[#121212] group-hover:border-[#121212] group-hover:bg-[#121212] group-hover:text-[#51fec0]'
+        }`}
       >
-        {!imgErr ? (
-          <img
-            src={`/brand/apps/${app.key}.svg`}
-            alt=""
-            width={44}
-            height={44}
-            className="size-[44px] rounded-xl object-contain"
-            onError={() => setImgErr(true)}
-          />
-        ) : (
-          <app.icon size={22} />
-        )}
+        <app.icon size={20} strokeWidth={1.75} />
       </div>
+
       <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-2">
-          <span className="truncate text-[16px] font-bold tracking-[-0.02em] text-ink transition-colors group-hover:text-[#2563eb] dark:group-hover:text-[#93c5fd]">
+          <span className="truncate text-[15.5px] font-medium tracking-[-0.025em] text-[#121212]">
             {app.label}
           </span>
           {badge}
         </span>
-        <span className="line-clamp-1 text-[13.5px] text-muted">{app.blurb}</span>
+        <span className="line-clamp-1 text-[12.5px] text-[#5b6778]">{app.blurb}</span>
         {app.items.length > 1 && (
-          <span className="mt-1 inline-flex items-center gap-1.5">
-            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${accent.pill}`}>
-              {app.items.length} workflow steps
-            </span>
+          <span className="mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[#475569]">
+            <span className="inline-block size-[4px] bg-[#0e9f6e]" aria-hidden />
+            {app.items.length} workflow steps
           </span>
         )}
       </span>
-      <ArrowUpRight
-        size={16}
+
+      <span
         aria-hidden
-        className="relative z-10 shrink-0 text-muted transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink"
-      />
+        className="relative z-10 inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white text-[#121212] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:border-[#121212] group-hover:bg-[#121212] group-hover:text-[#51fec0]"
+      >
+        <ArrowUpRight size={14} />
+      </span>
     </Link>
   )
 }
@@ -216,7 +187,7 @@ export function Launcher() {
   const propsQ = useQuery({
     queryKey: ['launcher-props'],
     enabled: isStaff && !restricted && can('properties', 'view'),
-    queryFn: () => get<any>('/api/e/properties', { pageSize: 4, sort: 'listed_date', dir: 'desc' }),
+    queryFn: () => get<any>('/api/e/properties', { pageSize: 8, sort: 'listed_date', dir: 'desc' }),
     staleTime: 60000,
   })
 
@@ -229,12 +200,12 @@ export function Launcher() {
   })
   const shownSuiteApps = coreSuiteApps.filter(a => {
     if (!needle) return true
-    const brand = CORE_SUITE_BRANDING[a.key]
+    const meta = CORE_SUITE_META[a.key]
     return (
       a.label.toLocaleLowerCase().includes(needle) ||
       a.blurb.toLocaleLowerCase().includes(needle) ||
-      (brand?.brandName.toLocaleLowerCase().includes(needle) ?? false) ||
-      (brand?.tagline.toLocaleLowerCase().includes(needle) ?? false)
+      (meta?.brandName.toLocaleLowerCase().includes(needle) ?? false) ||
+      (meta?.tagline.toLocaleLowerCase().includes(needle) ?? false)
     )
   })
   const features = needle
@@ -256,149 +227,157 @@ export function Launcher() {
   const listings: any[] = propsQ.data?.rows ?? []
   const progressPct = Math.min(100, Math.max(24, 35 + leadCount * 6 + viewingCount * 5 + offerCount * 8))
 
-  const container = { hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : 0.025, delayChildren: 0.03 } } }
-  const rise = { hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease } } }
+  const container = { hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : 0.02, delayChildren: 0.02 } } }
+  const rise = { hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: SWISS_EASE } } }
 
   return (
-    <div className="mx-auto max-w-[1320px] space-y-6 pb-8">
-      {/* Greeting + Signature Dual-Layer Obsidian & White Command Card (@siren.uix + Editorial Productivity) */}
+    <div className="mx-auto max-w-[1340px] space-y-7 pb-10">
+      {/* ============================================================ 1. SWISS ARCHITECTURAL HERO & COMMAND DECK */}
       <motion.section
         className="grid gap-5 lg:grid-cols-12 items-stretch"
         initial={animate ? { opacity: 0, y: 8 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease }}
+        transition={{ duration: 0.38, ease: SWISS_EASE }}
       >
-        <div className="lg:col-span-8 flex flex-col justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-card/95 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--eyebrow)] shadow-2xs max-w-full">
-              <span className="size-1.5 rounded-full bg-[#047857] dark:bg-[#34d399] shrink-0" />
-              <span className="truncate">SWK Properties · ORN 51517 · {todayLabel()}</span>
-            </div>
-            <h1 className="mt-2.5 text-[28px] sm:text-[38px] font-bold tracking-[-0.035em] text-ink leading-[1.08]">
-              {greeting()}
-              {firstName ? `, ${firstName}` : ''}.
-            </h1>
-            <p className="mt-1.5 mb-0 text-[14.5px] text-muted">
-              Let&apos;s make today productive — search any page, continue your last workflow, or launch an app below.
-            </p>
-          </div>
-
-          {/* Dual-Layer Command Card (Obsidian Top Strip + Crisp Search & Quick Chips Inside) */}
-          <div className="rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-2.5 shadow-[0_20px_48px_-18px_rgba(15,23,42,0.38)]">
-            <div className="flex items-center justify-between gap-3 px-3 pt-1.5 pb-3 text-white">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#c5e86c]">
-                  {lastVisit ? <lastVisit.icon size={17} /> : <LayoutDashboard size={17} />}
+        {/* Left 8 Cols: Editorial Greeting + Frosted Glass Search & Category Deck */}
+        <div className="lg:col-span-8 flex flex-col justify-between gap-5 rounded-[28px] border border-white/88 bg-white/86 p-6 sm:p-7 shadow-[0_24px_64px_rgba(12,56,96,0.10)] backdrop-blur-2xl">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2.5 rounded-full border border-black/[0.07] bg-white/90 px-3.5 py-1.5 shadow-[0_6px_18px_rgba(12,56,96,0.06)]">
+                <LiveStatusDot />
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#121212]">
+                  SWK Properties · ORN 51517 · {todayLabel()}
                 </span>
-                <div className="min-w-0">
-                  {lastVisit ? (
-                    <Link to={lastVisit.to} className="block truncate text-[13.5px] font-semibold text-white no-underline hover:text-[#c5e86c]">
-                      {lastVisit.label}
-                    </Link>
-                  ) : (
-                    <div className="truncate text-[13.5px] font-semibold text-white">
-                      {restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
-                    </div>
-                  )}
-                  <div className="truncate text-[11px] text-[#94a3b8]">
-                    {lastVisit ? `Recently Visited · ${lastVisit.section}` : restricted ? 'Dispatched Vault Deals & Hard-Masked Calling' : 'Live Pipeline, Journeys & Analytics'}
-                  </div>
+              </div>
+              <h1 className="mt-3.5 m-0 text-[30px] sm:text-[42px] font-medium tracking-[-0.042em] text-[#121212] leading-[1.04]">
+                {greeting()}
+                {firstName ? `, ${firstName}` : ''}
+                <span className="text-[#64748b]">.</span>
+              </h1>
+              <p className="mt-2 mb-0 text-[14.5px] text-[#475569] leading-relaxed">
+                Search any workspace page, resume your last workflow, or open an executive module below.
+              </p>
+            </div>
+
+            {/* Resume Last Visited Pill */}
+            <div className="flex items-center gap-3 rounded-2xl border border-black/[0.07] bg-[#f4f7fa]/85 px-3.5 py-2.5 shrink-0 max-w-full">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#121212] text-[#51fec0]">
+                {lastVisit ? <lastVisit.icon size={16} /> : <LayoutDashboard size={16} />}
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#64748b]">
+                  {lastVisit ? 'Resume Workflow' : 'Primary Desk'}
                 </div>
+                {lastVisit ? (
+                  <Link to={lastVisit.to} className="block truncate text-[13px] font-semibold text-[#121212] no-underline hover:text-[#0e9f6e] max-w-[180px]">
+                    {lastVisit.label}
+                  </Link>
+                ) : (
+                  <Link to={restricted ? '/my-deals' : '/dashboard'} className="block truncate text-[13px] font-semibold text-[#121212] no-underline hover:text-[#0e9f6e]">
+                    {restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
+                  </Link>
+                )}
               </div>
               <Link
                 to={lastVisit ? lastVisit.to : restricted ? '/my-deals' : '/dashboard'}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white no-underline transition-colors hover:bg-[#c5e86c] hover:border-[#c5e86c] hover:text-[#0f172a]"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#121212] text-white no-underline transition-all hover:text-[#51fec0]"
+                aria-label={lastVisit ? `Resume ${lastVisit.label}` : 'Open primary desk'}
               >
-                <Clock3 size={12} />
-                {lastVisit ? 'Resume' : 'Open'}
+                <ArrowRight size={14} />
               </Link>
             </div>
+          </div>
 
-            <div className="rounded-[20px] bg-card p-3.5 shadow-inner">
-              <form className="relative flex items-center gap-2" role="search" onSubmit={e => { e.preventDefault(); openFirst() }}>
-                <div className="relative flex-1 min-w-0">
-                  <Search size={17} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                  <input
-                    type="text"
-                    inputMode="search"
-                    enterKeyHint="search"
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Escape') setQuery('') }}
-                    placeholder="Ask anything or search apps & pages…"
-                    aria-label="Search apps and features"
-                    autoComplete="off"
-                    className="h-11 w-full rounded-2xl border border-line bg-soft pl-10 pr-10 text-[14.5px] text-ink outline-none no-focus-outline transition-all placeholder:text-muted focus:border-ink focus:bg-card focus:ring-4 focus:ring-[#2563eb]/12"
-                  />
-                  {query && (
-                    <button
-                      type="button"
-                      onClick={() => setQuery('')}
-                      aria-label="Clear search"
-                      className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-soft text-body hover:bg-primary hover:text-primary-foreground cursor-pointer"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-                <Link
-                  to="/utilities/search"
-                  title="Advanced Unified Search"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb] dark:bg-soft dark:text-[#93c5fd] no-underline transition-colors hover:bg-[#2563eb] hover:text-white"
-                >
-                  <SlidersHorizontal size={17} />
-                </Link>
-              </form>
-
-              {/* Category quick-filter pills right inside the command deck */}
-              <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none]">
-                {CATEGORY_FILTERS.map(c => {
-                  const active = cat === c.id && !needle
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => { setQuery(''); setCat(c.id) }}
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold border transition-colors cursor-pointer ${
-                        active
-                          ? 'bg-primary border-primary text-primary-foreground'
-                          : 'bg-soft border-line text-body hover:border-ink/30 hover:bg-hover'
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  )
-                })}
+          {/* Search Bar & Spring Animated Category Filter Switcher */}
+          <div className="space-y-3 pt-1">
+            <form className="relative flex items-center gap-2.5" role="search" onSubmit={e => { e.preventDefault(); openFirst() }}>
+              <div className="relative flex-1 min-w-0">
+                <Search size={17} aria-hidden className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#64748b]" />
+                <input
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') setQuery('') }}
+                  placeholder="Search apps, workflows, leases, deals or pages…"
+                  aria-label="Search apps and features"
+                  autoComplete="off"
+                  className="h-12 w-full rounded-2xl border border-black/[0.1] bg-white/95 pl-11 pr-11 text-[14.5px] text-[#121212] outline-none no-focus-outline shadow-[0_6px_18px_rgba(12,56,96,0.05)] transition-all placeholder:text-[#64748b] focus:border-[#121212] focus:bg-white focus:ring-4 focus:ring-[#121212]/8"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery('')}
+                    aria-label="Clear search"
+                    className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-[#f4f7fa] text-[#121212] hover:bg-[#121212] hover:text-[#51fec0] cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
+              <Link
+                to="/utilities/search"
+                title="Advanced Unified Search"
+                className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-black/[0.1] bg-white text-[#121212] no-underline shadow-[0_6px_18px_rgba(12,56,96,0.05)] transition-all hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]"
+              >
+                <SlidersHorizontal size={17} />
+              </Link>
+            </form>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+              {CATEGORY_FILTERS.map(c => {
+                const active = cat === c.id && !needle
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { setQuery(''); setCat(c.id) }}
+                    className={`relative inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-[11.5px] font-medium uppercase tracking-[0.12em] border cursor-pointer transition-colors ${
+                      active
+                        ? 'border-[#121212] text-white'
+                        : 'border-black/[0.08] bg-white/80 text-[#475569] hover:border-[#121212]/30 hover:text-[#121212]'
+                    }`}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="launcher-cat-pill"
+                        transition={{ type: 'spring', stiffness: 440, damping: 32 }}
+                        className="absolute inset-0 rounded-full bg-[#121212]"
+                      />
+                    )}
+                    <span className="relative z-10">{c.label}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
 
-        {/* Right Hero Card: Obsidian Today's Progress Ring (100% consistent with Dashboard Progress Card) */}
-        <div className="lg:col-span-4 rounded-[28px] bg-gradient-to-br from-[#12161d] via-[#17212b] to-[#0b131a] p-5 text-white shadow-[0_20px_48px_-18px_rgba(15,23,42,0.42)] flex flex-col justify-between gap-4">
-          <div className="flex items-center justify-between gap-2">
+        {/* Right 4 Cols: Frosted-Glass Daily Operations Pulse (Zero Dark Circus Block!) */}
+        <div className="lg:col-span-4 rounded-[28px] border border-white/88 bg-white/86 p-6 shadow-[0_24px_64px_rgba(12,56,96,0.10)] backdrop-blur-2xl flex flex-col justify-between gap-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#c5e86c]">Today&apos;s Pulse</span>
-              <h2 className="m-0 mt-0.5 text-[18px] font-bold text-white">Daily Operations</h2>
+              <SectionEyebrow accent="emerald">Today&apos;s Pulse</SectionEyebrow>
+              <h2 className="m-0 mt-1.5 text-[20px] font-medium tracking-[-0.03em] text-[#121212]">
+                Daily Operations
+              </h2>
             </div>
-            <Link
-              to={restricted ? '/reception-qr' : '/dashboard'}
-              className="inline-flex items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-[11.5px] font-semibold text-[#c5e86c] no-underline hover:bg-[#c5e86c] hover:text-[#0f172a] transition-colors"
-            >
-              {restricted ? 'Check-In' : 'Dashboard'} <ArrowRight size={13} />
-            </Link>
+            <BracketLink to={restricted ? '/reception-qr' : '/dashboard'} variant="dark" size="sm">
+              {restricted ? 'Check-In' : 'Dashboard'} <ArrowRight size={12} />
+            </BracketLink>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-5 py-1">
             <div className="relative flex size-[104px] shrink-0 items-center justify-center">
               <svg width={104} height={104} className="-rotate-90">
-                <circle cx={52} cy={52} r={42} stroke="rgba(255,255,255,0.12)" strokeWidth={10} fill="none" />
+                <circle cx={52} cy={52} r={42} stroke="rgba(18,18,18,0.08)" strokeWidth={8} fill="none" />
                 <circle
                   cx={52}
                   cy={52}
                   r={42}
-                  stroke="#c5e86c"
-                  strokeWidth={10}
+                  stroke="#121212"
+                  strokeWidth={8}
                   fill="none"
                   strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 42}
@@ -406,63 +385,63 @@ export function Launcher() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[22px] font-bold text-white leading-none">{progressPct}%</span>
-                <span className="mt-0.5 text-[9.5px] uppercase tracking-wider text-[#94a3b8]">Active</span>
+                <span className="font-mono text-[21px] font-semibold text-[#121212] leading-none tabular-nums">{progressPct}%</span>
+                <span className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0e9f6e]">Active</span>
               </div>
             </div>
 
             <div className="flex-1 min-w-0 grid gap-2.5">
               {restricted ? (
                 <>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Inside Unread</span><b className="text-white text-sm">{unread}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Permitted Apps</span><b className="text-white text-sm">{apps.length}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Dubai Timezone</span><b className="text-[#d4a752] text-sm">GST +4</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Inside Unread</span><b className="font-mono text-[#121212] text-sm tabular-nums">{unread}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Permitted Apps</span><b className="font-mono text-[#121212] text-sm tabular-nums">{apps.length}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Dubai Time</span><b className="font-mono text-[#0e9f6e] text-xs">GST +4</b></div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Leads Today</span><b className="text-white text-sm">{leadCount}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Viewings (7d)</span><b className="text-[#a3e635] text-sm">{viewingCount}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#94a3b8]">Pending Offers</span><b className="text-[#d4a752] text-sm">{offerCount}</b></div>
+                  <div className="flex items-center justify-between text-xs border-b border-black/[0.06] pb-1.5"><span className="text-[#5b6778]">Leads Today</span><b className="font-mono text-[#121212] text-sm tabular-nums">{leadCount}</b></div>
+                  <div className="flex items-center justify-between text-xs border-b border-black/[0.06] pb-1.5"><span className="text-[#5b6778]">Viewings (7d)</span><b className="font-mono text-[#0e9f6e] text-sm tabular-nums">{viewingCount}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Pending Offers</span><b className="font-mono text-[#121212] text-sm tabular-nums">{offerCount}</b></div>
                 </>
               )}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-1 border-t border-white/10">
-            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-white/20">
-              <QrCode size={13} className="text-[#d4a752]" /> QR Check-In
+          <div className="flex flex-wrap gap-2 pt-3 border-t border-black/[0.07]">
+            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-[11px] font-medium text-[#121212] no-underline transition-colors hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]">
+              <QrCode size={12} /> QR Check-In
             </Link>
-            <Link to="/chat" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-white/20">
-              <Sparkles size={13} className="text-[#a3e635]" /> Inside {unread > 0 ? `(${unread})` : ''}
+            <Link to="/chat" className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-[11px] font-medium text-[#121212] no-underline transition-colors hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]">
+              <Sparkles size={12} /> Inside {unread > 0 ? `(${unread})` : ''}
             </Link>
-            <Link to="/field-duty" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11.5px] font-semibold text-white no-underline hover:bg-white/20">
-              <Navigation size={13} className="text-[#38bdf8]" /> Field GPS
+            <Link to="/field-duty" className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-[11px] font-medium text-[#121212] no-underline transition-colors hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]">
+              <Navigation size={12} /> Field GPS
             </Link>
           </div>
         </div>
       </motion.section>
 
-      {/* Search Matching Pages */}
+      {/* ============================================================ 2. SEARCH MATCHING WORKFLOW PAGES */}
       {features.length > 0 && (
-        <section aria-label="Matching pages" className="rounded-[22px] border border-line bg-card p-3 shadow-[0_8px_28px_-14px_rgba(11,31,42,0.12)]">
-          <div className="px-3 pt-1 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--eyebrow)]">
-            Matching Workflow Pages ({features.length})
+        <section aria-label="Matching pages" className="rounded-[26px] border border-white/88 bg-white/90 p-4 shadow-[0_20px_56px_rgba(12,56,96,0.10)] backdrop-blur-2xl">
+          <div className="px-3 pt-1 pb-2.5">
+            <SectionEyebrow>Matching Workflow Pages ({features.length})</SectionEyebrow>
           </div>
-          <ul className="m-0 list-none p-0 grid gap-1 sm:grid-cols-2">
+          <ul className="m-0 list-none p-0 grid gap-1.5 sm:grid-cols-2">
             {features.map(f => (
               <li key={f.to}>
-                <Link to={f.to} className="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 no-underline hover:bg-hover transition-colors">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0b1f2a] text-[#d4a752]">
-                    <f.icon size={17} />
+                <Link to={f.to} className="group flex items-center gap-3 rounded-2xl border border-transparent px-3.5 py-2.5 no-underline hover:border-black/[0.08] hover:bg-[#f4f7fa] transition-all">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#121212] text-[#51fec0]">
+                    <f.icon size={16} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <b className="block text-[14px] font-semibold text-ink truncate">{f.label}</b>
-                    <small className="block text-[12px] text-muted truncate">{f.desc ?? f.app}</small>
+                    <b className="block text-[14px] font-semibold text-[#121212] truncate">{f.label}</b>
+                    <small className="block text-[12px] text-[#5b6778] truncate">{f.desc ?? f.app}</small>
                   </span>
-                  <span className="rounded-full bg-[#eff6ff] px-2.5 py-0.5 text-[10.5px] font-semibold text-[#1d4ed8] shrink-0">
+                  <span className="rounded-full border border-black/[0.08] bg-white px-2.5 py-0.5 text-[10.5px] font-medium text-[#475569] shrink-0">
                     {f.app}
                   </span>
-                  <ArrowUpRight size={15} className="text-muted group-hover:text-ink shrink-0" />
+                  <ArrowUpRight size={15} className="text-[#64748b] group-hover:text-[#121212] shrink-0" />
                 </Link>
               </li>
             ))}
@@ -470,78 +449,97 @@ export function Launcher() {
         </section>
       )}
 
-      {/* @siren.uix Inspired Featured Properties Carousel Strip (shown when not filtering) */}
+      {/* ============================================================ 3. GALLERY HOVER CAROUSEL: FEATURED INVENTORY */}
       {!needle && listings.length > 0 && (
         <section aria-label="Featured inventory">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="m-0 text-[18px] font-bold text-ink">Featured Inventory</h2>
-              <span className="rounded-full bg-[#dc2626] px-2 py-0.5 text-[11px] font-bold text-white">
-                {listings.length}
-              </span>
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+            <div>
+              <SectionEyebrow>Verified Dubai Portfolio</SectionEyebrow>
+              <h2 className="m-0 mt-1 text-[22px] sm:text-[26px] font-medium tracking-[-0.035em] text-[#121212]">
+                Featured Inventory <span className="text-[#64748b] font-normal">({listings.length})</span>
+              </h2>
             </div>
-            <Link to="/e/properties" className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#2563eb] dark:text-[#93c5fd] no-underline hover:underline">
-              See all <ArrowRight size={14} />
-            </Link>
+            <BracketLink to="/e/properties" variant="light" size="sm">
+              All Inventory <ArrowRight size={12} />
+            </BracketLink>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {listings.slice(0, 4).map((p: any) => (
-              <Link
+
+          <SwissCarousel ariaLabel="Featured inventory carousel" hint="DRAG OR CLICK ARROWS">
+            {listings.slice(0, 8).map((p: any) => (
+              <div
                 key={p.id}
-                to={`/e/properties/${p.id}`}
-                className="group relative block h-[228px] overflow-hidden rounded-[24px] bg-[#0b1f2a] shadow-[0_14px_34px_-16px_rgba(11,31,42,0.34)] no-underline"
+                className="w-[82vw] max-w-[320px] sm:w-[340px] sm:max-w-none shrink-0 snap-start"
               >
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.06]"
-                  style={{ backgroundImage: `url(${photoFor(p.id)})` }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0b1f2a]/92 via-[#0b1f2a]/25 to-[#0b1f2a]/15" />
-                <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#0b1f2a] backdrop-blur-md">
-                    {p.is_off_plan ? 'Off-Plan' : 'Ready'}
-                    {p.rera_permit_no && <BadgeCheck size={13} className="text-[#2563eb]" />}
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-[#0b1f2a]/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                    {p.bedrooms ? `${p.bedrooms} BR` : 'Studio'} · {num(p.area_sqft)} sqft
-                  </span>
-                </div>
-                <div className="absolute bottom-3.5 left-3.5 right-3.5 text-white">
-                  <div className="truncate text-[15.5px] font-bold text-white leading-snug">{p.title}</div>
-                  <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-white/80 truncate">
-                    <MapPin size={11} className="text-[#d4a752] shrink-0" />
-                    <span className="truncate">{p.address || p.property_type || 'Dubai, UAE'}</span>
-                  </div>
-                  <div className="mt-2.5 flex items-center justify-between gap-2">
-                    <div className="text-[16px] font-bold text-[#fef3c7] tabular-nums">
-                      {p.price ? aed(p.price, { compact: true }) : p.rent_annual ? `${aed(p.rent_annual, { compact: true })}/yr` : 'On request'}
+                <Link
+                  to={`/e/properties/${p.id}`}
+                  className="group relative flex h-[328px] w-full flex-col overflow-hidden rounded-[24px] border border-white/88 bg-white/92 shadow-[0_18px_48px_rgba(12,56,96,0.11)] backdrop-blur-xl no-underline transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_28px_68px_rgba(12,56,96,0.17)]"
+                >
+                  {/* Top Photo Frame */}
+                  <div className="relative h-[54%] w-full overflow-hidden bg-[#eaf2f8]">
+                    <div
+                      className="h-full w-full bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105"
+                      style={{ backgroundImage: `url(${photoFor(p.id)})` }}
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0b1623]/40 via-transparent to-transparent" />
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#121212]/82 px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.15em] text-white backdrop-blur-md">
+                        <span className="h-1.5 w-1.5 rounded-[2px] bg-[#51fec0]" aria-hidden />
+                        {p.is_off_plan ? 'Off-Plan' : 'Ready'}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/92 px-2.5 py-0.5 text-[10px] font-medium text-[#121212] backdrop-blur-md">
+                        {p.bedrooms ? `${p.bedrooms} BR` : 'Studio'} · {num(p.area_sqft)} sf
+                        {p.rera_permit_no && <BadgeCheck size={12} className="text-[#0e9f6e]" />}
+                      </span>
                     </div>
-                    <span className="rounded-full bg-white/20 border border-white/25 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md transition-colors group-hover:bg-[#d4a752] group-hover:text-[#0b1f2a] group-hover:border-[#d4a752]">
-                      Open Deal
-                    </span>
                   </div>
-                </div>
-              </Link>
+
+                  {/* Frosted White Architectural Dossier Footer */}
+                  <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0e9f6e] truncate">
+                        <MapPin size={11} className="shrink-0" />
+                        <span className="truncate">{p.address || p.property_type || 'Dubai, UAE'}</span>
+                      </div>
+                      <h3 className="m-0 mt-1 text-[17px] font-medium leading-tight tracking-[-0.025em] text-[#121212] line-clamp-1">
+                        {p.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/[0.06]">
+                      <div className="font-mono text-[15px] font-semibold text-[#121212] tabular-nums">
+                        {p.price ? aed(p.price, { compact: true }) : p.rent_annual ? `${aed(p.rent_annual, { compact: true })}/yr` : 'On request'}
+                      </div>
+                      <span
+                        aria-hidden
+                        className="inline-flex size-8 items-center justify-center rounded-full border border-black/12 bg-white text-[#121212] transition-all duration-300 group-hover:-rotate-45 group-hover:border-[#121212] group-hover:bg-[#121212] group-hover:text-[#51fec0]"
+                      >
+                        <ArrowRight size={14} />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </div>
             ))}
-          </div>
+          </SwissCarousel>
         </section>
       )}
 
-      {/* Apps Directory Grid (Exact `section[aria-label="Apps"]` contract preserved for CI!) */}
+      {/* ============================================================ 4. SWK WORKSPACE APPS DIRECTORY */}
       {shownApps.length > 0 && (
         <div>
-          <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex flex-wrap items-end justify-between gap-2 mb-4">
             <div>
-              <h2 className="m-0 text-[18px] font-bold text-ink">
+              <SectionEyebrow>Operating Modules</SectionEyebrow>
+              <h2 className="m-0 mt-1 text-[22px] sm:text-[26px] font-medium tracking-[-0.035em] text-[#121212]">
                 {cat === 'all' || needle ? 'SWK Workspace Apps' : activeCat.label}
               </h2>
-              <p className="m-0 text-[12.5px] text-muted">
-                Every app opens with a step-by-step workflow bar so you never hunt through sidebars.
-              </p>
             </div>
-            <span className="shrink-0 whitespace-nowrap rounded-full bg-card border border-line px-3 py-1 text-[11.5px] font-semibold text-body">
-              {shownApps.length} {shownApps.length === 1 ? 'app' : 'apps'}
+            <span className="shrink-0 whitespace-nowrap rounded-full border border-white/88 bg-white/86 px-3.5 py-1.5 font-mono text-[11px] font-medium text-[#475569] shadow-[0_6px_18px_rgba(12,56,96,0.06)] backdrop-blur-xl">
+              {shownApps.length} {shownApps.length === 1 ? 'module' : 'modules'}
             </span>
           </div>
+
+          {/* Exact `section[aria-label="Apps"]` contract preserved for CI */}
           <motion.section
             aria-label="Apps"
             className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
@@ -556,12 +554,12 @@ export function Launcher() {
                   app={a}
                   badge={
                     a.key === 'shabib_corner' ? (
-                      <span className="rounded-full bg-[#0b1f2a] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#f3d27a]">
+                      <span className="rounded-full bg-[#121212] px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#51fec0]">
                         Owner
                       </span>
                     ) : a.key === 'messages' && unread > 0 ? (
                       <span
-                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dc2626] px-1.5 text-[10.5px] font-bold text-white"
+                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dc2626] px-1.5 text-[10px] font-bold text-white"
                         aria-label={`${unread} unread messages`}
                       >
                         {unread > 99 ? '99+' : unread}
@@ -575,55 +573,55 @@ export function Launcher() {
         </div>
       )}
 
-      {/* Restricted Staff Highlight Strip when not searching */}
+      {/* ============================================================ 5. RESTRICTED STAFF QUICK STRIP */}
       {!needle && restricted && (
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          <Link to="/reception-qr" className="rounded-[22px] bg-gradient-to-br from-[#0b1f2a] to-[#163a4f] p-5 text-white no-underline shadow-md flex items-center gap-3.5">
-            <span className="size-12 rounded-2xl bg-white/10 text-[#d4a752] grid place-items-center shrink-0"><QrCode size={22} /></span>
-            <div><b className="block text-[15.5px]">Office QR Check-In</b><span className="text-[13px] text-[#cbd5e1]">Daily office attendance scan</span></div>
-          </Link>
-          <Link to="/field-duty" className="rounded-[22px] bg-gradient-to-br from-[#047857] to-[#0e9f6e] p-5 text-white no-underline shadow-md flex items-center gap-3.5">
-            <span className="size-12 rounded-2xl bg-white/15 text-white grid place-items-center shrink-0"><CalendarCheck size={22} /></span>
-            <div><b className="block text-[15.5px]">Field Duty GPS</b><span className="text-[13px] text-white/85">Start property viewing tracking</span></div>
-          </Link>
-          <Link to="/market" className="rounded-[22px] bg-gradient-to-br from-[#1d4ed8] to-[#2563eb] p-5 text-white no-underline shadow-md flex items-center gap-3.5">
-            <span className="size-12 rounded-2xl bg-white/15 text-white grid place-items-center shrink-0"><LineChart size={22} /></span>
-            <div><b className="block text-[15.5px]">Dubai Market Pulse</b><span className="text-[13px] text-white/85">Live PSF prices &amp; rental yields</span></div>
-          </Link>
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { to: '/reception-qr', icon: QrCode, title: 'Office QR Check-In', sub: 'Daily office attendance scan' },
+            { to: '/field-duty', icon: CalendarCheck, title: 'Field Duty GPS', sub: 'Start property viewing tracking' },
+            { to: '/market', icon: LineChart, title: 'Dubai Market Pulse', sub: 'Live PSF prices & rental yields' },
+          ].map(card => (
+            <Link
+              key={card.to}
+              to={card.to}
+              className="group rounded-[24px] border border-white/88 bg-white/86 p-5 no-underline shadow-[0_16px_42px_rgba(12,56,96,0.09)] backdrop-blur-2xl flex items-center gap-4 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_24px_56px_rgba(12,56,96,0.14)]"
+            >
+              <span className="size-12 rounded-2xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0">
+                <card.icon size={20} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <b className="block text-[15.5px] font-medium tracking-[-0.02em] text-[#121212]">{card.title}</b>
+                <span className="text-[12.5px] text-[#5b6778]">{card.sub}</span>
+              </div>
+              <ArrowUpRight size={16} className="text-[#64748b] group-hover:text-[#121212] shrink-0" />
+            </Link>
+          ))}
         </section>
       )}
 
-      {/* Dedicated Bottom SWK Core Suite Dock: SWK Inside, SWK Work, SWK Phone (Branded Separately!) */}
+      {/* ============================================================ 6. SWK CORE SUITE (Luminous Frosted Architectural Deck) */}
       {shownSuiteApps.length > 0 && (
         <section
           aria-label="SWK Core Suite"
-          className="rounded-[30px] border border-[#d4a752]/35 bg-gradient-to-br from-[#0b1622] via-[#101e2e] to-[#0a131d] p-5 sm:p-6 shadow-[0_24px_60px_-24px_rgba(11,20,30,0.58)] text-white"
+          className="rounded-[28px] border border-white/88 bg-white/86 p-6 sm:p-7 shadow-[0_24px_64px_rgba(12,56,96,0.10)] backdrop-blur-2xl"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <img
-                src="/brand/swk-app-icon-rounded.png"
-                alt="SWK Suite"
-                className="size-10 rounded-xl ring-1 ring-[#f3d27a]/45 shadow-md shrink-0"
-              />
-              <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f3d27a]">
-                  SWK Communications &amp; Productivity Suite
-                </div>
-                <h2 className="m-0 text-[20px] font-bold tracking-[-0.025em] text-white">
-                  SWK Inside · SWK Work · SWK Phone
-                </h2>
-              </div>
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+              <SectionEyebrow>Communications &amp; Productivity</SectionEyebrow>
+              <h2 className="m-0 mt-1 text-[22px] sm:text-[26px] font-medium tracking-[-0.035em] text-[#121212]">
+                SWK Inside · SWK Work · SWK Phone
+              </h2>
             </div>
-            <span className="rounded-full border border-[#f3d27a]/35 bg-[#f3d27a]/12 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.12em] text-[#f5dfb0]">
-              Dedicated SWK Apps
+            <span className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#121212]">
+              <LiveStatusDot /> Dedicated SWK Suite
             </span>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {shownSuiteApps.map(app => {
-              const brand = CORE_SUITE_BRANDING[app.key]
-              if (!brand) return null
+              const meta = CORE_SUITE_META[app.key]
+              if (!meta) return null
+              const SuiteIcon = meta.icon
               const statusText =
                 app.key === 'messages'
                   ? unread > 0
@@ -640,40 +638,35 @@ export function Launcher() {
                 <Link
                   key={app.key}
                   to={app.landing}
-                  className={`group relative flex flex-col justify-between gap-4 overflow-hidden rounded-[24px] border bg-gradient-to-br p-5 no-underline text-white transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_22px_48px_-18px_rgba(0,0,0,0.65)] ${brand.cardBg} ${brand.border}`}
+                  className="group relative flex flex-col justify-between gap-5 overflow-hidden rounded-[22px] border border-black/[0.08] bg-white/95 p-5 no-underline transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-[#121212]/30 hover:shadow-[0_22px_52px_rgba(12,56,96,0.14)]"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <img
-                      src={brand.iconSrc}
-                      alt={brand.brandName}
-                      className="size-[62px] rounded-[18px] shadow-[0_12px_28px_-10px_rgba(0,0,0,0.6)] ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105 shrink-0"
-                    />
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${brand.pillBg} ${brand.pillFg}`}
-                    >
-                      {app.key === 'messages' && unread > 0 && <span className="size-1.5 rounded-full bg-[#34d399]" />}
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#121212] text-[#51fec0] transition-transform duration-300 group-hover:scale-105">
+                      <SuiteIcon size={21} strokeWidth={1.7} />
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#a7f3d0] bg-[#ecfdf5] px-2.5 py-1 text-[10.5px] font-semibold text-[#047857]">
+                      {app.key === 'messages' && unread > 0 && <span className="size-1.5 rounded-full bg-[#0e9f6e]" />}
                       {statusText}
                     </span>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="m-0 text-[19px] font-bold tracking-[-0.025em] text-white">
-                        {brand.brandName}
-                      </h3>
-                      <ArrowUpRight
-                        size={18}
-                        className="text-[#f3d27a] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 shrink-0"
-                      />
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+                      {meta.eyebrow}
                     </div>
-                    <p className="m-0 mt-1.5 text-[13.5px] leading-relaxed text-white/80">
-                      {brand.tagline}
+                    <h3 className="m-0 mt-1 text-[19px] font-medium tracking-[-0.03em] text-[#121212]">
+                      {meta.brandName}
+                    </h3>
+                    <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-[#5b6778]">
+                      {meta.tagline}
                     </p>
                   </div>
 
-                  <div className="pt-2 border-t border-white/12 flex items-center justify-between text-[12px] font-bold text-[#f3d27a]">
-                    <span>{brand.ctaLabel}</span>
-                    <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                  <div className="pt-3 border-t border-black/[0.06] flex items-center justify-between text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#121212]">
+                    <span>{meta.ctaLabel}</span>
+                    <span className="inline-flex size-8 items-center justify-center rounded-full border border-black/10 bg-[#f4f7fa] text-[#121212] transition-all duration-300 group-hover:-rotate-45 group-hover:border-[#121212] group-hover:bg-[#121212] group-hover:text-[#51fec0]">
+                      <ArrowRight size={13} />
+                    </span>
                   </div>
                 </Link>
               )
@@ -682,13 +675,14 @@ export function Launcher() {
         </section>
       )}
 
+      {/* ============================================================ 7. EMPTY SEARCH STATE */}
       {needle && !shownApps.length && !shownSuiteApps.length && !features.length && (
-        <div className="rounded-[24px] border border-line bg-card p-10 text-center shadow-sm">
-          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-soft text-muted">
-            <Building2 size={22} />
+        <div className="rounded-[26px] border border-white/88 bg-white/88 p-10 text-center shadow-[0_18px_48px_rgba(12,56,96,0.09)] backdrop-blur-2xl">
+          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#121212] text-[#51fec0]">
+            <Building2 size={20} />
           </div>
-          <b className="text-[16px] text-ink">No app or page matches “{query.trim()}”</b>
-          <p className="mt-1 text-[13.5px] text-muted">Try a simpler word, or press Ctrl + K to search properties, leads, and deals.</p>
+          <b className="text-[16px] font-medium text-[#121212]">No app or page matches “{query.trim()}”</b>
+          <p className="mt-1 text-[13.5px] text-[#5b6778]">Try a simpler word, or press Ctrl + K to search properties, leads, and deals.</p>
           <button type="button" className="btn outline mt-3" onClick={() => setQuery('')}>
             Clear search
           </button>

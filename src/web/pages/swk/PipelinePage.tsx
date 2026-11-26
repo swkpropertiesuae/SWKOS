@@ -20,6 +20,7 @@ import { useMeta } from '../../lib/meta'
 import { useToast } from '../../lib/toast'
 import { canAccessShabibsCorner } from '@shared/swk-staff-access'
 import { PIPELINE_12_STAGES, type PipelineStageDef } from '@shared/swk-pipeline'
+import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
@@ -88,34 +89,28 @@ export default function PipelinePage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 pb-10">
-      {/* Header + Gold Rush KPIs */}
-      <section className="rounded-[28px] bg-gradient-to-br from-[#0b1f2a] via-[#133240] to-[#08151d] p-6 text-white shadow-lg">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#d4a752]/20 border border-[#d4a752]/40 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">
-              <KanbanSquare size={13} /> 12-Stage Pipeline Playbook · Inventory to Final Closure
-            </div>
-            <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white">Pipeline Playbook &amp; Gold-Rush Board</h1>
-            <p className="mt-1 text-xs text-slate-300 max-w-2xl">
-              Drag deals seamlessly across all 12 UAE brokerage &amp; mortgage milestones. Every stage tracks live deal count, AED volume, and expected cash collection velocity.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      {/* Swiss Architectural Header + Gold-Rush KPI Strip */}
+      <SwissHeroHeader
+        eyebrow="12-Stage Pipeline Playbook · Inventory to Final Closure"
+        title="Pipeline Playbook & Gold-Rush Board"
+        subtitle="Drag deals seamlessly across all 12 UAE brokerage & mortgage milestones. Every stage tracks live deal count, AED volume, and expected cash collection velocity."
+        actions={
+          <>
             {isOwner && (
-              <Link to="/shabibs-corner" className="inline-flex items-center gap-1.5 rounded-full border border-[#d4a752]/50 bg-[#d4a752]/20 px-4 py-2 text-xs font-bold text-[#f3d27a] no-underline hover:bg-[#d4a752] hover:text-[#0b1f2a]">
-                <Crown size={14} /> Privacy Fast Track
-              </Link>
+              <BracketLink to="/shabibs-corner" variant="light" size="sm">
+                <Crown size={13} className="text-[#0e9f6e]" /> Privacy Fast Track
+              </BracketLink>
             )}
-            <Link to="/mortgage-desk" className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-              <Landmark size={14} className="text-[#f3d27a]" /> Mortgage Desk ({totals.active_mortgages})
-            </Link>
-            <Link to="/e/jobs?new=1" className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6e]">
-              <Plus size={14} /> New Deal File
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <BracketLink to="/mortgage-desk" variant="light" size="sm">
+              <Landmark size={13} /> Mortgage Desk ({totals.active_mortgages})
+            </BracketLink>
+            <BracketLink to="/e/jobs?new=1" variant="dark" size="sm">
+              <Plus size={13} className="text-[#51fec0]" /> New Deal File
+            </BracketLink>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {[
             ['Active Pipeline Value', aed(totals.pipeline_value_aed), `${totals.total_deals} active deal files`],
             ['Gold-Rush Weighted Cash', aed(totals.weighted_gold_rush_aed), 'Probability-adjusted commission'],
@@ -123,14 +118,14 @@ export default function PipelinePage() {
             ['Open CRM Leads', String(totals.open_leads), 'Stage 03 intake queue'],
             ['Verified Inventory', String(totals.active_inventory), 'Stage 01–02 active listings'],
           ].map(([label, value, sub]) => (
-            <div key={label} className="rounded-2xl border border-white/15 bg-white/8 p-3.5">
-              <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-300">{label}</div>
-              <div className="mt-1 text-[18px] font-bold tabular-nums text-white">{value}</div>
-              <div className="text-[11px] text-[#f3d27a]/90">{sub}</div>
+            <div key={label} className="rounded-2xl border border-black/[0.08] bg-white/90 p-3.5 shadow-[0_6px_18px_rgba(12,56,96,0.05)]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#5b6778]">{label}</div>
+              <div className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-[#121212]">{value}</div>
+              <div className="mt-0.5 text-[11px] text-[#0e9f6e] font-medium">{sub}</div>
             </div>
           ))}
         </div>
-      </section>
+      </SwissHeroHeader>
 
       {/* 12-Stage Compact Stage Counter Bar */}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-12">
@@ -139,25 +134,29 @@ export default function PipelinePage() {
             key={s.code}
             type="button"
             onClick={() => setActiveStageGuide(activeStageGuide?.code === s.code ? null : s)}
-            className="rounded-2xl border border-line bg-card p-2.5 text-left cursor-pointer hover:border-ink/40 transition-colors"
+            className={`rounded-2xl border p-2.5 text-left cursor-pointer transition-all ${
+              activeStageGuide?.code === s.code
+                ? 'border-[#121212] bg-[#121212] text-white shadow-md'
+                : 'border-white/88 bg-white/86 text-[#121212] backdrop-blur-xl hover:border-[#121212]/30'
+            }`}
           >
             <div className="flex items-center justify-between">
-              <span className="inline-flex size-5 items-center justify-center rounded-md text-[10px] font-extrabold text-white" style={{ background: s.color }}>
+              <span className={`inline-flex h-5 px-1.5 items-center justify-center rounded-full font-mono text-[9.5px] font-semibold ${activeStageGuide?.code === s.code ? 'bg-[#51fec0] text-[#121212]' : 'bg-[#121212] text-[#51fec0]'}`}>
                 {String(s.step).padStart(2, '0')}
               </span>
-              <b className="text-base font-extrabold text-ink tabular-nums">{s.shownCount}</b>
+              <b className="font-mono text-base font-semibold tabular-nums">{s.shownCount}</b>
             </div>
-            <div className="mt-1 truncate text-[11px] font-bold text-ink">{s.shortLabel}</div>
+            <div className="mt-1 truncate text-[11px] font-medium">{s.shortLabel}</div>
           </button>
         ))}
       </div>
 
       {activeStageGuide && (
-        <div className="rounded-2xl border border-[#d4a752]/50 bg-[#fefaf0] dark:bg-card p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="rounded-2xl border border-black/[0.1] bg-white/92 backdrop-blur-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs shadow-sm">
           <div>
-            <b className="text-sm text-ink">{activeStageGuide.label} Playbook</b>
-            <p className="m-0 mt-0.5 text-body">{activeStageGuide.playbookHint}</p>
-            <p className="m-0 mt-1 text-emerald-700 font-semibold">Exit Gate: {activeStageGuide.exitGate}</p>
+            <b className="text-sm text-[#121212]">{activeStageGuide.label} Playbook</b>
+            <p className="m-0 mt-0.5 text-[#475569]">{activeStageGuide.playbookHint}</p>
+            <p className="m-0 mt-1 text-[#0e9f6e] font-semibold">Exit Gate: {activeStageGuide.exitGate}</p>
           </div>
           <button type="button" onClick={() => setActiveStageGuide(null)} className="btn outline sm">Close Guide</button>
         </div>
@@ -174,8 +173,8 @@ export default function PipelinePage() {
             key={d}
             type="button"
             onClick={() => setDept(d)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-bold cursor-pointer ${
-              dept === d ? 'border-[#0b1f2a] bg-[#0b1f2a] text-[#f3d27a]' : 'border-line bg-card text-ink'
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-medium cursor-pointer transition-colors ${
+              dept === d ? 'border-[#121212] bg-[#121212] text-white' : 'border-white/88 bg-white/85 text-[#121212] hover:border-[#121212]/30'
             }`}
           >
             {d === 'Sales of Off-Plan Projects' ? 'Off-Plan' : d === 'Secondary Projects' ? 'Secondary' : d}
@@ -183,10 +182,10 @@ export default function PipelinePage() {
         ))}
         <div className="flex-1" />
         <div className="inline-flex rounded-full border border-line bg-card p-1">
-          <button type="button" onClick={() => setView('kanban')} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${view === 'kanban' ? 'bg-[#0b1f2a] text-[#f3d27a]' : 'bg-transparent text-ink'}`}>
+          <button type="button" onClick={() => setView('kanban')} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${view === 'kanban' ? 'bg-[#121212] text-[#51fec0]' : 'bg-transparent text-ink'}`}>
             <KanbanSquare size={13} /> Kanban
           </button>
-          <button type="button" onClick={() => setView('table')} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${view === 'table' ? 'bg-[#0b1f2a] text-[#f3d27a]' : 'bg-transparent text-ink'}`}>
+          <button type="button" onClick={() => setView('table')} className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${view === 'table' ? 'bg-[#121212] text-[#51fec0]' : 'bg-transparent text-ink'}`}>
             <LayoutList size={13} /> Table
           </button>
         </div>
@@ -201,26 +200,26 @@ export default function PipelinePage() {
               onDragOver={e => { e.preventDefault(); setOverStage(s.code) }}
               onDragLeave={() => setOverStage(cur => (cur === s.code ? null : cur))}
               onDrop={e => onDrop(e, s.code)}
-              className={`w-[285px] shrink-0 snap-start rounded-3xl border p-3.5 flex flex-col gap-3 transition-colors ${
-                overStage === s.code ? 'border-[#d4a752] bg-[#fef7e6]/60 dark:bg-soft' : 'border-line bg-card'
+              className={`w-[285px] shrink-0 snap-start rounded-[24px] border p-3.5 flex flex-col gap-3 backdrop-blur-2xl transition-colors ${
+                overStage === s.code ? 'border-[#121212] bg-white shadow-lg' : 'border-white/88 bg-white/86 shadow-[0_14px_38px_rgba(12,56,96,0.08)]'
               }`}
             >
-              <div className="flex items-start justify-between gap-2 pb-2 border-b border-line">
+              <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-black/[0.06]">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-flex size-5 items-center justify-center rounded-md text-[10px] font-extrabold text-white shrink-0" style={{ background: s.color }}>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-5 px-2 items-center justify-center rounded-full bg-[#121212] font-mono text-[9.5px] font-semibold text-[#51fec0] shrink-0">
                       {String(s.step).padStart(2, '0')}
                     </span>
-                    <b className="truncate text-[13px] text-ink">{s.shortLabel}</b>
+                    <b className="truncate text-[13px] font-medium text-[#121212]">{s.shortLabel}</b>
                   </div>
-                  <div className="mt-1 text-[11px] font-semibold text-emerald-700 tabular-nums">{aed(s.shownValue)}</div>
+                  <div className="mt-1 font-mono text-[11px] font-semibold text-[#0e9f6e] tabular-nums">{aed(s.shownValue)}</div>
                 </div>
-                <span className="rounded-full bg-soft px-2.5 py-0.5 text-xs font-extrabold text-ink">{s.shownCount}</span>
+                <span className="rounded-full bg-[#f4f7fa] border border-black/[0.06] px-2.5 py-0.5 font-mono text-xs font-semibold text-[#121212]">{s.shownCount}</span>
               </div>
 
               <div className="space-y-2.5 min-h-[140px]">
                 {s.deals.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-line p-4 text-center text-[11px] text-muted">
+                  <div className="rounded-2xl border border-dashed border-black/[0.12] p-4 text-center text-[11px] text-[#64748b]">
                     Drop deal here · {s.exitGate}
                   </div>
                 ) : s.deals.map((d: any) => (
@@ -228,21 +227,21 @@ export default function PipelinePage() {
                     key={d.id}
                     draggable={canEdit}
                     onDragStart={e => onDragStart(e, d.id)}
-                    className="rounded-2xl border border-line bg-soft/60 p-3 space-y-2 cursor-grab active:cursor-grabbing hover:border-ink/35"
+                    className="rounded-2xl border border-black/[0.08] bg-white p-3 space-y-2 cursor-grab active:cursor-grabbing shadow-[0_4px_14px_rgba(12,56,96,0.05)] hover:border-[#121212]/30"
                   >
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="min-w-0">
-                        <div className="font-mono text-[10.5px] font-bold text-[#8a621c]">{d.job_no || `DL-${d.id}`}</div>
-                        <Link to={`/e/jobs/${d.id}`} className="block text-[13px] font-bold text-ink no-underline hover:underline leading-snug">
+                        <div className="font-mono text-[10px] font-semibold text-[#0e9f6e]">{d.job_no || `DL-${d.id}`}</div>
+                        <Link to={`/e/jobs/${d.id}`} className="block text-[13px] font-semibold text-[#121212] no-underline hover:underline leading-snug">
                           {d.deal_name}
                         </Link>
                       </div>
                       <GripVertical size={14} className="text-muted shrink-0" />
                     </div>
-                    <div className="text-[11px] text-muted truncate">{d.client_name} · {d.property_title}</div>
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-line/70">
-                      <b className="text-ink tabular-nums">{aed(d.deal_value_aed)}</b>
-                      <span className="text-[11px] font-bold text-emerald-700 tabular-nums">
+                    <div className="text-[11px] text-[#5b6778] truncate">{d.client_name} · {d.property_title}</div>
+                    <div className="flex items-center justify-between text-xs pt-1.5 border-t border-black/[0.06]">
+                      <b className="font-mono text-[#121212] tabular-nums">{aed(d.deal_value_aed)}</b>
+                      <span className="font-mono text-[11px] font-semibold text-[#0e9f6e] tabular-nums">
                         <Wallet size={10} className="inline mr-0.5" />{aed(d.commission_aed)}
                       </span>
                     </div>

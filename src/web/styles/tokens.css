@@ -1,100 +1,103 @@
 /* =====================================================================================
-   SWK OS — Unified Corporate Design Tokens (Light Executive Porcelain + Midnight Obsidian)
-   WCAG AA >= 4.5:1 guaranteed across light and dark themes.
+   SWK OS — Swiss Architectural Corporate Design System (swkpropertiesuae.com DNA)
+   Luminous Sky-Ice Canvas · Frosted Architectural Glass · Obsidian #121212 · Emerald #0E9F6E
+   WCAG AA >= 4.5:1 guaranteed across light and dark modes.
    ===================================================================================== */
 
 :root {
-  --font-sans: 'Manrope Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
-  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-display: 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Core Porcelain & Obsidian Surfaces */
-  --bg: #f5f7fb;
+  /* Core Swiss Surfaces (Pure White, Frosted Glass, Off-White, Selective Obsidian) */
+  --bg: #eef8fd;
   --bg-white: #ffffff;
-  --bg-offwhite: #f8fafc;
-  --bg-cta-light: #f1f5f9;
-  --bg-subtle: #e2e8f0;
-  --bg-obsidian: #0b1f2a;
-  --bg-obsidian-card: #122d3d;
+  --bg-offwhite: #f7f7f7;
+  --bg-cta-light: #f2f6fa;
+  --bg-subtle: #ececec;
+  --bg-obsidian: #121212;
+  --bg-obsidian-card: #1e1e1e;
 
   --card: #ffffff;
-  --card-glass: rgba(255, 255, 255, 0.94);
-  --soft: #f4f6fb;
-  --hover: #eef1f9;
-  --line: #e5e8f2;
-  --line-strong: #d2d8e8;
+  --card-glass: rgba(255, 255, 255, 0.86);
+  --glass-border: rgba(255, 255, 255, 0.88);
+  --soft: #f4f7fa;
+  --hover: #eaf2f8;
+  --line: #e5e7eb;
+  --line-strong: #cfcfcf;
 
-  /* High-Contrast Typography (>= 7:1 on white) */
-  --ink: #0f172a;
-  --ink-primary: #0f172a;
+  /* Crisp Swiss Ink Hierarchy (>= 7:1 primary on white) */
+  --ink: #121212;
+  --ink-primary: #121212;
   --body: #334155;
-  --ink-secondary: #334155;
-  --muted: #526273;
-  --ink-muted: #526273;
+  --ink-secondary: #4a4a4a;
+  --muted: #5b6778;
+  --ink-muted: #5b6778;
   --ink-subtle: #64748b;
-  --eyebrow: #6d28d9;
-  --lime-accent: #c5e86c;
+  --eyebrow: #475569;
+  --lime-accent: #51fec0;
 
-  /* Brand & Vibrant Corporate Semantic Accents */
-  --navy: #0b1f2a;
-  --midnight: #091821;
-  --graphite: #111827;
-  --fold: #0b1f2a;
+  /* Surgical Architectural Accents (Zero Circus Colors) */
+  --navy: #121212;
+  --midnight: #0c1622;
+  --graphite: #1e1e1e;
+  --fold: #121212;
   --emerald: #0e9f6e;
   --emerald-deep: #047857;
   --emerald-soft: #ecfdf5;
-  --sapphire: #2563eb;
-  --sapphire-soft: #eff6ff;
-  --champ: #b78328;
-  --champ-bright: #d4a752;
-  --champ-deep: #8a5f14;
-  --champ-soft: #fef7e6;
-  --oasis: #0d9488;
+  --mint-live: #51fec0;
+  --sapphire: #1b6aa7;
+  --sapphire-soft: #eef6fb;
+  --champ: #121212;
+  --champ-bright: #51fec0;
+  --champ-deep: #121212;
+  --champ-soft: #f4f7fa;
+  --oasis: #0e9f6e;
   --dune: #dc2626;
   --signal: #dc2626;
   --signal-soft: #fef2f2;
-  --amber: #d97706;
+  --amber: #b45309;
   --amber-soft: #fffbeb;
-  --violet: #7c3aed;
-  --violet-soft: #f5f3ff;
+  --violet: #334155;
+  --violet-soft: #f4f7fa;
 
-  --accent-mint: #d4a752;
-  --accent-mint-deep: #8a5f14;
-  --focus: #2563eb;
-  --ember: #b78328;
-  --section-tint: #fef7e6;
-  --section-ink: #0b1f2a;
+  --accent-mint: #51fec0;
+  --accent-mint-deep: #0e9f6e;
+  --focus: #121212;
+  --ember: #0e9f6e;
+  --section-tint: #f4f7fa;
+  --section-ink: #121212;
 
-  /* Motion & Elevation */
+  /* Swiss Motion & Frosted Glass Elevation */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-swiss: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-fast: 160ms;
-  --radius: 22px;
+  --radius: 24px;
   --radius-lg: 28px;
-  --surface-raised: 0 14px 36px -22px rgba(15, 23, 42, 0.12);
-  --surface-floating: 0 22px 54px -22px rgba(15, 23, 42, 0.18);
-  --elevation: 0 16px 40px -20px rgba(15, 23, 42, 0.16);
-  --workspace-ground: #f5f5fa;
+  --surface-raised: 0 20px 56px rgba(12, 56, 96, 0.085), 0 1px 2px rgba(18, 18, 18, 0.04);
+  --surface-floating: 0 24px 64px rgba(12, 56, 96, 0.14), 0 2px 6px rgba(18, 18, 18, 0.05);
+  --elevation: 0 20px 56px rgba(12, 56, 96, 0.11);
+  --workspace-ground: #eef8fd;
 
-  /* shadcn / 21st.dev Semantic Tokens (Light Executive Porcelain) */
-  --background: #f5f5fa;
-  --foreground: #0f172a;
-  --card-foreground: #0f172a;
+  /* Semantic Tokens (shadcn / AnalyticsBento) */
+  --background: #eef8fd;
+  --foreground: #121212;
+  --card-foreground: #121212;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #0f172a;
+  --popover-foreground: #121212;
+  --primary: #121212;
   --primary-foreground: #ffffff;
-  --secondary: #f4f6fb;
-  --secondary-foreground: #0f172a;
-  --accent: #eef1f9;
-  --accent-foreground: #0f172a;
-  --destructive: #b91c1c;
+  --secondary: #f4f7fa;
+  --secondary-foreground: #121212;
+  --accent: #eaf2f8;
+  --accent-foreground: #121212;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #e5e8f2;
-  --input: #d2d8e8;
-  --ring: #6d28d9;
-  --muted-foreground: #526273;
-  --muted-surface: #f4f6fb;
+  --border: #e5e7eb;
+  --input: #d1d5db;
+  --ring: #121212;
+  --muted-foreground: #5b6778;
+  --muted-surface: #f4f7fa;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -108,14 +111,15 @@
 
 :root[data-theme='dark'],
 .dark {
-  --bg: #08131a;
-  --workspace-ground: #08131a;
-  --card: #0f202b;
-  --card-glass: rgba(15, 32, 43, 0.94);
-  --soft: #162c3a;
-  --hover: #1c3647;
-  --line: #213c4d;
-  --line-strong: #35566b;
+  --bg: #0c0e11;
+  --workspace-ground: #0c0e11;
+  --card: #14171c;
+  --card-glass: rgba(20, 23, 28, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --soft: #1b2027;
+  --hover: #222830;
+  --line: #28303a;
+  --line-strong: #3a4554;
   --ink: #f8fafc;
   --ink-primary: #f8fafc;
   --body: #cbd5e1;
@@ -123,34 +127,33 @@
   --muted: #94a3b8;
   --ink-muted: #94a3b8;
   --ink-subtle: #94a3b8;
-  --eyebrow: #c5e86c;
-  --lime-accent: #c5e86c;
-  --focus: #d4a752;
-  --champ-soft: rgba(212, 167, 82, 0.16);
-  --section-tint: #162c3a;
+  --eyebrow: #51fec0;
+  --lime-accent: #51fec0;
+  --focus: #51fec0;
+  --champ-soft: rgba(81, 254, 192, 0.12);
+  --section-tint: #1b2027;
   --section-ink: #f8fafc;
-  --surface-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.55);
-  --surface-floating: 0 22px 54px -16px rgba(0, 0, 0, 0.72);
+  --surface-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+  --surface-floating: 0 24px 60px -16px rgba(0, 0, 0, 0.72);
 
-  /* shadcn / 21st.dev Semantic Tokens (Dark Midnight Obsidian) */
-  --background: #08131a;
+  --background: #0c0e11;
   --foreground: #f8fafc;
   --card-foreground: #f8fafc;
-  --popover: #112533;
+  --popover: #161a20;
   --popover-foreground: #f8fafc;
   --primary: #f8fafc;
-  --primary-foreground: #0b1f2a;
-  --secondary: #162c3a;
+  --primary-foreground: #121212;
+  --secondary: #1b2027;
   --secondary-foreground: #f8fafc;
-  --accent: #1c3647;
+  --accent: #222830;
   --accent-foreground: #f8fafc;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #213c4d;
-  --input: #35566b;
-  --ring: #d4a752;
+  --border: #28303a;
+  --input: #3a4554;
+  --ring: #51fec0;
   --muted-foreground: #94a3b8;
-  --muted-surface: #162c3a;
+  --muted-surface: #1b2027;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -184,28 +187,25 @@
   }
   body {
     font-family: var(--font-sans);
-    font-size: 15.5px;
-    font-weight: 500;
-    line-height: 1.58;
+    font-size: 15px;
+    font-weight: 450;
+    line-height: 1.56;
     color: var(--body);
     background-color: var(--bg);
-    background-image:
-      radial-gradient(960px 460px at 8% -6%, rgba(244, 198, 178, 0.24), transparent 58%),
-      radial-gradient(920px 440px at 92% -4%, rgba(196, 181, 253, 0.22), transparent 58%),
-      radial-gradient(760px 380px at 50% 100%, rgba(186, 230, 253, 0.16), transparent 60%),
-      linear-gradient(180deg, #faf8fc 0%, #f3f5fa 100%);
+    background-image: linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.008em;
+    letter-spacing: -0.01em;
     caret-color: var(--focus);
   }
   :root[data-theme='dark'] body {
-    background-image:
-      radial-gradient(800px 380px at 15% -10%, rgba(212, 167, 82, 0.08), transparent 60%),
-      linear-gradient(180deg, #08131a 0%, #0b1922 100%);
+    background-image: linear-gradient(180deg, #0c0e11 0%, #11151b 100%);
+  }
+  :root[data-theme='dark'] .swk-atmosphere {
+    opacity: 0.08;
   }
   h1,
   h2,
@@ -213,13 +213,14 @@
   h4 {
     font-family: var(--font-display);
     color: var(--ink);
-    letter-spacing: -0.025em;
-    line-height: 1.18;
+    font-weight: 500;
+    letter-spacing: -0.032em;
+    line-height: 1.12;
   }
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.025em;
-    line-height: 1.18;
+    letter-spacing: -0.032em;
+    line-height: 1.12;
   }
   a {
     color: inherit;
@@ -241,12 +242,12 @@
     border-radius: 6px;
   }
   ::selection {
-    background: #0b1f2a;
-    color: #d4a752;
+    background: #121212;
+    color: #51fec0;
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--line-strong) transparent;
+    scrollbar-color: rgba(18, 18, 18, 0.18) transparent;
   }
   .num {
     font-variant-numeric: tabular-nums;
@@ -293,5 +294,15 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+  .swk-atmosphere {
+    display: none !important;
   }
 }

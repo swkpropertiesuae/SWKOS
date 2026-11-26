@@ -5,6 +5,7 @@ import { BookOpen, Brain, Plus, Search, Sparkles } from 'lucide-react'
 import { get, post } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { CustomSelect } from '../../components/CustomSelect'
+import { BracketButton, BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 const CATEGORIES = ['All', 'Secondary Resale', 'Mortgage & Valuation', 'Off-Plan', 'Distressed Exit', 'Golden Visa', 'A2A Co-Broke', 'Leasing & Ejari', 'Compliance & RERA']
 
@@ -59,30 +60,26 @@ export default function AiCaseStudyPage() {
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-6 pb-10">
-      <section className="rounded-[28px] bg-gradient-to-br from-[#0b1f2a] via-[#172844] to-[#0a1322] p-6 text-white shadow-lg flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#d4a752]/20 border border-[#d4a752]/40 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-[#f3d27a]">
-            <Brain size={13} /> Continuous AI Model Knowledge &amp; Training Studio
-          </div>
-          <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white">AI Case-Study Lab</h1>
-          <p className="mt-1 text-xs text-slate-300 max-w-2xl">
-            Every Dubai real estate, valuation shortfall, off-plan assignment, distressed cash exit, and mortgage scenario is structured and indexed so SWK AI learns from every case and guides advisors with real institutional playbooks.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setFormOpen(v => !v)} className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] border-0 cursor-pointer hover:bg-[#e5be6e]">
-            <Plus size={14} /> Train New Case Study
-          </button>
-          <Link to="/ai" className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-            <Sparkles size={14} className="text-[#c5e86c]" /> Open SWK AI Assistant
-          </Link>
-        </div>
-      </section>
+      <SwissHeroHeader
+        eyebrow="Continuous AI Model Knowledge & Training Studio"
+        title="AI Case-Study Lab"
+        subtitle="Every Dubai real estate, valuation shortfall, off-plan assignment, distressed cash exit, and mortgage scenario is structured and indexed so SWK AI learns from every case and guides advisors with real institutional playbooks."
+        actions={
+          <>
+            <BracketButton type="button" onClick={() => setFormOpen(v => !v)} variant="dark" size="sm">
+              <Plus size={13} className="text-[#51fec0]" /> Train New Case Study
+            </BracketButton>
+            <BracketLink to="/ai" variant="light" size="sm">
+              <Sparkles size={13} className="text-[#0e9f6e]" /> Open SWK AI Assistant
+            </BracketLink>
+          </>
+        }
+      />
 
       {/* Scenario Matcher */}
-      <form onSubmit={runMatcher} className="rounded-3xl border border-line bg-card p-5 shadow-xs space-y-3">
-        <div className="text-sm font-bold text-ink flex items-center gap-2">
-          <Search size={16} className="text-[#2563eb]" /> Ask the Trained Case-Study Model
+      <form onSubmit={runMatcher} className="card p-5 space-y-3">
+        <div className="text-sm font-semibold text-[#121212] flex items-center gap-2">
+          <Search size={16} className="text-[#0e9f6e]" /> Ask the Trained Case-Study Model
         </div>
         <div className="flex flex-wrap gap-2">
           <input
@@ -91,20 +88,20 @@ export default function AiCaseStudyPage() {
             value={scenario}
             onChange={e => setScenario(e.target.value)}
           />
-          <button disabled={busy} type="submit" className="btn bg-[#0b1f2a] text-[#f3d27a]">
-            <Sparkles size={14} /> Match Winning Playbook
+          <button disabled={busy} type="submit" className="btn">
+            <Sparkles size={14} className="text-[#51fec0]" /> Match Winning Playbook
           </button>
         </div>
         {matches && (
           <div className="pt-2 space-y-2.5">
-            <div className="text-xs font-bold text-[#8a621c]">{matches.length} Matching Trained Precedent(s):</div>
+            <div className="text-xs font-semibold text-[#0e9f6e]">{matches.length} Matching Trained Precedent(s):</div>
             {matches.length === 0 ? (
               <p className="text-xs text-muted">No close match yet — train this new scenario using the button above so the AI learns it permanently.</p>
             ) : matches.map(m => (
-              <div key={m.id} className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 text-xs space-y-1">
-                <div className="font-bold text-sm text-ink">{m.code} · {m.title}</div>
+              <div key={m.id} className="rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5]/75 p-4 text-xs space-y-1">
+                <div className="font-semibold text-sm text-[#121212]">{m.code} · {m.title}</div>
                 <div><b>Winning Strategy:</b> {m.strategy_applied}</div>
-                <div className="text-emerald-800"><b>Outcome:</b> {m.winning_outcome}</div>
+                <div className="text-[#047857]"><b>Outcome:</b> {m.winning_outcome}</div>
                 <div className="text-muted"><b>Key Lesson:</b> {m.lessons_learned}</div>
               </div>
             ))}
@@ -114,7 +111,7 @@ export default function AiCaseStudyPage() {
 
       {/* Train New Case Study Form */}
       {formOpen && (
-        <form onSubmit={saveCaseStudy} className="rounded-3xl border border-[#d4a752]/50 bg-[#fefaf0] dark:bg-card p-5 space-y-3 shadow-sm">
+        <form onSubmit={saveCaseStudy} className="card p-5 space-y-3">
           <h2 className="m-0 text-[16px] font-bold text-ink">Train New Real-World Case Study into AI Model</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <CustomSelect className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
@@ -131,7 +128,7 @@ export default function AiCaseStudyPage() {
           <textarea className="input min-h-[60px]" placeholder="Reusable AI Rule / Lesson Learned for future deals" value={form.lessons_learned} onChange={e => setForm({ ...form, lessons_learned: e.target.value })} />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setFormOpen(false)} className="btn outline">Cancel</button>
-            <button disabled={busy} type="submit" className="btn bg-[#0b1f2a] text-[#f3d27a]">Save &amp; Train AI</button>
+            <button disabled={busy} type="submit" className="btn bg-[#121212] text-[#51fec0]">Save &amp; Train AI</button>
           </div>
         </form>
       )}
@@ -144,7 +141,7 @@ export default function AiCaseStudyPage() {
             type="button"
             onClick={() => setCat(c)}
             className={`rounded-full border px-3.5 py-1.5 text-xs font-bold cursor-pointer ${
-              cat === c ? 'border-[#0b1f2a] bg-[#0b1f2a] text-[#f3d27a]' : 'border-line bg-card text-ink'
+              cat === c ? 'border-[#0b1f2a] bg-[#121212] text-[#51fec0]' : 'border-line bg-card text-ink'
             }`}
           >
             {c}

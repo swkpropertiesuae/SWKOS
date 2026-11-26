@@ -131,11 +131,11 @@ export function buildSwkAnalyticsBentoProps(
     categories: {
       title: 'Brokerage Volume by Division',
       groups: [
-        { id: 'offplan', name: 'Off-Plan', color: '#0e9f6e', ink: 'light' },
-        { id: 'secondary', name: 'Secondary', color: '#2563eb', ink: 'light' },
-        { id: 'leasing', name: 'Leasing & Ejari', color: '#d4a752', ink: 'dark' },
-        { id: 'management', name: 'Portfolio Mgmt', color: '#7c3aed', ink: 'light' },
-        { id: 'compliance', name: 'Conveyancing', color: '#475569', ink: 'light' },
+        { id: 'offplan', name: 'Off-Plan', color: '#121212', ink: 'light' },
+        { id: 'secondary', name: 'Secondary', color: '#0e9f6e', ink: 'light' },
+        { id: 'leasing', name: 'Leasing & Ejari', color: '#1b6aa7', ink: 'light' },
+        { id: 'management', name: 'Portfolio Mgmt', color: '#475569', ink: 'light' },
+        { id: 'compliance', name: 'Conveyancing', color: '#94a3b8', ink: 'dark' },
       ],
       periods: [
         { label: 'Weekly', total: weekBase, delta: '18.4%', compare: `vs ${formatCompactAed(weekBase * 0.84)} last wk` },

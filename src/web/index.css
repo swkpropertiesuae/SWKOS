@@ -1,11 +1,8 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
-@import "@fontsource-variable/bricolage-grotesque";
-@import "@fontsource-variable/manrope";
-@import "@fontsource-variable/jetbrains-mono";
-@import "@fontsource/instrument-serif/400.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/jetbrains-mono";
 @import "@fontsource/instrument-sans/400.css";
 @import "@fontsource/instrument-sans/500.css";
 @import "@fontsource/instrument-sans/600.css";
@@ -14,7 +11,6 @@
 @import "@fontsource/plus-jakarta-sans/500.css";
 @import "@fontsource/plus-jakarta-sans/600.css";
 @import "@fontsource/plus-jakarta-sans/700.css";
-@import "@fontsource/plus-jakarta-sans/800.css";
 @import "@fontsource/noto-sans-arabic/arabic-400.css";
 @import "@fontsource/noto-sans-arabic/arabic-700.css";
 @import "./styles/tokens.css";
@@ -23,40 +19,44 @@
 @import "./styles/calendar.css";
 @import "./styles/print.css";
 
-/* Self-hosted Switzer brand typeface */
+/* Self-hosted Switzer brand typeface — exact match to swkpropertiesuae.com */
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-300-normal.woff2') format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-300-italic.woff2') format('woff2'); font-weight: 300; font-style: italic; font-display: swap; }
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-400-normal.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-400-italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-500-normal.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-500-italic.woff2') format('woff2'); font-weight: 500; font-style: italic; font-display: swap; }
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-600-normal.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Switzer'; src: url('/fonts/Switzer-700-normal.woff2') format('woff2'); font-weight: 700 800; font-style: normal; font-display: swap; }
 
 @theme {
-  --font-sans: 'Manrope Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
-  --font-display: 'Bricolage Grotesque Variable', 'Plus Jakarta Sans', 'Switzer', 'Noto Sans Arabic', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', 'Geist Mono Variable', ui-monospace, Menlo, monospace;
+  --font-sans: 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-display: 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-navy: #0b1f2a;
-  --color-midnight: #091821;
-  --color-graphite: #111827;
+  --color-obsidian: #121212;
+  --color-navy: #121212;
+  --color-midnight: #0c1622;
+  --color-graphite: #1e1e1e;
   --color-emerald: #0e9f6e;
-  --color-fold: #0b1f2a;
+  --color-mint-live: #51fec0;
+  --color-fold: #121212;
   --color-signal: #dc2626;
-  --color-champ: #b78328;
-  --color-oasis: #0d9488;
+  --color-champ: #0e9f6e;
+  --color-oasis: #0e9f6e;
   --color-dune: #dc2626;
-  --color-ocean: #2563eb;
-  --color-teal: #0d9488;
-  --color-copper: #d4a752;
-  --color-violet: #7c3aed;
-  --color-pearl: #f8fafc;
-  --color-champagne: #fef7e6;
+  --color-ocean: #1b6aa7;
+  --color-teal: #0e9f6e;
+  --color-copper: #475569;
+  --color-violet: #475569;
+  --color-pearl: #f7f9fc;
+  --color-champagne: #f4f7fa;
   --color-mint: #ecfdf5;
-  --color-sky: #eff6ff;
-  --color-sand: #f8fafc;
-  --color-lilac: #f5f3ff;
+  --color-sky: #eef8fd;
+  --color-sand: #f7f7f7;
+  --color-lilac: #f4f7fa;
   --color-blush: #fef2f2;
-  --color-gold: #fffbeb;
+  --color-gold: #f4f7fa;
 }
 
 @theme inline {

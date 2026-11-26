@@ -480,7 +480,7 @@ export function SipSoftphoneDock({ docked = false }: { docked?: boolean } = {}) 
         aria-label="Toggle SWK Softphone"
       >
         <span className={`size-2 rounded-full ${statusColor}`} />
-        <Phone size={14} className={call ? 'text-[#d4a752]' : 'text-ink'} />
+        <Phone size={14} className={call ? 'text-[#51fec0]' : 'text-ink'} />
         {call ? (
           <span className="font-mono">
             {call.isMaskedVault ? 'Vault Call' : call.remoteDisplay} · {call.state === 'connected' ? fmtDuration(call.durationSec) : 'Ringing'}

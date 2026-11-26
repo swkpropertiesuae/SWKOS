@@ -10,7 +10,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{ ok: t => push(t, 'ok'), error: t => push(t, 'error') }}>
       {children}
       <div className="toast-stack" role="status" aria-live="polite">
-        {items.map(i => <div key={i.id} className={`toast ${i.kind === 'error' ? 'error' : ''}`}>{i.kind === 'error' ? <XCircle size={18} color="#ff5a6e" /> : <CheckCircle2 size={18} color="#1fcf90" />}<span>{i.text}</span></div>)}
+        {items.map(i => (
+          <div key={i.id} className={`toast ${i.kind === 'error' ? 'error' : ''}`}>
+            <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full ${i.kind === 'error' ? 'bg-[#fef2f2] text-[#dc2626]' : 'bg-[#121212] text-[#51fec0]'}`}>
+              {i.kind === 'error' ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
+            </span>
+            <span className="leading-snug">{i.text}</span>
+          </div>
+        ))}
       </div>
     </Ctx.Provider>
   )

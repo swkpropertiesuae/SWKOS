@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { get, post, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 
 const CATEGORIES = ['Identity & Residency', 'Income & Banking', 'Property & DLD', 'Bank & Compliance'] as const
 
@@ -84,25 +85,21 @@ export default function ClientDocumentVaultPage() {
 
   return (
     <div className="mx-auto max-w-[1380px] space-y-6 pb-10">
-      <section className="rounded-[28px] bg-gradient-to-br from-[#0b1f2a] via-[#132f3f] to-[#08151d] p-6 text-white shadow-lg flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-[#f3d27a]">
-            <FolderLock size={13} /> Per-Client Compliance Document Vault
-          </div>
-          <h1 className="mt-2 text-[28px] font-bold tracking-[-0.03em] text-white">Documents Vault per Client</h1>
-          <p className="mt-1 text-xs text-slate-300 max-w-2xl">
-            Complete 13-document UAE Real Estate &amp; Mortgage checklist per client: Passport, EID, Visa Page, Salary Certificate, 6M Payslips, 6M Bank Statements, AECB Credit Report, Signed Bank Application, Info Sheet, Form F, Oqood, Title Deed &amp; Developer SOA/NOC.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/documents" className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-white/20">
-            All Uploaded PDFs <ArrowUpRight size={14} />
-          </Link>
-          <Link to="/e/parties?new=1" className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a752] px-4 py-2 text-xs font-bold text-[#0b1f2a] no-underline hover:bg-[#e5be6e]">
-            + New Client
-          </Link>
-        </div>
-      </section>
+      <SwissHeroHeader
+        eyebrow="Per-Client Compliance Document Vault"
+        title="Documents Vault per Client"
+        subtitle="Complete 13-document UAE Real Estate & Mortgage checklist per client: Passport, EID, Visa Page, Salary Certificate, 6M Payslips, 6M Bank Statements, AECB Credit Report, Signed Bank Application, Info Sheet, Form F, Oqood, Title Deed & Developer SOA/NOC."
+        actions={
+          <>
+            <BracketLink to="/documents" variant="light" size="sm">
+              All Uploaded PDFs <ArrowUpRight size={13} />
+            </BracketLink>
+            <BracketLink to="/e/parties?new=1" variant="dark" size="sm">
+              + New Client
+            </BracketLink>
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left: Clients List */}
@@ -122,7 +119,7 @@ export default function ClientDocumentVaultPage() {
                   type="button"
                   onClick={() => setSelectedId(c.id)}
                   className={`w-full text-left rounded-2xl border p-3.5 cursor-pointer transition-all ${
-                    active ? 'border-[#0b1f2a] bg-[#0b1f2a] text-white' : 'border-line bg-soft/40 text-ink hover:border-ink/30'
+                    active ? 'border-[#121212] bg-[#121212] text-white' : 'border-line bg-soft/40 text-ink hover:border-ink/30'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">

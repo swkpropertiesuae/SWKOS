@@ -80,7 +80,7 @@ export function ChatDock({ docked = false }: { docked?: boolean } = {}) {
       className={docked
         ? 'no-print flex h-11 items-center gap-2 rounded-full border border-white/15 bg-[#0b1f2a] pl-4 pr-5 text-[13px] font-semibold text-white shadow-[0_12px_30px_rgba(11,31,42,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#143344] cursor-pointer'
         : 'no-print fixed bottom-5 right-5 z-[65] hidden items-center gap-2 rounded-full border border-white/15 bg-[#0b1f2a] py-2.5 pl-4 pr-5 text-[13px] font-semibold text-white shadow-[0_14px_34px_rgba(11,31,42,0.28)] hover:bg-[#143344] md:flex cursor-pointer'}>
-      <MessageCircleMore size={17} className="text-[#d4a752]" /> Inside
+      <MessageCircleMore size={17} className="text-[#51fec0]" /> Inside
       {unread > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dc2626] px-1.5 text-[10.5px] font-bold">{unread > 99 ? '99+' : unread}</span>}
     </button>
   )

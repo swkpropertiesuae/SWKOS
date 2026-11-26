@@ -48,6 +48,7 @@ import { SipSoftphoneDock } from './SipSoftphoneDock'
 import { BiometricLockOverlay } from './BiometricLockOverlay'
 import { ChatDock } from './ChatDock'
 import { StaffPhoto } from './ui/staff-photo'
+import { SwissAtmosphereBackdrop } from './ui/ShaderBackground'
 import { clearMobileSession, lockScreenNow, openManageLockPin, registerNativePush, stopNativeFieldDuty, unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient, useSipClient } from '../lib/sipClient'
 import { APP_META, QUICK_CREATE, findNav, isNavItemVisible, launcherApps, rememberVisit } from '../swk/nav'
@@ -435,6 +436,7 @@ export function Shell() {
 
   return (
     <div className="swk-app">
+      <SwissAtmosphereBackdrop />
       <div className="swk-main-col">
         <header className="swk-top no-print">
           {!isHome && !!here && (
@@ -447,11 +449,11 @@ export function Shell() {
             <img className="word swk-hide-sm" src="/brand/web/swk-logo-light.webp" alt="SWK Properties" />
           </Link>
 
-          {/* Mobile compact location/office pill inspired by @siren.uix header */}
+          {/* Mobile compact location/office pill */}
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center md:hidden">
-            <span className="text-[10px] font-medium text-muted leading-none">SWK Dubai HQ</span>
-            <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink truncate max-w-[165px]">
-              <MapPin size={12} className="text-[#2563eb] shrink-0" />
+            <span className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-muted leading-none">SWK Dubai HQ</span>
+            <span className="mt-0.5 inline-flex items-center gap-1 text-[12.5px] font-medium text-ink truncate max-w-[165px]">
+              <MapPin size={12} className="text-[#0e9f6e] shrink-0" />
               <span className="truncate">{isHome ? 'Sheikh Zayed Rd' : pageTitle}</span>
             </span>
           </div>
@@ -685,8 +687,11 @@ export function Shell() {
               <div className="mx-auto h-1.5 w-11 rounded-full bg-[#cbd5e1]" />
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#b78328]">SWK Field · Voice · All Ops</div>
-                  <h2 className="m-0 text-lg font-bold text-ink">Quick Actions &amp; Company Apps</h2>
+                  <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#475569]">
+                    <span className="inline-block size-[5px] bg-[#121212]" />
+                    SWK Field · Voice · All Ops
+                  </div>
+                  <h2 className="m-0 mt-1 text-lg font-medium tracking-[-0.03em] text-[#121212]">Quick Actions &amp; Company Apps</h2>
                 </div>
                 <button
                   type="button"
@@ -699,25 +704,25 @@ export function Shell() {
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                <Link to="/reception-qr" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#0b1f2a] text-[#d4a752] grid place-items-center shrink-0"><QrCode size={18} /></span>
+                <Link to="/reception-qr" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><QrCode size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Office QR Scan</b><small className="text-[11px] text-muted">Attendance check-in</small></span>
                 </Link>
-                <Link to="/field-duty" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#0e9f6e] text-white grid place-items-center shrink-0"><Navigation size={18} /></span>
+                <Link to="/field-duty" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><Navigation size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Field Duty GPS</b><small className="text-[11px] text-muted">Viewing tracking &amp; SOS</small></span>
                 </Link>
-                <Link to="/phone" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#2563eb] text-white grid place-items-center shrink-0"><PhoneCall size={18} /></span>
+                <Link to="/phone" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><PhoneCall size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">SIP Softphone</b><small className="text-[11px] text-muted">{sipSnap.configured ? `Ext ${sipSnap.extensionNo}` : 'Dialer & Vault call'}</small></span>
                 </Link>
-                <Link to="/utilities" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#7c3aed] text-white grid place-items-center shrink-0"><Wrench size={18} /></span>
+                <Link to="/utilities" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><Wrench size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Utilities Suite</b><small className="text-[11px] text-muted">Word, OCR &amp; Search</small></span>
                 </Link>
                 {canFieldLive && (
-                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5] p-3 flex items-center gap-2.5 no-underline text-[#065f46]">
-                    <span className="size-10 rounded-xl bg-[#0e9f6e] text-white grid place-items-center shrink-0"><MapPinned size={18} /></span>
+                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5]/85 p-3 flex items-center gap-2.5 no-underline text-[#047857]">
+                    <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><MapPinned size={18} /></span>
                     <span className="min-w-0"><b className="block text-xs truncate">Leadership Live Field GPS Map</b><small className="text-[11px] text-[#047857]">Real-time Dubai team pins &amp; route trails</small></span>
                   </Link>
                 )}
@@ -733,14 +738,14 @@ export function Shell() {
               </div>
 
               <div className="space-y-2.5 pt-2 border-t border-line">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">All Permitted Company Ops</div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-muted">All Permitted Company Ops</div>
                 {mobileApps.map(app => (
-                  <div key={app.key} className="rounded-2xl border border-line bg-soft p-3 space-y-2">
+                  <div key={app.key} className="rounded-2xl border border-line bg-soft/75 p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Link to={app.landing} onClick={() => setOpsSheet(false)} className="flex items-center gap-2 text-xs font-bold text-ink no-underline">
-                        <app.icon size={15} className="text-[#2563eb]" /> {app.label}
+                      <Link to={app.landing} onClick={() => setOpsSheet(false)} className="flex items-center gap-2 text-xs font-semibold text-ink no-underline">
+                        <app.icon size={15} className="text-[#121212]" /> {app.label}
                       </Link>
-                      <span className="text-[10.5px] font-semibold text-muted">{app.items.length} steps</span>
+                      <span className="text-[10.5px] font-mono text-muted">{app.items.length} steps</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {app.items.map(item => (
@@ -748,9 +753,9 @@ export function Shell() {
                           key={item.to}
                           to={item.to}
                           onClick={() => setOpsSheet(false)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-[11.5px] font-medium text-ink no-underline hover:border-[#0b1f2a]"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-[11.5px] font-medium text-ink no-underline hover:border-[#121212]"
                         >
-                          <item.icon size={12} className="text-[#b78328]" />
+                          <item.icon size={12} className="text-[#0e9f6e]" />
                           {item.label}
                         </Link>
                       ))}
