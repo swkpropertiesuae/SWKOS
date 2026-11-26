@@ -6,6 +6,7 @@ import { cls,fmtDate,fmtDateTime,fmtMoney,fmtNum } from '../lib/format'
 import { Badge } from '../ui/kit'
 import { AIWriting } from './AIWriting'
 import { Check } from 'lucide-react'
+import { openAuthFile } from '../lib/api'
 
 export function FieldInput({ f, value, label, onChange, disabled, invalid, compact, onRef, writingModule }: { f: FieldDef; value: any; label?: string; onChange: (v: any, label?: string) => void; disabled?: boolean; invalid?: boolean; compact?: boolean; onRef?: (id: number | null) => void; writingModule?: string }) {
   const common = { disabled, 'aria-invalid': invalid || undefined, id: `f-${f.name}` } as const
@@ -53,7 +54,13 @@ export function CellValue({ f, rec, statusField }: { f: FieldDef; rec: Record<st
     case 'bool': return v ? <Check size={16} className="text-emerald" aria-label="Yes" /> : <span className="text-muted">No</span>
     case 'select': return (f.name === statusField || /status|stage|priority|condition|kind/i.test(f.name)) ? <Badge value={String(v)} /> : <span>{String(v)}</span>
     case 'email': return <a className="link" href={`mailto:${v}`} onClick={e => e.stopPropagation()}>{v}</a>
-    case 'url': return <a className="link" href={v} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{String(v).replace(/^https?:\/\//, '')}</a>
+    case 'url': {
+      const s = String(v)
+      if (s.startsWith('/api/files/')) {
+        return <button type="button" className="link bg-transparent border-0 p-0 cursor-pointer" onClick={e => { e.stopPropagation(); void openAuthFile(s) }}>Open uploaded file</button>
+      }
+      return <a className="link" href={s} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{s.replace(/^https?:\/\//, '')}</a>
+    }
     case 'phone': return <a className="link" href={`tel:${v}`} onClick={e => e.stopPropagation()}>{v}</a>
     case 'textarea': return <span className="whitespace-pre-wrap">{String(v)}</span>
     default: return <span>{String(v)}</span>

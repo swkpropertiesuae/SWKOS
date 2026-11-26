@@ -3,6 +3,8 @@ import path from 'node:path'
 import net from 'node:net'
 import crypto from 'node:crypto'
 import { createCanvas, loadImage, type Image } from '@napi-rs/canvas'
+import { q } from '../db'
+import { openStored } from '../integrations/storage'
 
 const PUBLIC_DIRS = [
   path.resolve('public'),
@@ -60,7 +62,34 @@ function isPrivateOrBlockedHost(hostname: string): boolean {
   return false
 }
 
+async function streamToBuffer(stream: NodeJS.ReadableStream, maxBytes = 15 * 1024 * 1024): Promise<Buffer | null> {
+  const chunks: Buffer[] = []
+  let total = 0
+  for await (const chunk of stream) {
+    const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as any)
+    total += b.length
+    if (total > maxBytes) return null
+    chunks.push(b)
+  }
+  return total > 0 ? Buffer.concat(chunks) : null
+}
+
 async function loadSourceImage(source: string): Promise<Image | null> {
+  // Support uploaded SWK attachments referenced via /api/files/:id/download or attachment:<id>
+  const attMatch = /^attachment:(\d+)$/.exec(source) || /^\/api\/files\/(\d+)\/download(?:$|\?)/.exec(source)
+  if (attMatch?.[1]) {
+    try {
+      const att = q.get<{ stored_name: string }>(`SELECT stored_name FROM attachments WHERE id = ? AND deleted_at IS NULL`, Number(attMatch[1]))
+      if (!att?.stored_name) return null
+      const stream = await openStored(att.stored_name)
+      if (!stream) return null
+      const buf = await streamToBuffer(stream)
+      if (!buf) return null
+      return await loadImage(buf)
+    } catch {
+      return null
+    }
+  }
   if (source.startsWith('/')) {
     const abs = resolvePublicFile(source)
     if (!abs) return null

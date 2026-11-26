@@ -11,6 +11,8 @@ import { useMeta } from '../lib/meta'
 import { EntityList,recordPath } from '../components/EntityList'
 import { EntityFormModal } from '../components/EntityForm'
 import { RecordView } from '../components/RecordView'
+import { ProjectMediaStudio } from '../components/ProjectMediaStudio'
+import { normalizeMediaList } from '@shared/media'
 import { EmployeeAccess } from '../components/EmployeeAccess'
 import { canAccessDocumentTemplates, canOpenEmployeeRecords } from '@shared/swk-staff-access'
 import { ChildEditor } from '../components/ChildEditor'
@@ -81,7 +83,15 @@ export function EntityRecordPage() {
   const canDelete = can(def.module, 'delete') && !def.noDelete && !def.readonlyApi
   const keyFields = def.fields.filter(f => f.key && rec[f.name] !== null && rec[f.name] !== undefined && rec[f.name] !== '').slice(0, 5)
   const facts = keyFields.length ? keyFields : def.fields.filter(f => f.list && f.name !== def.title[0] && rec[f.name] !== null && rec[f.name] !== '' && f.type !== 'textarea').slice(0, 4)
-  const tabs = [{ key: 'details', label: 'Details' }, ...(def.children ?? []).map(c => ({ key: 'c:' + c.key, label: c.label, count: rec.children?.[c.key]?.length })), ...(RELATED[entity] ?? []).filter(r => can(getDef(r.entity).module, 'view')).map(r => ({ key: 'r:' + r.key, label: r.label })), ...(entity === 'employees' && canOpenEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id }) ? [{ key: 'access', label: 'Access & usage' }] : [])]
+  const hasMediaStudio = entity === 'properties' || entity === 'units' || entity === 'website_listings'
+  const mediaCount = hasMediaStudio ? normalizeMediaList(rec.media).length : 0
+  const tabs = [
+    { key: 'details', label: 'Details' },
+    ...(hasMediaStudio ? [{ key: 'media', label: 'Media, Video & 3D', count: mediaCount }] : []),
+    ...(def.children ?? []).map(c => ({ key: 'c:' + c.key, label: c.label, count: rec.children?.[c.key]?.length })),
+    ...(RELATED[entity] ?? []).filter(r => can(getDef(r.entity).module, 'view')).map(r => ({ key: 'r:' + r.key, label: r.label })),
+    ...(entity === 'employees' && canOpenEmployeeRecords(me && { email: me.email, role: me.role, party_id: me.party_id }) ? [{ key: 'access', label: 'Access & usage' }] : []),
+  ]
   const status = def.statusField ? rec[def.statusField] : null
   const del_ = () => {
     setDeleteReason('')
@@ -132,6 +142,7 @@ export function EntityRecordPage() {
           {tabs.length > 1 && <Tabs variant="sub" tabs={tabs} value={tab} onChange={setTab} />}
           <div className="p-4 md:p-5">
             {tab === 'details' && <RecordView def={def} rec={rec} />}
+            {tab === 'media' && hasMediaStudio && <ProjectMediaStudio entity={entity as 'properties' | 'units' | 'website_listings'} id={rid} canEdit={canEdit} onChanged={reload} />}
             {tab === 'access' && <EmployeeAccess employeeId={rec.id} />}
             {tab.startsWith('c:') && (() => { const c = def.children!.find(x => 'c:' + x.key === tab)!; return <ChildEditor child={c} rows={rec.children[c.key] ?? []} onChange={() => {}} readOnly parent={rec} /> })()}
             {tab.startsWith('r:') && (() => { const r = RELATED[entity].find(x => 'r:' + x.key === tab)!; return <EntityList key={r.key} entity={r.entity} embedded preset={[{ field: r.field, op: 'eq', value: rid }]} createPresets={{ [r.field]: rid }} /> })()}

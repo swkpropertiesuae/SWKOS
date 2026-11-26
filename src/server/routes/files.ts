@@ -11,12 +11,30 @@ import { assertCan,getDef,getRecord,insertRow,labelsFor,can } from '../engine'
 import { bad,forbidden,notFound,nowIso,todayStr } from '../util'
 import { audit } from '../engine'
 import { idOf } from './helpers'
-import { openStored,persistUpload,removeStored } from '../integrations/storage'
+import { isR2Name, openStored, persistUpload, removeStored } from '../integrations/storage'
 
-const BLOCKED = new Set(['exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'js', 'mjs', 'vbs', 'sh', 'ps1', 'jar', 'dll', 'html', 'htm', 'svg', 'php', 'apk', 'app', 'iso', 'lnk'])
-const INLINE: Record<string, string> = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', txt: 'text/plain; charset=utf-8' }
+export const BLOCKED_UPLOAD_EXTS = new Set(['exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'js', 'mjs', 'vbs', 'sh', 'ps1', 'jar', 'dll', 'html', 'htm', 'svg', 'php', 'apk', 'app', 'iso', 'lnk'])
+const BLOCKED = BLOCKED_UPLOAD_EXTS
+export const INLINE_MEDIA_MIMES: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+  ogg: 'video/ogg',
+  glb: 'model/gltf-binary',
+  gltf: 'model/gltf+json',
+  txt: 'text/plain; charset=utf-8',
+}
+const INLINE = INLINE_MEDIA_MIMES
 
-function verifyFileMagicBytes(fullPath: string, ext: string) {
+export function verifyFileMagicBytes(fullPath: string, ext: string) {
   const fd = fs.openSync(fullPath, 'r')
   const buf = Buffer.alloc(16)
   let bytesRead = 0
@@ -26,6 +44,52 @@ function verifyFileMagicBytes(fullPath: string, ext: string) {
   if (bytesRead >= 4 && ext === 'png' && !(buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47)) throw bad('Invalid PNG file header')
   if (bytesRead >= 3 && (ext === 'jpg' || ext === 'jpeg') && !(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) throw bad('Invalid JPEG file header')
   if (bytesRead >= 4 && ext === 'gif' && !(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38)) throw bad('Invalid GIF file header')
+}
+
+export async function sendStoredAttachment(f: Record<string, any>, req: any, reply: any, opts?: { forceDownload?: boolean; cachePublic?: boolean }) {
+  const fileName = String(f.file_name || 'file')
+  const storedName = String(f.stored_name || '')
+  const ext = path.extname(fileName).slice(1).toLowerCase()
+  const contentType = INLINE[ext] ?? (f.mime && !/html|script|svg/i.test(String(f.mime)) ? String(f.mime) : 'application/octet-stream')
+  const inline = Boolean(INLINE[ext]) && !opts?.forceDownload
+
+  reply
+    .header('content-type', contentType)
+    .header('x-content-type-options', 'nosniff')
+    .header('content-security-policy', "sandbox; default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'")
+    .header('content-disposition', `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(fileName)}`)
+  if (opts?.cachePublic) {
+    reply.header('cache-control', 'public, max-age=3600')
+  }
+
+  // Support HTTP Range requests for local video/media streaming (smooth scrubbing on Web + Android WebView)
+  if (!isR2Name(storedName)) {
+    const full = path.join(dirs.uploads, storedName)
+    if (!full.startsWith(dirs.uploads) || !fs.existsSync(full)) throw notFound('The stored file is missing')
+    const stat = fs.statSync(full)
+    const rangeHeader = typeof req.headers?.range === 'string' ? req.headers.range : ''
+    reply.header('accept-ranges', 'bytes')
+    if (rangeHeader.startsWith('bytes=')) {
+      const m = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim())
+      if (m) {
+        const start = m[1] ? Number(m[1]) : Math.max(0, stat.size - Number(m[2] || 0))
+        const end = m[2] ? Math.min(stat.size - 1, Number(m[2])) : stat.size - 1
+        if (start >= 0 && end >= start && start < stat.size) {
+          reply
+            .code(206)
+            .header('content-range', `bytes ${start}-${end}/${stat.size}`)
+            .header('content-length', String(end - start + 1))
+          return reply.send(fs.createReadStream(full, { start, end }))
+        }
+      }
+    }
+    reply.header('content-length', String(stat.size))
+    return reply.send(fs.createReadStream(full))
+  }
+
+  const stream = await openStored(storedName)
+  if (!stream) throw notFound('The stored file is missing')
+  return reply.send(stream)
 }
 
 export default async function (app: FastifyInstance) {
@@ -87,13 +151,7 @@ export default async function (app: FastifyInstance) {
     if (!f) throw notFound('File not found')
     if (f.link_entity && ENTITIES[f.link_entity]) getRecord(getDef(f.link_entity), f.link_id, req.ctx, { children: false })
     else assertCan(req.ctx, 'documents', 'view')
-    const stream = await openStored(f.stored_name)
-    if (!stream) throw notFound('The stored file is missing')
-    const ext = path.extname(f.file_name).slice(1).toLowerCase()
-    const inline = INLINE[ext] && (req.query as any).inline !== '0'
-    reply.header('content-type', INLINE[ext] ?? 'application/octet-stream').header('x-content-type-options', 'nosniff').header('content-security-policy', "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'")
-    reply.header('content-disposition', `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(f.file_name)}`)
-    return reply.send(stream)
+    return sendStoredAttachment(f, req, reply, { forceDownload: (req.query as any).inline === '0' })
   })
 
   app.delete('/api/files/:id', async (req) => {

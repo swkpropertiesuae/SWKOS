@@ -24,8 +24,11 @@ import {
   X,
 } from 'lucide-react'
 import { resolveApiUrl } from '../lib/api'
+import { MediaTour3DEmbed } from '../components/AuthMedia'
 import { Property3DViewer } from '../components/brochure/Property3DViewer'
 import { PropertyVideoTour } from '../components/brochure/PropertyVideoTour'
+
+type SharedAsset = { kind: string; title: string; category?: string; mime?: string; url: string }
 
 type Item = {
   id?: number
@@ -62,7 +65,13 @@ type Item = {
   reference?: string
   floor_plan?: string
   tour?: string
+  model_3d_url?: string
+  brochure_url?: string
   video_url?: string
+  videos?: SharedAsset[]
+  tours3d?: SharedAsset[]
+  floor_plans?: SharedAsset[]
+  brochures?: SharedAsset[]
 }
 
 type Data = {
@@ -497,8 +506,19 @@ export function PublicListing() {
                     </div>
                   )}
 
-                  {/* 4. Interactive 3D Architectural Representation */}
-                  <div id={`model-3d-${idx}`}>
+                  {/* 4. Interactive 3D & 360° Experience (Live Developer 3D Tour + SWK Architectural Cutaway) */}
+                  <div id={`model-3d-${idx}`} className="flex flex-col gap-4">
+                    {(it.tour || it.model_3d_url) && (
+                      <div className="rounded-3xl overflow-hidden border border-[#d4a752]/35 bg-[#0b1824] p-3 shadow-xl">
+                        <div className="px-2 pb-2.5 flex items-center justify-between gap-2 text-white">
+                          <div>
+                            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">INTERACTIVE 360° / 3D PROJECT TOUR</div>
+                            <div className="text-sm font-semibold">{it.title}</div>
+                          </div>
+                        </div>
+                        <MediaTour3DEmbed url={resolveApiUrl((it.tour || it.model_3d_url)!)} title={it.title} />
+                      </div>
+                    )}
                     <Property3DViewer
                       title={it.title}
                       type={it.type}
@@ -525,7 +545,7 @@ export function PublicListing() {
                       paymentPlan={it.payment_plan}
                       features={it.features}
                       images={it.images.map(src => resolveApiUrl(src))}
-                      videoUrl={it.video_url}
+                      videoUrl={it.video_url ? resolveApiUrl(it.video_url) : undefined}
                       advisorName={a?.name}
                     />
                   </div>
@@ -546,13 +566,23 @@ export function PublicListing() {
                       Book Private Viewing
                     </button>
                     {it.floor_plan && (
-                      <a href={it.floor_plan} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
+                      <a href={resolveApiUrl(it.floor_plan)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
                         <ExternalLink size={14} /> Official Floor Plan
                       </a>
                     )}
+                    {it.brochure_url && (
+                      <a href={resolveApiUrl(it.brochure_url)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
+                        <ExternalLink size={14} /> Developer Brochure PDF
+                      </a>
+                    )}
                     {it.tour && (
-                      <a href={it.tour} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
-                        <ExternalLink size={14} /> 360° Matterport Link
+                      <a href={resolveApiUrl(it.tour)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
+                        <ExternalLink size={14} /> Open 360° / 3D Tour
+                      </a>
+                    )}
+                    {it.model_3d_url && (
+                      <a href={resolveApiUrl(it.model_3d_url)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
+                        <ExternalLink size={14} /> Download 3D Model (.glb)
                       </a>
                     )}
                   </div>

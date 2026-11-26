@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Film, Pause, Play, RotateCcw, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { MediaVideoPlayer } from '../AuthMedia'
 
 interface PropertyVideoTourProps {
   title: string
@@ -42,7 +43,7 @@ export function PropertyVideoTour({
   videoUrl,
   advisorName,
 }: PropertyVideoTourProps) {
-  const [sourceMode, setSourceMode] = useState<'narrated' | 'video'>(videoUrl ? 'narrated' : 'narrated')
+  const [sourceMode, setSourceMode] = useState<'narrated' | 'video'>(videoUrl ? 'video' : 'narrated')
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [chapterIdx, setChapterIdx] = useState(0)
@@ -187,8 +188,8 @@ export function PropertyVideoTour({
       </div>
 
       {sourceMode === 'video' && videoUrl ? (
-        <div className="relative aspect-video bg-black">
-          <video src={videoUrl} controls className="h-full w-full object-contain" />
+        <div className="p-2 bg-black">
+          <MediaVideoPlayer url={videoUrl} title={title} className="!rounded-xl" />
         </div>
       ) : (
         <div className="relative aspect-[16/9] min-h-[300px] overflow-hidden bg-[#08121c]">

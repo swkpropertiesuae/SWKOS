@@ -7,8 +7,13 @@ import { useEffect,useMemo,useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { AnimatePresence,motion } from 'motion/react'
-import { ArrowUpRight,Building,CalendarClock,ChevronLeft,ChevronRight,Copy,HandCoins,Landmark,Lock,MessageCircle,Plus,Rocket,ShieldCheck,Trophy } from 'lucide-react'
-import { get } from '../../lib/api'
+import { ArrowUpRight,Box,Building,CalendarClock,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Film,HandCoins,Image as ImageIcon,Landmark,Lock,MessageCircle,Plus,Rocket,Share2,ShieldCheck,Trophy } from 'lucide-react'
+import { coverPhotoUrl,normalizeMediaList,type ProjectMediaItem } from '@shared/media'
+import { get,openAuthFile } from '../../lib/api'
+import { useMeta } from '../../lib/meta'
+import { AuthImg,MediaTour3DEmbed,MediaVideoPlayer } from '../../components/AuthMedia'
+import { DeveloperProjectLaunchModal } from '../../components/DeveloperProjectLaunchModal'
+import { ShareWithClient } from '../../components/ShareWithClient'
 import { Bar,Card,EmptyState,Field,ModuleHeader,Pill,ProgressRing,Reveal,StatTile,SWK,aed,num } from '../../swk/ui'
 import { COMMUNITIES,DEVELOPERS,UAE,communityByName,paymentPlan } from '../../swk/uae'
 import { copyText,Drawer,SelectField,useToasts } from './kit3/parts'
@@ -18,6 +23,7 @@ type Project = {
   id: string; project: string; developer: string; community: string; image: string; from: number; types: string[]; handoverQ: string; handover: Date
   plan: Plan; completion: number; escrow: string; reraNo: string; oqood: boolean; avail: number; total: number; commission: number; minPaidResale: number
   blurb: string; featured?: boolean; swkId: number
+  media: ProjectMediaItem[]; videoUrl?: string | null; tourUrl?: string | null; model3dUrl?: string | null; floorPlanUrl?: string | null; brochureUrl?: string | null
 }
 
 const PHASE_COLORS = { booking: SWK.navy, construction: SWK.champ, handover: SWK.oasis, post: SWK.sky }
@@ -50,11 +56,14 @@ function countdown(to: Date, now: Date) {
 }
 
 export default function OffPlanPage() {
+  const { can } = useMeta()
   const props = useQuery({ queryKey: ['swk-op', 'properties'], queryFn: () => get<{ rows: any[] }>('/api/e/properties', { pageSize: 500 }) })
   const unitsQ = useQuery({ queryKey: ['swk-op', 'units'], queryFn: () => get<{ rows: any[] }>('/api/e/units', { pageSize: 500 }) })
   const devsQ = useQuery({ queryKey: ['swk-op', 'developers'], queryFn: () => get<{ rows: any[] }>('/api/e/developers', { pageSize: 200 }) })
   const toasts = useToasts()
   const now = useMemo(() => new Date(), [])
+  const [launchOpen, setLaunchOpen] = useState(false)
+  const [shareProject, setShareProject] = useState<Project | null>(null)
 
   const all: Project[] = useMemo(() => {
     const unitRows = unitsQ.data?.rows ?? []
@@ -73,7 +82,8 @@ export default function OffPlanPage() {
       const devName = r._labels?.developer_ref || devById.get(Number(r.developer_ref)) || (isNaN(Number(r.developer_id)) && r.developer_id ? r.developer_id : devById.get(Number(r.developer_id))) || 'Developer'
       const yearsLeft = Math.max(0, year - curYear)
       const completion = yearsLeft === 0 ? 90 : yearsLeft === 1 ? 65 : yearsLeft === 2 ? 35 : 15
-      const firstMedia = Array.isArray(r.media) && r.media[0]?.url ? r.media[0].url : null
+      const media = normalizeMediaList(r.media)
+      const firstMedia = coverPhotoUrl(media)
 
       return {
         id: `swk-${r.id}`,
@@ -82,7 +92,7 @@ export default function OffPlanPage() {
         community: c?.name ?? r.community_id ?? r.sub_community ?? 'Dubai',
         image: firstMedia ?? c?.image ?? img('golf-fields-1'),
         from: Number(r.price) || 0,
-        types: [r.bedrooms ? `${r.bedrooms} BR ${r.property_type ?? ''}`.trim() : r.property_type ?? 'Unit'],
+        types: pUnits.length ? [...new Set(pUnits.map((u: any) => u.unit_no || (u.bedrooms ? `${u.bedrooms} BR` : u.unit_type)))].slice(0, 4) as string[] : [r.bedrooms ? `${r.bedrooms} BR ${r.property_type ?? ''}`.trim() : r.property_type ?? 'Unit'],
         handoverQ: hq,
         handover: q2date(hq),
         plan: planFromString(r.payment_plan),
@@ -97,6 +107,12 @@ export default function OffPlanPage() {
         blurb: r.description || `${r.property_type || 'Residential'} off-plan launch in ${c?.name ?? r.community_id ?? 'Dubai'}.`,
         featured: Boolean(r.is_exclusive),
         swkId: r.id,
+        media,
+        videoUrl: r.video_url || media.find(m => m.kind === 'video')?.url || null,
+        tourUrl: r.virtual_tour_url || media.find(m => m.kind === 'tour3d')?.url || null,
+        model3dUrl: r.model_3d_url || null,
+        floorPlanUrl: r.floor_plan_url || media.find(m => m.kind === 'floorplan')?.url || null,
+        brochureUrl: r.brochure_url || media.find(m => m.kind === 'brochure')?.url || null,
       }
     })
   }, [props.data, unitsQ.data, devsQ.data, now])
@@ -123,7 +139,12 @@ export default function OffPlanPage() {
         actions={<>
           {all.length > 0 && <Pill tone="oasis">{all.length} active launch{all.length > 1 ? 'es' : ''}</Pill>}
           <Link to="/e/developers" className="swk-btn swk-btn-ghost"><Building size={15} /> Developers</Link>
-          <Link to="/e/properties?new=1" className="swk-btn swk-btn-primary"><Plus size={15} /> New off-plan listing</Link>
+          {can('properties', 'create') && (
+            <button type="button" onClick={() => setLaunchOpen(true)} className="swk-btn swk-btn-primary">
+              <Rocket size={15} /> Launch Developer Project
+            </button>
+          )}
+          <Link to="/e/properties?new=1" className="swk-btn swk-btn-ghost"><Plus size={15} /> Quick Form</Link>
         </>} />
 
       {featured.length > 0 && <Spotlight items={featured} now={now} onOpen={setOpen} />}
@@ -156,8 +177,8 @@ export default function OffPlanPage() {
       {!props.isLoading && all.length === 0 ? (
         <EmptyState
           title="No off-plan launches recorded yet"
-          hint="Add an off-plan property (tick 'Off-Plan' or set Status to 'Off-Plan') to track developer payment plans, Oqood fees, construction progress and WhatsApp client pitches."
-          action={<div className="flex gap-2 justify-center flex-wrap"><Link to="/e/properties?new=1" className="swk-btn swk-btn-primary"><Plus size={15} /> Add off-plan property</Link><Link to="/e/developers?new=1" className="swk-btn swk-btn-ghost">Add developer</Link></div>}
+          hint="Launch a developer project (like Shahrukhz by Danube) with pictures, videos, 3D tours, unit typologies, payment plans, and watermarked client brochures in one step."
+          action={<div className="flex gap-2 justify-center flex-wrap">{can('properties', 'create') && <button type="button" onClick={() => setLaunchOpen(true)} className="swk-btn swk-btn-primary"><Rocket size={15} /> Launch Developer Project</button>}<Link to="/e/developers?new=1" className="swk-btn swk-btn-ghost">Add developer</Link></div>}
         />
       ) : !list.length ? (
         <EmptyState title="No launches match filters" hint="Widen your budget or clear filters." />
@@ -169,9 +190,11 @@ export default function OffPlanPage() {
 
       {all.length > 0 && <DeveloperLeague projects={all} />}
 
-      <Drawer open={!!open} onClose={() => setOpen(null)} title={open?.project ?? ''} eyebrow={open ? `${open.developer} · ${open.community}` : ''} width={680}>
-        {open && <ProjectDetail p={open} now={now} onToast={toasts.push} />}
+      <Drawer open={!!open} onClose={() => setOpen(null)} title={open?.project ?? ''} eyebrow={open ? `${open.developer} · ${open.community}` : ''} width={720}>
+        {open && <ProjectDetail p={open} now={now} onToast={toasts.push} onShare={() => setShareProject(open)} />}
       </Drawer>
+      {launchOpen && <DeveloperProjectLaunchModal onClose={() => setLaunchOpen(false)} />}
+      {shareProject && <ShareWithClient entity="properties" ids={[shareProject.swkId]} label={shareProject.project} onClose={() => setShareProject(null)} />}
       {toasts.node}
     </div>
   )
@@ -186,7 +209,9 @@ function Spotlight({ items, now, onOpen }: { items: Project[]; now: Date; onOpen
     <section aria-roledescription="carousel" aria-label="Featured launches" className="relative overflow-hidden rounded-[26px] min-h-[340px] md:min-h-[380px]" style={{ background: SWK.midnight }}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <AnimatePresence mode="popLayout">
-        <motion.div key={p.id} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${p.image})` }} initial={{ opacity: 0, scale: 1.12 }} animate={{ opacity: 1, scale: 1.02 }} exit={{ opacity: 0 }} transition={{ opacity: { duration: .8 }, scale: { duration: 7, ease: 'linear' } }} />
+        <motion.div key={p.id} className="absolute inset-0" initial={{ opacity: 0, scale: 1.12 }} animate={{ opacity: 1, scale: 1.02 }} exit={{ opacity: 0 }} transition={{ opacity: { duration: .8 }, scale: { duration: 7, ease: 'linear' } }}>
+          <AuthImg src={p.image} alt={p.project} className="h-full w-full object-cover" />
+        </motion.div>
       </AnimatePresence>
       <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(15,42,51,.94) 0%, rgba(15,42,51,.7) 45%, rgba(15,42,51,.1) 100%)' }} />
       <div className="relative z-[1] p-6 md:p-10 flex flex-col md:flex-row gap-6 md:items-end justify-between min-h-[340px] md:min-h-[380px]">
@@ -243,13 +268,17 @@ function PlanBar({ plan, height = 10 }: { plan: Plan; height?: number }) {
 
 function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; onOpen: () => void }) {
   const logo = devLogo(p.developer); const cd = countdown(p.handover, now)
+  const photoCount = p.media.filter(m => m.kind === 'photo').length
   return (
     <motion.article layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .45, delay: Math.min(i, 8) * .04 }} whileHover={{ y: -4 }} className="swk-card overflow-hidden flex flex-col group">
       <button onClick={onOpen} className="relative h-[180px] overflow-hidden text-left" aria-label={`Open ${p.project}`}>
-        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[1.2s] group-hover:scale-[1.06]" style={{ backgroundImage: `url(${p.image || communityImg(p.community)})` }} />
+        <AuthImg src={p.image} fallback={communityImg(p.community)} alt={p.project} className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] group-hover:scale-[1.06]" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,42,51,0) 35%, rgba(15,42,51,.82) 100%)' }} />
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           <Pill tone="oasis">SWK inventory</Pill>
+          {photoCount > 0 && <Pill tone="grey"><ImageIcon size={11} /> {photoCount}</Pill>}
+          {p.videoUrl && <Pill tone="champ"><Film size={11} /> Video</Pill>}
+          {(p.tourUrl || p.model3dUrl) && <Pill tone="sky"><Box size={11} /> 3D</Pill>}
           {isPost(p) && <Pill tone="sky">Post-handover</Pill>}
           {!p.oqood && <Pill tone="dune">Permit / Oqood pending</Pill>}
         </div>
@@ -286,9 +315,11 @@ function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; 
   )
 }
 
-function ProjectDetail({ p, now, onToast }: { p: Project; now: Date; onToast: (m: string) => void }) {
+function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; onToast: (m: string) => void; onShare: () => void }) {
   const [price, setPrice] = useState(p.from)
   const [split, setSplit] = useState(50)
+  const [mediaTab, setMediaTab] = useState<'gallery' | 'video' | '3d'>('gallery')
+  const photos = useMemo(() => p.media.filter(m => m.kind === 'photo'), [p.media])
   const plan = useMemo(() => paymentPlan({
     price, bookingPct: p.plan.booking, constructionPct: p.plan.construction, handoverPct: p.plan.handover, postHandoverPct: p.plan.post,
     constructionInstalments: p.plan.construction ? Math.min(8, Math.max(2, Math.round(p.plan.construction / 10))) : 0, postInstalments: p.plan.post ? 4 : 0,
@@ -299,17 +330,56 @@ function ProjectDetail({ p, now, onToast }: { p: Project; now: Date; onToast: (m
   const phaseColor = (ph: string) => ph === 'Booking' ? PHASE_COLORS.booking : ph === 'Construction' ? PHASE_COLORS.construction : ph === 'Handover' ? PHASE_COLORS.handover : ph === 'Post-handover' ? PHASE_COLORS.post : SWK.champDeep
   const wa = [
     `*${p.project}* by ${p.developer}`, `📍 ${p.community}, Dubai`, `🏠 ${p.types.join(', ')}`, `💰 From ${aed(p.from)}`, `🗓 Handover ${p.handoverQ} · ${p.completion}% built`,
-    `💳 Payment plan ${planLabel(p.plan)}`, `🏦 Escrow: ${p.escrow} · ${p.reraNo}`, '', `Unit at ${aed(price)}: ${plan.rows.slice(0, 2).map(r => `${r.label} ${aed(r.amount)}`).join(' + ')}`,
+    `💳 Payment plan ${planLabel(p.plan)}`, `🏦 Escrow: ${p.escrow} · ${p.reraNo}`,
+    p.videoUrl && /^https?:\/\//i.test(p.videoUrl) ? `🎬 Video: ${p.videoUrl}` : '',
+    p.tourUrl && /^https?:\/\//i.test(p.tourUrl) ? `🧊 3D Tour: ${p.tourUrl}` : '',
+    '', `Unit at ${aed(price)}: ${plan.rows.slice(0, 2).map(r => `${r.label} ${aed(r.amount)}`).join(' + ')}`,
     '', 'SWK Properties · RERA ORN 51517', 'Prices & availability subject to developer confirmation.',
-  ].join('\n')
+  ].filter(Boolean).join('\n')
   return (
     <div className="flex flex-col gap-5">
-      <div className="relative h-[170px] rounded-2xl overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${p.image})` }}>
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(15,42,51,.85))' }} />
-        <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between text-white">
-          <div><div className="text-[12px] opacity-75">{p.blurb}</div></div>
-          <Link to={`/e/properties/${p.swkId}`} className="swk-pill swk-pill-champ">Open property record</Link>
+      {/* Interactive Media Header (Photos / Video / 3D Tour) */}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button type="button" onClick={() => setMediaTab('gallery')} className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${mediaTab === 'gallery' ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-ink border-line'}`}>
+            <ImageIcon size={12} className="inline mr-1" /> Photos ({Math.max(1, photos.length)})
+          </button>
+          {p.videoUrl && (
+            <button type="button" onClick={() => setMediaTab('video')} className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${mediaTab === 'video' ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-ink border-line'}`}>
+              <Film size={12} className="inline mr-1" /> Launch Video
+            </button>
+          )}
+          {(p.tourUrl || p.model3dUrl) && (
+            <button type="button" onClick={() => setMediaTab('3d')} className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${mediaTab === '3d' ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-ink border-line'}`}>
+              <Box size={12} className="inline mr-1" /> 3D / 360° Tour
+            </button>
+          )}
+          <div className="flex-1" />
+          <Link to={`/e/properties/${p.swkId}`} className="swk-pill swk-pill-champ no-underline">Manage Media Studio →</Link>
         </div>
+
+        {mediaTab === 'video' && p.videoUrl ? (
+          <MediaVideoPlayer url={p.videoUrl} title={p.project} />
+        ) : mediaTab === '3d' && (p.tourUrl || p.model3dUrl) ? (
+          <MediaTour3DEmbed url={(p.tourUrl || p.model3dUrl)!} title={p.project} />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="relative h-[200px] rounded-2xl overflow-hidden bg-[#0b1824]">
+              <AuthImg src={p.image} alt={p.project} className="h-full w-full object-cover" />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 35%, rgba(15,42,51,.88))' }} />
+              <div className="absolute bottom-3 left-4 right-4 text-white text-[12px] opacity-90 line-clamp-2">{p.blurb}</div>
+            </div>
+            {photos.length > 1 && (
+              <div className="grid grid-cols-4 gap-2">
+                {photos.slice(0, 4).map(ph => (
+                  <div key={ph.id} className="aspect-[16/10] rounded-xl overflow-hidden border border-line bg-soft">
+                    <AuthImg src={ph.url} alt={ph.title || p.project} className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-x-6">
         <div className="swk-kv"><span>Handover</span><b>{p.handoverQ}</b></div>
@@ -364,8 +434,23 @@ function ProjectDetail({ p, now, onToast }: { p: Project; now: Date; onToast: (m
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        <button className="swk-btn swk-btn-gold" onClick={async () => { if (await copyText(wa)) onToast('WhatsApp brochure text copied') }}><Copy size={15} /> Copy brochure text</button>
-        <a className="swk-btn swk-btn-primary" href={`https://wa.me/?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer"><MessageCircle size={15} /> Share via WhatsApp</a>
+        <button type="button" className="swk-btn swk-btn-primary" onClick={onShare}><Share2 size={15} /> Share Watermarked Brochure</button>
+        <button type="button" className="swk-btn swk-btn-gold" onClick={async () => { if (await copyText(wa)) onToast('WhatsApp brochure text copied') }}><Copy size={15} /> Copy pitch</button>
+        <a className="swk-btn swk-btn-ghost" href={`https://wa.me/?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer"><MessageCircle size={15} /> WhatsApp</a>
+        {p.floorPlanUrl && (
+          p.floorPlanUrl.startsWith('/api/files/') ? (
+            <button type="button" className="swk-btn swk-btn-ghost" onClick={() => void openAuthFile(p.floorPlanUrl!, `${p.project}-floor-plan.pdf`)}><FileText size={14} /> Floor Plan</button>
+          ) : (
+            <a className="swk-btn swk-btn-ghost" href={p.floorPlanUrl} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Floor Plan</a>
+          )
+        )}
+        {p.brochureUrl && (
+          p.brochureUrl.startsWith('/api/files/') ? (
+            <button type="button" className="swk-btn swk-btn-ghost" onClick={() => void openAuthFile(p.brochureUrl!, `${p.project}-brochure.pdf`)}><FileText size={14} /> Brochure PDF</button>
+          ) : (
+            <a className="swk-btn swk-btn-ghost" href={p.brochureUrl} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Brochure PDF</a>
+          )
+        )}
       </div>
     </div>
   )

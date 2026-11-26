@@ -10,11 +10,14 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence,motion } from 'motion/react'
 import { Bar as RBar,BarChart,CartesianGrid,Legend,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import {
-AlertTriangle,ArrowUpRight,BadgeCheck,Bath,BedDouble,Camera,CheckCircle2,Clock,Copy,FileSignature,Globe2,LayoutGrid,
-ListChecks,Maximize2,MessageCircle,QrCode,Rows3,Send,Share2,ShieldAlert,ShieldCheck,Sparkles,Upload,Wand2,XCircle,
+AlertTriangle,ArrowUpRight,BadgeCheck,Bath,BedDouble,Box,Camera,CheckCircle2,Clock,Copy,FileSignature,Film,Globe2,LayoutGrid,
+ListChecks,Maximize2,MessageCircle,QrCode,Rocket,Rows3,Send,Share2,ShieldAlert,ShieldCheck,Sparkles,Upload,Wand2,XCircle,
 } from 'lucide-react'
+import { coverPhotoUrl,normalizeMediaList } from '@shared/media'
 import { get,post } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
+import { AuthImg } from '../../components/AuthMedia'
+import { DeveloperProjectLaunchModal } from '../../components/DeveloperProjectLaunchModal'
 import { ShareWithClient } from '../../components/ShareWithClient'
 import { BulkInventoryModal } from '../../components/BulkInventoryModal'
 import { Card,CHART,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,RevealItem,Segmented,StatTile,SWK,aed,num } from '../../swk/ui'
@@ -42,8 +45,10 @@ const gradeOf = (s: number): Listing['grade'] => (s >= 80 ? 'Excellent' : s >= 6
 const gradeColor = (g: Listing['grade']) => (g === 'Excellent' ? SWK.oasis : g === 'Good' ? SWK.champ : SWK.dune)
 const statusTone = (s?: string) => (s === 'Available' ? 'oasis' : s === 'Off-Plan' ? 'sky' : s === 'Under Offer' || s === 'Reserved' ? 'champ' : s === 'Withdrawn' ? 'dune' : 'grey') as any
 
-/** Pick a deterministic marketing photo, preferring one matching the community. */
+/** Pick real uploaded cover photo if present, else deterministic marketing photo matching the community. */
 function photoFor(p: Row) {
+  const uploaded = coverPhotoUrl(p.media)
+  if (uploaded) return uploaded
   const t = `${p.title ?? ''} ${p.address ?? ''}`.toLowerCase()
   const match = t.includes('marina') ? 'marina-sky-penthouse-1' : t.includes('palm') ? 'palm-garden-homes-1' : t.includes('hills') ? 'hills-estate-golf-mansion-1'
     : t.includes('business bay') ? 'business-bay-executive-tower-2' : t.includes('creek') ? 'creek-harbour-waterside-townhouse-1' : t.includes('jvc') ? 'jvc-boulevard-residences-2'
@@ -53,7 +58,7 @@ function photoFor(p: Row) {
 
 /** Listing quality engine (0–100). Weights sum to 100. */
 function scoreListing(p: Row, community: Community | undefined, mandate: Row | undefined, today: Date) {
-  const media = Array.isArray(p.media) ? p.media.length : 0
+  const media = normalizeMediaList(p.media).filter(m => m.kind === 'photo').length
   const desc = String(p.description ?? '').trim().length
   const permitState = permitStatus(p.rera_permit_no, p.permit_expiry, today.toISOString().slice(0, 10))
   const permit = permitUsable(permitState)
@@ -161,6 +166,7 @@ export default function ListingsStudio() {
   const [panel, setPanel] = useState<{ id: number; tab: 'quality' | 'copy' } | null>(null)
   const [shareItem, setShareItem] = useState<{ id: number; title: string } | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [launchOpen, setLaunchOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -186,8 +192,9 @@ export default function ListingsStudio() {
         subtitle="Score every listing like Property Finder & Bayut do, clear the Trakheesi gate, and syndicate with confidence."
         actions={<>
           <button className="swk-btn swk-btn-ghost" disabled={!listings.length} onClick={() => filtered[0] && setPanel({ id: filtered[0].p.id, tab: 'copy' })}><Sparkles size={16} /> AI listing copy</button>
-          {can('properties', 'create') && <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setBulkOpen(true)}><Upload size={16} /> Bulk Upload Inventory</button>}
-          {can('properties', 'create') && <Link to="/e/properties?new=1" className="swk-btn swk-btn-primary"><Rows3 size={16} /> New listing</Link>}
+          {can('properties', 'create') && <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setBulkOpen(true)}><Upload size={16} /> Bulk Upload</button>}
+          {can('properties', 'create') && <button type="button" className="swk-btn swk-btn-primary" onClick={() => setLaunchOpen(true)}><Rocket size={16} /> Launch Developer Project</button>}
+          {can('properties', 'create') && <Link to="/e/properties?new=1" className="swk-btn swk-btn-ghost"><Rows3 size={16} /> New listing</Link>}
         </>} />
 
       <Reveal className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
@@ -278,6 +285,7 @@ export default function ListingsStudio() {
       </Drawer>
       {shareItem && <ShareWithClient entity="properties" ids={[shareItem.id]} label={shareItem.title} onClose={() => setShareItem(null)} />}
       {bulkOpen && <BulkInventoryModal onClose={() => setBulkOpen(false)} onDone={() => { void qc.invalidateQueries({ queryKey: ['swk-ls'] }) }} />}
+      {launchOpen && <DeveloperProjectLaunchModal onClose={() => setLaunchOpen(false)} onCreated={() => { void qc.invalidateQueries({ queryKey: ['swk-ls'] }) }} />}
       {toasts.node}
     </div>
   )
@@ -308,12 +316,14 @@ function ListingCard({ l, i, onQuality, onCopy, onShare }: { l: Listing; i: numb
     <motion.article layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .45, delay: Math.min(i, 8) * .04, ease: [0.16, 1, 0.3, 1] }}
       whileHover={{ y: -4 }} className="swk-card overflow-hidden flex flex-col group">
       <div className="relative h-[200px] overflow-hidden">
-        <motion.div className="absolute inset-0 bg-cover bg-center transition-transform duration-[1.2s] group-hover:scale-[1.06]" style={{ backgroundImage: `url(${l.img})` }} />
+        <AuthImg src={l.img} alt={p.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] group-hover:scale-[1.06]" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,42,51,.15) 0%, rgba(15,42,51,0) 40%, rgba(15,42,51,.78) 100%)' }} />
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           <Pill tone={statusTone(p.status)}>{p.status}</Pill>
           {p.is_off_plan && <Pill tone="sky">Off-plan</Pill>}
           {(p.is_exclusive || l.mandate?.exclusive) && <Pill tone="champ">Exclusive</Pill>}
+          {p.video_url && <Pill tone="champ"><Film size={11} /> Video</Pill>}
+          {(p.virtual_tour_url || p.model_3d_url) && <Pill tone="sky"><Box size={11} /> 3D</Pill>}
         </div>
         <button onClick={onQuality} aria-label={`Quality score ${l.score}, open fixes`} className="absolute top-3 right-3 rounded-full p-1" style={{ background: 'rgba(255,255,255,.94)', boxShadow: '0 8px 20px -10px rgba(0,0,0,.5)' }}>
           <ProgressRing value={l.score} size={56} stroke={6} color={gradeColor(l.grade)} label={l.score} />
