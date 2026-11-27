@@ -9,6 +9,7 @@ import { syncStudioLibrary } from '../studio/library'
 import { hashPassword,verifyPassword } from '../auth'
 import { SWK_STAFF_ACCOUNTS,SWK_OWNER_ACCOUNT,SWK_ADMIN_ACCOUNT,RETIRED_STAFF_EMAILS,RESTRICTED_STAFF_PERMISSIONS,OFFICE_ADMIN_PERMISSIONS,HR_ROLE_PERMISSIONS,swkPatternPassword,hardcodedAccountFor,type SwkHardcodedStaffAccount } from '../../shared/swk-staff-access'
 import { SWK_COMPANY_ADDRESS,SWK_COMPANY_EMAIL,SWK_COMPANY_PHONE,SWK_TRADE_LICENSE } from '../../shared/corporate-footer'
+import { seedUaeDevelopersAndCommunities } from '../domain/uae-catalog-sync'
 import crypto from 'node:crypto'
 
 function resolveStaffAccountPassword(acc: SwkHardcodedStaffAccount): string {
@@ -211,89 +212,13 @@ export async function seedReference(opts: { users?: boolean; demo?: boolean } = 
     mk('bank_accounts', { name: 'Petty cash', type: 'Petty cash', currency: 'AED', gl_account_id: idOf('accounts', 'code', '1010'), active: true })
     mark('banks')
   }
-  if (!done('communities')) {
-    for (const [code, name, emirate, area, master_developer, avg_price_sqft, avg_rent_annual] of [
-      ['MARINA', 'Dubai Marina', 'Dubai', 'Dubai', 'Emaar Properties', 2290, 160000],
-      ['DOWNTOWN', 'Downtown Dubai', 'Dubai', 'Dubai', 'Emaar Properties', 2980, 195000],
-      ['PALM', 'Palm Jumeirah', 'Dubai', 'Dubai', 'Nakheel', 4380, 260000],
-      ['BBAY', 'Business Bay', 'Dubai', 'Dubai', 'Dubai Properties', 2180, 150000],
-      ['DHILLS', 'Dubai Hills Estate', 'Dubai', 'Dubai', 'Emaar Properties', 2390, 170000],
-      ['CREEK', 'Dubai Creek Harbour', 'Dubai', 'Dubai', 'Emaar Properties', 2320, 150000],
-      ['JVC', 'Jumeirah Village Circle', 'Dubai', 'Dubai', 'Nakheel', 1320, 105000],
-      ['JLT', 'Jumeirah Lakes Towers (JLT)', 'Dubai', 'Dubai', 'DMCC', 1680, 125000],
-      ['ARANCHES', 'Arabian Ranches', 'Dubai', 'Dubai', 'Emaar Properties', 1950, 240000],
-      ['SZR', 'Sheikh Zayed Road', 'Dubai', 'Dubai', 'Meraas', 1920, 140000],
-      ['DIFC', 'DIFC', 'Dubai', 'Dubai', 'DIFC Authority', 3100, 210000],
-      ['MBR', 'MBR City & Sobha Hartland', 'Dubai', 'Dubai', 'Meydan / Sobha Realty', 2240, 155000],
-      ['EBEACH', 'Emaar Beachfront', 'Dubai', 'Dubai', 'Emaar Properties', 3850, 240000],
-      ['PJEBEL', 'Palm Jebel Ali', 'Dubai', 'Dubai', 'Nakheel', 3250, 290000],
-      ['DSOUTH', 'Dubai South & Expo City', 'Dubai', 'Dubai', 'Dubai South', 1290, 88000],
-      ['DAMACH', 'DAMAC Hills & DAMAC Lagoons', 'Dubai', 'Dubai', 'DAMAC Properties', 1540, 145000],
-      ['FURJAN', 'Al Furjan', 'Dubai', 'Dubai', 'Nakheel', 1420, 118000],
-      ['ARJAN', 'Arjan & Miracle Garden', 'Dubai', 'Dubai', 'Dubai Holding', 1350, 92000],
-      ['BARARI', 'Al Barari', 'Dubai', 'Dubai', 'Al Barari', 2650, 420000],
-      ['DISLANDS', 'Dubai Islands', 'Dubai', 'Dubai', 'Nakheel', 2480, 185000],
-      ['CITYWALK', 'City Walk & Jumeirah', 'Dubai', 'Dubai', 'Meraas', 2890, 210000],
-      ['BLUEW', 'Bluewaters Island', 'Dubai', 'Dubai', 'Meraas', 4650, 320000],
-      ['JGE', 'Jumeirah Golf Estates', 'Dubai', 'Dubai', 'Wasl / JGE', 2120, 285000],
-      ['MOTOR', 'Motor City & Sports City', 'Dubai', 'Dubai', 'Union Properties', 1260, 96000],
-    ] as const) {
-      if (!idOf('communities', 'code', code)) mk('communities', { code, name, emirate, area, master_developer, avg_price_sqft, avg_rent_annual, active: true })
-    }
+  if (!done('communities') || !done('developers') || !done('uae_catalog_v5_masters')) {
+    seedUaeDevelopersAndCommunities()
     mark('communities')
-  }
-  if (!done('communities_swk_v2')) {
-    for (const [code, name, emirate, area, master_developer, avg_price_sqft, avg_rent_annual] of [
-      ['JLT', 'Jumeirah Lakes Towers (JLT)', 'Dubai', 'Dubai', 'DMCC', 1680, 125000],
-      ['MBR', 'MBR City & Sobha Hartland', 'Dubai', 'Dubai', 'Meydan / Sobha Realty', 2240, 155000],
-      ['EBEACH', 'Emaar Beachfront', 'Dubai', 'Dubai', 'Emaar Properties', 3850, 240000],
-      ['PJEBEL', 'Palm Jebel Ali', 'Dubai', 'Dubai', 'Nakheel', 3250, 290000],
-      ['DSOUTH', 'Dubai South & Expo City', 'Dubai', 'Dubai', 'Dubai South', 1290, 88000],
-      ['DAMACH', 'DAMAC Hills & DAMAC Lagoons', 'Dubai', 'Dubai', 'DAMAC Properties', 1540, 145000],
-      ['FURJAN', 'Al Furjan', 'Dubai', 'Dubai', 'Nakheel', 1420, 118000],
-      ['ARJAN', 'Arjan & Miracle Garden', 'Dubai', 'Dubai', 'Dubai Holding', 1350, 92000],
-      ['BARARI', 'Al Barari', 'Dubai', 'Dubai', 'Al Barari', 2650, 420000],
-      ['DISLANDS', 'Dubai Islands', 'Dubai', 'Dubai', 'Nakheel', 2480, 185000],
-      ['CITYWALK', 'City Walk & Jumeirah', 'Dubai', 'Dubai', 'Meraas', 2890, 210000],
-      ['BLUEW', 'Bluewaters Island', 'Dubai', 'Dubai', 'Meraas', 4650, 320000],
-      ['JGE', 'Jumeirah Golf Estates', 'Dubai', 'Dubai', 'Wasl / JGE', 2120, 285000],
-      ['MOTOR', 'Motor City & Sports City', 'Dubai', 'Dubai', 'Union Properties', 1260, 96000],
-    ] as const) {
-      if (!idOf('communities', 'code', code)) mk('communities', { code, name, emirate, area, master_developer, avg_price_sqft, avg_rent_annual, active: true })
-    }
     mark('communities_swk_v2')
-  }
-  if (!done('developers')) {
-    for (const [code, name, rera_id, website] of [
-      ['EMAAR', 'Emaar Properties', 'DEV-001', 'https://www.emaar.com'],
-      ['NAKHEEL', 'Nakheel', 'DEV-002', 'https://www.nakheel.com'],
-      ['DAMAC', 'DAMAC Properties', 'DEV-003', 'https://www.damacproperties.com'],
-      ['SOBHA', 'Sobha Realty', 'DEV-004', 'https://www.sobharealty.com'],
-      ['MERAAS', 'Meraas', 'DEV-005', 'https://www.meraas.com'],
-      ['ELLINGTON', 'Ellington Properties', 'DEV-006', 'https://www.ellingtonproperties.ae'],
-      ['SELECT', 'Select Group', 'DEV-007', 'https://www.select-group.ae'],
-      ['BINGHATTI', 'Binghatti', 'DEV-008', 'https://www.binghatti.com'],
-      ['OMNIYAT', 'Omniyat', 'DEV-009', 'https://www.omniyat.com'],
-      ['ALDAR', 'Aldar Properties', 'DEV-010', 'https://www.aldar.com'],
-      ['AZIZI', 'Azizi Developments', 'DEV-011', 'https://www.azizidevelopments.com'],
-      ['DANUBE', 'Danube Properties', 'DEV-012', 'https://www.danubeproperties.com'],
-      ['IMTIAZ', 'Imtiaz Developments', 'DEV-013', 'https://www.imtiaz.ae'],
-      ['SAMANA', 'Samana Developers', 'DEV-014', 'https://www.samanadevelopers.com'],
-    ] as const) {
-      mk('developers', { code, name, emirate: code === 'ALDAR' ? 'Abu Dhabi' : 'Dubai', rera_id, website, active: true })
-    }
     mark('developers')
-  }
-  if (!done('developers_swk_v4')) {
-    for (const [code, name, emirate, rera_id, website] of [
-      ['AZIZI', 'Azizi Developments', 'Dubai', 'DEV-011', 'https://www.azizidevelopments.com'],
-      ['DANUBE', 'Danube Properties', 'Dubai', 'DEV-012', 'https://www.danubeproperties.com'],
-      ['IMTIAZ', 'Imtiaz Developments', 'Dubai', 'DEV-013', 'https://www.imtiaz.ae'],
-      ['SAMANA', 'Samana Developers', 'Dubai', 'DEV-014', 'https://www.samanadevelopers.com'],
-    ] as const) {
-      if (!idOf('developers', 'code', code)) mk('developers', { code, name, emirate, rera_id, website, active: true })
-    }
     mark('developers_swk_v4')
+    mark('uae_catalog_v5_masters')
   }
   if (!done('compliance')) { seedCompliance({ demo: opts.demo }); mark('compliance') }
   if (!opts.demo && !done('company_documents_20261123')) {

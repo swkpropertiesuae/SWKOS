@@ -133,7 +133,7 @@ function coerceIn(f: FieldDef, v: any, entityKey?: string): any {
   switch (f.type) {
     case 'text': case 'textarea': case 'phone': return String(v).trim().slice(0, f.maxLength ?? (f.type === 'textarea' ? 20000 : 1000))
     case 'email': { const s = String(v).trim().toLowerCase(); if (!EMAIL.test(s)) throw bad(`${f.label}: invalid e-mail address`); return s }
-    case 'url': { const s = String(v).trim(); if (!/^(?:https?:\/\/|\/(?:api\/files|media|img)\/)/i.test(s)) throw bad(`${f.label}: must start with http://, https://, or an internal media path`); return s }
+    case 'url': { const s = String(v).trim(); if (!/^(?:https?:\/\/|\/(?:api\/files|api\/catalog-kit|media|img)\/)/i.test(s)) throw bad(`${f.label}: must start with http://, https://, or an internal media path`); return s }
     case 'int': { const n = Number(v); if (!Number.isFinite(n) || !Number.isInteger(n)) throw bad(`${f.label}: must be a whole number`); return n }
     case 'number': case 'percent': case 'money': {
       const n = typeof v === 'string' ? Number(v.replace(/,/g, '')) : Number(v)

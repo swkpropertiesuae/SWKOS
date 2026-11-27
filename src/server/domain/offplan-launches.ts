@@ -50,24 +50,34 @@ function developerId(name: string): number {
 export function launchPayload(l: OffPlanLaunch, devId: number | undefined): Record<string, unknown> {
   const year = l.handover ? Number(l.handover.slice(0, 4)) : null
   const type = l.propertyTypes.find(t => PROPERTY_TYPES.has(t)) ?? 'Apartment'
+  const commRec = findOne('communities', 'lower(code) = lower(?) OR lower(name) = lower(?)', l.communityCode || '', l.community)
   return {
     title: l.name,
+    project_name: l.projectName,
+    emirate: l.emirate || 'Dubai',
     department_division: 'Sales of Off-Plan Projects',
     inventory_source_type: 'Direct Developer',
     property_type: type,
     status: 'Off-Plan',
+    launch_status: 'Active Off-Plan',
     seller_finance_status: 'Off-Plan Payment Plan (Oqood)',
     developer_ref: devId,
     community_id: l.community,
+    community_ref: commRec ? Number(commRec.id) : undefined,
     sub_community: l.area,
     tenure: 'Freehold',
     bedrooms: l.bedrooms.length ? l.bedrooms[0] : undefined,
     area_sqft: l.sizeMin ?? undefined,
     price: l.fromPrice ?? undefined,
     completion_year: year && year >= 2020 && year <= 2035 ? year : undefined,
+    handover_quarter: l.handoverQuarter,
     payment_plan: planOption(l.paymentPlan),
+    payment_plan_summary: l.paymentPlan ?? undefined,
     is_off_plan: true,
-    address: `${l.area}, ${l.community}, Dubai`,
+    promo_headline: l.promoHeadline,
+    promo_badge: l.promoBadge,
+    promo_benefits: l.promoBenefits?.join('\n') || undefined,
+    address: `${l.area}, ${l.community}, ${l.emirate || 'Dubai'}`,
     latitude: l.lat != null ? String(l.lat) : undefined,
     longitude: l.lng != null ? String(l.lng) : undefined,
     description: launchDescription(l),
@@ -78,7 +88,7 @@ export function launchPayload(l: OffPlanLaunch, devId: number | undefined): Reco
     available_date: l.handover ?? undefined,
     virtual_tour_url: l.lat != null && l.lng != null ? satelliteViewUrl(l.lat, l.lng) : undefined,
     media: launchMedia(l),
-    notes: `Added from the Dubai new-launch feed. Source: ${l.source}. Key: ${l.key}. Check prices, payment plan and permit with the developer before advertising.`,
+    notes: `Added from the UAE new-launch feed (${l.emirate || 'Dubai'}). Source: ${l.source}. Key: ${l.key}. Check prices, payment plan and permit with the developer before advertising.`,
   }
 }
 

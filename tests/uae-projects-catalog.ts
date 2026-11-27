@@ -191,6 +191,75 @@ try {
   assert.equal(OFFPLAN_LAUNCHES.length, UAE_OFFPLAN_PROJECTS.length, 'OFFPLAN_LAUNCHES must match UAE_OFFPLAN_PROJECTS')
   assert.ok(UAE_CATALOG_STATS.totalProjects === UAE_PROJECTS.length)
   console.log(`uae-projects-catalog Task 3 checks: OK (${UAE_PROJECTS.length} total projects, ${UAE_OFFPLAN_PROJECTS.length} off-plan [${dxbOff.length} DXB / ${auhOff.length} AUH], ${UAE_READY_PROJECTS.length} ready)`)
+
+  // --- Task 4: Safe Catalog-Only Reset + Batched UAE Catalog Seeder (Zero-Loss Preservation) ---
+  const { runUaeCatalogMigrationAndSeed, CATALOG_RESET_KEY } = await import('../src/server/domain/uae-catalog-sync')
+  const { seedWebsiteContent } = await import('../src/server/website')
+  seedWebsiteContent()
+
+  // Seed legacy data to test safe reset vs preservation:
+  // 1) 12 unreferenced legacy properties (should be hard-deleted to 0)
+  for (let i = 0; i < 12; i++) {
+    createRecord(propDef, { title: `Old Legacy Junk Property #${i}`, property_type: 'Apartment', status: 'Available', price: 900_000 }, SYSTEM_CTX)
+  }
+  // 2) Legacy property actively referenced by liveJob (must be soft-archived, NOT hard-deleted, and liveJob stays intact & editable)
+  const linkedLegacyProp = createRecord(propDef, { title: 'Legacy Referenced Tower 99', property_type: 'Apartment', status: 'Available', price: 1_500_000 }, SYSTEM_CTX)
+  const preservedJob = createRecord(getDef('jobs'), { deal_name: 'Preserved Deal #2', deal_type: 'Sale', client_id: party.id, branch_id: branchId, property_id: linkedLegacyProp.id, deal_date: '2026-11-25' }, SYSTEM_CTX)
+  // 3) Preserved website, lead, employee, invoice records
+  const preservedLead = createRecord(getDef('leads'), { company: 'VIP Preserved Lead', contact_name: 'VIP Preserved Lead', phone: '+971501112233', status: 'New' }, SYSTEM_CTX)
+  const websiteCountBefore = q.val<number>(`SELECT COUNT(*) FROM website_listings WHERE deleted_at IS NULL`)!
+  const usersCountBefore = q.val<number>(`SELECT COUNT(*) FROM users`)!
+  assert.ok(websiteCountBefore > 0, 'Precondition: website_listings must be non-empty before migration')
+  assert.ok(usersCountBefore > 0, 'Precondition: users must be non-empty before migration')
+
+  // Run migration + seed
+  const syncRes1 = await runUaeCatalogMigrationAndSeed({ seedProjects: true, skipBackup: true })
+  assert.equal(syncRes1.resetRan, true, 'First migration run must execute catalog reset')
+  assert.ok(syncRes1.cleared.properties >= 12, `Expected >= 12 unreferenced legacy properties cleared, got ${syncRes1.cleared.properties}`)
+  assert.ok(syncRes1.archived.properties >= 1, `Expected >= 1 referenced legacy property soft-archived, got ${syncRes1.archived.properties}`)
+  assert.equal(syncRes1.seeded.developers, UAE_DEVELOPERS.length)
+  assert.equal(syncRes1.seeded.communities, UAE_COMMUNITIES.length)
+  assert.equal(syncRes1.seeded.projects, UAE_PROJECTS.length)
+
+  // Verify ZERO legacy junk properties remain active
+  const junkLeft = q.val<number>(`SELECT COUNT(*) FROM properties WHERE deleted_at IS NULL AND title LIKE 'Old Legacy Junk Property%'`)
+  assert.equal(junkLeft, 0, 'All unreferenced legacy properties must be removed')
+  // Verify referenced legacy property was soft-archived (row exists for FK/history, deleted_at IS NOT NULL)
+  const archivedRow = q.get<any>(`SELECT id, deleted_at, active FROM properties WHERE id = ?`, linkedLegacyProp.id)
+  assert.ok(archivedRow && archivedRow.deleted_at, 'Referenced legacy property must be soft-archived, not hard-deleted')
+  // Verify preserved operational tables are 100% untouched
+  assert.equal(q.val<number>(`SELECT COUNT(*) FROM website_listings WHERE deleted_at IS NULL`), websiteCountBefore, 'website_listings MUST NOT be wiped')
+  assert.equal(q.val<number>(`SELECT COUNT(*) FROM users`), usersCountBefore, 'users MUST NOT be wiped')
+  assert.ok(q.val<number>(`SELECT id FROM leads WHERE id = ? AND deleted_at IS NULL`, preservedLead.id), 'leads MUST NOT be wiped')
+  assert.ok(q.val<number>(`SELECT id FROM jobs WHERE id = ? AND deleted_at IS NULL`, preservedJob.id), 'jobs MUST NOT be wiped')
+  // Verify preservedJob remains editable even though its legacy property was soft-archived
+  const editedPreservedJob = updateRecord(getDef('jobs'), preservedJob.id, { notes: 'Still editable post-migration' }, SYSTEM_CTX)
+  assert.equal(editedPreservedJob.property_id, linkedLegacyProp.id)
+
+  // Verify seeded Shahrukhz by Danube record in DB has proper money cents, developer_ref, community, media, and kit URLs
+  const shahrukhzRow = q.get<any>(`SELECT * FROM properties WHERE title = 'Shahrukhz by Danube' AND deleted_at IS NULL`)
+  assert.ok(shahrukhzRow, 'Shahrukhz by Danube must be seeded into properties table')
+  assert.equal(shahrukhzRow.project_name, 'Shahrukhz')
+  assert.equal(shahrukhzRow.emirate, 'Dubai')
+  assert.equal(Number(shahrukhzRow.price), 1_650_000 * 100, 'Price must be stored in cents matching engine.ts')
+  assert.ok(String(shahrukhzRow.brochure_url || '').includes('/api/catalog-kit/properties/'), 'Must populate brochure_url')
+  assert.ok(String(shahrukhzRow.ppt_url || '').includes('/api/catalog-kit/properties/'), 'Must populate ppt_url')
+  assert.ok(String(shahrukhzRow.payment_plan_pdf_url || '').includes('/api/catalog-kit/properties/'), 'Must populate payment_plan_pdf_url')
+
+  // Verify idempotency & staff-delete protection
+  const syncRes2 = await runUaeCatalogMigrationAndSeed({ seedProjects: true, skipBackup: true })
+  assert.equal(syncRes2.resetRan, false, 'Second run must NOT re-run catalog reset')
+  assert.equal(syncRes2.seeded.projects, 0, 'Second run must NOT duplicate projects')
+  assert.ok(q.val(`SELECT 1 FROM settings WHERE key = ?`, CATALOG_RESET_KEY))
+
+  // Staff deletes a seeded project -> next startup must NOT re-add it
+  q.run(`UPDATE properties SET deleted_at = '2026-11-27T12:00:00.000Z' WHERE id = ?`, shahrukhzRow.id)
+  const syncRes3 = await runUaeCatalogMigrationAndSeed({ seedProjects: true, skipBackup: true })
+  assert.equal(syncRes3.seeded.projects, 0, 'Staff-deleted project must NOT be re-inserted on reboot')
+  // Restore Shahrukhz for downstream Task 5+ tests
+  q.run(`UPDATE properties SET deleted_at = NULL WHERE id = ?`, shahrukhzRow.id)
+
+  console.log(`uae-projects-catalog Task 4 checks: OK (cleared=${syncRes1.cleared.properties}, archived=${syncRes1.archived.properties}, seeded=${syncRes1.seeded.projects} projects)`)
 } finally {
   await app.close()
   db.close()

@@ -36,7 +36,7 @@ const r1 = ensureOffPlanLaunches()
 assert.equal(r1.added, OFFPLAN_LAUNCHES.length)
 const rows = q.all<any>(`SELECT * FROM properties WHERE deleted_at IS NULL`)
 assert.equal(rows.length, OFFPLAN_LAUNCHES.length)
-const spectre = rows.find(r => r.title === 'Binghatti Spectre')
+const spectre = rows.find(r => r.title === 'Binghatti Spectre by Binghatti')
 assert.ok(spectre)
 assert.ok(spectre.is_off_plan)
 assert.equal(spectre.status, 'Off-Plan')
@@ -44,19 +44,23 @@ const media = normalizeMediaList(spectre.media)
 assert.ok(media.filter(m => m.kind === 'photo').length >= 5)
 assert.ok(rows.every(r => !r.syndicate_bayut), 'launches stay off the portals until a permit is added')
 
-// portal-only launches come in with their render and listing source
-const vista = rows.find(r => r.title === 'Vista Hub')
-assert.ok(vista, 'portal launch added')
-assert.ok(normalizeMediaList(vista.media)[0].url.startsWith('/media/launches/'))
-assert.match(String(vista.notes), /VILA/)
+// flagship UAE launches include Shahrukhz by Danube and Abu Dhabi off-plan launches
+const shahrukhz = rows.find(r => r.title === 'Shahrukhz by Danube')
+assert.ok(shahrukhz, 'Shahrukhz by Danube launch added')
+assert.equal(shahrukhz.project_name, 'Shahrukhz')
+assert.ok(normalizeMediaList(shahrukhz.media)[0].url.startsWith('/media/launches/shahrukhz'))
+const auhLaunch = rows.find(r => r.emirate === 'Abu Dhabi')
+assert.ok(auhLaunch, 'Abu Dhabi off-plan launches included')
 
 // enrichment fills only empty fields and replaces only the untouched area-photo placeholder
-const oak = rows.find(r => r.title === 'Oakmont')
-q.run(`UPDATE properties SET price = NULL, media = ?, title = 'Oakmont (staff renamed)' WHERE id = ?`, JSON.stringify([{ id: 'launch-oakmont-area', kind: 'photo', url: '/media/communities/jvc.webp', order: 0 }]), oak.id)
-q.run(`DELETE FROM settings WHERE key LIKE 'offplan-launch-enrich:portal:oakmont:%'`)
+const oak = rows.find(r => String(r.title).startsWith('Oakmont Park Estates'))
+assert.ok(oak)
+const oakLaunch = OFFPLAN_LAUNCHES.find(l => l.name === oak.title)!
+q.run(`UPDATE properties SET price = NULL, media = ?, title = 'Oakmont (staff renamed)' WHERE id = ?`, JSON.stringify([{ id: `launch-${oakLaunch.slug}-area`, kind: 'photo', url: '/media/communities/jvc.webp', order: 0 }]), oak.id)
+q.run(`DELETE FROM settings WHERE key LIKE ?`, `offplan-launch-enrich:${oakLaunch.key}:%`)
 assert.equal(ensureOffPlanLaunches().enriched, 1)
 const oak2 = findOne('properties', 'id = ?', oak.id)!
-assert.equal(Number(oak2.price), 1200000)
+assert.equal(Number(oak2.price), oakLaunch.fromPrice)
 assert.equal(oak2.title, 'Oakmont (staff renamed)')
 assert.ok(normalizeMediaList(oak2.media)[0].url.startsWith('/media/launches/oakmont'))
 

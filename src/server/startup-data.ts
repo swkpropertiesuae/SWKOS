@@ -9,7 +9,7 @@ import { nowIso } from './util'
 import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusinessData,starterDeclined,starterLoaded } from './domain/business-data'
 import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,applySwk2026Passwords,recoverFromRetiredPatternPasswords } from './seed'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
-import { ensureOffPlanLaunches } from './domain/offplan-launches'
+import { runUaeCatalogMigrationAndSeed } from './domain/uae-catalog-sync'
 
 const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
 
@@ -69,8 +69,15 @@ export async function runStartupDataTasks() {
     const r = loadSwkStarterData(SYSTEM_CTX) as any
     if (r.loaded) console.log(`SWK OS starter data loaded (${r.invoices?.length} invoices, ${r.jobs?.length} jobs).`)
   }
-  // after the starter-data check, so an empty database still gets the starter data first
-  if (config.offplanLaunches) {
-    try { const r = ensureOffPlanLaunches(); if (r.added || r.enriched) console.log(`Off-plan launches added: ${r.added}, updated: ${r.enriched}.`) } catch (e) { console.warn('[launches] skipped:', (e as Error).message) }
+  // Safe one-time catalog-only reset + full Dubai & Abu Dhabi Developers, Communities & Projects seed.
+  // Respects config.offplanLaunches for seeding projects (so test suites with OFFPLAN_LAUNCHES=false stay empty),
+  // and NEVER touches website_listings, users, HR/attendance, CRM leads/vault, deals, or accounting.
+  try {
+    const r = await runUaeCatalogMigrationAndSeed({ seedProjects: config.offplanLaunches })
+    if (r.resetRan || r.seeded.developers || r.seeded.communities || r.seeded.projects) {
+      console.log(`UAE Master Catalog synced (reset=${r.resetRan}, cleared=${r.cleared.properties} props, archived=${r.archived.properties} props, seeded=${r.seeded.developers} devs / ${r.seeded.communities} comms / ${r.seeded.projects} projects).`)
+    }
+  } catch (e) {
+    console.warn('[uae-catalog] skipped:', (e as Error).message)
   }
 }
