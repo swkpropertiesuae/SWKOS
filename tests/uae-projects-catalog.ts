@@ -260,6 +260,96 @@ try {
   q.run(`UPDATE properties SET deleted_at = NULL WHERE id = ?`, shahrukhzRow.id)
 
   console.log(`uae-projects-catalog Task 4 checks: OK (cleared=${syncRes1.cleared.properties}, archived=${syncRes1.archived.properties}, seeded=${syncRes1.seeded.projects} projects)`)
+
+  // --- Task 5: PDF Brochures, PDF Payment Plans, Pure-TS PPTX Decks, 8-Platform Social & Safe Website Promote ---
+  const { assertZeroShabibPublicPayload } = await import('../src/shared/zero-shabib-guard')
+  const auhProjRow = q.get<any>(`SELECT * FROM properties WHERE emirate = 'Abu Dhabi' AND is_off_plan = 1 AND deleted_at IS NULL LIMIT 1`)
+  const danubeDevRow = q.get<any>(`SELECT * FROM developers WHERE code = 'DANUBE' AND deleted_at IS NULL`)
+  const saadCommRow = q.get<any>(`SELECT * FROM communities WHERE code = 'SAAD' AND deleted_at IS NULL`)
+  assert.ok(auhProjRow && danubeDevRow && saadCommRow, 'Seeded AUH project, Danube dev, and Saadiyat community must exist')
+
+  // 1) Manifest JSON for Project, Developer, Community
+  for (const [ent, rid] of [['properties', shahrukhzRow.id], ['developers', danubeDevRow.id], ['communities', saadCommRow.id]] as const) {
+    const mRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/${ent}/${rid}`, headers: authHeaders })
+    assert.equal(mRes.statusCode, 200, `Catalog kit manifest failed for ${ent}/${rid}: ${mRes.body}`)
+    const mBody = mRes.json()
+    assert.ok(mBody.brochureUrl && mBody.pptUrl && mBody.social?.platforms?.length === 8, `${ent} manifest missing kit urls or 8 social platforms`)
+    assertZeroShabibPublicPayload(mBody, `Catalog Kit ${ent}/${rid}`)
+  }
+
+  // 2) Brochure PDF for Project (with Arabic/Unicode sanitizer safety), Developer & Community
+  for (const [ent, rid] of [['properties', shahrukhzRow.id], ['developers', danubeDevRow.id], ['communities', saadCommRow.id]] as const) {
+    const pdfRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/${ent}/${rid}/brochure.pdf`, headers: authHeaders })
+    assert.equal(pdfRes.statusCode, 200, `Brochure PDF failed for ${ent}/${rid}: ${pdfRes.body}`)
+    assert.ok(String(pdfRes.headers['content-type']).includes('application/pdf'))
+    assert.equal(pdfRes.rawPayload.subarray(0, 5).toString('utf8'), '%PDF-', `Invalid PDF header for ${ent}`)
+    assert.ok(pdfRes.rawPayload.length > 1500, `Brochure PDF too small for ${ent}`)
+  }
+
+  // 3) Payment Plan PDF + Emirate registration fee math (Dubai 4% DLD vs Abu Dhabi 2% ADM)
+  const dxbPayRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${shahrukhzRow.id}/payment-plan.pdf`, headers: authHeaders })
+  assert.equal(dxbPayRes.statusCode, 200)
+  assert.equal(dxbPayRes.rawPayload.subarray(0, 5).toString('utf8'), '%PDF-')
+  const dxbManifest = (await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${shahrukhzRow.id}`, headers: authHeaders })).json()
+  assert.equal(dxbManifest.emirateFeeSummary.registrationFeePct, 4, 'Dubai must use 4% DLD fee')
+  const auhManifest = (await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${auhProjRow.id}`, headers: authHeaders })).json()
+  assert.equal(auhManifest.emirateFeeSummary.registrationFeePct, 2, 'Abu Dhabi must use 2% ADM fee')
+  const auhPayRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${auhProjRow.id}/payment-plan.pdf`, headers: authHeaders })
+  assert.equal(auhPayRes.statusCode, 200)
+  assert.equal(auhPayRes.rawPayload.subarray(0, 5).toString('utf8'), '%PDF-')
+
+  // 4) Pure-TS OOXML PPTX deck (valid ZIP containing ppt/presentation.xml and ppt/slides/slide1.xml)
+  const pptxRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${shahrukhzRow.id}/deck.pptx`, headers: authHeaders })
+  assert.equal(pptxRes.statusCode, 200, `PPTX failed: ${pptxRes.body}`)
+  assert.ok(String(pptxRes.headers['content-type']).includes('presentationml.presentation'))
+  assert.equal(pptxRes.rawPayload.subarray(0, 2).toString('utf8'), 'PK', 'PPTX must be a valid ZIP archive')
+  const zipStr = pptxRes.rawPayload.toString('latin1')
+  assert.ok(zipStr.includes('ppt/presentation.xml') && zipStr.includes('ppt/slides/slide1.xml'), 'PPTX missing OOXML slide entries')
+
+  // 5) 8-Platform EN + AR Social Media Templates (Zero-Shabib compliant)
+  const socRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${shahrukhzRow.id}/social`, headers: authHeaders })
+  assert.equal(socRes.statusCode, 200)
+  const soc = socRes.json()
+  assert.equal(soc.platforms.length, 8, 'Expected all 8 social media platforms')
+  for (const pl of soc.platforms) {
+    assert.ok(pl.english?.body && pl.arabic?.body && pl.english.body.includes('Shahrukhz by Danube'), `Platform ${pl.platform} missing EN/AR draft`)
+  }
+  assertZeroShabibPublicPayload(soc, 'Social Media Kit')
+
+  // 6) Safe draft-first idempotent Promote to Website Studio (never auto-publishes; never overwrites live rows)
+  const promoRes1 = await app.inject({
+    method: 'POST',
+    url: `/api/catalog-kit/offplan/${shahrukhzRow.id}/promote-website`,
+    headers: { ...authHeaders, 'content-type': 'application/json' },
+    payload: {},
+  })
+  assert.equal(promoRes1.statusCode, 200, `promote-website failed: ${promoRes1.body}`)
+  const promoBody1 = promoRes1.json()
+  assert.equal(promoBody1.listing.published, false, 'Promoted listing must be created as draft (published=false)')
+  assert.equal(promoBody1.promotion.active, false, 'Promoted spotlight must be created as draft (active=false)')
+  const promoRes2 = await app.inject({
+    method: 'POST',
+    url: `/api/catalog-kit/offplan/${shahrukhzRow.id}/promote-website`,
+    headers: { ...authHeaders, 'content-type': 'application/json' },
+    payload: {},
+  })
+  assert.equal(promoRes2.statusCode, 200)
+  assert.equal(promoRes2.json().listing.id, promoBody1.listing.id, 'Second promote must be idempotent by slug')
+
+  // 7) Restricted staff RBAC enforcement (cannot call promote-website; cannot bypass properties RBAC)
+  const restrictedLogin = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    headers: { 'content-type': 'application/json', 'x-swk-client': 'web' },
+    payload: { email: 'umar@swk.properties', password: config.accounts.bdmPassword },
+  })
+  if (restrictedLogin.statusCode === 200) {
+    const rHeaders = { cookie: String(restrictedLogin.headers['set-cookie'] || '').split(';')[0], 'x-swk-client': 'web' }
+    const forbiddenPromote = await app.inject({ method: 'POST', url: `/api/catalog-kit/offplan/${shahrukhzRow.id}/promote-website`, headers: { ...rHeaders, 'content-type': 'application/json' }, payload: {} })
+    assert.equal(forbiddenPromote.statusCode, 403, 'Restricted staff MUST get 403 on promote-website')
+  }
+
+  console.log('uae-projects-catalog Task 5 checks: OK (PDF brochures, Dubai 4% / AUH 2% payment plans, PPTX ZIP, 8-platform EN+AR social, safe draft promote)')
 } finally {
   await app.close()
   db.close()
