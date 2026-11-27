@@ -1,4 +1,5 @@
-// Generated from Prop-AI's Dubai launch feed (DLD-registered launches, data through 2026-11-26).
+// Generated from Prop-AI's Dubai launch feed (DLD-registered launches, data through 2026-11-26)
+// plus the VILA and CityStay new-launch lists (8 and 25 Nov 2026). For portal-only rows launchDate is the listing date.
 // Images are the developers' marketing renders, saved under public/media/launches.
 // Regenerate rather than hand-edit; staff can edit the created property records freely.
 
@@ -9,6 +10,8 @@ export interface OffPlanLaunch {
   paymentPlan: string | null; downPct: number | null; onHandoverPct: number | null; postHandoverPct: number | null
   expectedYieldPct: number | null; lat: number | null; lng: number | null
   images: string[]; imageIsFallback: boolean; cover: string
+  /** Where the launch was found: Prop-AI (DLD register) and/or portal new-launch lists (VILA, CityStay). */
+  source: string
 }
 
 export const OFFPLAN_LAUNCHES_AS_OF = '2026-11-26'
@@ -40,7 +43,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/aura-heights-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/aura-heights-1.webp"
+  "cover": "/media/launches/aura-heights-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL BARSHAA SOUTH SECOND_DUBAI SCIENCE PARK_ELEMENT BY IMAN",
@@ -51,22 +55,30 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Al Barshaa South Second",
   "launchDate": "2026-11-17",
   "handover": "2029-12-03",
-  "fromPrice": null,
-  "bedrooms": [],
+  "fromPrice": 684000,
+  "bedrooms": [
+   0,
+   1,
+   2,
+   3
+  ],
   "propertyTypes": [],
   "units": null,
   "sizeMin": null,
   "sizeMax": null,
-  "paymentPlan": null,
-  "downPct": null,
-  "onHandoverPct": null,
-  "postHandoverPct": null,
+  "paymentPlan": "Plan 40/60",
+  "downPct": 40,
+  "onHandoverPct": 60,
+  "postHandoverPct": 0,
   "expectedYieldPct": 6.9,
   "lat": null,
   "lng": null,
-  "images": [],
-  "imageIsFallback": true,
-  "cover": "/media/communities/jvc.webp"
+  "images": [
+   "/media/launches/element-by-iman-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/element-by-iman-1.webp",
+  "source": "Prop-AI (DLD register); VILA, CityStay"
  },
  {
   "key": "AL ROWAIYAH FIRST_AL ROWAIYAH FIRST_THE ATELIER",
@@ -92,7 +104,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 2_LIWAN_ZETA",
@@ -103,7 +116,7 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Wadi Al Safa 2",
   "launchDate": "2026-11-17",
   "handover": "2031-09-15",
-  "fromPrice": null,
+  "fromPrice": 591000,
   "bedrooms": [
    0,
    1,
@@ -116,16 +129,19 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "units": 147,
   "sizeMin": 349,
   "sizeMax": 1549,
-  "paymentPlan": null,
-  "downPct": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
   "onHandoverPct": null,
   "postHandoverPct": null,
   "expectedYieldPct": 7.8,
   "lat": null,
   "lng": null,
-  "images": [],
-  "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "images": [
+   "/media/launches/zeta-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/zeta-1.webp",
+  "source": "Prop-AI (DLD register); CityStay"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_GLOBNA BY CRYSTAL BAY AZURE",
@@ -158,7 +174,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 2_LIWAN_CONFIDENT PRESTON",
@@ -190,7 +207,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": 55.36952784353358,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 5_DUBAI LAND RESIDENCE COMPLEX_ELVORA BY ZOYA",
@@ -216,7 +234,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "HESSYAN FIRST_PALM SPRINGS_RANCHO ONE & ALISO ONE AT PALM SPRINGS",
@@ -251,7 +270,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/rancho-one-and-aliso-one-at-palm-springs-8.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/rancho-one-and-aliso-one-at-palm-springs-1.webp"
+  "cover": "/media/launches/rancho-one-and-aliso-one-at-palm-springs-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "HESSYAN FIRST_PALM SPRINGS_RANCHO TWO & ALISO TWO AT PALM SPRINGS",
@@ -279,7 +299,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/rancho-two-and-aliso-two-at-palm-springs-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/rancho-two-and-aliso-two-at-palm-springs-1.webp"
+  "cover": "/media/launches/rancho-two-and-aliso-two-at-palm-springs-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WARSAN FOURTH_INTERNATIONAL CITY PHASE 2_AIZEL TOWER",
@@ -313,7 +334,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/aizel-tower-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/aizel-tower-1.webp"
+  "cover": "/media/launches/aizel-tower-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM JABAL ALI_PALM JABAL ALI_PALM CENTRAL PRIVATE RESIDENCES - FROND D",
@@ -324,22 +346,31 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Palm Jabal Ali",
   "launchDate": "2026-11-12",
   "handover": "2030-10-25",
-  "fromPrice": null,
-  "bedrooms": [],
+  "fromPrice": 2500000,
+  "bedrooms": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
   "propertyTypes": [],
   "units": null,
   "sizeMin": null,
   "sizeMax": null,
-  "paymentPlan": null,
-  "downPct": null,
-  "onHandoverPct": null,
-  "postHandoverPct": null,
+  "paymentPlan": "Plan 60/40 (20/40/40)",
+  "downPct": 20,
+  "onHandoverPct": 40,
+  "postHandoverPct": 0,
   "expectedYieldPct": null,
   "lat": null,
   "lng": null,
-  "images": [],
-  "imageIsFallback": true,
-  "cover": "/media/communities/palm-jumeirah.webp"
+  "images": [
+   "/media/launches/palm-central-private-residences-frond-d-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/palm-central-private-residences-frond-d-1.webp",
+  "source": "Prop-AI (DLD register); VILA"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_CHEVAL SOUTH BAY",
@@ -365,7 +396,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_CALISI BY ZOYA",
@@ -398,7 +430,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/calisi-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/calisi-1.webp"
+  "cover": "/media/launches/calisi-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL SATWA_JUMEIRAH GARDEN CITY_IZZZI.LIFE LIME",
@@ -430,7 +463,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": 55.28250609325232,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-marina.webp"
+  "cover": "/media/communities/dubai-marina.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_THE ST. REGIS RESIDENCES",
@@ -456,7 +490,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/palm-jumeirah.webp"
+  "cover": "/media/communities/palm-jumeirah.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_HAYAT 8",
@@ -467,22 +502,29 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Dubai South",
   "launchDate": "2026-11-09",
   "handover": "2030-04-30",
-  "fromPrice": null,
-  "bedrooms": [],
+  "fromPrice": 6500000,
+  "bedrooms": [
+   4,
+   5,
+   6
+  ],
   "propertyTypes": [],
   "units": null,
   "sizeMin": null,
   "sizeMax": null,
-  "paymentPlan": null,
-  "downPct": null,
+  "paymentPlan": "Plan 5/35/30/30",
+  "downPct": 5,
   "onHandoverPct": null,
   "postHandoverPct": null,
   "expectedYieldPct": 7.2,
   "lat": null,
   "lng": null,
-  "images": [],
-  "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "images": [
+   "/media/launches/hayat-8-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/hayat-8-1.webp",
+  "source": "Prop-AI (DLD register); VILA, CityStay"
  },
  {
   "key": "AL BARSHA SOUTH FOURTH_AL BARSHA SOUTH FOURTH_18 MARLOW ROW",
@@ -513,7 +555,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/jvc.webp"
+  "cover": "/media/communities/jvc.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_SHIONE BY BEYOND",
@@ -524,16 +567,20 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Palm Deira",
   "launchDate": "2026-11-06",
   "handover": "2030-12-31",
-  "fromPrice": null,
-  "bedrooms": [],
+  "fromPrice": 2590000,
+  "bedrooms": [
+   1,
+   2,
+   3
+  ],
   "propertyTypes": [],
   "units": null,
   "sizeMin": null,
   "sizeMax": null,
-  "paymentPlan": null,
-  "downPct": null,
-  "onHandoverPct": null,
-  "postHandoverPct": null,
+  "paymentPlan": "Plan 50/50 (10/40/50)",
+  "downPct": 10,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
   "expectedYieldPct": 5.9,
   "lat": null,
   "lng": null,
@@ -548,7 +595,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/shione-by-beyond-8.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/shione-by-beyond-1.webp"
+  "cover": "/media/launches/shione-by-beyond-1.webp",
+  "source": "Prop-AI (DLD register); VILA, CityStay"
  },
  {
   "key": "WADI AL SAFA 2_LIWAN_LATITUDE 25",
@@ -574,7 +622,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "SAIH SHUAIB 2_DUBAI INDUSTRIAL CITY_SIANA",
@@ -606,7 +655,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_ELINOR",
@@ -637,7 +687,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": 55.225802,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_LE CHATEAU PIETRUS",
@@ -671,7 +722,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/le-chateau-pietrus-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/le-chateau-pietrus-1.webp"
+  "cover": "/media/launches/le-chateau-pietrus-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_LUMO",
@@ -697,7 +749,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/palm-jumeirah.webp"
+  "cover": "/media/communities/palm-jumeirah.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 4_GHAF WOODS_LYRA",
@@ -708,22 +761,25 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Wadi Al Safa 4",
   "launchDate": "2026-10-26",
   "handover": "2029-12-15",
-  "fromPrice": null,
+  "fromPrice": 1190000,
   "bedrooms": [],
   "propertyTypes": [],
   "units": null,
   "sizeMin": null,
   "sizeMax": null,
-  "paymentPlan": null,
-  "downPct": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
   "onHandoverPct": null,
   "postHandoverPct": null,
   "expectedYieldPct": null,
   "lat": null,
   "lng": null,
-  "images": [],
-  "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "images": [
+   "/media/launches/lyra-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/lyra-1.webp",
+  "source": "Prop-AI (DLD register); CityStay"
  },
  {
   "key": "AL ROWAIYAH FIRST_AL ROWAIYAH FIRST_TILAL BINGHATTI",
@@ -764,7 +820,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/tilal-binghatti-6.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/tilal-binghatti-1.webp"
+  "cover": "/media/launches/tilal-binghatti-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "NAD AL SHIBA FIRST_MEYDAN_SUNRISE VALLEY",
@@ -797,7 +854,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/sunrise-valley-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/sunrise-valley-1.webp"
+  "cover": "/media/launches/sunrise-valley-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT AL MATAAR_EXPO CITY_EXPO VALLEY VIEWS 1",
@@ -823,7 +881,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT DUBAI ALMELAHEYAH_MINA RASHID_PORTSIDE SQUARE",
@@ -867,7 +926,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/portside-square-8.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/portside-square-1.webp"
+  "cover": "/media/launches/portside-square-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL BARSHA SOUTH FOURTH_JUMEIRAH VILLAGE CIRCLE_SOL TERRA GARDENS",
@@ -901,7 +961,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/sol-terra-gardens-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/sol-terra-gardens-1.webp"
+  "cover": "/media/launches/sol-terra-gardens-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL JADAF_SAMA AL JADAF_BINGHATTI SPECTRE",
@@ -945,7 +1006,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/binghatti-spectre-8.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/binghatti-spectre-1.webp"
+  "cover": "/media/launches/binghatti-spectre-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_GROSVENOR HOUSE",
@@ -956,22 +1018,25 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Dubai South",
   "launchDate": "2026-10-13",
   "handover": "2027-06-30",
-  "fromPrice": null,
+  "fromPrice": 1002000,
   "bedrooms": [],
   "propertyTypes": [],
   "units": null,
   "sizeMin": null,
   "sizeMax": null,
-  "paymentPlan": null,
-  "downPct": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
   "onHandoverPct": null,
   "postHandoverPct": null,
   "expectedYieldPct": 7.2,
   "lat": 24.949562,
   "lng": 55.229259,
-  "images": [],
-  "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "images": [
+   "/media/launches/grosvenor-house-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/grosvenor-house-1.webp",
+  "source": "Prop-AI (DLD register); CityStay"
  },
  {
   "key": "AL SATWA_JUMEIRAH GARDEN CITY_HOLM CENTRAL",
@@ -1005,7 +1070,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/holm-central-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/holm-central-1.webp"
+  "cover": "/media/launches/holm-central-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_THE BAY INTERIORS BY MISSONI",
@@ -1042,7 +1108,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/the-bay-interiors-by-missoni-3.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/the-bay-interiors-by-missoni-1.webp"
+  "cover": "/media/launches/the-bay-interiors-by-missoni-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 5_DUBAI LAND RESIDENCE COMPLEX_THE WOW TOWER",
@@ -1078,7 +1145,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/the-wow-tower-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/the-wow-tower-1.webp"
+  "cover": "/media/launches/the-wow-tower-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL JADAF_CULTURE VILLAGE_FALA BY KASCO",
@@ -1112,7 +1180,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/business-bay.webp"
+  "cover": "/media/communities/business-bay.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "JABAL ALI INDUSTRIAL SECOND_DOWN TOWN JABAL ALI_RAW DISTRICT 2 TOWER C BY IMTIAZ",
@@ -1148,7 +1217,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/raw-district-2-tower-c-by-imtiaz-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/raw-district-2-tower-c-by-imtiaz-1.webp"
+  "cover": "/media/launches/raw-district-2-tower-c-by-imtiaz-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WORLD ISLANDS_THE WORLD_SAMANA ISLAND",
@@ -1182,7 +1252,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/palm-jumeirah.webp"
+  "cover": "/media/communities/palm-jumeirah.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "JABAL ALI INDUSTRIAL SECOND_DOWN TOWN JABAL ALI_SAMANA DOWNTOWN ONE",
@@ -1222,7 +1293,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/samana-downtown-one-6.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/samana-downtown-one-1.webp"
+  "cover": "/media/launches/samana-downtown-one-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WARSAN FOURTH_INTERNATIONAL CITY PHASE 2_LENJAWI DIAMOND",
@@ -1256,7 +1328,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/lenjawi-diamond-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/lenjawi-diamond-1.webp"
+  "cover": "/media/launches/lenjawi-diamond-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_BAY ESTATE",
@@ -1293,7 +1366,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/bay-estate-5.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/bay-estate-1.webp"
+  "cover": "/media/launches/bay-estate-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL BARSHA SOUTH FIFTH_JUMEIRAH VILLAGE TRIANGLE_ELAR1S AXIS",
@@ -1328,7 +1402,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/elar1s-axis-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/elar1s-axis-1.webp"
+  "cover": "/media/launches/elar1s-axis-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL SATWA_JUMEIRAH GARDEN CITY_EVERGRIN HOUSE 4",
@@ -1364,7 +1439,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/evergr1n-house-4-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/evergr1n-house-4-1.webp"
+  "cover": "/media/launches/evergr1n-house-4-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_SOYO BY ZIMAYA",
@@ -1399,7 +1475,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/soyo-by-zimaya-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/soyo-by-zimaya-1.webp"
+  "cover": "/media/launches/soyo-by-zimaya-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "JABAL ALI INDUSTRIAL SECOND_DOWN TOWN JABAL ALI_PORTSIDE 2 BY SAMANA DEVELOPERS",
@@ -1432,7 +1509,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": 55.091823520079245,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/sheikh-zayed-road.webp"
+  "cover": "/media/communities/sheikh-zayed-road.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 5_DUBAI LAND RESIDENCE COMPLEX_REEF 995",
@@ -1443,7 +1521,7 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "area": "Wadi Al Safa 5",
   "launchDate": "2026-09-15",
   "handover": "2028-11-30",
-  "fromPrice": null,
+  "fromPrice": 740000,
   "bedrooms": [
    0,
    1,
@@ -1457,8 +1535,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "units": 347,
   "sizeMin": 422,
   "sizeMax": 3149,
-  "paymentPlan": null,
-  "downPct": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
   "onHandoverPct": null,
   "postHandoverPct": null,
   "expectedYieldPct": 8.3,
@@ -1468,7 +1546,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/reef-995-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/reef-995-1.webp"
+  "cover": "/media/launches/reef-995-1.webp",
+  "source": "Prop-AI (DLD register); CityStay"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH RESIDENTIAL DISTRICT_LINCOLN STAR RESIDENCE III",
@@ -1500,7 +1579,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "NAD AL SHIBA FIRST_MEYDAN_RABDAN AVENUE",
@@ -1526,7 +1606,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": 55.288332,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/downtown-dubai.webp"
+  "cover": "/media/communities/downtown-dubai.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "MADINAT AL MATAAR_DUBAI SOUTH_LORIZA BY ZOYA",
@@ -1557,7 +1638,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
   "lng": null,
   "images": [],
   "imageIsFallback": true,
-  "cover": "/media/communities/dubai-hills-estate.webp"
+  "cover": "/media/communities/dubai-hills-estate.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "ME'AISEM FIRST_INTERNATIONAL MEDIA PRODUCTION ZONE_LAWNCREST BY ZIMAYA",
@@ -1591,7 +1673,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/lawncrest-by-zimaya-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/lawncrest-by-zimaya-1.webp"
+  "cover": "/media/launches/lawncrest-by-zimaya-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "SAIH SHUAIB 2_DUBAI INDUSTRIAL CITY_SAMANA SOUTH HAVEN 2",
@@ -1625,7 +1708,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/samana-south-haven-2-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/samana-south-haven-2-1.webp"
+  "cover": "/media/launches/samana-south-haven-2-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "PALM DEIRA_PALM DEIRA_OCEARA PARKVIEW RESIDENCES",
@@ -1660,7 +1744,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/oceara-parkview-residences-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/oceara-parkview-residences-1.webp"
+  "cover": "/media/launches/oceara-parkview-residences-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "WADI AL SAFA 5_DUBAI LAND RESIDENCE COMPLEX_KORE BY IMTIAZ",
@@ -1694,7 +1779,8 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/kore-by-imtiaz-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/kore-by-imtiaz-1.webp"
+  "cover": "/media/launches/kore-by-imtiaz-1.webp",
+  "source": "Prop-AI (DLD register)"
  },
  {
   "key": "AL BARSHA SOUTH FIFTH_JUMEIRAH VILLAGE TRIANGLE_MARWA VIEWS",
@@ -1730,6 +1816,1581 @@ export const OFFPLAN_LAUNCHES: OffPlanLaunch[] = [
    "/media/launches/marwa-views-1.webp"
   ],
   "imageIsFallback": false,
-  "cover": "/media/launches/marwa-views-1.webp"
+  "cover": "/media/launches/marwa-views-1.webp",
+  "source": "Prop-AI (DLD register)"
+ },
+ {
+  "key": "portal:samana-business-park-2",
+  "slug": "samana-business-park-2",
+  "name": "Samana Business Park 2",
+  "developer": "Samana",
+  "community": "Majan",
+  "area": "Majan",
+  "launchDate": "2026-11-08",
+  "handover": "2028-12-31",
+  "fromPrice": 2070000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 20/28/5/47",
+  "downPct": 20,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/samana-business-park-2-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/samana-business-park-2-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:palm-jebel-ali-frond-j-the-beach-collection",
+  "slug": "palm-jebel-ali-frond-j-the-beach-collection",
+  "name": "Palm Jebel Ali Frond J - The Beach Collection",
+  "developer": "Nakheel",
+  "community": "Palm Jebel Ali",
+  "area": "Palm Jebel Ali",
+  "launchDate": "2026-11-08",
+  "handover": "2030-03-31",
+  "fromPrice": 26030000,
+  "bedrooms": [
+   5,
+   6
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 70/30 (20/50/30)",
+  "downPct": 20,
+  "onHandoverPct": 30,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/palm-jebel-ali-frond-j-the-beach-collection-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/palm-jebel-ali-frond-j-the-beach-collection-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:oakmont",
+  "slug": "oakmont",
+  "name": "Oakmont",
+  "developer": "Nshama",
+  "community": "Town Square",
+  "area": "Town Square",
+  "launchDate": "2026-11-08",
+  "handover": "2029-06-30",
+  "fromPrice": 1200000,
+  "bedrooms": [
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 40/60 (5/35/60)",
+  "downPct": 5,
+  "onHandoverPct": 60,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/oakmont-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/oakmont-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:lumena-alta-by-omniyat",
+  "slug": "lumena-alta-by-omniyat",
+  "name": "Lumena Alta by Omniyat",
+  "developer": "Omniyat",
+  "community": "Business Bay",
+  "area": "Business Bay",
+  "launchDate": "2026-11-08",
+  "handover": "2030-12-31",
+  "fromPrice": 27000000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 50/50 (5/45/50)",
+  "downPct": 5,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/lumena-alta-by-omniyat-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/lumena-alta-by-omniyat-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:expo-valley-views-ruba",
+  "slug": "expo-valley-views-ruba",
+  "name": "Expo Valley Views - Ruba",
+  "developer": "Expo City",
+  "community": "Expo City Dubai",
+  "area": "Expo City Dubai",
+  "launchDate": "2026-11-08",
+  "handover": "2029-12-31",
+  "fromPrice": 1590000,
+  "bedrooms": [
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 10/45/5/40",
+  "downPct": 10,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/expo-valley-views-ruba-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/expo-valley-views-ruba-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:expo-valley-views-roudah",
+  "slug": "expo-valley-views-roudah",
+  "name": "Expo Valley Views - Roudah",
+  "developer": "Expo City",
+  "community": "Expo City Dubai",
+  "area": "Expo City Dubai",
+  "launchDate": "2026-11-25",
+  "handover": "2029-10-28",
+  "fromPrice": 1692000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/expo-valley-views-roudah-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/expo-valley-views-roudah-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:soulever-1-and-2-by-beyond",
+  "slug": "soulever-1-and-2-by-beyond",
+  "name": "Soulever 1 & 2 by Beyond",
+  "developer": "Beyond (Omniyat)",
+  "community": "Dubai Maritime City",
+  "area": "Dubai Maritime City",
+  "launchDate": "2026-11-08",
+  "handover": "2029-03-31",
+  "fromPrice": 2940000,
+  "bedrooms": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 50/50 (10/40/50)",
+  "downPct": 10,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/soulever-1-and-2-by-beyond-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/soulever-1-and-2-by-beyond-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:vista-hub",
+  "slug": "vista-hub",
+  "name": "Vista Hub",
+  "developer": "Prestige One",
+  "community": "Majan",
+  "area": "Majan",
+  "launchDate": "2026-11-08",
+  "handover": "2028-12-31",
+  "fromPrice": 2200000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 40/60 (10/30/60)",
+  "downPct": 10,
+  "onHandoverPct": 60,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/vista-hub-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/vista-hub-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:marina-views",
+  "slug": "marina-views",
+  "name": "Marina Views",
+  "developer": "Emaar",
+  "community": "Mina Rashid",
+  "area": "Mina Rashid",
+  "launchDate": "2026-11-08",
+  "handover": "2028-12-31",
+  "fromPrice": 2160000,
+  "bedrooms": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 80/20 (10/70/20)",
+  "downPct": 10,
+  "onHandoverPct": 20,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/marina-views-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/marina-views-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:eterna-by-grid",
+  "slug": "eterna-by-grid",
+  "name": "Eterna by Grid",
+  "developer": "Grid Realty",
+  "community": "Dubai Production City",
+  "area": "Dubai Production City",
+  "launchDate": "2026-11-08",
+  "handover": "2029-03-31",
+  "fromPrice": 585000,
+  "bedrooms": [
+   0,
+   1,
+   2
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 10/30/10/50",
+  "downPct": 10,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/eterna-by-grid-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/eterna-by-grid-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:south-lofts-2",
+  "slug": "south-lofts-2",
+  "name": "South Lofts 2",
+  "developer": "Premier Choice",
+  "community": "Dubai Industrial City",
+  "area": "Dubai Industrial City",
+  "launchDate": "2026-11-08",
+  "handover": "2029-06-30",
+  "fromPrice": 515000,
+  "bedrooms": [
+   0,
+   1
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 20/30/10/40",
+  "downPct": 20,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/south-lofts-2-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/south-lofts-2-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:jules-verne-residences",
+  "slug": "jules-verne-residences",
+  "name": "Jules Verne Residences",
+  "developer": "Segrex Development",
+  "community": "Jumeirah Village Triangle",
+  "area": "Jumeirah Village Triangle",
+  "launchDate": "2026-11-08",
+  "handover": "2030-12-31",
+  "fromPrice": 750000,
+  "bedrooms": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 60/40 (20/40/40)",
+  "downPct": 20,
+  "onHandoverPct": 40,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/jules-verne-residences-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/jules-verne-residences-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:volant-by-zoya",
+  "slug": "volant-by-zoya",
+  "name": "Volantè by Zoya",
+  "developer": "Zoya",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-08",
+  "handover": "2029-12-31",
+  "fromPrice": 695000,
+  "bedrooms": [
+   0,
+   1,
+   2
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 58/42 (20/38/42)",
+  "downPct": 20,
+  "onHandoverPct": 42,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/volant-by-zoya-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/volant-by-zoya-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:damac-hills-lilac",
+  "slug": "damac-hills-lilac",
+  "name": "Damac Hills - Lilac",
+  "developer": "DAMAC Properties",
+  "community": "DAMAC Hills",
+  "area": "DAMAC Hills",
+  "launchDate": "2026-11-08",
+  "handover": "2030-06-30",
+  "fromPrice": 720000,
+  "bedrooms": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 50/50 (5/45/50)",
+  "downPct": 5,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/damac-hills-lilac-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/damac-hills-lilac-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:arancia-yards-2",
+  "slug": "arancia-yards-2",
+  "name": "Arancia Yards 2",
+  "developer": "Beyond (Omniyat)",
+  "community": "City of Arabia",
+  "area": "City of Arabia",
+  "launchDate": "2026-11-08",
+  "handover": "2029-06-30",
+  "fromPrice": 1520000,
+  "bedrooms": [
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 40/60 (10/30/60)",
+  "downPct": 10,
+  "onHandoverPct": 60,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/arancia-yards-2-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/arancia-yards-2-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:seven-x-seven-residences",
+  "slug": "seven-x-seven-residences",
+  "name": "Seven x Seven Residences",
+  "developer": "Kasumigaseki Properties Development",
+  "community": "Meydan Horizon",
+  "area": "Meydan Horizon",
+  "launchDate": "2026-11-08",
+  "handover": "2029-12-31",
+  "fromPrice": 2200000,
+  "bedrooms": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 30/70 (5/25/70)",
+  "downPct": 5,
+  "onHandoverPct": 70,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/seven-x-seven-residences-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/seven-x-seven-residences-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:the-yards-plaza",
+  "slug": "the-yards-plaza",
+  "name": "The Yards Plaza",
+  "developer": "Beyond (Omniyat)",
+  "community": "City of Arabia",
+  "area": "City of Arabia",
+  "launchDate": "2026-11-08",
+  "handover": "2029-09-30",
+  "fromPrice": 3036000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/the-yards-plaza-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/the-yards-plaza-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:sorrento",
+  "slug": "sorrento",
+  "name": "Sorrento",
+  "developer": "DAMAC Properties",
+  "community": "DAMAC Lagoons",
+  "area": "DAMAC Lagoons",
+  "launchDate": "2026-11-08",
+  "handover": "2030-03-31",
+  "fromPrice": 849000,
+  "bedrooms": [
+   0,
+   1
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 50/50 (5/45/50)",
+  "downPct": 5,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/sorrento-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/sorrento-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:sor-i-by-zoya",
+  "slug": "sor-i-by-zoya",
+  "name": "Soréi by Zoya",
+  "developer": "Zoya",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-08",
+  "handover": "2028-09-30",
+  "fromPrice": 700000,
+  "bedrooms": [
+   0,
+   1,
+   2
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 10/35/10/45",
+  "downPct": 10,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/sor-i-by-zoya-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/sor-i-by-zoya-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:the-vault-by-imtiaz",
+  "slug": "the-vault-by-imtiaz",
+  "name": "The Vault by Imtiaz",
+  "developer": "Imtiaz Real Estate",
+  "community": "Majan",
+  "area": "Majan",
+  "launchDate": "2026-11-08",
+  "handover": "2028-12-31",
+  "fromPrice": 1340000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 50/50 (20/30/50)",
+  "downPct": 20,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/the-vault-by-imtiaz-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/the-vault-by-imtiaz-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:augusta",
+  "slug": "augusta",
+  "name": "Augusta",
+  "developer": "Nshama",
+  "community": "Town Square",
+  "area": "Town Square",
+  "launchDate": "2026-11-08",
+  "handover": "2028-03-31",
+  "fromPrice": 1240000,
+  "bedrooms": [
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 40/60 (10/30/60)",
+  "downPct": 10,
+  "onHandoverPct": 60,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/augusta-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/augusta-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:olbia",
+  "slug": "olbia",
+  "name": "Olbia",
+  "developer": "Nshama",
+  "community": "Town Square",
+  "area": "Town Square",
+  "launchDate": "2026-11-08",
+  "handover": "2028-06-30",
+  "fromPrice": 1170000,
+  "bedrooms": [
+   1,
+   2,
+   3
+  ],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 40/60 (10/30/60)",
+  "downPct": 10,
+  "onHandoverPct": 60,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/olbia-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/olbia-1.webp",
+  "source": "VILA new-launch listing"
+ },
+ {
+  "key": "portal:the-level",
+  "slug": "the-level",
+  "name": "The Level",
+  "developer": "",
+  "community": "Meydan Horizon",
+  "area": "Meydan Horizon",
+  "launchDate": "2026-11-25",
+  "handover": "2030-06-28",
+  "fromPrice": 1375000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 35/65 (10/25/65)",
+  "downPct": 10,
+  "onHandoverPct": 65,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/the-level-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/the-level-1.webp",
+  "source": "VILA, CityStay new-launch listing"
+ },
+ {
+  "key": "portal:velora-residence",
+  "slug": "velora-residence",
+  "name": "Velora Residence",
+  "developer": "",
+  "community": "Dubai Islands",
+  "area": "Dubai Islands",
+  "launchDate": "2026-11-25",
+  "handover": "2029-03-28",
+  "fromPrice": 1800000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 37/63 (5/32/63)",
+  "downPct": 5,
+  "onHandoverPct": 63,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/velora-residence-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/velora-residence-1.webp",
+  "source": "VILA, CityStay new-launch listing"
+ },
+ {
+  "key": "portal:maserati-island-by-samana-collecta",
+  "slug": "maserati-island-by-samana-collecta",
+  "name": "Maserati Island by Samana Collecta",
+  "developer": "Samana",
+  "community": "The World Islands",
+  "area": "The World Islands",
+  "launchDate": "2026-11-25",
+  "handover": "2031-03-28",
+  "fromPrice": 1500000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 50/50 (10/40/50)",
+  "downPct": 10,
+  "onHandoverPct": 50,
+  "postHandoverPct": 0,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/maserati-island-by-samana-collecta-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/maserati-island-by-samana-collecta-1.webp",
+  "source": "VILA, CityStay new-launch listing"
+ },
+ {
+  "key": "portal:amali-residences",
+  "slug": "amali-residences",
+  "name": "Amali Residences",
+  "developer": "",
+  "community": "Al Wasl",
+  "area": "Al Wasl",
+  "launchDate": "2026-11-25",
+  "handover": "2030-12-28",
+  "fromPrice": 17200000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/amali-residences-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/amali-residences-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:elan-tower",
+  "slug": "elan-tower",
+  "name": "ELAN Tower",
+  "developer": "",
+  "community": "Dubai Land Residence Complex",
+  "area": "Dubai Land Residence Complex",
+  "launchDate": "2026-11-25",
+  "handover": "2029-03-28",
+  "fromPrice": 499940,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/elan-tower-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/elan-tower-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:elyra-by-galaxy",
+  "slug": "elyra-by-galaxy",
+  "name": "Elyra by Galaxy",
+  "developer": "Galaxy",
+  "community": "Liwan",
+  "area": "Liwan",
+  "launchDate": "2026-11-25",
+  "handover": "2029-06-28",
+  "fromPrice": 757000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/elyra-by-galaxy-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/elyra-by-galaxy-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:future-avenue",
+  "slug": "future-avenue",
+  "name": "Future Avenue",
+  "developer": "",
+  "community": "Meydan Horizon",
+  "area": "Meydan Horizon",
+  "launchDate": "2026-11-25",
+  "handover": "2029-03-28",
+  "fromPrice": 1300000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/future-avenue-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/future-avenue-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:lincoln-star-residence-5",
+  "slug": "lincoln-star-residence-5",
+  "name": "Lincoln Star Residence 5",
+  "developer": "Lincoln",
+  "community": "Jebel Ali Hills",
+  "area": "Jebel Ali Hills",
+  "launchDate": "2026-11-25",
+  "handover": "2029-06-28",
+  "fromPrice": 575653,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/lincoln-star-residence-5-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/lincoln-star-residence-5-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:lumina-by-vision",
+  "slug": "lumina-by-vision",
+  "name": "Lumina by Vision",
+  "developer": "Vision",
+  "community": "Liwan",
+  "area": "Liwan",
+  "launchDate": "2026-11-25",
+  "handover": "2028-12-28",
+  "fromPrice": 553000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/lumina-by-vision-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/lumina-by-vision-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:lunara-tower",
+  "slug": "lunara-tower",
+  "name": "Lunara Tower",
+  "developer": "",
+  "community": "Majan",
+  "area": "Majan",
+  "launchDate": "2026-11-25",
+  "handover": "2029-03-28",
+  "fromPrice": 797000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/lunara-tower-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/lunara-tower-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:marquis-aura",
+  "slug": "marquis-aura",
+  "name": "Marquis Aura",
+  "developer": "Marquis",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-25",
+  "handover": "2029-06-28",
+  "fromPrice": 660000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/marquis-aura-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/marquis-aura-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:palace-residences-hillside-towers-a-and-b",
+  "slug": "palace-residences-hillside-towers-a-and-b",
+  "name": "Palace Residences Hillside Towers A & B",
+  "developer": "Emaar",
+  "community": "Dubai Hills Estate",
+  "area": "Dubai Hills Estate",
+  "launchDate": "2026-11-25",
+  "handover": "2029-06-28",
+  "fromPrice": 1719888,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/palace-residences-hillside-towers-a-and-b-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/palace-residences-hillside-towers-a-and-b-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:vivo-south",
+  "slug": "vivo-south",
+  "name": "Vivo South",
+  "developer": "",
+  "community": "Dubai Industrial City",
+  "area": "Dubai Industrial City",
+  "launchDate": "2026-11-25",
+  "handover": "2029-03-28",
+  "fromPrice": 599000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/vivo-south-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/vivo-south-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:arche-residences",
+  "slug": "arche-residences",
+  "name": "Arche Residences",
+  "developer": "",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-25",
+  "handover": "2028-06-28",
+  "fromPrice": 990901,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/arche-residences-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/arche-residences-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:jura-terraces",
+  "slug": "jura-terraces",
+  "name": "Jura Terraces",
+  "developer": "",
+  "community": "Dubai Land Residence Complex",
+  "area": "Dubai Land Residence Complex",
+  "launchDate": "2026-11-25",
+  "handover": "2029-06-28",
+  "fromPrice": 595900,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/jura-terraces-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/jura-terraces-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:aris-by-grid",
+  "slug": "aris-by-grid",
+  "name": "Aris by GRID",
+  "developer": "Grid Realty",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-25",
+  "handover": "2029-12-28",
+  "fromPrice": 599000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/aris-by-grid-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/aris-by-grid-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:shahrukhz-residences-by-danube",
+  "slug": "shahrukhz-residences-by-danube",
+  "name": "Shahrukhz Residences by Danube",
+  "developer": "Danube Properties",
+  "community": "Dubai Maritime City",
+  "area": "Dubai Maritime City",
+  "launchDate": "2026-11-25",
+  "handover": "2030-06-28",
+  "fromPrice": 1650000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/shahrukhz-residences-by-danube-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/shahrukhz-residences-by-danube-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:soma-residence",
+  "slug": "soma-residence",
+  "name": "Soma Residence",
+  "developer": "",
+  "community": "Dubai Islands",
+  "area": "Dubai Islands",
+  "launchDate": "2026-11-25",
+  "handover": "2028-09-28",
+  "fromPrice": 1670000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/soma-residence-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/soma-residence-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:avior-by-acube",
+  "slug": "avior-by-acube",
+  "name": "Avior by Acube",
+  "developer": "Acube Real Estate Development",
+  "community": "Al Wasl",
+  "area": "Al Wasl",
+  "launchDate": "2026-11-25",
+  "handover": "2029-09-28",
+  "fromPrice": 3100000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/avior-by-acube-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/avior-by-acube-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:magnolia",
+  "slug": "magnolia",
+  "name": "Magnolia",
+  "developer": "",
+  "community": "Dubai Land Residence Complex",
+  "area": "Dubai Land Residence Complex",
+  "launchDate": "2026-11-25",
+  "handover": "2028-09-28",
+  "fromPrice": 1250000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/magnolia-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/magnolia-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:coralis-residences",
+  "slug": "coralis-residences",
+  "name": "Coralis Residences",
+  "developer": "",
+  "community": "Meydan",
+  "area": "Meydan",
+  "launchDate": "2026-11-25",
+  "handover": "2028-06-28",
+  "fromPrice": 1950000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/coralis-residences-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/coralis-residences-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:zenith-d1",
+  "slug": "zenith-d1",
+  "name": "Zenith D1",
+  "developer": "",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-25",
+  "handover": "2028-09-28",
+  "fromPrice": 829000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/zenith-d1-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/zenith-d1-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:seef-residences-by-alef-building-5",
+  "slug": "seef-residences-by-alef-building-5",
+  "name": "Seef Residences by Alef Building 5",
+  "developer": "Alef",
+  "community": "Al Mamzar",
+  "area": "Al Mamzar",
+  "launchDate": "2026-11-25",
+  "handover": "2030-09-28",
+  "fromPrice": null,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/seef-residences-by-alef-building-5-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/seef-residences-by-alef-building-5-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:cellista-by-zoya",
+  "slug": "cellista-by-zoya",
+  "name": "Cellista by Zoya",
+  "developer": "Zoya",
+  "community": "Dubai South",
+  "area": "Dubai South",
+  "launchDate": "2026-11-25",
+  "handover": "2029-12-28",
+  "fromPrice": 626000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/cellista-by-zoya-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/cellista-by-zoya-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:elyra-residences-by-enaam",
+  "slug": "elyra-residences-by-enaam",
+  "name": "Elyra Residences by Enaam",
+  "developer": "Enaam",
+  "community": "Dubai Silicon Oasis",
+  "area": "Dubai Silicon Oasis",
+  "launchDate": "2026-11-25",
+  "handover": "2028-12-28",
+  "fromPrice": 695000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/elyra-residences-by-enaam-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/elyra-residences-by-enaam-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:haus-99",
+  "slug": "haus-99",
+  "name": "Haus 99",
+  "developer": "",
+  "community": "Jumeirah Village Triangle",
+  "area": "Jumeirah Village Triangle",
+  "launchDate": "2026-11-25",
+  "handover": "2028-12-28",
+  "fromPrice": 595000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/haus-99-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/haus-99-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:stax",
+  "slug": "stax",
+  "name": "Stax",
+  "developer": "",
+  "community": "Jumeirah Village Circle",
+  "area": "Jumeirah Village Circle",
+  "launchDate": "2026-11-25",
+  "handover": "2028-08-28",
+  "fromPrice": 828997,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/stax-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/stax-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:piazza-roma",
+  "slug": "piazza-roma",
+  "name": "Piazza Roma",
+  "developer": "DAMAC Properties",
+  "community": "DAMAC Lagoons",
+  "area": "DAMAC Lagoons",
+  "launchDate": "2026-11-25",
+  "handover": "2030-06-28",
+  "fromPrice": 7207000,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/piazza-roma-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/piazza-roma-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:kaia-residences",
+  "slug": "kaia-residences",
+  "name": "Kaia Residences",
+  "developer": "",
+  "community": "Dubai Islands",
+  "area": "Dubai Islands",
+  "launchDate": "2026-11-25",
+  "handover": "2028-12-28",
+  "fromPrice": 1804995,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/kaia-residences-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/kaia-residences-1.webp",
+  "source": "CityStay new-launch listing"
+ },
+ {
+  "key": "portal:ellington-sands-ii",
+  "slug": "ellington-sands-ii",
+  "name": "Ellington Sands II",
+  "developer": "Ellington",
+  "community": "Dubai Islands",
+  "area": "Dubai Islands",
+  "launchDate": "2026-11-25",
+  "handover": null,
+  "fromPrice": null,
+  "bedrooms": [],
+  "propertyTypes": [],
+  "units": null,
+  "sizeMin": null,
+  "sizeMax": null,
+  "paymentPlan": "Plan 0",
+  "downPct": 0,
+  "onHandoverPct": null,
+  "postHandoverPct": null,
+  "expectedYieldPct": null,
+  "lat": null,
+  "lng": null,
+  "images": [
+   "/media/launches/ellington-sands-ii-1.webp"
+  ],
+  "imageIsFallback": false,
+  "cover": "/media/launches/ellington-sands-ii-1.webp",
+  "source": "CityStay new-launch listing"
  }
 ]

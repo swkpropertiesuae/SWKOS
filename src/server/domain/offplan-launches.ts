@@ -1,5 +1,5 @@
 import { q } from '../db'
-import { createRecord,findOne,getDef,SYSTEM_CTX } from '../engine'
+import { createRecord,findOne,getDef,patchRecord,SYSTEM_CTX } from '../engine'
 import { nowIso } from '../util'
 import { OFFPLAN_LAUNCHES,type OffPlanLaunch } from '../../shared/offplan-launches'
 import { satelliteViewUrl,type ProjectMediaItem } from '../../shared/media'
@@ -29,7 +29,9 @@ export function launchMedia(l: OffPlanLaunch): ProjectMediaItem[] {
 }
 
 function launchDescription(l: OffPlanLaunch): string {
-  const parts = [`New off-plan launch by ${l.developer} in ${l.area === l.community ? l.community : `${l.community} (${l.area})`}, Dubai — launched ${l.launchDate}.`]
+  const where = l.area === l.community ? l.community : `${l.community} (${l.area})`
+  const when = l.key.startsWith('portal:') ? `listed as a new launch by ${l.launchDate}` : `launched ${l.launchDate}`
+  const parts = [`New off-plan launch${l.developer ? ` by ${l.developer}` : ''} in ${where}, Dubai — ${when}.`]
   if (l.handover) parts.push(`DLD planned handover: ${l.handover}.`)
   if (l.bedrooms.length) parts.push(`Unit mix: ${bedsLabel(l.bedrooms)}${l.units ? ` across ${l.units} units` : ''}.`)
   if (l.paymentPlan) parts.push(`Payment plan: ${l.paymentPlan}${l.downPct != null ? ` (${l.downPct}% down${l.onHandoverPct != null ? `, ${l.onHandoverPct}% on handover` : ''}${l.postHandoverPct ? `, ${l.postHandoverPct}% post-handover` : ''})` : ''}.`)
@@ -45,7 +47,7 @@ function developerId(name: string): number {
   return Number(createRecord(getDef('developers'), { code: clash ? `${code}-${Date.now() % 10000}` : code, name, emirate: 'Dubai' }, SYSTEM_CTX).id)
 }
 
-export function launchPayload(l: OffPlanLaunch, devId: number): Record<string, unknown> {
+export function launchPayload(l: OffPlanLaunch, devId: number | undefined): Record<string, unknown> {
   const year = l.handover ? Number(l.handover.slice(0, 4)) : null
   const type = l.propertyTypes.find(t => PROPERTY_TYPES.has(t)) ?? 'Apartment'
   return {
@@ -76,7 +78,7 @@ export function launchPayload(l: OffPlanLaunch, devId: number): Record<string, u
     available_date: l.handover ?? undefined,
     virtual_tour_url: l.lat != null && l.lng != null ? satelliteViewUrl(l.lat, l.lng) : undefined,
     media: launchMedia(l),
-    notes: `Added from the Dubai new-launch feed (DLD-registered, data as of 2026-11-26). Source key: ${l.key}. Check prices, payment plan and permit with the developer before advertising.`,
+    notes: `Added from the Dubai new-launch feed. Source: ${l.source}. Key: ${l.key}. Check prices, payment plan and permit with the developer before advertising.`,
   }
 }
 
@@ -84,7 +86,7 @@ export function launchPayload(l: OffPlanLaunch, devId: number): Record<string, u
  * Adds each catalogued launch once as an off-plan property. A per-launch settings key records it, so a launch
  * staff later delete is not added back, and edits made in the app are never overwritten.
  */
-export function ensureOffPlanLaunches(): { added: number } {
+export function ensureOffPlanLaunches(): { added: number; enriched: number } {
   let added = 0
   for (const l of OFFPLAN_LAUNCHES) {
     const key = `offplan-launch:${l.key}`
@@ -92,10 +94,38 @@ export function ensureOffPlanLaunches(): { added: number } {
     try {
       const match = findOne('properties', 'lower(title) = lower(?)', l.name)
       const existing = match?.is_off_plan ? match : null
-      const id = existing ? Number(existing.id) : Number(createRecord(getDef('properties'), launchPayload(l, developerId(l.developer)), SYSTEM_CTX).id)
+      const id = existing ? Number(existing.id) : Number(createRecord(getDef('properties'), launchPayload(l, l.developer ? developerId(l.developer) : undefined), SYSTEM_CTX).id)
       if (!existing) added++
       q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, key, String(id), nowIso())
     } catch (e) { console.warn(`[launches] ${l.name} skipped:`, (e as Error).message) }
   }
-  return { added }
+  return { added, enriched: enrichAddedLaunches() }
+}
+
+/**
+ * A later catalogue can know more about a launch than when it was first added (price, plan, renders).
+ * Fills only fields still empty, and swaps the media only while it is the untouched area-photo placeholder.
+ */
+function enrichAddedLaunches(): number {
+  let n = 0
+  const def = getDef('properties')
+  for (const l of OFFPLAN_LAUNCHES) {
+    const key = `offplan-launch-enrich:${l.key}:${l.images.length}:${l.fromPrice ?? ''}:${l.paymentPlan ?? ''}`
+    if (q.val(`SELECT 1 FROM settings WHERE key = ?`, key)) continue
+    const id = Number(q.val(`SELECT value FROM settings WHERE key = ?`, `offplan-launch:${l.key}`))
+    const rec = id ? findOne('properties', 'id = ?', id) : null
+    if (rec) {
+      const fresh = launchPayload(l, undefined)
+      const patch: Record<string, unknown> = {}
+      for (const f of ['price', 'payment_plan', 'bedrooms', 'completion_year', 'available_date'] as const) {
+        const empty = rec[f] == null || rec[f] === '' || (f === 'price' && Number(rec[f]) === 0)
+        if (empty && fresh[f] != null) patch[f] = fresh[f]
+      }
+      const media = Array.isArray(rec.media) ? rec.media : []
+      if (l.images.length && media.some((m: any) => String(m?.id).endsWith('-area')) && media.every((m: any) => String(m?.id).startsWith('launch-'))) patch.media = fresh.media
+      if (Object.keys(patch).length) { try { patchRecord(def, id, patch, SYSTEM_CTX); n++ } catch (e) { console.warn(`[launches] ${l.name} not updated:`, (e as Error).message) } }
+    }
+    q.run(`INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, key, nowIso())
+  }
+  return n
 }

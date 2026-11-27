@@ -71,6 +71,6 @@ export async function runStartupDataTasks() {
   }
   // after the starter-data check, so an empty database still gets the starter data first
   if (config.offplanLaunches) {
-    try { const r = ensureOffPlanLaunches(); if (r.added) console.log(`Off-plan launches added: ${r.added}.`) } catch (e) { console.warn('[launches] skipped:', (e as Error).message) }
+    try { const r = ensureOffPlanLaunches(); if (r.added || r.enriched) console.log(`Off-plan launches added: ${r.added}, updated: ${r.enriched}.`) } catch (e) { console.warn('[launches] skipped:', (e as Error).message) }
   }
 }

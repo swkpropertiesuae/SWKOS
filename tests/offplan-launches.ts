@@ -14,7 +14,7 @@ const { syncSchema } = await import('../src/server/schema')
 const { seedReference } = await import('../src/server/seed')
 const { ensureDirs } = await import('../src/server/config')
 const { q } = await import('../src/server/db')
-const { deleteRecord, getDef, SYSTEM_CTX } = await import('../src/server/engine')
+const { deleteRecord, findOne, getDef, SYSTEM_CTX } = await import('../src/server/engine')
 const { classifyEmbedUrl, normalizeMediaList } = await import('../src/shared/media')
 const { OFFPLAN_LAUNCHES } = await import('../src/shared/offplan-launches')
 const { ensureOffPlanLaunches, planOption } = await import('../src/server/domain/offplan-launches')
@@ -43,6 +43,22 @@ assert.equal(spectre.status, 'Off-Plan')
 const media = normalizeMediaList(spectre.media)
 assert.ok(media.filter(m => m.kind === 'photo').length >= 5)
 assert.ok(rows.every(r => !r.syndicate_bayut), 'launches stay off the portals until a permit is added')
+
+// portal-only launches come in with their render and listing source
+const vista = rows.find(r => r.title === 'Vista Hub')
+assert.ok(vista, 'portal launch added')
+assert.ok(normalizeMediaList(vista.media)[0].url.startsWith('/media/launches/'))
+assert.match(String(vista.notes), /VILA/)
+
+// enrichment fills only empty fields and replaces only the untouched area-photo placeholder
+const oak = rows.find(r => r.title === 'Oakmont')
+q.run(`UPDATE properties SET price = NULL, media = ?, title = 'Oakmont (staff renamed)' WHERE id = ?`, JSON.stringify([{ id: 'launch-oakmont-area', kind: 'photo', url: '/media/communities/jvc.webp', order: 0 }]), oak.id)
+q.run(`DELETE FROM settings WHERE key LIKE 'offplan-launch-enrich:portal:oakmont:%'`)
+assert.equal(ensureOffPlanLaunches().enriched, 1)
+const oak2 = findOne('properties', 'id = ?', oak.id)!
+assert.equal(Number(oak2.price), 1200000)
+assert.equal(oak2.title, 'Oakmont (staff renamed)')
+assert.ok(normalizeMediaList(oak2.media)[0].url.startsWith('/media/launches/oakmont'))
 
 // second run adds nothing; a deleted launch is not added back
 assert.equal(ensureOffPlanLaunches().added, 0)
