@@ -19,8 +19,11 @@ import { teamProfileByEmail } from '../../shared/swk-team-profiles'
 import { watermarkPropertyImage } from '../domain/watermark'
 import { sendStoredAttachment } from './files'
 import { normalizeMediaList, type ProjectMediaKind } from '../../shared/media'
+import { buildCatalogBrochurePdf, buildCatalogDeckPptx, buildPaymentPlanPdf, type CatalogKitEntity } from '../domain/catalog-kit'
+import { assertZeroShabibPublicPayload, findShabibViolations, isRestrictedPublicProfile } from '../../shared/zero-shabib-guard'
 
-export const SHAREABLE = ['properties', 'units', 'website_listings'] as const
+export const SHAREABLE = ['properties', 'units', 'website_listings', 'developers', 'communities'] as const
+const KIT_ENTITIES = new Set<string>(['properties', 'developers', 'communities'])
 
 type SharedAssetRef = {
   kind: ProjectMediaKind
@@ -82,7 +85,10 @@ type RawItem = {
   tour?: string
   model_3d_url?: string
   brochure_url?: string
+  ppt_url?: string
+  payment_plan_pdf_url?: string
   video_url?: string
+  emirate?: string
 }
 
 const lines = (v: unknown) => String(v ?? '').split(/\r?\n|•|,/).map(s => s.trim()).filter(Boolean)
@@ -214,6 +220,77 @@ function toRawItem(entity: string, r: any): RawItem {
       video_url: r.video_url || base.video_url || base.videoUrl || undefined,
     }
   }
+  if (entity === 'developers') {
+    const bundle = extractMediaBundle(r.media, {
+      video_url: r.video_url,
+      virtual_tour_url: r.virtual_tour_url,
+      brochure_url: r.brochure_url,
+    })
+    const projCount = q.val<number>(`SELECT COUNT(*) FROM properties WHERE developer_ref = ? AND deleted_at IS NULL`, r.id) ?? 0
+    const emirate = r.emirate || 'Dubai'
+    return {
+      id: Number(r.id || 0),
+      title: r.name,
+      subtitle: `${r.tier || 'Master Developer'} · ${emirate}, UAE`,
+      purpose: 'Developer Profile',
+      status: r.tier || 'Verified Developer',
+      type: 'Master Developer',
+      location: `${r.headquarters || emirate}, UAE`,
+      developer: r.name,
+      emirate,
+      price_label: projCount > 0 ? `${projCount} Active UAE Projects` : 'UAE Master Portfolio',
+      description: [
+        r.description || `${r.name} is a premier real estate developer in ${emirate}, UAE.`,
+        r.specialties ? `Core Specialties: ${r.specialties}` : '',
+      ].filter(Boolean),
+      features: [...lines(r.amenities_standard), ...lines(r.flagship_projects).map(f => `Flagship: ${f}`)].slice(0, 18),
+      rawImages: fallbackImagesFor(Number(r.id || 1), `${r.name} ${emirate}`, bundle.photoUrls),
+      rawAssets: bundle.rawAssets,
+      reference: r.rera_id || r.code || `DEV-${r.id}`,
+      tour: r.virtual_tour_url || undefined,
+      brochure_url: r.brochure_url || undefined,
+      ppt_url: r.ppt_url || undefined,
+      video_url: r.video_url || undefined,
+    }
+  }
+  if (entity === 'communities') {
+    const bundle = extractMediaBundle(r.media, {
+      video_url: r.video_url,
+      virtual_tour_url: r.virtual_tour_url,
+      brochure_url: r.brochure_url,
+    })
+    const emirate = r.emirate || 'Dubai'
+    const ppsf = Number(r.avg_price_sqft || 0) || null
+    const yieldPct = Number(r.gross_yield_pct || 0) || null
+    return {
+      id: Number(r.id || 0),
+      title: r.name,
+      subtitle: `${r.segment || 'Prime'} Community · ${emirate}, UAE`,
+      purpose: 'Community Guide',
+      status: r.segment || 'Prime',
+      type: 'Master Community',
+      location: `${r.area || r.name}, ${emirate}, UAE`,
+      community: r.name,
+      developer: r.master_developer || undefined,
+      emirate,
+      price_label: ppsf ? `Avg AED ${Math.round(ppsf).toLocaleString('en-US')} / sq ft` : `${emirate} Community`,
+      price_per_sqft: ppsf,
+      roi_percent: yieldPct,
+      description: [
+        r.description || '',
+        r.future_outlook ? `15-Year Outlook: ${r.future_outlook}` : '',
+        r.metro_transit ? `Transit & Connectivity: ${r.metro_transit}` : '',
+      ].filter(Boolean),
+      features: [...lines(r.amenities), ...lines(r.key_landmarks).map(l => `Landmark: ${l}`)].slice(0, 18),
+      rawImages: fallbackImagesFor(Number(r.id || 1), `${r.name} ${emirate}`, bundle.photoUrls),
+      rawAssets: bundle.rawAssets,
+      reference: r.ticker || r.code || `COM-${r.id}`,
+      tour: r.virtual_tour_url || undefined,
+      brochure_url: r.brochure_url || undefined,
+      ppt_url: r.ppt_url || undefined,
+      video_url: r.video_url || undefined,
+    }
+  }
   if (entity === 'units') {
     const prop = r.property_id
       ? q.get<any>(`SELECT id, title, media, sub_community, building_name, address, rera_permit_no, tenure, video_url, virtual_tour_url, model_3d_url, floor_plan_url, brochure_url FROM properties WHERE id = ? AND deleted_at IS NULL`, r.property_id)
@@ -325,7 +402,10 @@ function toRawItem(entity: string, r: any): RawItem {
     tour: r.virtual_tour_url || undefined,
     model_3d_url: r.model_3d_url || undefined,
     brochure_url: r.brochure_url || undefined,
+    ppt_url: r.ppt_url || undefined,
+    payment_plan_pdf_url: r.payment_plan_pdf_url || undefined,
     video_url: r.video_url || undefined,
+    emirate: r.emirate || 'Dubai',
   }
 }
 
@@ -444,18 +524,63 @@ export default async function (app: FastifyInstance) {
     },
   )
 
+  /** SCOPED PUBLIC CATALOG KIT DOWNLOADS: Token-gated PDF Brochure, PDF Payment Plan, and PowerPoint Deck (.pptx). */
+  app.get(
+    '/api/public/share/:token/kit/:itemIdx/:kind',
+    { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const p = req.params as any
+      const l = load(String(p.token))
+      if (!KIT_ENTITIES.has(String(l.entity))) throw new HttpError(404, 'Kit not available for this share type')
+      const itemIdx = Number(p.itemIdx)
+      const kind = String(p.kind || '')
+      if (!Number.isInteger(itemIdx) || itemIdx < 0) throw new HttpError(404, 'Item not found')
+      const ids = (safeJson<number[]>(l.ref_ids, []) ?? []).filter(id => q.val(`SELECT 1 FROM "${l.entity}" WHERE id = ? AND deleted_at IS NULL`, id))
+      const recId = ids[itemIdx]
+      if (!recId) throw new HttpError(404, 'Record not found')
+      const def = getDef(l.entity)
+      const rec = getRecord(def, recId, { user: null, system: true })
+      const ent = l.entity as CatalogKitEntity
+      const slug = String(rec.title || rec.name || 'swk-catalog').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'swk-catalog'
+      if (kind === 'brochure.pdf') {
+        const buf = await buildCatalogBrochurePdf(ent, rec)
+        reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-swk-brochure.pdf"`).header('cache-control', 'public, max-age=300')
+        return buf
+      }
+      if (kind === 'payment-plan.pdf') {
+        if (ent !== 'properties') throw new HttpError(404, 'Payment plan PDF applies to projects')
+        const buf = await buildPaymentPlanPdf(rec)
+        reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-payment-plan.pdf"`).header('cache-control', 'public, max-age=300')
+        return buf
+      }
+      if (kind === 'deck.pptx') {
+        const buf = buildCatalogDeckPptx(ent, rec)
+        reply.header('content-type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation').header('content-disposition', `attachment; filename="${slug}-swk-deck.pptx"`).header('cache-control', 'public, max-age=300')
+        return buf
+      }
+      throw new HttpError(404, 'Unsupported kit asset')
+    },
+  )
+
   app.get('/api/public/share/:token', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req, reply) => {
     reply.header('cache-control', 'no-store')
     const token = String((req.params as any).token)
     const l = load(token)
     const rawItems = loadShareRawItems(l)
+    const supportsKit = KIT_ENTITIES.has(String(l.entity))
     // Strictly replace every image URL with our server-watermarked endpoint and proxy uploaded assets via token-scoped URLs!
     const items = rawItems.map((it, itemIdx) => {
       const { rawImages, rawAssets, ...rest } = it
-      const resolveAssetUrl = (asset: SharedAssetRef, assetIdx: number) =>
-        asset.attachmentId
-          ? `/api/public/share/${encodeURIComponent(token)}/asset/${itemIdx}/${assetIdx}`
-          : asset.url
+      const kitBase = `/api/public/share/${encodeURIComponent(token)}/kit/${itemIdx}`
+      const resolveAssetUrl = (asset: SharedAssetRef, assetIdx: number) => {
+        if (asset.attachmentId) return `/api/public/share/${encodeURIComponent(token)}/asset/${itemIdx}/${assetIdx}`
+        if (supportsKit && asset.url.startsWith('/api/catalog-kit/')) {
+          if (asset.url.endsWith('/brochure.pdf')) return `${kitBase}/brochure.pdf`
+          if (asset.url.endsWith('/payment-plan.pdf')) return `${kitBase}/payment-plan.pdf`
+          if (asset.url.endsWith('/deck.pptx')) return `${kitBase}/deck.pptx`
+        }
+        return asset.url
+      }
       const mappedAssets = rawAssets.map((a, assetIdx) => ({
         kind: a.kind,
         title: a.title,
@@ -467,7 +592,7 @@ export default async function (app: FastifyInstance) {
         if (!rawUrl) return undefined
         const idx = rawAssets.findIndex(a => a.url === rawUrl)
         if (idx >= 0) return resolveAssetUrl(rawAssets[idx]!, idx)
-        if (rawUrl.startsWith('/api/files/')) return undefined
+        if (rawUrl.startsWith('/api/files/') || rawUrl.startsWith('/api/catalog-kit/')) return undefined
         return rawUrl
       }
       const isModel3dAsset = (a: { url: string; mime?: string }) =>
@@ -484,7 +609,9 @@ export default async function (app: FastifyInstance) {
         tour: resolveSingle(rest.tour) || tours3d.find(t => !isModel3dAsset(t))?.url || tours3d[0]?.url,
         model_3d_url: resolveSingle(rest.model_3d_url) || tours3d.find(isModel3dAsset)?.url,
         floor_plan: resolveSingle(rest.floor_plan) || floor_plans[0]?.url,
-        brochure_url: resolveSingle(rest.brochure_url) || brochures[0]?.url,
+        brochure_url: supportsKit ? `${kitBase}/brochure.pdf` : (resolveSingle(rest.brochure_url) || brochures[0]?.url),
+        ppt_url: supportsKit ? `${kitBase}/deck.pptx` : resolveSingle(rest.ppt_url),
+        payment_plan_pdf_url: supportsKit && l.entity === 'properties' ? `${kitBase}/payment-plan.pdf` : resolveSingle(rest.payment_plan_pdf_url),
         videos,
         tours3d,
         floor_plans,
@@ -495,20 +622,31 @@ export default async function (app: FastifyInstance) {
     const u = q.get<any>(`SELECT name, email, phone, work_phone, designation FROM users WHERE id = ?`, l.created_by)
     const acc = hardcodedAccountFor(u?.email)
     const web = teamProfileByEmail(acc?.email ?? u?.email)
-    return {
+    const rawTitle = web?.title || u?.designation || 'Private Client Advisor'
+    const hidePersonalProfile =
+      !u ||
+      isRestrictedPublicProfile({ email: u.email, name: u.name }) ||
+      findShabibViolations({ name: u.name, email: u.email, title: rawTitle }).length > 0
+    const payload = {
       title: l.title,
       client_name: l.client_name,
       expires_at: l.expires_at,
       items,
-      agent: u
+      agent: hidePersonalProfile
         ? {
+            name: 'SWK Private Client Advisory Desk',
+            title: 'Senior Real Estate Advisors · Dubai & Abu Dhabi',
+            phone: '+971 56 433 0448',
+            email: 'info@swkpropertiesuae.com',
+            photo: null,
+          }
+        : {
             name: u.name,
-            title: web?.title || u.designation || 'Private Client Advisor',
+            title: rawTitle,
             phone: u.work_phone || '+971 56 433 0448',
             email: u.email,
             photo: web?.photo ?? null,
-          }
-        : null,
+          },
       company: {
         name: 'SWK Properties LLC',
         orn: '51517',
@@ -518,6 +656,8 @@ export default async function (app: FastifyInstance) {
         website: 'https://www.swkpropertiesuae.com',
       },
     }
+    assertZeroShabibPublicPayload(payload, 'Public Share Brochure Payload')
+    return payload
   })
 
   app.post('/api/public/share/:token/enquiry', { config: { rateLimit: { max: 6, timeWindow: '10 minutes' } } }, async (req) => {

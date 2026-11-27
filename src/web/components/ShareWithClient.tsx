@@ -5,9 +5,9 @@ import { useToast } from '../lib/toast'
 import { Modal } from '../ui/kit'
 import { CustomSelect } from './CustomSelect'
 
-export const SHAREABLE_ENTITIES = new Set(['properties', 'units', 'website_listings'])
+export const SHAREABLE_ENTITIES = new Set(['properties', 'units', 'website_listings', 'developers', 'communities'])
 
-/** Create a client listing link for one or more inventory records and send it by WhatsApp, e-mail or copy. */
+/** Create a client dossier link for one or more projects, developers, or communities and send by WhatsApp, e-mail or copy. */
 export function ShareWithClient({ entity, ids, label, onClose }: { entity: string; ids: number[]; label: string; onClose: () => void }) {
   const toast = useToast()
   const [client, setClient] = useState(''), [title, setTitle] = useState(label), [days, setDays] = useState(30)
@@ -16,7 +16,8 @@ export function ShareWithClient({ entity, ids, label, onClose }: { entity: strin
     setBusy(true)
     try { const r = await post<{ path: string }>('/api/share-links', { entity, ids, title: title || undefined, client_name: client || undefined, expires_days: days }); setUrl(window.location.origin + r.path) } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
   }
-  const text = `${client ? `Dear ${client}, ` : ''}please find ${ids.length > 1 ? `${ids.length} properties` : 'the property'} selected for you by SWK Properties: ${url}`
+  const noun = entity === 'developers' ? 'developer dossier' : entity === 'communities' ? 'community investment guide' : ids.length > 1 ? `${ids.length} projects` : 'the project'
+  const text = `${client ? `Dear ${client}, ` : ''}please find ${noun} selected for you by SWK Properties (with Brochure PDF, Payment Plan, PPTX Deck & 3D Tour): ${url}`
   return (
     <Modal open onClose={onClose} title="Share with client" width={520}
       footer={url ? <><div className="flex-1" /><button className="btn outline" onClick={onClose}>Done</button></> : <><div className="flex-1" /><button className="btn outline" onClick={onClose}>Cancel</button><button className="web-btn" disabled={busy} onClick={() => void create()}><Share2 size={14} /> Create link</button></>}>

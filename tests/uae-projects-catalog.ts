@@ -350,6 +350,48 @@ try {
   }
 
   console.log('uae-projects-catalog Task 5 checks: OK (PDF brochures, Dubai 4% / AUH 2% payment plans, PPTX ZIP, 8-platform EN+AR social, safe draft promote)')
+
+  // --- Task 6: Public Watermarked Share Links for Projects, Developers & Communities + Token-Gated Kit Downloads ---
+  for (const [ent, rid, expectPayPlan] of [
+    ['properties', shahrukhzRow.id, true],
+    ['developers', danubeDevRow.id, false],
+    ['communities', saadCommRow.id, false],
+  ] as const) {
+    const createShare = await app.inject({
+      method: 'POST',
+      url: '/api/share-links',
+      headers: { ...authHeaders, 'content-type': 'application/json' },
+      payload: { entity: ent, ids: [rid], title: `VIP ${ent} Dossier`, client_name: 'Global Investor' },
+    })
+    assert.equal(createShare.statusCode, 200, `Share link create failed for ${ent}: ${createShare.body}`)
+    const { token } = createShare.json()
+    assert.ok(token)
+
+    // Unauthenticated public viewer fetches /api/public/share/:token
+    const pubView = await app.inject({ method: 'GET', url: `/api/public/share/${token}` })
+    assert.equal(pubView.statusCode, 200, `Public share view failed for ${ent}: ${pubView.body}`)
+    const pubData = pubView.json()
+    assert.equal(pubData.items.length, 1)
+    assert.ok(pubData.items[0].brochure_url?.includes(`/api/public/share/${token}/kit/0/brochure.pdf`), `Missing public brochure_url on ${ent}`)
+    assert.ok(pubData.items[0].ppt_url?.includes(`/api/public/share/${token}/kit/0/deck.pptx`), `Missing public ppt_url on ${ent}`)
+    assertZeroShabibPublicPayload(pubData, `Public Share ${ent}`)
+
+    // Unauthenticated public download of PDF Brochure & PPTX Deck via token-gated route
+    const pubBrochure = await app.inject({ method: 'GET', url: `/api/public/share/${token}/kit/0/brochure.pdf` })
+    assert.equal(pubBrochure.statusCode, 200)
+    assert.equal(pubBrochure.rawPayload.subarray(0, 5).toString('utf8'), '%PDF-')
+    const pubDeck = await app.inject({ method: 'GET', url: `/api/public/share/${token}/kit/0/deck.pptx` })
+    assert.equal(pubDeck.statusCode, 200)
+    assert.equal(pubDeck.rawPayload.subarray(0, 2).toString('utf8'), 'PK')
+
+    if (expectPayPlan) {
+      assert.ok(pubData.items[0].payment_plan_pdf_url?.includes(`/api/public/share/${token}/kit/0/payment-plan.pdf`))
+      const pubPay = await app.inject({ method: 'GET', url: `/api/public/share/${token}/kit/0/payment-plan.pdf` })
+      assert.equal(pubPay.statusCode, 200)
+      assert.equal(pubPay.rawPayload.subarray(0, 5).toString('utf8'), '%PDF-')
+    }
+  }
+  console.log('uae-projects-catalog Task 6 checks: OK (watermarked share links + token-gated brochure/payment-plan/PPTX downloads for projects, developers & communities)')
 } finally {
   await app.close()
   db.close()

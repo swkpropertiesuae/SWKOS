@@ -67,6 +67,8 @@ type Item = {
   tour?: string
   model_3d_url?: string
   brochure_url?: string
+  ppt_url?: string
+  payment_plan_pdf_url?: string
   video_url?: string
   videos?: SharedAsset[]
   tours3d?: SharedAsset[]
@@ -572,7 +574,17 @@ export function PublicListing() {
                     )}
                     {it.brochure_url && (
                       <a href={resolveApiUrl(it.brochure_url)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
-                        <ExternalLink size={14} /> Developer Brochure PDF
+                        <ExternalLink size={14} /> Official Brochure PDF
+                      </a>
+                    )}
+                    {it.payment_plan_pdf_url && (
+                      <a href={resolveApiUrl(it.payment_plan_pdf_url)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
+                        <ExternalLink size={14} /> Payment Plan PDF
+                      </a>
+                    )}
+                    {it.ppt_url && (
+                      <a href={resolveApiUrl(it.ppt_url)} target="_blank" rel="noopener noreferrer" className="btn outline no-underline">
+                        <ExternalLink size={14} /> Presentation Deck (.PPTX)
                       </a>
                     )}
                     {it.tour && (
