@@ -27,10 +27,11 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react'
-import { del, get, post, put } from '../../lib/api'
+import { del, downloadAuthFile, get, post, put } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { PIPELINE_12_STAGES } from '@shared/swk-pipeline'
 import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
+import { GlossyBlackCard } from '../../components/ui/PremiumPrimitives'
 import { ShabibTeamTasksTab } from '../../components/shabib/ShabibTeamTasksTab'
 import { ShabibForensicVisitsTab } from '../../components/shabib/ShabibForensicVisitsTab'
 import { ShabibCatalogStudioTab } from '../../components/shabib/ShabibCatalogStudioTab'
@@ -221,56 +222,63 @@ export default function ShabibsCornerPage() {
 
   return (
     <div className="mx-auto max-w-[1380px] space-y-6 pb-10">
-      {/* Swiss Architectural Executive Owner Hero */}
+      {/* Pure White + Glossy Floating Black Executive Owner Hero */}
       <SwissHeroHeader
         eyebrow="Owner Exclusive · Zero-Leak Private Command"
         badge={
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#121212] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#51fec0]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0a0b0e] border border-[#d4a955]/45 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ebc97c]">
             <Crown size={12} /> Owner Vault Lock
           </span>
         }
         title="Shabib's Workspace"
-        subtitle="Owner's unified executive & forensic command suite: Team Daily Tasks & Verifier Control, GPS-Pinned Forensic Site Visits & Viewings, Catalog & Brochure Theme Studio, Legal Forms (Word/JPEG/Fillable), Pin-to-Pin Closing Dossiers, Commissions & Expenses, plus Privacy Fast Track."
+        subtitle="Simple, all-in-one owner command desk: Team To-Do & Verifiers, GPS Site Visits & Viewings, Project & Brochure Studio, Fillable Legal Forms (Word/JPEG/PDF), Pin-to-Pin Closings, Commissions & Expenses, and 1-Click Master Excel Backup."
         actions={
           <>
-            <BracketLink to="/master-log" variant="light" size="sm">
-              <Database size={13} /> Master Log (CORE)
+            <button
+              type="button"
+              onClick={() => void downloadAuthFile('/api/admin/excel/master.xlsx', `SWK-OS-Master-Data-${new Date().toISOString().slice(0, 10)}.xlsx`).catch((e: any) => toast.error(e.message))}
+              className="btn green sm"
+            >
+              <Database size={13} /> Download All Data (Excel)
+            </button>
+            <BracketLink to="/admin/backup" variant="light" size="sm">
+              <ShieldCheck size={13} /> Daily Backups
             </BracketLink>
-            <BracketLink to="/pipeline" variant="dark" size="sm">
-              <KanbanSquare size={13} className="text-[#51fec0]" /> 12-Stage Kanban
+            <BracketLink to="/dubai-agency-hub" variant="dark" size="sm">
+              <KanbanSquare size={13} className="text-[#ebc97c]" /> Dubai Agency Hub
             </BracketLink>
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div className="rounded-2xl border border-[#fecaca] bg-[#fef2f2]/85 p-4">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#b91c1c]">
+        <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+          <GlossyBlackCard accent="crimson" className="p-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-[#fda4af]">
               <span>Immediate Cash Rush</span> <Flame size={14} />
             </div>
-            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{aed(ft.immediate_cash_aed)}</div>
-            <div className="mt-0.5 text-xs text-[#7f1d1d]">{ft.immediate_cash_count} urgent private file(s)</div>
-          </div>
-          <div className="rounded-2xl border border-black/[0.08] bg-white/95 p-4">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#5b6778]">
-              <span>Gold-Rush Weighted Cash</span> <Wallet size={14} className="text-[#121212]" />
+            <div className="mt-2 font-mono text-[22px] font-bold tabular-nums text-white">{aed(ft.immediate_cash_aed)}</div>
+            <div className="mt-0.5 text-xs text-white/70">{ft.immediate_cash_count} urgent private file(s)</div>
+          </GlossyBlackCard>
+          <GlossyBlackCard accent="gold" className="p-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-[#ebc97c]">
+              <span>Gold-Rush Weighted Cash</span> <Wallet size={14} />
             </div>
-            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{aed(pl.totals.weighted_gold_rush_aed)}</div>
-            <div className="mt-0.5 text-xs text-[#5b6778]">{pl.totals.total_deals} deals across 12 stages</div>
-          </div>
-          <div className="rounded-2xl border border-black/[0.08] bg-white/95 p-4">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#5b6778]">
-              <span>Owner Approvals Waiting</span> <ShieldCheck size={14} className="text-[#121212]" />
+            <div className="mt-2 font-mono text-[22px] font-bold tabular-nums text-[#ebc97c]">{aed(pl.totals.weighted_gold_rush_aed)}</div>
+            <div className="mt-0.5 text-xs text-white/70">{pl.totals.total_deals} deals across 12 stages</div>
+          </GlossyBlackCard>
+          <GlossyBlackCard accent="tricolor" className="p-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-white/80">
+              <span>Owner Approvals Waiting</span> <ShieldCheck size={14} className="text-[#ebc97c]" />
             </div>
-            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{ap.total_pending}</div>
-            <div className="mt-0.5 text-xs text-[#5b6778]">{ap.master_requests.length} Master Log · {ap.seal_requests.length} Seals</div>
-          </div>
-          <div className="rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5]/85 p-4">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#047857]">
+            <div className="mt-2 font-mono text-[22px] font-bold tabular-nums text-white">{ap.total_pending}</div>
+            <div className="mt-0.5 text-xs text-white/70">{ap.master_requests.length} Master Log · {ap.seal_requests.length} Seals</div>
+          </GlossyBlackCard>
+          <GlossyBlackCard accent="emerald" className="p-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-[#34d399]">
               <span>Consolidated Gross + VAT</span> <Lock size={14} />
             </div>
-            <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums text-[#121212]">{aed(led.combined_total_aed)}</div>
-            <div className="mt-0.5 text-xs text-[#047857]">VAT 201 Est: {aed(led.combined_vat_aed)}</div>
-          </div>
+            <div className="mt-2 font-mono text-[22px] font-bold tabular-nums text-[#34d399]">{aed(led.combined_total_aed)}</div>
+            <div className="mt-0.5 text-xs text-white/70">VAT 201 Est: {aed(led.combined_vat_aed)}</div>
+          </GlossyBlackCard>
         </div>
       </SwissHeroHeader>
 

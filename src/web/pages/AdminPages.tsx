@@ -1,6 +1,6 @@
 import { useEffect,useState } from 'react'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck,Settings,ScrollText,DatabaseBackup,Plus,Save,Download,Lock,ChevronDown,ChevronRight,Mail } from 'lucide-react'
+import { ShieldCheck,Settings,ScrollText,DatabaseBackup,Plus,Save,Download,Lock,ChevronDown,ChevronRight,Mail,FileSpreadsheet,Clock3,CheckCircle2 } from 'lucide-react'
 import { del,downloadAuthFile,get,post,put } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { Badge,ErrorBox,Loading,Modal,PageHeader,Pagination,Tabs,Empty,useDialogs } from '../ui/kit'
@@ -132,20 +132,158 @@ export function AuditPage() {
 
 export function BackupPage() {
   const toast = useToast(); const qc = useQueryClient(); const dlg = useDialogs()
+  const [runningFull, setRunningFull] = useState(false)
+  const [dlExcel, setDlExcel] = useState(false)
   const sys = useQuery({ queryKey: ['system'], queryFn: () => get<any>('/api/admin/system') })
   const bk = useQuery({ queryKey: ['backups'], queryFn: () => get<any[]>('/api/admin/backups') })
+  const fullBk = useQuery({ queryKey: ['full-backups'], queryFn: () => get<any>('/api/admin/backups/full'), retry: false })
   const logins = useQuery({ queryKey: ['logins'], queryFn: () => get<any[]>('/api/admin/login-events') })
-  const mb = (n: number) => (n / 1048576).toFixed(1) + ' MB'
+  const mb = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(2) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB')
   if (!sys.data) return <Loading />
   const s = sys.data
+  const fullStatus = fullBk.data?.status
+  const excelArchives: any[] = fullBk.data?.excel_backups ?? []
+
+  const runFullNow = async () => {
+    setRunningFull(true)
+    try {
+      const st = await post<any>('/api/admin/backups/full')
+      toast.ok(`Full backup saved: DB + ${st.excel_file} (${st.sheet_count} Excel sheets, ${st.total_rows} records)`)
+      void qc.invalidateQueries({ queryKey: ['backups'] })
+      void qc.invalidateQueries({ queryKey: ['full-backups'] })
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setRunningFull(false)
+    }
+  }
+
+  const downloadMasterExcel = async () => {
+    setDlExcel(true)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      await downloadAuthFile('/api/admin/excel/master.xlsx', `SWK-OS-Master-All-Data-${today}.xlsx`)
+      toast.ok('Master Excel workbook (.xlsx) downloaded')
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setDlExcel(false)
+    }
+  }
+
   return (
-    <div className="fade-in">
-      <PageHeader icon={<DatabaseBackup size={20} />} title="Backup & data" subtitle="Database snapshots, storage use and sign-in security events" actions={<button className="btn green" onClick={async () => { try { await post('/api/admin/backups'); toast.ok('Backup created'); void qc.invalidateQueries({ queryKey: ['backups'] }) } catch (e: any) { toast.error(e.message) } }}><Database /> Create backup now</button>} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card p-5"><h3 className="m-0 mb-3 text-[16px]">System</h3><dl className="kv !grid-cols-[170px_1fr]"><dt>Version</dt><dd>{s.version}</dd><dt>Runtime</dt><dd>Node {s.node} · {s.env}</dd><dt>Time zone</dt><dd>{s.timezone}</dd><dt>Database size</dt><dd>{mb(s.db_bytes)}</dd><dt>Uploaded files</dt><dd>{mb(s.upload_bytes)}</dd><dt>E-mail (SMTP)</dt><dd>{s.smtp ? <Badge value="Configured" tone="green" /> : <Badge value="Not configured" tone="amber" />}</dd><dt>Uptime</dt><dd>{Math.round(s.uptime_s / 60)} min</dd></dl>
-          <div className="mt-3 text-xs text-muted">Snapshots are consistent copies of the database file in <code>data/backups</code>. Copy them — and the <code>data/uploads</code> folder — to storage outside this server (nightly is typical). To restore, stop the app, replace <code>data/swk.db</code> with a snapshot and start again.</div>
+    <div className="fade-in space-y-5">
+      <PageHeader
+        icon={<DatabaseBackup size={20} />}
+        title="Master Excel & Daily Backups"
+        subtitle="Download all OS data in one Microsoft Excel workbook (.xlsx) and manage automatic daily backups"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn green" disabled={dlExcel} onClick={() => void downloadMasterExcel()}>
+              <FileSpreadsheet size={15} /> {dlExcel ? 'Building Excel…' : 'Download All Data (Excel .xlsx)'}
+            </button>
+            <button type="button" className="btn outline" disabled={runningFull} onClick={() => void runFullNow()}>
+              <Database size={15} /> {runningFull ? 'Running Backup…' : 'Run Daily Backup Now (DB + Excel)'}
+            </button>
           </div>
-        <div className="card p-5"><h3 className="m-0 mb-3 text-[16px]">Snapshots</h3>{!bk.data ? <Loading /> : bk.data.length === 0 ? <Empty title="No snapshots yet" /> : <table className="grid"><tbody>{bk.data.slice(0, 12).map(b => <tr key={b.name}><td>{b.name}</td><td>{mb(b.bytes)}</td><td><button type="button" className="btn outline sm" onClick={() => void downloadAuthFile(`/api/admin/backups/${b.name}`, b.name).catch(e => toast.error(e.message))}><Download /> Download</button></td></tr>)}</tbody></table>}</div>
+        }
+      />
+
+      {/* Glossy Black Automated Daily Backup Status Card */}
+      <div className="swk-gloss-black p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#ebc97c]">
+              <Clock3 size={13} /> Automatic Daily Backup Engine · Active
+            </div>
+            <h2 className="m-0 font-display text-xl font-bold text-white">
+              Full Database + All-Data Master Excel Workbook (.xlsx)
+            </h2>
+            <p className="m-0 text-xs text-white/75 max-w-2xl">
+              Every day at <b>02:30 AM Dubai Time (GST)</b>, SWK OS automatically saves both a consistent database backup AND a multi-sheet Excel workbook containing Projects, Units, Developers, Communities, Leads, Clients, Deals, Leases, Cheques, Forensic Visits, Closing Dossiers, Commissions, Staff, Attendance, Tasks, Invoices, and Receipts (30-day rolling archive + Cloudflare R2 cloud sync when configured).
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[#d4a955]/35 bg-white/[0.06] px-4 py-3 text-xs space-y-1 min-w-[240px]">
+            <div className="flex items-center gap-1.5 font-bold text-[#34d399]">
+              <CheckCircle2 size={14} /> {fullStatus?.last_run_at ? 'Last Backup Complete' : 'Ready for First Run'}
+            </div>
+            <div className="text-white/80">
+              {fullStatus?.last_run_at ? fmtIsoStamp(fullStatus.last_run_at) : 'Click “Run Daily Backup Now” to create immediately'}
+            </div>
+            {fullStatus?.sheet_count > 0 && (
+              <div className="font-mono text-[11px] text-[#ebc97c]">
+                {fullStatus.sheet_count} Excel sheets · {Number(fullStatus.total_rows || 0).toLocaleString()} rows
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <h3 className="m-0 mb-3 text-[16px] flex items-center gap-2"><FileSpreadsheet size={16} className="text-[#1e6b43]" /> Daily Excel Backups (.xlsx)</h3>
+          {excelArchives.length === 0 ? (
+            <Empty title="No Excel backup archive yet" hint="Click “Run Daily Backup Now (DB + Excel)” above to generate your first archived Master Excel workbook." />
+          ) : (
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Excel Workbook</th><th>Size</th><th /></tr></thead>
+                <tbody>
+                  {excelArchives.slice(0, 15).map((b: any) => (
+                    <tr key={b.name}>
+                      <td className="font-mono text-xs">{b.name}</td>
+                      <td className="text-xs">{mb(b.bytes)}</td>
+                      <td>
+                        <button type="button" className="btn outline sm" onClick={() => void downloadAuthFile(`/api/admin/backups/excel/${b.name}`, b.name).catch(e => toast.error(e.message))}>
+                          <Download size={13} /> Excel
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="card p-5">
+          <h3 className="m-0 mb-3 text-[16px]">Database Snapshots</h3>
+          {!bk.data ? <Loading /> : bk.data.length === 0 ? <Empty title="No snapshots yet" /> : (
+            <div className="table-wrap">
+              <table className="grid">
+                <thead><tr><th>Snapshot File</th><th>Size</th><th /></tr></thead>
+                <tbody>
+                  {bk.data.slice(0, 15).map(b => (
+                    <tr key={b.name}>
+                      <td className="font-mono text-xs">{b.name}</td>
+                      <td className="text-xs">{mb(b.bytes)}</td>
+                      <td>
+                        <button type="button" className="btn outline sm" onClick={() => void downloadAuthFile(`/api/admin/backups/${b.name}`, b.name).catch(e => toast.error(e.message))}>
+                          <Download size={13} /> Download
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="card p-5 lg:col-span-2">
+          <h3 className="m-0 mb-3 text-[16px]">System Storage &amp; Health</h3>
+          <dl className="kv !grid-cols-[170px_1fr] md:!grid-cols-[170px_1fr_170px_1fr]">
+            <dt>Version</dt><dd>{s.version}</dd>
+            <dt>Runtime</dt><dd>Node {s.node} · {s.env}</dd>
+            <dt>Time zone</dt><dd>{s.timezone}</dd>
+            <dt>Database size</dt><dd>{mb(s.db_bytes)}</dd>
+            <dt>Uploaded files</dt><dd>{mb(s.upload_bytes)}</dd>
+            <dt>E-mail (SMTP)</dt><dd>{s.smtp ? <Badge value="Configured" tone="green" /> : <Badge value="Not configured" tone="amber" />}</dd>
+            <dt>Uptime</dt><dd>{Math.round(s.uptime_s / 60)} min</dd>
+            <dt>Retention</dt><dd>30 Daily DB + 30 Daily Excel</dd>
+          </dl>
+        </div>
+
         <BusinessDataCard />
         <div className="card p-5 lg:col-span-2"><h3 className="m-0 mb-3 text-[16px]">Records</h3><div className="grid gap-x-6 gap-y-1 grid-cols-2 md:grid-cols-4 text-sm">{Object.entries<number>(s.counts).filter(([, n]) => n > 0).map(([k, n]) => <div key={k} className="flex justify-between border-b border-line py-1"><span className="text-muted">{k.replace(/_/g, ' ')}</span><b>{n.toLocaleString()}</b></div>)}</div></div>
         <div className="card p-5 lg:col-span-2"><h3 className="m-0 mb-3 text-[16px]">Sign-in events</h3>{!logins.data ? <Loading /> : <div className="table-wrap max-h-[320px]"><table className="grid"><thead><tr><th>When</th><th>E-mail</th><th>Result</th><th>IP</th></tr></thead><tbody>{logins.data.map(l => <tr key={l.id}><td>{fmtIsoStamp(l.at)}</td><td>{l.email}</td><td><Badge value={l.success ? 'Success' : `Failed – ${l.reason}`} tone={l.success ? 'green' : 'red'} /></td><td>{l.ip}</td></tr>)}</tbody></table></div>}</div>

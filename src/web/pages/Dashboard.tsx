@@ -1156,25 +1156,33 @@ function KpiCard({
   tone: 'navy' | 'emerald' | 'gold' | 'rose' | 'slate' | 'amber'
   to?: string
 }) {
+  const accentText: Record<string, string> = {
+    navy: 'text-[#ebc97c]',
+    emerald: 'text-[#34d399]',
+    gold: 'text-[#ebc97c]',
+    amber: 'text-[#fbbf24]',
+    rose: 'text-[#fda4af]',
+    slate: 'text-white',
+  }
   const iconBg: Record<string, string> = {
-    navy: 'bg-[#121212] text-[#51fec0]',
-    emerald: 'bg-[#ecfdf5] text-[#0e9f6e] border border-[#a7f3d0]',
-    gold: 'bg-[#f4f7fa] text-[#121212] border border-black/[0.08]',
-    amber: 'bg-[#f4f7fa] text-[#121212] border border-black/[0.08]',
-    rose: 'bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]',
-    slate: 'bg-[#f4f7fa] text-[#121212] border border-black/[0.08]',
+    navy: 'bg-[#d4a955]/20 text-[#ebc97c] border border-[#d4a955]/40',
+    emerald: 'bg-[#1e6b43]/35 text-[#34d399] border border-[#34d399]/35',
+    gold: 'bg-[#d4a955]/20 text-[#ebc97c] border border-[#d4a955]/40',
+    amber: 'bg-[#d4a955]/20 text-[#ebc97c] border border-[#d4a955]/40',
+    rose: 'bg-[#96202f]/40 text-[#fda4af] border border-[#fda4af]/35',
+    slate: 'bg-white/10 text-white border border-white/20',
   }
   const inner = (
-    <div className="card p-5 h-full flex flex-col justify-between gap-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#121212]/25 hover:shadow-[0_24px_60px_rgba(12,56,96,0.13)]">
+    <div className="swk-gloss-black p-5 h-full flex flex-col justify-between gap-3.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#5b6778]">{label}</span>
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-white/70">{label}</span>
         <span className={`grid h-9 w-9 place-items-center rounded-xl shrink-0 ${iconBg[tone]}`}>{icon}</span>
       </div>
       <div>
-        <div className="font-mono text-[24px] sm:text-[26px] font-semibold tracking-[-0.035em] text-[#121212] leading-tight tabular-nums">
+        <div className={`font-mono text-[24px] sm:text-[26px] font-bold tracking-[-0.035em] leading-tight tabular-nums ${accentText[tone]}`}>
           {value}
         </div>
-        <div className="mt-1.5 text-[12px] text-[#5b6778] leading-snug">{hint}</div>
+        <div className="mt-1.5 text-[12px] text-white/72 leading-snug">{hint}</div>
       </div>
     </div>
   )

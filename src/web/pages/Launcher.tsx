@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get } from '../lib/api'
+import { preloadRoute } from '../lib/prefetch'
 import { launcherApps, recentItems, SWK_CORE_SUITE_KEYS, type LauncherApp } from '../swk/nav'
 import { aed, num } from '../swk/ui'
 import { isRestrictedStaffUser } from '@shared/swk-staff-access'
@@ -35,6 +36,7 @@ import {
   SWISS_EASE,
   SwissCarousel,
 } from '../components/ui/SwissPrimitives'
+import { GlossyBlackCard, LogoPresenceBadge } from '../components/ui/PremiumPrimitives'
 
 let entrancePlayed = false
 
@@ -99,44 +101,54 @@ const CORE_SUITE_META: Record<
   },
 }
 
-/** Refined Swiss architectural app tile — frosted white glass, crisp monochromatic icon anchor, obsidian+mint hover */
+/** Premium White + Glossy Obsidian & SWK Logo Gold/Emerald hover app tile with instant hover preload */
 function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
   const isOwnerApp = app.key === 'shabib_corner'
   return (
     <Link
       to={app.landing}
       title={app.blurb}
-      className="group relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] border border-white/88 bg-white/86 p-4 no-underline shadow-[0_14px_38px_rgba(12,56,96,0.08)] backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[#121212]/25 hover:bg-white hover:shadow-[0_22px_54px_rgba(12,56,96,0.14)]"
+      onMouseEnter={() => preloadRoute(app.landing)}
+      onFocus={() => preloadRoute(app.landing)}
+      className={
+        isOwnerApp
+          ? 'swk-gloss-black group relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] p-4 no-underline transition-all duration-300'
+          : 'group relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] border border-black/[0.08] bg-white p-4 no-underline shadow-[0_12px_32px_-16px_rgba(10,11,14,0.1)] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[#d4a955]/55 hover:bg-white hover:shadow-[0_22px_48px_-18px_rgba(10,11,14,0.18)]'
+      }
     >
       <div
-        className={`relative z-10 flex size-[46px] shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`relative z-10 flex size-[46px] shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           isOwnerApp
-            ? 'border-[#121212] bg-[#121212] text-[#51fec0]'
-            : 'border-black/[0.07] bg-[#f4f7fa] text-[#121212] group-hover:border-[#121212] group-hover:bg-[#121212] group-hover:text-[#51fec0]'
+            ? 'border-[#d4a955]/50 bg-[#d4a955]/20 text-[#ebc97c]'
+            : 'border-black/[0.08] bg-[#f7f7f9] text-[#0a0b0e] group-hover:border-[#d4a955]/55 group-hover:bg-[#0a0b0e] group-hover:text-[#ebc97c]'
         }`}
       >
-        <app.icon size={20} strokeWidth={1.75} />
+        <app.icon size={20} strokeWidth={1.85} />
       </div>
 
       <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-2">
-          <span className="truncate text-[15.5px] font-medium tracking-[-0.025em] text-[#121212]">
+          <span className={`truncate font-display text-[15.5px] font-bold tracking-[-0.02em] ${isOwnerApp ? 'text-white' : 'text-[#0a0b0e]'}`}>
             {app.label}
           </span>
           {badge}
         </span>
-        <span className="line-clamp-1 text-[12.5px] text-[#5b6778]">{app.blurb}</span>
+        <span className={`line-clamp-1 text-[12.5px] ${isOwnerApp ? 'text-white/75' : 'text-[#5b616e]'}`}>{app.blurb}</span>
         {app.items.length > 1 && (
-          <span className="mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[#475569]">
-            <span className="inline-block size-[4px] bg-[#0e9f6e]" aria-hidden />
-            {app.items.length} workflow steps
+          <span className={`mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] ${isOwnerApp ? 'text-[#ebc97c]' : 'text-[#1e6b43]'}`}>
+            <span className={`inline-block size-[4px] rounded-full ${isOwnerApp ? 'bg-[#ebc97c]' : 'bg-[#1e6b43]'}`} aria-hidden />
+            {app.items.length} screens
           </span>
         )}
       </span>
 
       <span
         aria-hidden
-        className="relative z-10 inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white text-[#121212] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:border-[#121212] group-hover:bg-[#121212] group-hover:text-[#51fec0]"
+        className={`relative z-10 inline-flex size-8 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          isOwnerApp
+            ? 'border-[#d4a955]/45 bg-white/10 text-[#ebc97c] group-hover:bg-[#d4a955] group-hover:text-[#0a0b0e]'
+            : 'border-black/[0.09] bg-white text-[#0a0b0e] group-hover:border-[#d4a955]/60 group-hover:bg-[#0a0b0e] group-hover:text-[#ebc97c]'
+        }`}
       >
         <ArrowUpRight size={14} />
       </span>
@@ -239,48 +251,59 @@ export function Launcher() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: SWISS_EASE }}
       >
-        {/* Left 8 Cols: Editorial Greeting + Frosted Glass Search & Category Deck */}
-        <div className="lg:col-span-8 flex flex-col justify-between gap-5 rounded-[28px] border border-white/88 bg-white/86 p-6 sm:p-7 shadow-[0_24px_64px_rgba(12,56,96,0.10)] backdrop-blur-2xl">
+        {/* Left 8 Cols: Pure White Greeting + Search & Category Deck */}
+        <div className="lg:col-span-8 flex flex-col justify-between gap-5 rounded-[26px] border border-black/[0.08] bg-white p-6 sm:p-7 shadow-[0_20px_54px_-22px_rgba(10,11,14,0.12)] relative overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+            style={{ background: 'linear-gradient(90deg, #96202f 0%, #d4a955 50%, #1e6b43 100%)' }}
+          />
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2.5 rounded-full border border-black/[0.07] bg-white/90 px-3.5 py-1.5 shadow-[0_6px_18px_rgba(12,56,96,0.06)]">
-                <LiveStatusDot />
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#121212]">
-                  SWK Properties · ORN 51517 · {todayLabel()}
-                </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <LogoPresenceBadge subtitle={todayLabel()} />
               </div>
-              <h1 className="mt-3.5 m-0 text-[30px] sm:text-[42px] font-medium tracking-[-0.042em] text-[#121212] leading-[1.04]">
+              <h1 className="mt-3.5 m-0 font-display text-[30px] sm:text-[42px] font-bold tracking-[-0.04em] text-[#0a0b0e] leading-[1.04]">
                 {greeting()}
                 {firstName ? `, ${firstName}` : ''}
-                <span className="text-[#64748b]">.</span>
+                <span className="text-[#d4a955]">.</span>
               </h1>
-              <p className="mt-2 mb-0 text-[14.5px] text-[#475569] leading-relaxed">
-                Search any workspace page, resume your last workflow, or open an executive module below.
+              <p className="mt-2 mb-0 text-[14.5px] text-[#4b5262] leading-relaxed">
+                Pick any app below, search instantly, or jump back into your last screen.
               </p>
             </div>
 
-            {/* Resume Last Visited Pill */}
-            <div className="flex items-center gap-3 rounded-2xl border border-black/[0.07] bg-[#f4f7fa]/85 px-3.5 py-2.5 shrink-0 max-w-full">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#121212] text-[#51fec0]">
+            {/* Resume Last Visited Glossy Pill */}
+            <div className="flex items-center gap-3 rounded-2xl border border-[#d4a955]/30 bg-[#0a0b0e] px-3.5 py-2.5 shrink-0 max-w-full text-white shadow-[0_16px_36px_-14px_rgba(10,11,14,0.5)]">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#d4a955]/20 text-[#ebc97c] border border-[#d4a955]/35">
                 {lastVisit ? <lastVisit.icon size={16} /> : <LayoutDashboard size={16} />}
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#64748b]">
-                  {lastVisit ? 'Resume Workflow' : 'Primary Desk'}
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#ebc97c]">
+                  {lastVisit ? 'Resume Last Screen' : 'Quick Start'}
                 </div>
                 {lastVisit ? (
-                  <Link to={lastVisit.to} className="block truncate text-[13px] font-semibold text-[#121212] no-underline hover:text-[#0e9f6e] max-w-[180px]">
+                  <Link
+                    to={lastVisit.to}
+                    onMouseEnter={() => preloadRoute(lastVisit.to)}
+                    className="block truncate text-[13px] font-semibold text-white no-underline hover:text-[#ebc97c] max-w-[180px]"
+                  >
                     {lastVisit.label}
                   </Link>
                 ) : (
-                  <Link to={restricted ? '/my-deals' : '/dashboard'} className="block truncate text-[13px] font-semibold text-[#121212] no-underline hover:text-[#0e9f6e]">
+                  <Link
+                    to={restricted ? '/my-deals' : '/dashboard'}
+                    onMouseEnter={() => preloadRoute(restricted ? '/my-deals' : '/dashboard')}
+                    className="block truncate text-[13px] font-semibold text-white no-underline hover:text-[#ebc97c]"
+                  >
                     {restricted ? 'My Assigned Deals' : 'Executive Dashboard'}
                   </Link>
                 )}
               </div>
               <Link
                 to={lastVisit ? lastVisit.to : restricted ? '/my-deals' : '/dashboard'}
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#121212] text-white no-underline transition-all hover:text-[#51fec0]"
+                onMouseEnter={() => preloadRoute(lastVisit ? lastVisit.to : restricted ? '/my-deals' : '/dashboard')}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#d4a955] text-[#0a0b0e] no-underline transition-transform hover:scale-105"
                 aria-label={lastVisit ? `Resume ${lastVisit.label}` : 'Open primary desk'}
               >
                 <ArrowRight size={14} />
@@ -354,29 +377,35 @@ export function Launcher() {
           </div>
         </div>
 
-        {/* Right 4 Cols: Frosted-Glass Daily Operations Pulse (Zero Dark Circus Block!) */}
-        <div className="lg:col-span-4 rounded-[28px] border border-white/88 bg-white/86 p-6 shadow-[0_24px_64px_rgba(12,56,96,0.10)] backdrop-blur-2xl flex flex-col justify-between gap-4">
+        {/* Right 4 Cols: Glossy Floating Shining Black Daily Operations Card */}
+        <GlossyBlackCard accent="tricolor" className="lg:col-span-4 p-6 flex flex-col justify-between gap-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <SectionEyebrow accent="emerald">Today&apos;s Pulse</SectionEyebrow>
-              <h2 className="m-0 mt-1.5 text-[20px] font-medium tracking-[-0.03em] text-[#121212]">
+              <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#ebc97c]">
+                <LiveStatusDot onDark /> Today&apos;s Pulse
+              </div>
+              <h2 className="m-0 mt-1.5 font-display text-[21px] font-bold tracking-[-0.03em] text-white">
                 Daily Operations
               </h2>
             </div>
-            <BracketLink to={restricted ? '/reception-qr' : '/dashboard'} variant="dark" size="sm">
+            <Link
+              to={restricted ? '/reception-qr' : '/dashboard'}
+              onMouseEnter={() => preloadRoute(restricted ? '/reception-qr' : '/dashboard')}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#d4a955] px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0a0b0e] no-underline transition-transform hover:scale-105"
+            >
               {restricted ? 'Check-In' : 'Dashboard'} <ArrowRight size={12} />
-            </BracketLink>
+            </Link>
           </div>
 
           <div className="flex items-center gap-5 py-1">
             <div className="relative flex size-[104px] shrink-0 items-center justify-center">
               <svg width={104} height={104} className="-rotate-90">
-                <circle cx={52} cy={52} r={42} stroke="rgba(18,18,18,0.08)" strokeWidth={8} fill="none" />
+                <circle cx={52} cy={52} r={42} stroke="rgba(255,255,255,0.12)" strokeWidth={8} fill="none" />
                 <circle
                   cx={52}
                   cy={52}
                   r={42}
-                  stroke="#121212"
+                  stroke="#d4a955"
                   strokeWidth={8}
                   fill="none"
                   strokeLinecap="round"
@@ -385,40 +414,40 @@ export function Launcher() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-mono text-[21px] font-semibold text-[#121212] leading-none tabular-nums">{progressPct}%</span>
-                <span className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0e9f6e]">Active</span>
+                <span className="font-mono text-[21px] font-bold text-white leading-none tabular-nums">{progressPct}%</span>
+                <span className="mt-1 text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#ebc97c]">Active</span>
               </div>
             </div>
 
             <div className="flex-1 min-w-0 grid gap-2.5">
               {restricted ? (
                 <>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Inside Unread</span><b className="font-mono text-[#121212] text-sm tabular-nums">{unread}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Permitted Apps</span><b className="font-mono text-[#121212] text-sm tabular-nums">{apps.length}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Dubai Time</span><b className="font-mono text-[#0e9f6e] text-xs">GST +4</b></div>
+                  <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5"><span className="text-white/70">Inside Unread</span><b className="font-mono text-[#ebc97c] text-sm tabular-nums">{unread}</b></div>
+                  <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5"><span className="text-white/70">Permitted Apps</span><b className="font-mono text-white text-sm tabular-nums">{apps.length}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-white/70">Dubai Time</span><b className="font-mono text-[#34d399] text-xs">GST +4</b></div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-between text-xs border-b border-black/[0.06] pb-1.5"><span className="text-[#5b6778]">Leads Today</span><b className="font-mono text-[#121212] text-sm tabular-nums">{leadCount}</b></div>
-                  <div className="flex items-center justify-between text-xs border-b border-black/[0.06] pb-1.5"><span className="text-[#5b6778]">Viewings (7d)</span><b className="font-mono text-[#0e9f6e] text-sm tabular-nums">{viewingCount}</b></div>
-                  <div className="flex items-center justify-between text-xs"><span className="text-[#5b6778]">Pending Offers</span><b className="font-mono text-[#121212] text-sm tabular-nums">{offerCount}</b></div>
+                  <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5"><span className="text-white/70">Leads Today</span><b className="font-mono text-[#ebc97c] text-sm tabular-nums">{leadCount}</b></div>
+                  <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5"><span className="text-white/70">Viewings (7d)</span><b className="font-mono text-[#34d399] text-sm tabular-nums">{viewingCount}</b></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-white/70">Pending Offers</span><b className="font-mono text-white text-sm tabular-nums">{offerCount}</b></div>
                 </>
               )}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-3 border-t border-black/[0.07]">
-            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-[11px] font-medium text-[#121212] no-underline transition-colors hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]">
+          <div className="flex flex-wrap gap-2 pt-3 border-t border-white/10">
+            <Link to="/reception-qr" className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white no-underline transition-colors hover:border-[#d4a955] hover:bg-[#d4a955] hover:text-[#0a0b0e]">
               <QrCode size={12} /> QR Check-In
             </Link>
-            <Link to="/chat" className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-[11px] font-medium text-[#121212] no-underline transition-colors hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]">
+            <Link to="/chat" className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white no-underline transition-colors hover:border-[#d4a955] hover:bg-[#d4a955] hover:text-[#0a0b0e]">
               <Sparkles size={12} /> Inside {unread > 0 ? `(${unread})` : ''}
             </Link>
-            <Link to="/field-duty" className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#f4f7fa] px-3 py-1.5 text-[11px] font-medium text-[#121212] no-underline transition-colors hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0]">
-              <Navigation size={12} /> Field GPS
+            <Link to="/mobile-apps" onMouseEnter={() => preloadRoute('/mobile-apps')} className="inline-flex items-center gap-1.5 rounded-full border border-[#d4a955]/40 bg-[#d4a955]/15 px-3 py-1.5 text-[11px] font-semibold text-[#ebc97c] no-underline transition-colors hover:bg-[#d4a955] hover:text-[#0a0b0e]">
+              <Navigation size={12} /> Mobile Apps
             </Link>
           </div>
-        </div>
+        </GlossyBlackCard>
       </motion.section>
 
       {/* ============================================================ 2. SEARCH MATCHING WORKFLOW PAGES */}
@@ -554,7 +583,7 @@ export function Launcher() {
                   app={a}
                   badge={
                     a.key === 'shabib_corner' ? (
-                      <span className="rounded-full bg-[#121212] px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[#51fec0]">
+                      <span className="rounded-full bg-[#d4a955] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#0a0b0e]">
                         Owner
                       </span>
                     ) : a.key === 'messages' && unread > 0 ? (

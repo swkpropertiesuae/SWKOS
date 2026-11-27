@@ -82,6 +82,8 @@ const CommandCenterPage = lazy(() => import('./pages/swk/CommandCenterPage'))
 const ClientDocumentVaultPage = lazy(() => import('./pages/swk/ClientDocumentVaultPage'))
 const MortgageDeskPage = lazy(() => import('./pages/swk/MortgageDeskPage'))
 const AiCaseStudyPage = lazy(() => import('./pages/swk/AiCaseStudyPage'))
+const DubaiAgencyHubPage = lazy(() => import('./pages/swk/DubaiAgencyHubPage'))
+const MobileAppsPage = lazy(() => import('./pages/swk/MobileAppsPage'))
 
 function Guard({ module, children }: { module: string; children: ReactNode }) {
   const { can, me } = useMeta()
@@ -234,6 +236,8 @@ export default function App() {
           <Route path="/client-vault" element={<Guard module="documents"><ClientDocumentVaultPage /></Guard>} />
           <Route path="/mortgage-desk" element={<Guard module="crm"><MortgageDeskPage /></Guard>} />
           <Route path="/ai-training" element={<Guard module="ai"><AiCaseStudyPage /></Guard>} />
+          <Route path="/dubai-agency-hub" element={<Guard module="properties"><DubaiAgencyHubPage /></Guard>} />
+          <Route path="/mobile-apps" element={<StaffGuard><MobileAppsPage /></StaffGuard>} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/enterprise/master-os" element={<Guard module="admin"><EnterpriseMasterOsPage /></Guard>} />
           <Route path="/reception-qr" element={<ReceptionQrPage />} />

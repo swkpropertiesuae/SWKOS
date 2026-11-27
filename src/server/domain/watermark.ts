@@ -14,7 +14,7 @@ const PUBLIC_DIRS = [
 const MAX_CACHE = 80
 const cache = new Map<string, Buffer>()
 
-let brandAssetsPromise: Promise<{ icon: Image | null; logo: Image | null }> | null = null
+let brandAssetsPromise: Promise<{ icon: Image | null; crest: Image | null; logo: Image | null }> | null = null
 
 function resolvePublicFile(rel: string): string | null {
   const clean = rel.replace(/^\/+/, '')
@@ -26,23 +26,28 @@ function resolvePublicFile(rel: string): string | null {
   return null
 }
 
-async function getBrandAssets(): Promise<{ icon: Image | null; logo: Image | null }> {
+async function getBrandAssets(): Promise<{ icon: Image | null; crest: Image | null; logo: Image | null }> {
   if (!brandAssetsPromise) {
     brandAssetsPromise = (async () => {
       const iconPath =
         resolvePublicFile('brand/swk-app-icon-rounded.png') ||
         resolvePublicFile('brand/swk-app-icon.png') ||
         resolvePublicFile('brand/web/swk-icon.png')
+      const crestPath =
+        resolvePublicFile('brand/os/SWK_Emblem_Transparent_1024.png') ||
+        resolvePublicFile('brand/swk-mark.png') ||
+        iconPath
       const logoPath =
-        resolvePublicFile('brand/swk-logo-gold.png') ||
-        resolvePublicFile('brand/swk-logo-white.png') ||
         resolvePublicFile('brand/os/SWK_OS_Horizontal_Logo_Transparent_2048.png') ||
+        resolvePublicFile('brand/swk-watermark.png') ||
+        resolvePublicFile('brand/swk-logo-gold.png') ||
         resolvePublicFile('brand/web/swk-logo-dark.webp')
-      const [icon, logo] = await Promise.all([
+      const [icon, crest, logo] = await Promise.all([
         iconPath ? loadImage(fs.readFileSync(iconPath)).catch(() => null) : Promise.resolve(null),
+        crestPath ? loadImage(fs.readFileSync(crestPath)).catch(() => null) : Promise.resolve(null),
         logoPath ? loadImage(fs.readFileSync(logoPath)).catch(() => null) : Promise.resolve(null),
       ])
-      return { icon, logo }
+      return { icon, crest, logo }
     })()
   }
   return brandAssetsPromise
@@ -179,15 +184,15 @@ export async function watermarkPropertyImage(
   const canvas = createCanvas(w, h)
   const ctx = canvas.getContext('2d')
 
-  // 1. Base property photograph (or aspect-ratio-preserving luxury showcase plate for small/wide SVG emblems)
+  // 1. Base property photograph (or aspect-ratio-preserving glossy obsidian luxury showcase plate)
   if (img && isSmallOrLogo) {
     const grad = ctx.createLinearGradient(0, 0, w, h)
-    grad.addColorStop(0, '#09251e')
-    grad.addColorStop(0.55, '#0e3a2f')
-    grad.addColorStop(1, '#091f1a')
+    grad.addColorStop(0, '#0A0B0E')
+    grad.addColorStop(0.55, '#14161D')
+    grad.addColorStop(1, '#07080A')
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, w, h)
-    ctx.strokeStyle = 'rgba(200,162,83,0.35)'
+    ctx.strokeStyle = 'rgba(212,169,85,0.45)'
     ctx.lineWidth = 2
     ctx.strokeRect(24, 24, w - 48, h - 48)
     const padX = Math.round(w * 0.14)
@@ -247,12 +252,13 @@ export async function watermarkPropertyImage(
   }
   ctx.restore()
 
-  // 3. Faint centered SWK App Icon ghost watermark
-  if (brand.icon) {
+  // 3. Faint centered SWK Transparent Crest ghost watermark
+  const ghostCrest = brand.crest || brand.icon
+  if (ghostCrest) {
     ctx.save()
-    ctx.globalAlpha = 0.16
-    const centerSize = Math.round(Math.min(w, h) * 0.24)
-    ctx.drawImage(brand.icon, (w - centerSize) / 2, (h - centerSize) / 2, centerSize, centerSize)
+    ctx.globalAlpha = 0.2
+    const centerSize = Math.round(Math.min(w, h) * 0.28)
+    ctx.drawImage(ghostCrest, (w - centerSize) / 2, (h - centerSize) / 2, centerSize, centerSize)
     ctx.restore()
   }
 

@@ -67,7 +67,7 @@
     max-width: 100%;
   }
 
-  /* ------------------------------------------------ Frosted Glass Header (site-header.tsx DNA) */
+  /* ------------------------------------------------ Premium White Header with Logo Color Tricolor Accent */
   .swk-top {
     position: sticky;
     top: 0;
@@ -77,13 +77,24 @@
     gap: 10px;
     height: 68px;
     padding: 0 clamp(14px, 2vw, 28px);
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.72);
-    box-shadow: 0 12px 36px rgba(12, 56, 96, 0.08);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border-bottom: 1px solid rgba(15, 16, 20, 0.08);
+    box-shadow: 0 10px 30px -16px rgba(10, 11, 14, 0.1);
     color: var(--ink);
     flex: none;
+  }
+  .swk-top::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #d4a955 0%, #ebc97c 35%, #1e6b43 68%, #96202f 100%);
+    opacity: 0.72;
+    pointer-events: none;
   }
   :root[data-theme='dark'] .swk-top {
     background: rgba(18, 20, 24, 0.88);
@@ -236,10 +247,11 @@
   }
   .swk-tbtn:hover,
   .swk-menu-btn:hover {
-    background: #121212;
-    border-color: #121212;
-    color: #51fec0;
-    transform: translateY(-1px);
+    background: linear-gradient(155deg, #21232b 0%, #0a0b0e 60%, #050507 100%);
+    border-color: #d4a955;
+    color: #ebc97c;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -10px rgba(10, 11, 14, 0.45);
   }
   .swk-tbtn .count {
     position: absolute;
@@ -262,29 +274,31 @@
   }
 
   .swk-create {
+    position: relative;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     height: 38px;
-    padding: 0 15px;
+    padding: 0 16px;
     border-radius: 999px;
-    border: 1px solid #121212;
-    background: #121212;
-    color: #ffffff;
+    border: 1px solid rgba(212, 169, 85, 0.55);
+    background: linear-gradient(155deg, #21232b 0%, #0b0c10 56%, #050507 100%);
+    color: #ebc97c;
     font-size: 11.5px;
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     cursor: pointer;
     flex: none;
-    box-shadow: 0 10px 26px rgba(18, 18, 18, 0.18);
-    transition: background 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.18s var(--ease);
+    box-shadow: 0 12px 26px -10px rgba(10, 11, 14, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    transition: background 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.18s var(--ease), box-shadow 0.2s var(--ease);
   }
   .swk-create:hover {
-    background: #242424;
-    border-color: #242424;
-    color: #51fec0;
-    transform: translateY(-1px);
+    border-color: #ebc97c;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px -10px rgba(10, 11, 14, 0.6), 0 0 0 1px rgba(212, 169, 85, 0.4);
   }
 
   .swk-avatar {
@@ -381,11 +395,9 @@
 
   /* ------------------------------------------------ Frosted Architectural Sidebar */
   .swk-app-sidebar {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(22px) saturate(1.35);
-    -webkit-backdrop-filter: blur(22px) saturate(1.35);
-    border-right: 1px solid rgba(255, 255, 255, 0.8);
-    box-shadow: 12px 0 36px rgba(12, 56, 96, 0.045);
+    background: #ffffff;
+    border-right: 1px solid rgba(15, 16, 20, 0.08);
+    box-shadow: 10px 0 32px -18px rgba(10, 11, 14, 0.09);
     color: var(--ink);
     display: flex;
     flex-direction: column;
@@ -496,14 +508,14 @@
     color: var(--ink);
   }
   .swk-sidebar-link.active {
-    background: #121212;
+    background: linear-gradient(152deg, #1f212a 0%, #0b0c10 58%, #050507 100%);
     color: #ffffff;
-    border-color: #121212;
-    font-weight: 500;
-    box-shadow: 0 10px 24px -10px rgba(18, 18, 18, 0.42);
+    border-color: rgba(212, 169, 85, 0.45);
+    font-weight: 600;
+    box-shadow: 0 14px 28px -12px rgba(10, 11, 14, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
   .swk-sidebar-link.active svg {
-    color: #51fec0;
+    color: #ebc97c;
   }
   .swk-sidebar-link-tx {
     white-space: nowrap;
@@ -523,8 +535,8 @@
     flex: none;
   }
   .swk-sidebar-link.active .swk-sidebar-step-badge {
-    background: rgba(81, 254, 192, 0.16);
-    color: #51fec0;
+    background: rgba(212, 169, 85, 0.2);
+    color: #ebc97c;
   }
   .swk-app-sidebar.is-collapsed .swk-sidebar-group-label,
   .swk-app-sidebar.is-collapsed .swk-sidebar-link-tx,
@@ -592,10 +604,10 @@
     color: #121212;
   }
   .swk-wf-pill.active {
-    background: #121212;
+    background: linear-gradient(155deg, #21232c 0%, #0a0b0e 60%, #050507 100%);
     color: #ffffff;
-    border-color: #121212;
-    box-shadow: 0 8px 20px -8px rgba(18, 18, 18, 0.45);
+    border-color: rgba(212, 169, 85, 0.5);
+    box-shadow: 0 12px 24px -10px rgba(10, 11, 14, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
   .swk-wf-num {
     display: inline-grid;
@@ -610,8 +622,8 @@
     color: var(--ink);
   }
   .swk-wf-pill.active .swk-wf-num {
-    background: #51fec0;
-    color: #121212;
+    background: #d4a955;
+    color: #0a0b0e;
   }
   .swk-wf-nav {
     display: inline-flex;
@@ -685,8 +697,9 @@
     border-radius: 999px;
     display: grid;
     place-items: center;
-    background: #121212;
-    color: #51fec0;
+    background: linear-gradient(155deg, #21232c 0%, #0a0b0e 65%, #050507 100%);
+    color: #ebc97c;
+    box-shadow: 0 8px 18px -6px rgba(10, 11, 14, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
   .swk-live-tx {
     display: grid;
@@ -696,7 +709,7 @@
   .swk-live-tx b {
     font-size: 13.5px;
     font-weight: 600;
-    color: #121212;
+    color: #0a0b0e;
     line-height: 1.3;
     letter-spacing: -0.015em;
   }
@@ -708,8 +721,8 @@
   .swk-live-tx em {
     font-style: normal;
     font-size: 10.5px;
-    color: #0e9f6e;
-    font-weight: 600;
+    color: #1e6b43;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     margin-top: 3px;
@@ -837,27 +850,24 @@
     }
     .swk-mobile-bottom-nav {
       position: fixed;
-      left: 14px;
-      right: 14px;
+      left: 12px;
+      right: 12px;
       bottom: calc(10px + env(safe-area-inset-bottom, 0px));
       z-index: 55;
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       align-items: center;
-      height: 66px;
+      height: 68px;
       padding: 6px 8px;
       border-radius: 26px;
-      background: rgba(255, 255, 255, 0.94);
+      background: linear-gradient(155deg, rgba(31, 34, 44, 0.97) 0%, rgba(10, 11, 14, 0.98) 55%, rgba(5, 5, 7, 0.99) 100%);
       backdrop-filter: blur(24px) saturate(1.5);
       -webkit-backdrop-filter: blur(24px) saturate(1.5);
-      border: 1px solid rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(212, 169, 85, 0.34);
       box-shadow:
-        0 18px 42px -8px rgba(12, 56, 96, 0.2),
-        0 0 0 1px rgba(18, 18, 18, 0.06);
-    }
-    :root[data-theme='dark'] .swk-mobile-bottom-nav {
-      background: rgba(20, 23, 28, 0.96);
-      border-color: var(--line);
+        0 24px 48px -10px rgba(0, 0, 0, 0.52),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
     }
     .swk-mnav-item {
       display: flex;
@@ -865,46 +875,49 @@
       align-items: center;
       justify-content: center;
       gap: 3px;
-      height: 52px;
+      height: 54px;
       border: 0;
       border-radius: 18px;
       background: transparent;
-      color: var(--muted);
+      color: rgba(255, 255, 255, 0.68);
       font-size: 10.5px;
-      font-weight: 500;
+      font-weight: 600;
       text-decoration: none;
       cursor: pointer;
       transition: background 0.18s var(--ease), color 0.18s var(--ease), transform 0.15s;
     }
-    .swk-mnav-item.active {
-      background: #121212;
+    .swk-mnav-item:hover {
       color: #ffffff;
-      box-shadow: 0 8px 18px -6px rgba(18, 18, 18, 0.45);
+    }
+    .swk-mnav-item.active {
+      background: linear-gradient(145deg, rgba(212, 169, 85, 0.24) 0%, rgba(212, 169, 85, 0.08) 100%);
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(212, 169, 85, 0.45), 0 8px 18px -6px rgba(0, 0, 0, 0.45);
     }
     .swk-mnav-item.active svg {
-      color: #51fec0;
+      color: #ebc97c;
     }
     .swk-mnav-orb {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transform: translateY(-14px);
+      transform: translateY(-16px);
       text-decoration: none;
       border: 0;
       background: transparent;
       cursor: pointer;
     }
     .swk-mnav-orb-btn {
-      width: 54px;
-      height: 54px;
+      width: 56px;
+      height: 56px;
       border-radius: 999px;
       display: grid;
       place-items: center;
-      background: #121212;
-      color: #51fec0;
+      background: linear-gradient(145deg, #ebc97c 0%, #d4a955 55%, #9e7427 100%);
+      color: #0a0b0e;
       border: 4px solid #ffffff;
-      box-shadow: 0 14px 30px -6px rgba(18, 18, 18, 0.36);
+      box-shadow: 0 16px 32px -6px rgba(10, 11, 14, 0.48), 0 0 0 1px rgba(212, 169, 85, 0.55);
       transition: transform 0.18s var(--ease), box-shadow 0.18s;
     }
     .swk-mnav-orb:active .swk-mnav-orb-btn {

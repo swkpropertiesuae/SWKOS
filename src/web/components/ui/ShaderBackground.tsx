@@ -450,37 +450,23 @@ export function ShaderBackground({ className }: { className?: string }) {
   )
 }
 
-/** Fixed luminous sky-ice WebGL shader (desktop) / zero-GPU CSS mesh (Android/iOS/mobile) + Swiss vertical hairline grid */
+/** Fixed 0-GPU Premium Pure White luxury backdrop with whisper-soft SWK Logo Gold/Emerald glow & subtle architectural grid */
 export function SwissAtmosphereBackdrop() {
-  const isDesktopWebGl =
-    typeof window !== 'undefined' &&
-    !(window as any).Capacitor?.isNativePlatform?.() &&
-    !(window as any).__SWK_CONFIG__?.MOBILE_SHELL &&
-    window.innerWidth >= 1024 &&
-    !(window.matchMedia?.('(pointer: coarse)').matches ?? false) &&
-    !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
-
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden no-print swk-atmosphere"
       style={{
-        background: isDesktopWebGl
-          ? 'linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%)'
-          : 'radial-gradient(900px 540px at 14% 8%, rgba(255,255,255,0.88), transparent 62%), radial-gradient(760px 520px at 88% 18%, rgba(87,210,244,0.34), transparent 60%), radial-gradient(680px 460px at 78% 92%, rgba(27,106,167,0.16), transparent 64%), linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%)',
+        background:
+          'radial-gradient(980px 540px at 8% -4%, rgba(212, 169, 85, 0.085), transparent 62%), radial-gradient(840px 480px at 94% 4%, rgba(30, 107, 67, 0.055), transparent 60%), radial-gradient(720px 440px at 84% 96%, rgba(150, 32, 47, 0.035), transparent 62%), linear-gradient(180deg, #ffffff 0%, #fcfbf8 100%)',
       }}
     >
-      {isDesktopWebGl && <ShaderBackground className="absolute inset-0 h-full w-full opacity-[0.68]" />}
-      {isDesktopWebGl && (
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(1200px 680px at 14% 0%, rgba(255,255,255,0.72), transparent 62%), radial-gradient(960px 560px at 88% 100%, rgba(238,248,253,0.78), transparent 64%)',
-          }}
-        />
-      )}
-      <div className="bg-arch-grid absolute inset-0 opacity-70" />
+      <div className="bg-arch-grid absolute inset-0 opacity-45" />
+      <img
+        src="/brand/os/SWK_Emblem_Transparent_1024.png"
+        alt=""
+        className="pointer-events-none select-none absolute -bottom-24 -right-20 h-[420px] w-[420px] object-contain opacity-[0.032]"
+      />
     </div>
   )
 }

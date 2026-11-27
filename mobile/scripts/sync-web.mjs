@@ -42,6 +42,9 @@ export function syncWeb() {
     /^og\.png$/i,
     /^app-icon-512\.png$/i,
     /^brand\/swk-app-icon\.png$/i,
+    /^brand\/swk-emblem-8k-transparent\.png$/i,
+    /^brand\/os\/SWK_Emblem_Transparent_1024\.png$/i,
+    /^brand\/os\/SWK_OS_Horizontal_Logo_Transparent_2048\.png$/i,
     /^brand\/site\/.*(2048|4096)\.png$/i,
     /^fonts\/(clash-display|general-sans|instrument-sans|plus-jakarta-sans)/i,
   ]

@@ -496,6 +496,7 @@ export function isAllowedPathForRestrictedStaff(pathname: string): boolean {
     '/utilities',
     '/phone',
     '/field-duty',
+    '/mobile-apps',
   ])
   if (exactAllowed.has(clean)) return true
   if (

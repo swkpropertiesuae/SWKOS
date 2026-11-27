@@ -5,9 +5,12 @@
    ===================================================================================== */
 
 @layer components {
-  /* ------------------------------------------------ Buttons (Swiss Architectural Obsidian & Glass) */
+  /* ------------------------------------------------ 21st.dev Glossy Shimmer & Magnetic Hover Buttons */
   .btn,
   .swk-btn {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -15,8 +18,8 @@
     min-height: 40px;
     padding: 8px 18px;
     border-radius: 999px;
-    border: 1px solid #121212;
-    font-weight: 500;
+    border: 1px solid rgba(212, 169, 85, 0.36);
+    font-weight: 600;
     font-size: 13.5px;
     letter-spacing: 0.01em;
     line-height: 1.25;
@@ -25,22 +28,42 @@
     max-width: 100%;
     text-align: center;
     color: #ffffff;
-    background: #121212;
-    box-shadow: 0 10px 24px -10px rgba(18, 18, 18, 0.34);
-    transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.18s var(--ease), box-shadow 0.2s var(--ease);
+    background: linear-gradient(155deg, #21232b 0%, #0c0d11 55%, #050507 100%);
+    box-shadow: 0 12px 28px -10px rgba(10, 11, 14, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    transition: background-color 0.22s var(--ease), color 0.22s var(--ease), border-color 0.22s var(--ease), transform 0.2s var(--ease), box-shadow 0.22s var(--ease);
     user-select: none;
     text-decoration: none;
   }
+  .btn::after,
+  .swk-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 22%, rgba(235, 201, 124, 0.32) 48%, rgba(255, 255, 255, 0.22) 52%, transparent 78%);
+    transform: translateX(-130%);
+    transition: transform 0.55s var(--ease);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .btn > *,
+  .swk-btn > * {
+    position: relative;
+    z-index: 1;
+  }
+  .btn:hover:not(:disabled)::after,
+  .swk-btn:hover:not(:disabled)::after {
+    transform: translateX(130%);
+  }
   .btn:hover:not(:disabled),
   .swk-btn:hover:not(:disabled) {
-    background: #242424;
-    border-color: #242424;
-    transform: translateY(-1px);
-    box-shadow: 0 14px 28px -12px rgba(18, 18, 18, 0.42);
+    border-color: #d4a955;
+    color: #ebc97c;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 34px -12px rgba(10, 11, 14, 0.62), 0 0 0 1px rgba(212, 169, 85, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
   .btn:active:not(:disabled),
   .swk-btn:active:not(:disabled) {
-    transform: translateY(0) scale(0.985);
+    transform: translateY(0) scale(0.98);
   }
   .btn:disabled,
   .swk-btn:disabled {
@@ -55,36 +78,36 @@
     flex: none;
   }
 
-  /* Restrained Corporate Semantic Button Variants */
+  /* SWK Logo Palette Semantic Button Variants */
   .btn.green,
   .swk-btn-primary {
-    background: #121212;
-    border-color: #121212;
-    color: #ffffff;
+    background: linear-gradient(155deg, #21232b 0%, #0b0c10 56%, #050507 100%);
+    border-color: rgba(212, 169, 85, 0.55);
+    color: #ebc97c;
   }
   .btn.green:hover:not(:disabled),
   .swk-btn-primary:hover:not(:disabled) {
-    background: #1e1e1e;
-    border-color: #1e1e1e;
-    color: #51fec0;
+    background: linear-gradient(155deg, #282b35 0%, #101218 55%, #07080b 100%);
+    border-color: #ebc97c;
+    color: #ffffff;
   }
   .btn.emerald {
-    background: #0e9f6e;
-    border-color: #0e9f6e;
+    background: linear-gradient(155deg, #257e4f 0%, #1e6b43 60%, #144d2f 100%);
+    border-color: rgba(212, 169, 85, 0.4);
     color: #ffffff;
   }
   .btn.emerald:hover:not(:disabled) {
-    background: #047857;
-    border-color: #047857;
+    border-color: #ebc97c;
+    color: #ffffff;
   }
   .btn.red {
-    background: #dc2626;
-    border-color: #dc2626;
+    background: linear-gradient(155deg, #b32638 0%, #96202f 60%, #6e1521 100%);
+    border-color: rgba(235, 201, 124, 0.35);
     color: #ffffff;
   }
   .btn.red:hover:not(:disabled) {
-    background: #b91c1c;
-    border-color: #b91c1c;
+    border-color: #ebc97c;
+    color: #ffffff;
   }
   .btn.blue,
   .btn.violet,
@@ -92,8 +115,8 @@
   .swk-btn-gold,
   .btn.teal,
   .btn.dark {
-    background: #121212;
-    border-color: #121212;
+    background: linear-gradient(155deg, #21232b 0%, #0b0c10 56%, #050507 100%);
+    border-color: rgba(212, 169, 85, 0.42);
     color: #ffffff;
   }
   .btn.blue:hover:not(:disabled),
@@ -102,27 +125,25 @@
   .swk-btn-gold:hover:not(:disabled),
   .btn.teal:hover:not(:disabled),
   .btn.dark:hover:not(:disabled) {
-    background: #242424;
-    border-color: #242424;
-    color: #51fec0;
+    border-color: #d4a955;
+    color: #ebc97c;
   }
   .btn.grey {
-    background: #475569;
-    border-color: #475569;
+    background: #3f4450;
+    border-color: #3f4450;
     color: #ffffff;
   }
   .btn.grey:hover:not(:disabled) {
-    background: #334155;
-    border-color: #334155;
+    background: #272a32;
+    border-color: #d4a955;
   }
   .btn.outline,
   .swk-btn-outline,
   .swk-btn-ghost {
-    background: rgba(255, 255, 255, 0.88);
-    color: #121212;
-    border-color: rgba(18, 18, 18, 0.12);
-    box-shadow: 0 6px 20px rgba(12, 56, 96, 0.06);
-    backdrop-filter: blur(12px);
+    background: #ffffff;
+    color: #0a0b0e;
+    border-color: rgba(10, 11, 14, 0.14);
+    box-shadow: 0 6px 18px -8px rgba(10, 11, 14, 0.12);
   }
   :root[data-theme='dark'] .btn.outline,
   :root[data-theme='dark'] .swk-btn-outline,
@@ -134,9 +155,9 @@
   .btn.outline:hover:not(:disabled),
   .swk-btn-outline:hover:not(:disabled),
   .swk-btn-ghost:hover:not(:disabled) {
-    background: #121212;
-    color: #ffffff;
-    border-color: #121212;
+    background: linear-gradient(155deg, #1d1f26 0%, #0a0b0e 60%, #040406 100%);
+    color: #ebc97c;
+    border-color: #d4a955;
   }
   .btn.ghost {
     background: transparent;
@@ -406,20 +427,88 @@
     border-color: #121212;
   }
 
-  /* Selective Obsidian Contrast Surface (zero navy-gold circus) */
-  .swk-card-navy {
-    background: #121212;
-    border-color: rgba(255, 255, 255, 0.12);
-    color: #e2e8f0;
+  /* Glossy Floating Shining Obsidian-Black Detail Cards (with Specular Sheen & SWK Logo Gold Trim) */
+  .swk-card-navy,
+  .swk-gloss-black {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(152deg, #1b1d25 0%, #0c0d11 52%, #050507 100%) !important;
+    border: 1px solid rgba(212, 169, 85, 0.3) !important;
+    color: #f3f4f6;
+    box-shadow: 0 26px 60px -18px rgba(10, 11, 14, 0.56), 0 8px 22px -6px rgba(10, 11, 14, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+    transition: transform 0.24s var(--ease), box-shadow 0.24s var(--ease), border-color 0.24s var(--ease);
+  }
+  .swk-card-navy::before,
+  .swk-gloss-black::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 4%, #d4a955 28%, #ebc97c 50%, #1e6b43 74%, #96202f 92%, transparent 98%);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+  .swk-gloss-black:hover {
+    transform: translateY(-3px);
+    border-color: rgba(235, 201, 124, 0.58) !important;
+    box-shadow: 0 32px 72px -18px rgba(10, 11, 14, 0.68), 0 0 0 1px rgba(212, 169, 85, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
   }
   .swk-card-navy .swk-card-title,
   .swk-card-navy h2,
-  .swk-card-navy h3 {
+  .swk-card-navy h3,
+  .swk-gloss-black h2,
+  .swk-gloss-black h3 {
     color: #ffffff;
   }
   .swk-card-navy .swk-card-sub,
-  .swk-card-navy .text-muted {
-    color: #94a3b8;
+  .swk-card-navy .text-muted,
+  .swk-gloss-black .text-muted {
+    color: #b4bcc8;
+  }
+
+  /* Glossy Floating Black KPI & Detail Tiles on Pure White Pages */
+  .kpi {
+    position: relative;
+    overflow: hidden;
+    padding: 18px 20px;
+    border-radius: 22px;
+    background: linear-gradient(155deg, #1b1d25 0%, #0c0d11 55%, #050507 100%);
+    border: 1px solid rgba(212, 169, 85, 0.28);
+    box-shadow: 0 20px 44px -16px rgba(10, 11, 14, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease), border-color 0.22s var(--ease);
+  }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba(235, 201, 124, 0.72), transparent);
+    pointer-events: none;
+  }
+  .kpi:hover {
+    transform: translateY(-3px);
+    border-color: rgba(235, 201, 124, 0.56);
+    box-shadow: 0 26px 56px -14px rgba(10, 11, 14, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .kpi .l {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #ebc97c;
+    margin-bottom: 8px;
+  }
+  .kpi .v {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(24px, 2.2vw, 30px);
+    color: #ffffff;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
   }
   .swk-card-champ {
     background: rgba(255, 255, 255, 0.92);
@@ -495,15 +584,16 @@
   }
   .swk-hdr-icon,
   .swk-module-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
     display: grid;
     place-items: center;
     flex: none;
-    background: #121212;
-    color: #51fec0;
-    box-shadow: 0 10px 24px -10px rgba(18, 18, 18, 0.45);
+    background: linear-gradient(150deg, #21232c 0%, #0a0b0e 60%, #040406 100%);
+    color: #ebc97c;
+    border: 1px solid rgba(212, 169, 85, 0.45);
+    box-shadow: 0 14px 30px -10px rgba(10, 11, 14, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   }
   .swk-eyebrow,
   .web-eyebrow {
@@ -511,19 +601,20 @@
     align-items: center;
     gap: 7px;
     font-size: 10.5px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #475569;
+    color: #8f6720;
     margin-bottom: 4px;
   }
   .swk-eyebrow::before,
   .web-eyebrow::before {
     content: '';
     display: inline-block;
-    width: 5px;
-    height: 5px;
-    background: #121212;
+    width: 14px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #d4a955 0%, #1e6b43 55%, #96202f 100%);
     flex: none;
   }
   .swk-module-sub,

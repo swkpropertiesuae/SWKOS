@@ -17,6 +17,7 @@ import { ToastProvider } from './lib/toast';
 import { DialogProvider } from './ui/kit';
 import { applyLangToDocument,startDomTranslator } from './lib/i18n';
 import { startOfflineSync } from './lib/offlineQueue';
+import { hydrateFastQueryCache, installFastQueryCacheSync, warmCoreRoutesOnIdle } from './lib/prefetch';
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state: { error: Error | null } = { error: null }
@@ -58,7 +59,20 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && !(window
   void navigator.serviceWorker.register('/sw.js').catch(() => {})
 }
 
-const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: 1 } } })
+const qc = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+      placeholderData: (prev: unknown) => prev,
+    },
+  },
+})
+hydrateFastQueryCache(qc)
+installFastQueryCacheSync(qc)
+warmCoreRoutesOnIdle()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>

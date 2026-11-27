@@ -46,6 +46,10 @@ async function periodic() {
   if (hhmm >= '10:30' && once('swk-att-1030', day)) await safe('swk-att-1030', async () => (await import('./routes/swk-ops')).sendOwner1030AttendanceReport())
   if (hhmm >= '06:00' && once('swk-dld-daily', day)) await safe('swk-dld-daily', async () => (await import('./routes/swk-ops')).syncDailyDldTransactionsAndNews())
   if (hhmm >= '10:00' && once('wa-overdue', day)) await safe('wa-overdue', async () => (await import('./integrations/whatsapp')).overdueReminders())
+  if (hhmm >= '02:30' && hhmm < '05:00' && once('swk-daily-full-backup', day)) await safe('swk-daily-full-backup', async () => {
+    const eb = await import('./domain/excel-backup')
+    await eb.runDailyFullBackup('daily-auto')
+  })
   if (hhmm >= '02:00' && hhmm < '05:00' && getSetting('r2_backup_nightly') && once('r2-backup', day)) await safe('r2-backup', async () => {
     const r = await import('./routes/integrations'); const name = await r.backupToR2(); const { logIntegration } = await import('./integrations/log'); logIntegration('backup', 'nightly', true, `Backup ${name} created${getSetting('r2_account_id') ? ' and uploaded to R2' : ''}`)
     const fs = await import('node:fs'), path = await import('node:path'), { dirs, isBackupFile } = await import('./config')

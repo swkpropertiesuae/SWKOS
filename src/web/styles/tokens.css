@@ -1,103 +1,117 @@
 /* =====================================================================================
-   SWK OS — Swiss Architectural Corporate Design System (swkpropertiesuae.com DNA)
-   Luminous Sky-Ice Canvas · Frosted Architectural Glass · Obsidian #121212 · Emerald #0E9F6E
-   WCAG AA >= 4.5:1 guaranteed across light and dark modes.
+   SWK OS — Premium Pure White & Glossy Floating Shining Obsidian-Black Design System
+   Anchored in Official SWK Logo Colors:
+     • Imperial Metallic Gold (#D4A955 / #EBC97C)
+     • UAE Royal Emerald Green (#1E6B43 / #10B981)
+     • UAE Deep Crimson Red (#96202F / #DC2626)
+     • Glossy Shining Obsidian Black (#0A0B0E → #181A22) on Crisp Pure White (#FFFFFF)
    ===================================================================================== */
 
 :root {
   --font-sans: 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
-  --font-display: 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Switzer', 'Plus Jakarta Sans', 'Noto Sans Arabic', system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Core Swiss Surfaces (Pure White, Frosted Glass, Off-White, Selective Obsidian) */
-  --bg: #eef8fd;
+  /* Premium Pure White Canvas & Glossy Obsidian Surfaces */
+  --bg: #ffffff;
   --bg-white: #ffffff;
-  --bg-offwhite: #f7f7f7;
-  --bg-cta-light: #f2f6fa;
-  --bg-subtle: #ececec;
-  --bg-obsidian: #121212;
-  --bg-obsidian-card: #1e1e1e;
+  --bg-offwhite: #faf9f7;
+  --bg-cta-light: #f6f4ef;
+  --bg-subtle: #f1efe9;
+  --bg-obsidian: #0a0b0e;
+  --bg-obsidian-card: #14161c;
+  --gloss-black: linear-gradient(150deg, #1b1d24 0%, #0c0d11 52%, #050608 100%);
+  --gloss-black-shadow: 0 24px 56px -18px rgba(10, 11, 14, 0.48), 0 6px 20px -6px rgba(10, 11, 14, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  /* Official SWK Logo Colors */
+  --logo-gold: #d4a955;
+  --logo-gold-bright: #ebc97c;
+  --logo-gold-deep: #9e7427;
+  --logo-emerald: #1e6b43;
+  --logo-emerald-bright: #10b981;
+  --logo-crimson: #96202f;
+  --logo-tricolor: linear-gradient(90deg, #d4a955 0%, #ebc97c 42%, #1e6b43 72%, #96202f 100%);
 
   --card: #ffffff;
-  --card-glass: rgba(255, 255, 255, 0.86);
-  --glass-border: rgba(255, 255, 255, 0.88);
-  --soft: #f4f7fa;
-  --hover: #eaf2f8;
-  --line: #e5e7eb;
-  --line-strong: #cfcfcf;
+  --card-glass: rgba(255, 255, 255, 0.96);
+  --glass-border: rgba(15, 16, 20, 0.085);
+  --soft: #f8f7f4;
+  --hover: #f3efe6;
+  --line: #eae7e0;
+  --line-strong: #d6cfc2;
 
-  /* Crisp Swiss Ink Hierarchy (>= 7:1 primary on white) */
-  --ink: #121212;
-  --ink-primary: #121212;
-  --body: #334155;
-  --ink-secondary: #4a4a4a;
-  --muted: #5b6778;
-  --ink-muted: #5b6778;
-  --ink-subtle: #64748b;
-  --eyebrow: #475569;
-  --lime-accent: #51fec0;
+  /* Crisp Luxury Ink Hierarchy (>= 10:1 primary on white) */
+  --ink: #0a0b0e;
+  --ink-primary: #0a0b0e;
+  --body: #2d3139;
+  --ink-secondary: #3f4450;
+  --muted: #5c6270;
+  --ink-muted: #5c6270;
+  --ink-subtle: #6b7280;
+  --eyebrow: #8f6720;
+  --lime-accent: #ebc97c;
 
-  /* Surgical Architectural Accents (Zero Circus Colors) */
-  --navy: #121212;
-  --midnight: #0c1622;
-  --graphite: #1e1e1e;
-  --fold: #121212;
-  --emerald: #0e9f6e;
-  --emerald-deep: #047857;
+  /* Highlighted SWK Brand Accents */
+  --navy: #0a0b0e;
+  --midnight: #111318;
+  --graphite: #1a1c22;
+  --fold: #0a0b0e;
+  --emerald: #1e6b43;
+  --emerald-deep: #145232;
   --emerald-soft: #ecfdf5;
-  --mint-live: #51fec0;
-  --sapphire: #1b6aa7;
-  --sapphire-soft: #eef6fb;
-  --champ: #121212;
-  --champ-bright: #51fec0;
-  --champ-deep: #121212;
-  --champ-soft: #f4f7fa;
-  --oasis: #0e9f6e;
-  --dune: #dc2626;
-  --signal: #dc2626;
+  --mint-live: #10b981;
+  --sapphire: #1e6b43;
+  --sapphire-soft: #f0fdf6;
+  --champ: #c49642;
+  --champ-bright: #ebc97c;
+  --champ-deep: #8f6720;
+  --champ-soft: #fbf6ea;
+  --oasis: #1e6b43;
+  --dune: #96202f;
+  --signal: #96202f;
   --signal-soft: #fef2f2;
-  --amber: #b45309;
-  --amber-soft: #fffbeb;
-  --violet: #334155;
-  --violet-soft: #f4f7fa;
+  --amber: #b8842a;
+  --amber-soft: #fef9ec;
+  --violet: #181a20;
+  --violet-soft: #f6f4ef;
 
-  --accent-mint: #51fec0;
-  --accent-mint-deep: #0e9f6e;
-  --focus: #121212;
-  --ember: #0e9f6e;
-  --section-tint: #f4f7fa;
-  --section-ink: #121212;
+  --accent-mint: #d4a955;
+  --accent-mint-deep: #1e6b43;
+  --focus: #c49642;
+  --ember: #d4a955;
+  --section-tint: #faf9f6;
+  --section-ink: #0a0b0e;
 
-  /* Swiss Motion & Frosted Glass Elevation */
+  /* Luxury Motion & Floating Elevation */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-swiss: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-fast: 160ms;
-  --radius: 24px;
-  --radius-lg: 28px;
-  --surface-raised: 0 20px 56px rgba(12, 56, 96, 0.085), 0 1px 2px rgba(18, 18, 18, 0.04);
-  --surface-floating: 0 24px 64px rgba(12, 56, 96, 0.14), 0 2px 6px rgba(18, 18, 18, 0.05);
-  --elevation: 0 20px 56px rgba(12, 56, 96, 0.11);
-  --workspace-ground: #eef8fd;
+  --motion-fast: 150ms;
+  --radius: 22px;
+  --radius-lg: 26px;
+  --surface-raised: 0 16px 40px -18px rgba(10, 11, 14, 0.11), 0 2px 6px rgba(10, 11, 14, 0.04);
+  --surface-floating: 0 28px 64px -18px rgba(10, 11, 14, 0.22), 0 4px 12px rgba(10, 11, 14, 0.06);
+  --elevation: 0 20px 52px -16px rgba(10, 11, 14, 0.14);
+  --workspace-ground: #ffffff;
 
-  /* Semantic Tokens (shadcn / AnalyticsBento) */
-  --background: #eef8fd;
-  --foreground: #121212;
-  --card-foreground: #121212;
+  /* Semantic Tokens (shadcn / 21st.dev / AnalyticsBento) */
+  --background: #ffffff;
+  --foreground: #0a0b0e;
+  --card-foreground: #0a0b0e;
   --popover: #ffffff;
-  --popover-foreground: #121212;
-  --primary: #121212;
+  --popover-foreground: #0a0b0e;
+  --primary: #0a0b0e;
   --primary-foreground: #ffffff;
-  --secondary: #f4f7fa;
-  --secondary-foreground: #121212;
-  --accent: #eaf2f8;
-  --accent-foreground: #121212;
-  --destructive: #dc2626;
+  --secondary: #f8f7f4;
+  --secondary-foreground: #0a0b0e;
+  --accent: #fbf6ea;
+  --accent-foreground: #0a0b0e;
+  --destructive: #96202f;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #d1d5db;
-  --ring: #121212;
-  --muted-foreground: #5b6778;
-  --muted-surface: #f4f7fa;
+  --border: #eae7e0;
+  --input: #d6cfc2;
+  --ring: #d4a955;
+  --muted-foreground: #5c6270;
+  --muted-surface: #f8f7f4;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -191,8 +205,11 @@
     font-weight: 450;
     line-height: 1.56;
     color: var(--body);
-    background-color: var(--bg);
-    background-image: linear-gradient(135deg, #eef8fd 0%, #d4effc 48%, #f5fbff 100%);
+    background-color: #ffffff;
+    background-image:
+      radial-gradient(920px 520px at 8% -4%, rgba(212, 169, 85, 0.065), transparent 62%),
+      radial-gradient(760px 440px at 94% 2%, rgba(30, 107, 67, 0.045), transparent 60%),
+      linear-gradient(180deg, #ffffff 0%, #fcfbf8 100%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -202,7 +219,7 @@
     caret-color: var(--focus);
   }
   :root[data-theme='dark'] body {
-    background-image: linear-gradient(180deg, #0c0e11 0%, #11151b 100%);
+    background-image: linear-gradient(180deg, #0a0b0e 0%, #101218 100%);
   }
   :root[data-theme='dark'] .swk-atmosphere {
     opacity: 0.08;
@@ -213,13 +230,13 @@
   h4 {
     font-family: var(--font-display);
     color: var(--ink);
-    font-weight: 500;
-    letter-spacing: -0.032em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
     line-height: 1.12;
   }
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.032em;
+    letter-spacing: -0.03em;
     line-height: 1.12;
   }
   a {
@@ -237,13 +254,13 @@
     -webkit-tap-highlight-color: transparent;
   }
   :focus-visible {
-    outline: 2px solid var(--focus);
+    outline: 2px solid var(--logo-gold);
     outline-offset: 2px;
     border-radius: 6px;
   }
   ::selection {
-    background: #121212;
-    color: #51fec0;
+    background: #0a0b0e;
+    color: #ebc97c;
   }
   * {
     scrollbar-width: thin;

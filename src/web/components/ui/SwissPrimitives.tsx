@@ -17,16 +17,16 @@ type BracketSize = 'sm' | 'md' | 'lg'
 
 const BRACKET_STYLES: Record<BracketVariant, { base: string; bracket: string }> = {
   light: {
-    base: 'bg-white/90 text-[#121212] hover:bg-[#121212] hover:text-white border border-black/[0.08] shadow-[0_8px_24px_rgba(12,56,96,0.08)] backdrop-blur-xl',
-    bracket: 'border-[#121212]',
+    base: 'bg-white text-[#0a0b0e] hover:bg-[#0a0b0e] hover:text-white hover:border-[#d4a955]/50 border border-black/[0.11] shadow-[0_10px_24px_-8px_rgba(10,11,14,0.1)] overflow-hidden',
+    bracket: 'border-[#d4a955]',
   },
   dark: {
-    base: 'bg-[#121212] text-white hover:bg-[#222222] border border-[#121212] shadow-[0_12px_28px_rgba(18,18,18,0.22)]',
-    bracket: 'border-[#121212]',
+    base: 'bg-[linear-gradient(155deg,#242733_0%,#0a0b0e_58%,#040406_100%)] text-white hover:border-[#ebc97c]/75 border border-[#d4a955]/40 shadow-[0_16px_34px_-10px_rgba(10,11,14,0.48),inset_0_1px_0_rgba(255,255,255,0.22)] overflow-hidden',
+    bracket: 'border-[#d4a955]',
   },
   white: {
-    base: 'bg-white text-[#121212] hover:bg-[#f4f7fa] border border-black/[0.08]',
-    bracket: 'border-white/75',
+    base: 'bg-white text-[#0a0b0e] hover:bg-[#faf8f4] border border-black/[0.1] overflow-hidden',
+    bracket: 'border-[#d4a955]',
   },
 }
 
@@ -124,28 +124,28 @@ export function SectionEyebrow({
 }: {
   children: ReactNode
   className?: string
-  accent?: 'obsidian' | 'emerald' | 'mint'
+  accent?: 'obsidian' | 'emerald' | 'mint' | 'gold'
 }) {
   const dot =
     accent === 'emerald'
-      ? 'bg-[#0e9f6e]'
-      : accent === 'mint'
-        ? 'bg-[#51fec0]'
-        : 'bg-[#121212]'
+      ? 'bg-[#1e6b43]'
+      : accent === 'mint' || accent === 'gold'
+        ? 'bg-[#d4a955]'
+        : 'bg-gradient-to-r from-[#96202f] via-[#d4a955] to-[#1e6b43] w-[18px] rounded-full'
   return (
     <div
       className={cls(
-        'inline-flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#475569]',
+        'inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.2em] text-[#4b5262]',
         className,
       )}
     >
-      <span className={cls('inline-block h-[5px] w-[5px] shrink-0', dot)} aria-hidden="true" />
+      <span className={cls('inline-block h-[4px] w-[5px] shrink-0', dot)} aria-hidden="true" />
       <span>{children}</span>
     </div>
   )
 }
 
-/** Crisp live pulsing status indicator matching swkpropertiesuae.com */
+/** Crisp live pulsing status indicator in UAE Royal Emerald / Logo Gold */
 export function LiveStatusDot({
   onDark = false,
   className,
@@ -153,7 +153,7 @@ export function LiveStatusDot({
   onDark?: boolean
   className?: string
 }) {
-  const color = onDark ? 'bg-[#51fec0]' : 'bg-[#0e9f6e]'
+  const color = onDark ? 'bg-[#ebc97c]' : 'bg-[#1e6b43]'
   return (
     <span className={cls('relative inline-flex h-2 w-2 shrink-0', className)} aria-hidden="true">
       <span className={cls('absolute inline-flex h-full w-full animate-ping rounded-full opacity-70', color)} />
@@ -162,7 +162,7 @@ export function LiveStatusDot({
   )
 }
 
-/** Frosted-glass architectural surface panel */
+/** Pure-white architectural surface panel with crisp shadow */
 export function GlassPanel({
   children,
   className,
@@ -176,7 +176,7 @@ export function GlassPanel({
     <section
       id={id}
       className={cls(
-        'relative rounded-[28px] border border-white/85 bg-white/86 shadow-[0_20px_56px_rgba(12,56,96,0.085)] backdrop-blur-2xl',
+        'relative rounded-[26px] border border-black/[0.08] bg-white shadow-[0_18px_46px_-18px_rgba(10,11,14,0.1)]',
         className,
       )}
     >
@@ -186,8 +186,7 @@ export function GlassPanel({
 }
 
 /**
- * Luminous Swiss Architectural Page Hero — replaces heavy dark navy/purple/charcoal circus banners
- * across Dashboard, Command Center, Shabib's Corner, Master Log, Pipeline, Mortgage Desk, Client Vault & AI Lab.
+ * Pure White + SWK Tricolor Accent Architectural Page Hero — instant crisp contrast with Logo Gold/Emerald/Crimson presence.
  */
 export function SwissHeroHeader({
   eyebrow,
@@ -210,18 +209,19 @@ export function SwissHeroHeader({
 }) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.36, ease: SWISS_EASE }}
+      transition={{ duration: 0.22, ease: SWISS_EASE }}
       className={cls(
-        'relative overflow-hidden rounded-[28px] border border-white/88 bg-white/86 p-6 sm:p-7 shadow-[0_24px_64px_rgba(12,56,96,0.10)] backdrop-blur-2xl',
+        'relative overflow-hidden rounded-[26px] border border-black/[0.08] bg-white p-6 sm:p-7 shadow-[0_20px_54px_-22px_rgba(10,11,14,0.12)]',
         className,
       )}
     >
-      {/* Subtle architectural hairline accents */}
+      {/* Official SWK Logo Tricolor Specular Accent Bar (Crimson · Imperial Gold · UAE Emerald) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#121212]/15 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+        style={{ background: 'linear-gradient(90deg, #96202f 0%, #d4a955 50%, #1e6b43 100%)' }}
       />
       <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
@@ -229,18 +229,18 @@ export function SwissHeroHeader({
             <SectionEyebrow>{eyebrow}</SectionEyebrow>
             {badge}
           </div>
-          <h1 className="mt-2.5 m-0 text-[26px] sm:text-[34px] font-medium tracking-[-0.04em] text-[#121212] leading-[1.06]">
+          <h1 className="mt-2.5 m-0 font-display text-[26px] sm:text-[34px] font-bold tracking-[-0.035em] text-[#0a0b0e] leading-[1.08]">
             {title}
             {mutedTitle && <span className="font-normal text-[#64748b]"> {mutedTitle}</span>}
           </h1>
           {subtitle && (
-            <p className="mt-2 mb-0 max-w-3xl text-[14px] leading-relaxed text-[#475569]">
+            <p className="mt-2 mb-0 max-w-3xl text-[14px] leading-relaxed text-[#4b5262]">
               {subtitle}
             </p>
           )}
         </div>
         {actions && (
-          <div className="flex flex-wrap items-center gap-3.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             {actions}
           </div>
         )}
@@ -331,7 +331,7 @@ export function SwissCarousel({
             onClick={() => scrollByStep(-1)}
             disabled={!canPrev}
             aria-label={`Previous ${ariaLabel}`}
-            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/85 bg-white/90 text-[#121212] shadow-[0_8px_24px_rgba(12,56,96,0.09)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0] disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-black/[0.1] bg-white text-[#0a0b0e] shadow-[0_8px_20px_-6px_rgba(10,11,14,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d4a955]/60 hover:bg-[#0a0b0e] hover:text-[#ebc97c] disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -340,7 +340,7 @@ export function SwissCarousel({
             onClick={() => scrollByStep(1)}
             disabled={!canNext}
             aria-label={`Next ${ariaLabel}`}
-            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/85 bg-white/90 text-[#121212] shadow-[0_8px_24px_rgba(12,56,96,0.09)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[#121212] hover:bg-[#121212] hover:text-[#51fec0] disabled:cursor-not-allowed disabled:opacity-35"
+            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-black/[0.1] bg-white text-[#0a0b0e] shadow-[0_8px_20px_-6px_rgba(10,11,14,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d4a955]/60 hover:bg-[#0a0b0e] hover:text-[#ebc97c] disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

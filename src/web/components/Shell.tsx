@@ -49,6 +49,7 @@ import { BiometricLockOverlay } from './BiometricLockOverlay'
 import { ChatDock } from './ChatDock'
 import { StaffPhoto } from './ui/staff-photo'
 import { SwissAtmosphereBackdrop } from './ui/ShaderBackground'
+import { preloadRoute } from '../lib/prefetch'
 import { clearMobileSession, lockScreenNow, openManageLockPin, registerNativePush, stopNativeFieldDuty, unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient, useSipClient } from '../lib/sipClient'
 import { APP_META, QUICK_CREATE, findNav, isNavItemVisible, launcherApps, rememberVisit } from '../swk/nav'
@@ -199,7 +200,7 @@ function AppSidebar({ pathname, collapsed, onToggle, onCloseMobile }: { pathname
       <nav className="swk-sidebar-nav" aria-label={`${here.section.label} pages`}>
         <div className="flex items-center justify-between gap-2 pb-2 mb-1 border-b border-line lg:hidden">
           <Link to="/home" onClick={onCloseMobile} className="inline-flex items-center gap-2 no-underline">
-            <img src="/brand/web/swk-icon-192.webp" alt="" className="size-8 object-contain" />
+            <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v1" alt="" className="size-8 object-contain" />
             <span className="font-display font-bold text-sm text-ink">SWK OS</span>
           </Link>
           <button type="button" onClick={onCloseMobile} aria-label="Close navigation" className="swk-sidebar-collapse-btn">
@@ -232,6 +233,8 @@ function AppSidebar({ pathname, collapsed, onToggle, onCloseMobile }: { pathname
                 key={i.to}
                 to={i.to}
                 onClick={onCloseMobile}
+                onMouseEnter={() => preloadRoute(i.to)}
+                onFocus={() => preloadRoute(i.to)}
                 title={i.desc ? `${i.label} — ${i.desc}` : i.label}
                 className={cls('swk-sidebar-link', isActive && 'active')}
                 aria-current={isActive ? 'page' : undefined}
@@ -278,6 +281,8 @@ function WorkflowStepper({ pathname }: { pathname: string }) {
               key={step.to}
               ref={active ? activeRef : undefined}
               to={step.to}
+              onMouseEnter={() => preloadRoute(step.to)}
+              onFocus={() => preloadRoute(step.to)}
               className={cls('swk-wf-pill', active && 'active')}
               aria-current={active ? 'step' : undefined}
               title={step.desc || step.label}
@@ -445,8 +450,8 @@ export function Shell() {
             </button>
           )}
           <Link to="/home" className="swk-top-brand" aria-label="SWK Properties OS, all apps">
-            <img className="icon" src="/brand/web/swk-icon-192.webp" alt="" />
-            <img className="word swk-hide-sm" src="/brand/web/swk-logo-light.webp" alt="SWK Properties" />
+            <img className="icon" src="/brand/web/swk-icon-192.webp?v=swk-8k-v1" alt="" />
+            <img className="word swk-hide-sm" src="/brand/web/swk-logo-light.webp?v=swk-8k-v1" alt="SWK Properties" />
           </Link>
 
           {/* Mobile compact location/office pill */}
@@ -520,6 +525,9 @@ export function Shell() {
                   </Link>
                   <Link to="/workspace-tools" onClick={() => setUserMenu(false)}>
                     <span className="ic"><Languages size={16} /></span>Language &amp; preferences
+                  </Link>
+                  <Link to="/mobile-apps" onClick={() => setUserMenu(false)} onMouseEnter={() => preloadRoute('/mobile-apps')}>
+                    <span className="ic"><QrCode size={16} /></span>Mobile Apps (Android &amp; iOS)
                   </Link>
                   <Link to="/home" onClick={() => setUserMenu(false)}>
                     <span className="ic"><LayoutGrid size={16} /></span>All apps
@@ -705,25 +713,25 @@ export function Shell() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <Link to="/reception-qr" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><QrCode size={18} /></span>
+                  <span className="size-10 rounded-xl bg-[#0a0b0e] text-[#ebc97c] grid place-items-center shrink-0"><QrCode size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Office QR Scan</b><small className="text-[11px] text-muted">Attendance check-in</small></span>
                 </Link>
                 <Link to="/field-duty" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><Navigation size={18} /></span>
+                  <span className="size-10 rounded-xl bg-[#0a0b0e] text-[#ebc97c] grid place-items-center shrink-0"><Navigation size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">Field Duty GPS</b><small className="text-[11px] text-muted">Viewing tracking &amp; SOS</small></span>
                 </Link>
                 <Link to="/phone" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><PhoneCall size={18} /></span>
+                  <span className="size-10 rounded-xl bg-[#0a0b0e] text-[#ebc97c] grid place-items-center shrink-0"><PhoneCall size={18} /></span>
                   <span className="min-w-0"><b className="block text-xs truncate">SIP Softphone</b><small className="text-[11px] text-muted">{sipSnap.configured ? `Ext ${sipSnap.extensionNo}` : 'Dialer & Vault call'}</small></span>
                 </Link>
-                <Link to="/utilities" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
-                  <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><Wrench size={18} /></span>
-                  <span className="min-w-0"><b className="block text-xs truncate">Utilities Suite</b><small className="text-[11px] text-muted">Word, OCR &amp; Search</small></span>
+                <Link to="/mobile-apps" onClick={() => setOpsSheet(false)} className="rounded-2xl border border-line bg-soft/80 p-3 flex items-center gap-2.5 no-underline text-ink">
+                  <span className="size-10 rounded-xl bg-[#0a0b0e] text-[#ebc97c] grid place-items-center shrink-0"><Wrench size={18} /></span>
+                  <span className="min-w-0"><b className="block text-xs truncate">Mobile App Hub</b><small className="text-[11px] text-muted">Android APK &amp; iOS install</small></span>
                 </Link>
                 {canFieldLive && (
-                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#a7f3d0] bg-[#ecfdf5]/85 p-3 flex items-center gap-2.5 no-underline text-[#047857]">
-                    <span className="size-10 rounded-xl bg-[#121212] text-[#51fec0] grid place-items-center shrink-0"><MapPinned size={18} /></span>
-                    <span className="min-w-0"><b className="block text-xs truncate">Leadership Live Field GPS Map</b><small className="text-[11px] text-[#047857]">Real-time Dubai team pins &amp; route trails</small></span>
+                  <Link to="/field-live" onClick={() => setOpsSheet(false)} className="col-span-2 rounded-2xl border border-[#1e6b43]/30 bg-[#ecfdf5]/85 p-3 flex items-center gap-2.5 no-underline text-[#1e6b43]">
+                    <span className="size-10 rounded-xl bg-[#0a0b0e] text-[#ebc97c] grid place-items-center shrink-0"><MapPinned size={18} /></span>
+                    <span className="min-w-0"><b className="block text-xs truncate">Leadership Live Field GPS Map</b><small className="text-[11px] text-[#1e6b43]">Real-time Dubai team pins &amp; route trails</small></span>
                   </Link>
                 )}
               </div>

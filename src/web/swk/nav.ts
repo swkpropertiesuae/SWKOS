@@ -193,6 +193,7 @@ export const SWK_NAV: NavSection[] = [
     label: 'Pipeline Playbook',
     items: [
       { label: '12-Stage Kanban', to: '/pipeline', icon: KanbanSquare, module: 'sales', isNew: true, desc: 'Inventory → Marketing → Form F → Mortgage → DLD → Closure' },
+      { label: 'Dubai Agency Hub', to: '/dubai-agency-hub', icon: Zap, module: 'properties', isNew: true, desc: 'Portal XML (PF/Bayut), 5-min Lead SLA, Smart Matcher, 3-Project ROI & Expiry Radar' },
       { label: 'Off-Plan Launches', to: '/offplan', icon: Rocket, module: 'properties', desc: 'All Dubai & Abu Dhabi unhanded-over launches & promotions' },
       { label: 'Project Listing Studio', to: '/listings', icon: Megaphone, module: 'properties', desc: 'Project brochures, PPTX, 3D, social & portal syndication' },
       { label: 'Smart Search', to: '/smart-search', icon: Search, module: 'properties', desc: 'Plain-language buyer shortlist matcher' },
@@ -326,6 +327,7 @@ export const SWK_NAV: NavSection[] = [
       { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, desc: 'UAE real-estate glossary translator' },
       { label: 'Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage & PDC calculators' },
       { label: 'Unified Search', to: '/utilities/search', icon: Search, desc: 'Search OS, website & live market' },
+      { label: 'Mobile Apps (Android & iOS)', to: '/mobile-apps', icon: QrCode, isNew: true, desc: 'Install Android APK, iOS App & download 8K SWK logo kit' },
     ],
   },
   {
@@ -336,7 +338,7 @@ export const SWK_NAV: NavSection[] = [
       { label: 'Office Branches & Geofence', to: '/e/branches', icon: Building, module: 'admin', desc: 'Registered Dubai office & GPS perimeter' },
       { label: 'Roles & Permissions', to: '/admin/roles', icon: ShieldHalf, module: 'admin', desc: 'Hardcoded RBAC & access controls' },
       { label: 'Connections & Webhooks', to: '/admin/integrations', icon: Plug, module: 'admin', desc: 'Website webhook, WhatsApp, email & portals' },
-      { label: 'Backups', to: '/admin/backup', icon: DatabaseBackup, module: 'admin', desc: 'Database backup & restore' },
+      { label: 'Master Excel & Daily Backups', to: '/admin/backup', icon: DatabaseBackup, module: 'admin', isNew: true, desc: 'Download all OS data as Excel (.xlsx) & automatic daily backups' },
       { label: 'Audit Trail', to: '/admin/audit', icon: History, module: 'admin', desc: 'Immutable record change log' },
       { label: 'Activity Log', to: '/e/audit_events', icon: History, module: 'admin', desc: 'Security event history' },
     ],
@@ -436,6 +438,7 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
       { label: 'Translator (9 Langs)', to: '/utilities/translator', icon: Languages, desc: 'RERA/DLD glossary translation' },
       { label: 'Unified Search', to: '/utilities/search', icon: Search, desc: 'Search permitted records & market' },
       { label: 'Deal Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage & PDC calculators' },
+      { label: 'Mobile Apps (Android & iOS)', to: '/mobile-apps', icon: QrCode, isNew: true, desc: 'Install Android APK, iOS App & 8K logo assets' },
     ],
   },
   {

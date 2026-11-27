@@ -84,9 +84,14 @@ export function Login() {
     <div className="relative flex min-h-svh w-full flex-col overflow-x-clip text-[#121212]">
       <SwissAtmosphereBackdrop />
 
-      {/* Frosted Glass Header matching swkpropertiesuae.com SiteHeader */}
-      <header className="sticky top-0 z-30 w-full border-b border-white/75 bg-white/82 shadow-[0_12px_36px_rgba(12,56,96,0.08)] backdrop-blur-2xl">
-        <div className="mx-auto flex h-[74px] max-w-[1260px] items-center justify-between gap-4 px-4 sm:px-8">
+      {/* Pure White Header with SWK Logo Tricolor Accent */}
+      <header className="sticky top-0 z-30 w-full border-b border-black/[0.08] bg-white/95 shadow-[0_8px_28px_-14px_rgba(10,11,14,0.1)] backdrop-blur-2xl">
+        <div
+          aria-hidden="true"
+          className="h-[3px] w-full"
+          style={{ background: 'linear-gradient(90deg, #96202f 0%, #d4a955 50%, #1e6b43 100%)' }}
+        />
+        <div className="mx-auto flex h-[72px] max-w-[1260px] items-center justify-between gap-4 px-4 sm:px-8">
           <div className="flex items-center gap-3">
             <a
               href="https://www.swkpropertiesuae.com"
@@ -96,14 +101,14 @@ export function Login() {
               aria-label="SWK Properties Dubai"
             >
               <img
-                src="/brand/web/swk-icon-192.webp"
+                src="/brand/web/swk-icon-192.webp?v=swk-8k-v1"
                 width={42}
                 height={42}
                 alt="SWK Properties Emblem"
-                className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 object-contain drop-shadow-[0_4px_12px_rgba(12,56,96,0.16)] transition-transform duration-300 group-hover:scale-[1.05]"
+                className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 object-contain drop-shadow-[0_4px_12px_rgba(212,169,85,0.28)] transition-transform duration-300 group-hover:scale-[1.06]"
               />
               <img
-                src="/brand/web/swk-logo-light.webp"
+                src="/brand/web/swk-logo-light.webp?v=swk-8k-v1"
                 width={132}
                 height={58}
                 alt="SWK Properties"
@@ -111,7 +116,7 @@ export function Login() {
               />
             </a>
             <span className="hidden h-6 w-px bg-black/10 sm:inline-block" aria-hidden />
-            <span className="hidden rounded-full border border-black/[0.08] bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#121212] sm:inline-flex">
+            <span className="hidden rounded-full border border-[#d4a955]/35 bg-[#0a0b0e] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#ebc97c] sm:inline-flex">
               OS Workspace
             </span>
           </div>
@@ -327,8 +332,8 @@ export function Login() {
                 style={{ background: 'linear-gradient(180deg, rgba(12,18,28,0.28) 0%, rgba(12,18,28,0.08) 45%, rgba(12,18,28,0.88) 100%)' }}
               />
 
-              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-[#121212]/72 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-white backdrop-blur-md">
-                <MapPin size={12} className="text-[#51fec0]" aria-hidden />
+              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-[#d4a955]/45 bg-[#0a0b0e]/85 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md">
+                <MapPin size={12} className="text-[#ebc97c]" aria-hidden />
                 <span>25th Floor · Al Saqr Building · Sheikh Zayed Road</span>
               </div>
 
@@ -339,23 +344,23 @@ export function Login() {
                   { v: SWK_TRADE_LICENSE, l: 'DET Trade Licence' },
                   { v: '5', l: 'UAE Emirates' },
                 ].map(s => (
-                  <div key={s.l} className="rounded-2xl border border-white/15 bg-[#121212]/72 px-3.5 py-2.5 text-white backdrop-blur-md">
-                    <div className="font-mono text-[18px] font-semibold leading-none tracking-[-0.03em] text-[#51fec0] tabular-nums">{s.v}</div>
-                    <div className="mt-1 text-[9.5px] font-medium uppercase tracking-[0.14em] text-white/75">{s.l}</div>
+                  <div key={s.l} className="rounded-2xl border border-[#d4a955]/30 bg-[linear-gradient(155deg,rgba(28,30,39,0.92)_0%,rgba(10,11,14,0.94)_100%)] px-3.5 py-2.5 text-white shadow-[0_12px_24px_rgba(0,0,0,0.4)] backdrop-blur-md">
+                    <div className="font-mono text-[18px] font-bold leading-none tracking-[-0.03em] text-[#ebc97c] tabular-nums">{s.v}</div>
+                    <div className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-white/75">{s.l}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Advisory Team Strip matching swkpropertiesuae.com hero */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/88 bg-white/84 px-4 py-3 shadow-[0_14px_38px_rgba(12,56,96,0.09)] backdrop-blur-2xl">
+            {/* Advisory Team Strip */}
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-black/[0.08] bg-white px-4 py-3 shadow-[0_14px_34px_-16px_rgba(10,11,14,0.1)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex items-center -space-x-2">
                   {WEBSITE_TEAM.slice(0, 8).map(member => (
                     <div
                       key={member.slug}
                       title={`${member.name} — ${member.title}`}
-                      className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#eaf3f9] shadow-xs sm:h-10 sm:w-10"
+                      className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#f7f7f9] shadow-xs sm:h-10 sm:w-10"
                     >
                       <img src={member.photo} alt={member.name} className="h-full w-full object-cover object-top" />
                     </div>
@@ -363,7 +368,7 @@ export function Login() {
                 </div>
                 <div>
                   <SectionEyebrow accent="emerald">Our Dubai Team</SectionEyebrow>
-                  <p className="m-0 mt-0.5 text-[12.5px] font-medium text-[#121212]">
+                  <p className="m-0 mt-0.5 text-[12.5px] font-semibold text-[#0a0b0e]">
                     Leads · Listings · Leasing · Mortgage · Document Studio
                   </p>
                 </div>
@@ -374,21 +379,21 @@ export function Login() {
         </div>
       </main>
 
-      {/* Compact Obsidian Footer Band matching swkpropertiesuae.com SiteFooter */}
-      <footer className="relative z-10 mt-auto border-t border-white/10 bg-[#121212] text-white">
+      {/* Compact Glossy Obsidian Footer Band */}
+      <footer className="relative z-10 mt-auto border-t border-[#d4a955]/30 bg-[linear-gradient(155deg,#181a22_0%,#0a0b0e_60%,#050507_100%)] text-white">
         <div className="mx-auto flex max-w-[1260px] flex-wrap items-center justify-between gap-4 px-4 py-4 text-[11.5px] text-white/75 sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
-            <img src="/brand/web/swk-logo-dark.webp" alt={SWK_COMPANY_NAME} className="h-7 w-auto object-contain" />
+            <img src="/brand/web/swk-logo-dark.webp?v=swk-8k-v1" alt={SWK_COMPANY_NAME} className="h-8 w-auto object-contain" />
             <span className="hidden text-white/25 sm:inline" aria-hidden>|</span>
             <span>
-              © {new Date().getFullYear()} {SWK_COMPANY_NAME} · RERA ORN <strong className="text-[#51fec0]">{SWK_RERA_ORN}</strong> · DET Licence <strong className="text-white">{SWK_TRADE_LICENSE}</strong>
+              © {new Date().getFullYear()} {SWK_COMPANY_NAME} · RERA ORN <strong className="text-[#ebc97c]">{SWK_RERA_ORN}</strong> · DET Licence <strong className="text-white">{SWK_TRADE_LICENSE}</strong>
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/70">
             <span>{SWK_COMPANY_ADDRESS}</span>
-            <a href={`tel:${SWK_COMPANY_PHONE.replace(/\s+/g, '')}`} className="text-white/85 no-underline hover:text-[#51fec0]">{SWK_COMPANY_PHONE}</a>
-            <a href={`mailto:${SWK_COMPANY_EMAIL}`} className="text-white/85 no-underline hover:text-[#51fec0]">{SWK_COMPANY_EMAIL}</a>
-            <a href="https://www.swkpropertiesuae.com" target="_blank" rel="noopener noreferrer" className="font-medium text-[#51fec0] no-underline hover:underline">
+            <a href={`tel:${SWK_COMPANY_PHONE.replace(/\s+/g, '')}`} className="text-white/85 no-underline hover:text-[#ebc97c]">{SWK_COMPANY_PHONE}</a>
+            <a href={`mailto:${SWK_COMPANY_EMAIL}`} className="text-white/85 no-underline hover:text-[#ebc97c]">{SWK_COMPANY_EMAIL}</a>
+            <a href="https://www.swkpropertiesuae.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#ebc97c] no-underline hover:underline">
               www.swkpropertiesuae.com
             </a>
           </div>

@@ -351,6 +351,55 @@ export default async function (app: FastifyInstance) {
     return reply.send(fs.createReadStream(p))
   })
 
+  // ---- Master All-Data Excel Workbook (.xlsx) & Automated Daily Full Backups (Owner / Admin only)
+  const requireBackupOwnerOrAdmin = (req: any) => {
+    if (req.user?.party_id || (!isOwnerSwkUser(req.user) && !isAdminSwkUser(req.user))) {
+      throw forbidden('Master Excel exports and daily full backups are restricted to Owner and Admin.')
+    }
+    if (inDemo()) throw forbidden('Production Excel exports and backups cannot be accessed from the demo workspace')
+  }
+
+  app.get('/api/admin/excel/master.xlsx', async (req, reply) => {
+    need(req, 'admin', 'export')
+    requireBackupOwnerOrAdmin(req)
+    const { buildMasterExcelWorkbook } = await import('../domain/excel-backup')
+    const out = buildMasterExcelWorkbook()
+    audit(req.ctx, getDef('branches'), 0, 'excel_export', { sheets: [null, out.sheetCount], rows: [null, out.totalRows] }, out.filename)
+    reply
+      .header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('content-disposition', `attachment; filename="${out.filename}"`)
+    return reply.send(out.buffer)
+  })
+
+  app.get('/api/admin/backups/full', async (req) => {
+    need(req, 'admin', 'view')
+    requireBackupOwnerOrAdmin(req)
+    const { listFullBackups } = await import('../domain/excel-backup')
+    return listFullBackups()
+  })
+
+  app.post('/api/admin/backups/full', async (req) => {
+    need(req, 'admin', 'edit')
+    requireBackupOwnerOrAdmin(req)
+    const { runDailyFullBackup } = await import('../domain/excel-backup')
+    const status = await runDailyFullBackup('manual')
+    audit(req.ctx, getDef('branches'), 0, 'full_backup', { db: [null, status.db_file], excel: [null, status.excel_file] }, status.excel_file || 'full-backup')
+    return status
+  })
+
+  app.get('/api/admin/backups/excel/:name', async (req, reply) => {
+    need(req, 'admin', 'export')
+    requireBackupOwnerOrAdmin(req)
+    const { isExcelBackupFile } = await import('../domain/excel-backup')
+    const name = path.basename(String((req.params as any).name))
+    const p = path.join(dirs.backups, name)
+    if (!isExcelBackupFile(name) || !fs.existsSync(p)) throw notFound('Excel backup not found')
+    reply
+      .header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('content-disposition', `attachment; filename="${name}"`)
+    return reply.send(fs.createReadStream(p))
+  })
+
   // ---- business data: clear customers, jobs and money records, and load the SWK OS starter set
   app.get('/api/admin/business-data', async (req) => {
     need(req, 'admin', 'view')
