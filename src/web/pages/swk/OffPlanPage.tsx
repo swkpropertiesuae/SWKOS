@@ -46,6 +46,17 @@ function planFromString(s?: string): Plan {
     default: return P(10, 60, 30)
   }
 }
+/** 'Custom' or empty plans: read the split the launch import writes into the description ("Payment plan: Plan 40/60 (10/30/60)"). */
+function planFromRecord(r: { payment_plan?: string; description?: string }): Plan {
+  if (r.payment_plan && r.payment_plan !== 'Custom') return planFromString(r.payment_plan)
+  const m = String(r.description ?? '').match(/Payment plan: Plan ([\d/]+)( post-handover)?(?: \(([\d/]+)\))?/)
+  if (!m) return planFromString(r.payment_plan)
+  const n = (m[3] ?? m[1]).split('/').map(Number)
+  if (n.length === 4) return P(n[0], n[1], n[2], n[3])
+  if (n.length === 3) return P(n[0], n[1], n[2])
+  if (n.length === 2 && n[0] >= 10) return m[2] ? P(10, n[0] - 10, 0, n[1]) : P(10, n[0] - 10, n[1])
+  return planFromString(r.payment_plan)
+}
 const isPost = (p: Project) => p.plan.post > 0
 const planLabel = (p: Plan) => p.post ? `${p.booking + p.construction}/${p.handover ? `${p.handover}/` : ''}${p.post} post-handover` : `${p.booking + p.construction}/${p.handover}`
 
@@ -96,7 +107,7 @@ export default function OffPlanPage() {
         types: pUnits.length ? [...new Set(pUnits.map((u: any) => u.unit_no || (u.bedrooms ? `${u.bedrooms} BR` : u.unit_type)))].slice(0, 4) as string[] : [r.bedrooms ? `${r.bedrooms} BR ${r.property_type ?? ''}`.trim() : r.property_type ?? 'Unit'],
         handoverQ: hq,
         handover: q2date(hq),
-        plan: planFromString(r.payment_plan),
+        plan: planFromRecord(r),
         completion,
         escrow: 'DLD Registered Project Escrow',
         reraNo: r.rera_permit_no || 'Pending permit',
