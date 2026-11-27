@@ -140,6 +140,57 @@ try {
   assert.ok(pulseAreas.some(a => a.emirate === 'Abu Dhabi'), 'Market pulse must include Abu Dhabi communities')
   assert.ok(pulseAreas.length >= 155, `Market pulse expected >= 155 areas, got ${pulseAreas.length}`)
   console.log(`uae-projects-catalog Task 2 checks: OK (${dubaiDevs.length} Dubai + ${adDevs.length} Abu Dhabi devs, ${dubaiComms.length} Dubai + ${adComms.length} Abu Dhabi communities)`)
+
+  // --- Task 3: 400+ UAE Projects & 250+ Active Off-Plan Launches (<Project> by <Developer>) ---
+  const { UAE_PROJECTS, UAE_OFFPLAN_PROJECTS, UAE_READY_PROJECTS, UAE_CATALOG_STATS } = await import('../src/shared/uae-catalog/index')
+  const { OFFPLAN_LAUNCHES } = await import('../src/shared/offplan-launches')
+
+  assert.ok(UAE_PROJECTS.length >= 400, `Expected >= 400 UAE projects, got ${UAE_PROJECTS.length}`)
+  assert.ok(UAE_OFFPLAN_PROJECTS.length >= 250, `Expected >= 250 active unhanded-over off-plan projects, got ${UAE_OFFPLAN_PROJECTS.length}`)
+  const dxbOff = UAE_OFFPLAN_PROJECTS.filter((p: any) => p.emirate === 'Dubai')
+  const auhOff = UAE_OFFPLAN_PROJECTS.filter((p: any) => p.emirate === 'Abu Dhabi')
+  assert.ok(dxbOff.length >= 180, `Expected >= 180 Dubai active off-plan projects, got ${dxbOff.length}`)
+  assert.ok(auhOff.length >= 60, `Expected >= 60 Abu Dhabi active off-plan projects, got ${auhOff.length}`)
+  assert.ok(UAE_READY_PROJECTS.length >= 100, `Expected >= 100 flagship ready projects, got ${UAE_READY_PROJECTS.length}`)
+
+  // Every developer in UAE_DEVELOPERS must have >= 2 projects
+  const devCodeMap = new Map(UAE_DEVELOPERS.map((d: any) => [d.code, d]))
+  const commCodeMap = new Map(UAE_COMMUNITIES.map((c: any) => [c.code, c]))
+  const countByDev = new Map<string, number>()
+  const seenSlugs = new Set<string>()
+  for (const p of UAE_PROJECTS) {
+    assert.ok(!seenSlugs.has(p.slug), `Duplicate project slug: ${p.slug}`)
+    seenSlugs.add(p.slug)
+    const dev = devCodeMap.get(p.developerCode)
+    const comm = commCodeMap.get(p.communityCode)
+    assert.ok(dev, `Project ${p.title} references unknown developerCode ${p.developerCode}`)
+    assert.ok(comm, `Project ${p.title} references unknown communityCode ${p.communityCode}`)
+    assert.ok(p.title.toLowerCase().includes(` by ${dev.shortName.toLowerCase()}`), `Project title "${p.title}" must follow "<Project Name> by ${dev.shortName}"`)
+    assert.ok(p.projectName && !p.projectName.toLowerCase().endsWith(` by ${dev.shortName.toLowerCase()}`), `Project ${p.title} projectName should be pure project name without trailing "by ${dev.shortName}"`)
+    assert.ok(p.fromPrice > 0 && p.amenities.length >= 4 && p.promoHeadline && p.promoBadge, `Project ${p.title} missing price/amenities/promo`)
+    assert.ok(p.images.length >= 1 && fs.existsSync(path.join('public', p.cover)), `Project ${p.title} cover missing on disk: ${p.cover}`)
+    if (p.isOffPlan) {
+      assert.ok(p.handoverDate >= '2026-12-01', `Off-plan project ${p.title} has already-handed-over date ${p.handoverDate}`)
+    }
+    countByDev.set(p.developerCode, (countByDev.get(p.developerCode) || 0) + 1)
+  }
+  for (const d of UAE_DEVELOPERS) {
+    const n = countByDev.get(d.code) || 0
+    assert.ok(n >= 2, `Developer ${d.name} (${d.code}) has only ${n} projects (expected >= 2)`)
+  }
+
+  // Flagship example required by user: "Shahrukhz by Danube"
+  const shahrukhz = UAE_PROJECTS.find((p: any) => p.title === 'Shahrukhz by Danube')
+  assert.ok(shahrukhz, 'Must include exact flagship project "Shahrukhz by Danube"')
+  assert.equal(shahrukhz.projectName, 'Shahrukhz')
+  assert.equal(shahrukhz.developerCode, 'DANUBE')
+  assert.equal(shahrukhz.isOffPlan, true)
+  assert.ok(shahrukhz.cover.includes('shahrukhz'), `Expected Shahrukhz render, got ${shahrukhz.cover}`)
+
+  // Legacy OFFPLAN_LAUNCHES module derives directly from UAE_OFFPLAN_PROJECTS
+  assert.equal(OFFPLAN_LAUNCHES.length, UAE_OFFPLAN_PROJECTS.length, 'OFFPLAN_LAUNCHES must match UAE_OFFPLAN_PROJECTS')
+  assert.ok(UAE_CATALOG_STATS.totalProjects === UAE_PROJECTS.length)
+  console.log(`uae-projects-catalog Task 3 checks: OK (${UAE_PROJECTS.length} total projects, ${UAE_OFFPLAN_PROJECTS.length} off-plan [${dxbOff.length} DXB / ${auhOff.length} AUH], ${UAE_READY_PROJECTS.length} ready)`)
 } finally {
   await app.close()
   db.close()
