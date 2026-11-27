@@ -101,6 +101,10 @@ jobs:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            # Fail fast: a keystore without its passwords/alias breaks Gradle with an opaque error.
+            for v in ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+              if [ -z "${!v}" ]; then echo "::error::ANDROID_KEYSTORE_BASE64 is set but secret $v is missing"; exit 1; fi
+            done
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "${RUNNER_TEMP}/swk-release.jks"
             echo "SWK_KEYSTORE_FILE=${RUNNER_TEMP}/swk-release.jks" >> "$GITHUB_ENV"
             echo "SWK_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" >> "$GITHUB_ENV"
@@ -146,7 +150,10 @@ jobs:
               echo "Verified: Release APK is non-debuggable, R8-optimized, and v2/v3 signed."
             fi
           else
-            cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist-android/SWK-OS-Android-INSTALL.apk
+            # No signing secrets: ship the debug build under a name that says so. Debug-key APKs are
+            # flagged "unsafe" by Play Protect and cannot be updated by a later release-signed build.
+            echo "::warning::ANDROID_KEYSTORE_BASE64 secret not set - only a DEBUG APK was produced. Play Protect will flag it as unsafe. Add the ANDROID_KEYSTORE_* secrets to build an installable release APK."
+            cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist-android/SWK-OS-Android-DEBUG-NOT-FOR-STAFF.apk
             cp mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk dist-android/unsigned-play-release/ 2>/dev/null || true
             cp mobile/android/app/build/outputs/bundle/release/app-release.aab dist-android/unsigned-play-release/ 2>/dev/null || true
           fi
