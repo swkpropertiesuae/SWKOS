@@ -10,7 +10,7 @@ import { ACTIONS } from '@shared/types'
 import { RefSelect } from '../components/RefSelect'
 import { CustomSelect } from '../components/CustomSelect'
 import { OfficeWifiLock } from '../components/OfficeWifiLock'
-import { isAdminSwkUser } from '@shared/swk-staff-access'
+import { isAdminSwkUser, isOwnerSwkUser } from '@shared/swk-staff-access'
 
 export function RolesPage() {
   const { meta } = useMeta(); const qc = useQueryClient(); const toast = useToast(); const dlg = useDialogs()
@@ -131,12 +131,14 @@ export function AuditPage() {
 }
 
 export function BackupPage() {
+  const { me } = useMeta()
   const toast = useToast(); const qc = useQueryClient(); const dlg = useDialogs()
+  const canMasterExcel = (isOwnerSwkUser(me) || isAdminSwkUser(me)) && !me?.demo
   const [runningFull, setRunningFull] = useState(false)
   const [dlExcel, setDlExcel] = useState(false)
   const sys = useQuery({ queryKey: ['system'], queryFn: () => get<any>('/api/admin/system') })
-  const bk = useQuery({ queryKey: ['backups'], queryFn: () => get<any[]>('/api/admin/backups') })
-  const fullBk = useQuery({ queryKey: ['full-backups'], queryFn: () => get<any>('/api/admin/backups/full'), retry: false })
+  const bk = useQuery({ queryKey: ['backups'], queryFn: () => get<any[]>('/api/admin/backups'), enabled: !me?.demo })
+  const fullBk = useQuery({ queryKey: ['full-backups'], queryFn: () => get<any>('/api/admin/backups/full'), enabled: canMasterExcel, retry: false })
   const logins = useQuery({ queryKey: ['logins'], queryFn: () => get<any[]>('/api/admin/login-events') })
   const mb = (n: number) => (n >= 1048576 ? (n / 1048576).toFixed(2) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB')
   if (!sys.data) return <Loading />
@@ -178,16 +180,27 @@ export function BackupPage() {
         title="Master Excel & Daily Backups"
         subtitle="Download all OS data in one Microsoft Excel workbook (.xlsx) and manage automatic daily backups"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn green" disabled={dlExcel} onClick={() => void downloadMasterExcel()}>
-              <FileSpreadsheet size={15} /> {dlExcel ? 'Building Excel…' : 'Download All Data (Excel .xlsx)'}
-            </button>
-            <button type="button" className="btn outline" disabled={runningFull} onClick={() => void runFullNow()}>
-              <Database size={15} /> {runningFull ? 'Running Backup…' : 'Run Daily Backup Now (DB + Excel)'}
-            </button>
-          </div>
+          canMasterExcel ? (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn green" disabled={dlExcel} onClick={() => void downloadMasterExcel()}>
+                <FileSpreadsheet size={15} /> {dlExcel ? 'Building Excel…' : 'Download All Data (Excel .xlsx)'}
+              </button>
+              <button type="button" className="btn outline" disabled={runningFull} onClick={() => void runFullNow()}>
+                <Database size={15} /> {runningFull ? 'Running Backup…' : 'Run Daily Backup Now (DB + Excel)'}
+              </button>
+            </div>
+          ) : undefined
         }
       />
+
+      {!canMasterExcel && (
+        <div className="rounded-2xl border border-[#d4a955]/35 bg-[#faf7ef] px-4 py-3 text-xs font-semibold text-[#0a0b0e]">
+          {me?.demo
+            ? 'Demo workspace: production Master Excel exports and server backups are locked.'
+            : 'Master Excel exports and daily full backups are restricted to Owner and Admin.'}
+        </div>
+      )}
+      {fullBk.error && <ErrorBox error={fullBk.error} onRetry={() => void fullBk.refetch()} />}
 
       {/* Glossy Black Automated Daily Backup Status Card */}
       <div className="swk-gloss-black p-6">

@@ -159,6 +159,37 @@ export async function downloadAuthFile(path: string, fallbackFilename?: string):
   triggerBlobDownload(blob, filename)
 }
 
+export async function downloadAuthPostFile(
+  path: string,
+  body: unknown,
+  fallbackFilename?: string,
+): Promise<void> {
+  const res = await fetch(resolveApiUrl(path), {
+    method: 'POST',
+    credentials: getFetchCredentials(),
+    headers: buildClientHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify(body ?? {}),
+  })
+  if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/api/auth/login')) {
+      window.dispatchEvent(new Event('swk:unauthorized'))
+    }
+    const text = await res.text().catch(() => '')
+    let msg = res.statusText || 'Export failed'
+    if (text) {
+      try {
+        msg = JSON.parse(text)?.error || msg
+      } catch {
+        msg = text
+      }
+    }
+    throw new ApiError(res.status, msg)
+  }
+  const blob = await res.blob()
+  const filename = filenameFromDisposition(res) || fallbackFilename || 'download'
+  triggerBlobDownload(blob, filename)
+}
+
 export async function openAuthFile(path: string, fallbackFilename?: string): Promise<void> {
   if (!needsAuthMediaFetch()) {
     window.open(resolveApiUrl(path), '_blank', 'noopener,noreferrer')

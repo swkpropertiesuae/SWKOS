@@ -1,9 +1,11 @@
 import { tr,lang } from './i18n'
 import { createContext,useCallback,useContext,useEffect,useMemo,useState,type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { EntityDef,FieldDef,NavGroup,Action } from '@shared/types'
 import { isRestrictedStaffUser,RESTRICTED_STAFF_PERMISSIONS } from '@shared/swk-staff-access'
 import { get } from './api'
 import { clearMobileSession, hydrateMobileSession } from './mobileBridge'
+import { clearFastQueryCache, setFastCacheIdentity } from './prefetch'
 
 export interface MetaEntity extends EntityDef { customFieldDefs: FieldDef[] }
 export interface Me { demo?: boolean; id: number; name: string; email: string; role: string; permissions: '*' | Record<string, string[]>; branch_id: number | null; party_id: number | null; totp: boolean; mustChangePassword: boolean; defaultPassword: boolean; lastLogin?: string }
@@ -13,6 +15,7 @@ const C = createContext<Ctx>(null as any)
 export const useMeta = () => useContext(C)
 
 export function MetaProvider({ children }: { children: ReactNode }) {
+  const qc = useQueryClient()
   const [me, setMe] = useState<Me | null>(null)
   const [meta, setMeta] = useState<Meta | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,16 +28,17 @@ export function MetaProvider({ children }: { children: ReactNode }) {
     try {
       await hydrateMobileSession()
       const m = await get<Me>('/api/auth/me')
+      setFastCacheIdentity(qc, m)
       const mt = await get<Meta>('/api/meta')
       if (lang === 'ar') {
         for (const e of mt.entities) { e.label = tr(e.label); e.plural = tr(e.plural); for (const f of [...e.fields, ...(e.customFieldDefs ?? [])]) { f.label = tr(f.label); if (f.section) f.section = tr(f.section) } for (const c of e.children ?? []) c.label = tr(c.label) }
         for (const g of mt.nav) { g.label = tr(g.label); for (const i of g.items) i.label = tr(i.label) }
       }
       setMe(m); setMeta(mt)
-    } catch { setMe(null); setMeta(null) } finally { setLoading(false) }
-  }, [])
+    } catch { clearFastQueryCache(qc); setMe(null); setMeta(null) } finally { setLoading(false) }
+  }, [qc])
   useEffect(() => { void reload() }, [reload])
-  useEffect(() => { const h = () => { void clearMobileSession(); setMe(null); setMeta(null) }; window.addEventListener('swk:unauthorized', h); return () => window.removeEventListener('swk:unauthorized', h) }, [])
+  useEffect(() => { const h = () => { clearFastQueryCache(qc); void clearMobileSession(); setMe(null); setMeta(null) }; window.addEventListener('swk:unauthorized', h); return () => window.removeEventListener('swk:unauthorized', h) }, [qc])
   const byKey = useMemo(() => new Map((meta?.entities ?? []).map(e => [e.key, e])), [meta])
   const def = useCallback((k: string) => { const e = byKey.get(k); if (!e) throw new Error('Unknown entity ' + k); return e }, [byKey])
   const can = useCallback((module: string, a: Action = 'view') => {

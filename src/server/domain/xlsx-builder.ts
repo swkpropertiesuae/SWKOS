@@ -28,11 +28,12 @@ const xmlEsc = (s: unknown): string =>
     .replace(/'/g, '&apos;')
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
 
-/** Neutralize Excel formula injection on untrusted text values. */
+/** Neutralize Excel formula injection on untrusted text values while keeping cells under Excel's 32,767-char limit. */
 function safeExcelText(raw: string): string {
-  const s = raw.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
-  if (/^[=+\-@\t\r]/.test(s)) return `'${s}`
-  return s.length > 32000 ? s.slice(0, 32000) : s
+  const clean = raw.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+  const clipped = clean.length > 32000 ? clean.slice(0, 32000) : clean
+  if (/^[=+\-@\t\r\n]/.test(clipped)) return `'${clipped}`
+  return clipped
 }
 
 /** Convert 0-based column index to Excel column letters (0 -> A, 25 -> Z, 26 -> AA). */
@@ -205,7 +206,7 @@ function createZip(entries: Array<{ name: string; content: string | Buffer }>): 
     lh.writeUInt16LE(0, 6)
     lh.writeUInt16LE(8, 8) // deflate
     lh.writeUInt16LE(0, 10)
-    lh.writeUInt16LE(0, 12)
+    lh.writeUInt16LE(0x0021, 12)
     lh.writeUInt32LE(crc, 14)
     lh.writeUInt32LE(compressed.length, 18)
     lh.writeUInt32LE(data.length, 22)
@@ -221,7 +222,7 @@ function createZip(entries: Array<{ name: string; content: string | Buffer }>): 
     ch.writeUInt16LE(0, 8)
     ch.writeUInt16LE(8, 10)
     ch.writeUInt16LE(0, 12)
-    ch.writeUInt16LE(0, 14)
+    ch.writeUInt16LE(0x0021, 14)
     ch.writeUInt32LE(crc, 16)
     ch.writeUInt32LE(compressed.length, 20)
     ch.writeUInt32LE(data.length, 24)

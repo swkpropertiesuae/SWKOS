@@ -10,9 +10,9 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { db, q, tableExists } from '../db'
+import { db, inDemo, q, tableExists } from '../db'
 import { BACKUP_EXT, dirs, isBackupFile } from '../config'
-import { fromCents, nowIso, safeJson } from '../util'
+import { forbidden, fromCents, nowIso, safeJson, todayStr } from '../util'
 import { r2Configured, r2Put } from '../integrations/storage'
 import { logIntegration } from '../integrations/log'
 import { SWK_COMPANY_NAME, SWK_RERA_ORN, SWK_TRADE_LICENSE } from '../../shared/corporate-footer'
@@ -46,10 +46,11 @@ const numVal = (v: unknown): number | string => {
   return Number.isFinite(n) ? n : String(v)
 }
 
-const safeQuery = (sql: string): any[] => {
+const safeQuery = (label: string, sql: string): any[] => {
   try {
     return q.all(sql)
-  } catch {
+  } catch (err) {
+    console.error(`excel-backup query failed [${label}]:`, err)
     return []
   }
 }
@@ -76,7 +77,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 01 Projects
   if (tableExists('properties')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('01_Projects', `
       SELECT p.property_no, p.title, p.emirate, p.department_division, p.property_type, p.status,
              p.launch_status, d.name AS developer_name, c.name AS community_name, p.building_name,
              p.bedrooms, p.bathrooms, p.area_sqft, p.price, p.rent_annual, p.roi_percent,
@@ -112,7 +113,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 02 Units
   if (tableExists('units')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('02_Units', `
       SELECT u.unit_no, p.title AS project_title, u.unit_type, u.status, u.bedrooms, u.bathrooms,
              u.area_sqft, u.sale_price, u.rent_annual, u.service_charge_annual, u.furnishing,
              u.floor_no, u.view, u.parking_slots
@@ -138,7 +139,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 03 Developers
   if (tableExists('developers')) {
-    const rows = safeQuery(`SELECT code, name, emirate, rera_id, website, phone, email, active FROM developers WHERE deleted_at IS NULL ORDER BY name ASC`)
+    const rows = safeQuery('03_Developers', `SELECT code, name, emirate, rera_id, website, phone, email, active FROM developers WHERE deleted_at IS NULL ORDER BY name ASC`)
     addSheet(
       '03_Developers',
       ['Code', 'Developer Name', 'Emirate', 'RERA / DMT ID', 'Website', 'Phone', 'Email', 'Active'],
@@ -148,7 +149,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 04 Communities
   if (tableExists('communities')) {
-    const rows = safeQuery(`SELECT code, name, emirate, area, segment, master_developer, avg_price_sqft, gross_yield_pct, service_charge_sqft, active FROM communities WHERE deleted_at IS NULL ORDER BY name ASC`)
+    const rows = safeQuery('04_Communities', `SELECT code, name, emirate, area, segment, master_developer, avg_price_sqft, gross_yield_pct, service_charge_sqft, active FROM communities WHERE deleted_at IS NULL ORDER BY name ASC`)
     addSheet(
       '04_Communities',
       ['Code', 'Community', 'Emirate', 'District', 'Segment', 'Master Developer', 'Avg PSF (AED)', 'Avg Gross Yield %', 'Service Charge/sqft', 'Active'],
@@ -158,7 +159,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 05 Leads
   if (tableExists('leads')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('05_Leads', `
       SELECT l.lead_no, l.company, l.contact_name, l.phone, l.email, l.department_division, l.status,
              l.source, l.interest, l.buyer_finance_type, l.destination, l.bedrooms_wanted,
              l.est_value, l.lead_score, l.score_band, u.name AS owner_name,
@@ -186,7 +187,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 06 Contacts & Clients (parties)
   if (tableExists('parties')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('06_Contacts_Clients', `
       SELECT code, name, status, is_customer, is_landlord, is_tenant, is_vendor, is_broker,
              phone, email, city, trn, kyc_status, kyc_expiry, sanctions_status, risk_rating, source
       FROM parties WHERE deleted_at IS NULL ORDER BY id DESC
@@ -207,7 +208,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 07 Deal Files (jobs)
   if (tableExists('jobs')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('07_Deal_Files', `
       SELECT j.job_no, j.deal_name, j.department_division, j.deal_type, j.job_status,
              j.operational_status, j.stage_12, p.title AS property_title, c.name AS client_name,
              a.name AS agent_name, j.buyer_finance_type, j.legal_payment_mode,
@@ -242,7 +243,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 08 Leases & Ejari
   if (tableExists('leases')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('08_Leases_Ejari', `
       SELECT l.lease_no, l.unit_title, l.lease_type, l.status, l.start_date, l.end_date,
              ll.name AS landlord_name, tn.name AS tenant_name, ag.name AS agent_name,
              l.annual_rent, l.monthly_rent, l.cheque_count, l.security_deposit, l.agency_fee,
@@ -272,7 +273,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 09 Rent Schedules & PDC
   if (tableExists('rent_schedules')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('09_Rent_PDC', `
       SELECT lease_no, due_date, amount, paid_amount, status, paid_date, payment_method, cheque_no, cheque_date, is_pdc
       FROM rent_schedules WHERE deleted_at IS NULL ORDER BY due_date ASC
     `)
@@ -288,7 +289,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 10 Mandates (Form A)
   if (tableExists('mandates')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('10_Mandates_FormA', `
       SELECT m.mandate_no, m.property_title, m.mandate_type, m.status, o.name AS owner_name,
              a.name AS agent_name, m.asking_price, m.asking_rent, m.start_date, m.end_date, m.exclusive
       FROM mandates m
@@ -309,7 +310,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 11 Viewings
   if (tableExists('viewings')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('11_Viewings', `
       SELECT v.viewing_no, v.property_title, l.company AS lead_name, a.name AS agent_name,
              v.scheduled_at, v.status, v.interest_level, v.checked_in_at, v.feedback
       FROM viewings v
@@ -328,113 +329,113 @@ export function buildMasterExcelWorkbook(): {
     )
   }
 
-  // 12 Forensic Site Visits & Viewings (Shabib's Workspace)
-  if (tableExists('shabib_forensic_reports')) {
-    const rows = safeQuery(`
-      SELECT report_no, report_type, staff_name, visit_date, community, building_unit,
-             gps_lat, gps_lng, gps_address, met_person_name, met_person_role, met_person_phone,
-             owner_agent_name, owner_agent_phone, third_party_agency, asking_price_aed,
-             final_price_aed, yearly_rent_aed, cheques_count, outcome_status,
-             payment_mode, verification_status, verified_by_name
-      FROM shabib_forensic_reports
+  // 12 Forensic Site Visits & Viewings (forensic_field_reports)
+  if (tableExists('forensic_field_reports')) {
+    const rows = safeQuery('12_Forensic_Visits', `
+      SELECT report_no, report_type, submitted_by_name, visit_date, community, building_or_project,
+             unit_no, gps_lat, gps_lng, gps_address_label, met_person_name, met_person_role,
+             met_person_phone, owner_or_agent_name, owner_or_agent_phone, third_party_agency,
+             deal_category, asking_price_aed, final_price_aed, yearly_rent_aed, cheques_count,
+             outcome, verification_status, verified_by_name
+      FROM forensic_field_reports
       WHERE deleted_at IS NULL
       ORDER BY id DESC
     `)
     addSheet(
       '12_Forensic_Visits',
       [
-        'Report No', 'Type', 'Staff', 'Date', 'Community', 'Building / Unit',
+        'Report No', 'Type', 'Staff', 'Date', 'Community', 'Building / Project', 'Unit',
         'GPS Lat', 'GPS Lng', 'GPS Address', 'Person Met', 'Role', 'Phone',
-        'Owner / Agent', 'Owner / Agent Phone', '3rd-Party Agency', 'Asking (AED)',
+        'Owner / Agent', 'Owner / Agent Phone', '3rd-Party Agency', 'Deal Category', 'Asking (AED)',
         'Final Price (AED)', 'Yearly Rent (AED)', 'Cheques', 'Outcome',
-        'Payment Mode', 'Verification', 'Verified By',
+        'Verification', 'Verified By',
       ],
       rows.map(r => [
-        r.report_no, r.report_type, r.staff_name, r.visit_date, r.community, r.building_unit,
-        numVal(r.gps_lat), numVal(r.gps_lng), r.gps_address, r.met_person_name, r.met_person_role,
-        r.met_person_phone, r.owner_agent_name, r.owner_agent_phone, r.third_party_agency,
-        numVal(r.asking_price_aed), numVal(r.final_price_aed), numVal(r.yearly_rent_aed),
-        numVal(r.cheques_count), r.outcome_status, r.payment_mode, r.verification_status, r.verified_by_name,
+        r.report_no, r.report_type, r.submitted_by_name, r.visit_date, r.community, r.building_or_project,
+        r.unit_no, numVal(r.gps_lat), numVal(r.gps_lng), r.gps_address_label, r.met_person_name, r.met_person_role,
+        r.met_person_phone, r.owner_or_agent_name, r.owner_or_agent_phone, r.third_party_agency,
+        r.deal_category, numVal(r.asking_price_aed), numVal(r.final_price_aed), numVal(r.yearly_rent_aed),
+        numVal(r.cheques_count), r.outcome, r.verification_status, r.verified_by_name,
       ]),
     )
   }
 
-  // 13 Pin-to-Pin Closing Dossiers (5 Tracks)
-  if (tableExists('shabib_closing_dossiers')) {
-    const rows = safeQuery(`
-      SELECT dossier_no, track, deal_title, property_community, unit_ref, client_name,
-             client_phone, seller_landlord_name, agent_name, third_party_agency,
-             asking_price_aed, final_price_aed, yearly_rent_aed, cheques_count,
-             commission_aed, current_stage, status, closing_date, handover_date
-      FROM shabib_closing_dossiers
+  // 13 Pin-to-Pin Closing Dossiers (closing_forensic_dossiers)
+  if (tableExists('closing_forensic_dossiers')) {
+    const rows = safeQuery('13_Closing_Dossiers', `
+      SELECT dossier_no, track, title, community, building_or_project, unit_no, client_name,
+             client_phone, counterparty_name, agent_name, third_party_agency,
+             asking_price_aed, agreed_price_aed, yearly_rent_aed, total_cheques_count,
+             agency_commission_aed, payment_mode, ejari_or_oqood_or_deed_ref, status, handover_date
+      FROM closing_forensic_dossiers
       WHERE deleted_at IS NULL
       ORDER BY id DESC
     `)
     addSheet(
       '13_Closing_Dossiers',
       [
-        'Dossier No', 'Track', 'Deal Title', 'Community', 'Unit', 'Client', 'Client Phone',
-        'Seller / Landlord', 'Agent', '3rd-Party Agency', 'Asking (AED)', 'Final Price (AED)',
-        'Yearly Rent (AED)', 'Cheques', 'Commission (AED)', 'Current Stage', 'Status', 'Closing Date', 'Handover Date',
+        'Dossier No', 'Track', 'Deal Title', 'Community', 'Building / Project', 'Unit', 'Client', 'Client Phone',
+        'Seller / Landlord', 'Agent', '3rd-Party Agency', 'Asking (AED)', 'Agreed Price (AED)',
+        'Yearly Rent (AED)', 'Cheques', 'Commission (AED)', 'Payment Mode', 'Ejari / Oqood / Deed Ref', 'Status', 'Handover Date',
       ],
       rows.map(r => [
-        r.dossier_no, r.track, r.deal_title, r.property_community, r.unit_ref, r.client_name,
-        r.client_phone, r.seller_landlord_name, r.agent_name, r.third_party_agency,
-        numVal(r.asking_price_aed), numVal(r.final_price_aed), numVal(r.yearly_rent_aed),
-        numVal(r.cheques_count), numVal(r.commission_aed), r.current_stage, r.status,
-        r.closing_date, r.handover_date,
+        r.dossier_no, r.track, r.title, r.community, r.building_or_project, r.unit_no, r.client_name,
+        r.client_phone, r.counterparty_name, r.agent_name, r.third_party_agency,
+        numVal(r.asking_price_aed), numVal(r.agreed_price_aed), numVal(r.yearly_rent_aed),
+        numVal(r.total_cheques_count), numVal(r.agency_commission_aed), r.payment_mode,
+        r.ejari_or_oqood_or_deed_ref, r.status, r.handover_date,
       ]),
     )
   }
 
-  // 14 Closing Cheque Ledger
-  if (tableExists('shabib_closing_cheques')) {
-    const rows = safeQuery(`
+  // 14 Closing Cheque Ledger (closing_cheque_ledger)
+  if (tableExists('closing_cheque_ledger')) {
+    const rows = safeQuery('14_Cheque_Ledger', `
       SELECT c.cheque_no, d.dossier_no, c.bank_name, c.payee_name, c.purpose,
-             c.amount_aed, c.payment_mode, c.cheque_date, c.status, c.notes
-      FROM shabib_closing_cheques c
-      LEFT JOIN shabib_closing_dossiers d ON d.id = c.dossier_id
+             c.amount_aed, c.payment_method, c.cheque_date, c.status, c.notes
+      FROM closing_cheque_ledger c
+      LEFT JOIN closing_forensic_dossiers d ON d.id = c.dossier_id
       ORDER BY c.cheque_date ASC
     `)
     addSheet(
       '14_Cheque_Ledger',
-      ['Cheque No', 'Dossier No', 'Bank', 'Payee', 'Purpose', 'Amount (AED)', 'Mode', 'Cheque Date', 'Status', 'Notes'],
+      ['Cheque No', 'Dossier No', 'Bank', 'Payee', 'Purpose', 'Amount (AED)', 'Method', 'Cheque Date', 'Status', 'Notes'],
       rows.map(r => [
         r.cheque_no, r.dossier_no, r.bank_name, r.payee_name, r.purpose,
-        numVal(r.amount_aed), r.payment_mode, r.cheque_date, r.status, r.notes,
+        numVal(r.amount_aed), r.payment_method, r.cheque_date, r.status, r.notes,
       ]),
     )
   }
 
-  // 15 Agent Commissions & Expenses Ledger
-  if (tableExists('shabib_agent_ledger')) {
-    const rows = safeQuery(`
-      SELECT entry_no, entry_type, agent_name, deal_ref, category, description,
-             amount_aed, status, payment_mode, txn_reference, entry_date,
-             is_third_party, third_party_agency, third_party_agent_name, third_party_phone, third_party_brn
-      FROM shabib_agent_ledger
+  // 15 Agent Commissions & Expenses Ledger (shabib_commission_expenses)
+  if (tableExists('shabib_commission_expenses')) {
+    const rows = safeQuery('15_Commissions_Expenses', `
+      SELECT entry_no, entry_type, agent_name, deal_ref, expense_category, property_label,
+             gross_amount_aed, net_amount_aed, status, payment_mode, payment_reference, entry_date,
+             is_third_party, third_party_agency, third_party_agent_name, third_party_phone, third_party_brn, notes
+      FROM shabib_commission_expenses
       WHERE deleted_at IS NULL
       ORDER BY id DESC
     `)
     addSheet(
       '15_Commissions_Expenses',
       [
-        'Entry No', 'Type', 'Agent', 'Deal Ref', 'Category', 'Description', 'Amount (AED)',
+        'Entry No', 'Type', 'Agent', 'Deal Ref', 'Category', 'Property / Label', 'Gross (AED)', 'Net (AED)',
         'Status', 'Payment Mode', 'Reference', 'Date', '3rd Party', '3rd-Party Agency',
-        '3rd-Party Agent', '3rd-Party Phone', '3rd-Party BRN',
+        '3rd-Party Agent', '3rd-Party Phone', '3rd-Party BRN', 'Notes',
       ],
       rows.map(r => [
-        r.entry_no, r.entry_type, r.agent_name, r.deal_ref, r.category, r.description,
-        numVal(r.amount_aed), r.status, r.payment_mode, r.txn_reference, r.entry_date,
+        r.entry_no, r.entry_type, r.agent_name, r.deal_ref, r.expense_category, r.property_label,
+        numVal(r.gross_amount_aed), numVal(r.net_amount_aed), r.status, r.payment_mode, r.payment_reference, r.entry_date,
         Boolean(r.is_third_party), r.third_party_agency, r.third_party_agent_name,
-        r.third_party_phone, r.third_party_brn,
+        r.third_party_phone, r.third_party_brn, r.notes,
       ]),
     )
   }
 
   // 16 Staff & Employees (strictly ZERO password hashes / secrets!)
   if (tableExists('employees')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('16_Staff_Employees', `
       SELECT e.emp_no, e.name, e.designation, e.status, e.email, e.phone, e.join_date,
              e.nationality, e.compensation_model, e.basic_salary, e.housing_allowance,
              e.transport_allowance, e.passport_expiry, e.eid_expiry, e.visa_expiry
@@ -459,7 +460,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 17 Attendance
   if (tableExists('attendance')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('17_Attendance', `
       SELECT a.att_date, e.name AS employee_name, a.status, a.checkin_mode, a.check_in, a.check_out, a.hours, a.note
       FROM attendance a
       LEFT JOIN employees e ON e.id = a.employee_id
@@ -476,7 +477,7 @@ export function buildMasterExcelWorkbook(): {
 
   // 18 Tasks
   if (tableExists('tasks')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('18_Tasks', `
       SELECT t.id, t.title, t.status, t.priority, u.name AS assignee_name, t.due_date, t.created_at
       FROM tasks t
       LEFT JOIN users u ON u.id = t.assignee_id
@@ -493,9 +494,9 @@ export function buildMasterExcelWorkbook(): {
 
   // 19 Invoices
   if (tableExists('invoices')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('19_Invoices', `
       SELECT i.invoice_no, i.doc_type, p.name AS customer_name, i.invoice_date, i.due_date,
-             i.currency, i.status, i.subtotal, i.vat_total, i.total, i.paid_amount, i.balance
+             i.currency, i.status, i.subtotal, i.vat_total, i.total, i.base_total, i.paid_amount, i.balance
       FROM invoices i
       LEFT JOIN parties p ON p.id = i.party_id
       WHERE i.deleted_at IS NULL
@@ -503,17 +504,17 @@ export function buildMasterExcelWorkbook(): {
     `)
     addSheet(
       '19_Invoices',
-      ['Invoice No', 'Type', 'Customer', 'Invoice Date', 'Due Date', 'Currency', 'Status', 'Subtotal (AED)', 'VAT (AED)', 'Total (AED)', 'Paid (AED)', 'Balance (AED)'],
+      ['Invoice No', 'Type', 'Customer', 'Invoice Date', 'Due Date', 'Currency', 'Status', 'Subtotal', 'VAT', 'Total (Doc Ccy)', 'Total (AED)', 'Paid', 'Balance'],
       rows.map(r => [
         r.invoice_no, r.doc_type, r.customer_name, r.invoice_date, r.due_date, r.currency,
-        r.status, aedVal(r.subtotal), aedVal(r.vat_total), aedVal(r.total), aedVal(r.paid_amount), aedVal(r.balance),
+        r.status, aedVal(r.subtotal), aedVal(r.vat_total), aedVal(r.total), aedVal(r.base_total), aedVal(r.paid_amount), aedVal(r.balance),
       ]),
     )
   }
 
   // 20 Receipts
   if (tableExists('receipts')) {
-    const rows = safeQuery(`
+    const rows = safeQuery('20_Receipts', `
       SELECT r.receipt_no, p.name AS customer_name, r.receipt_date, r.method, r.currency,
              r.amount, r.reference, r.status
       FROM receipts r
@@ -523,7 +524,7 @@ export function buildMasterExcelWorkbook(): {
     `)
     addSheet(
       '20_Receipts',
-      ['Receipt No', 'Customer', 'Date', 'Method', 'Currency', 'Amount (AED)', 'Reference', 'Status'],
+      ['Receipt No', 'Customer', 'Date', 'Method', 'Currency', 'Amount (Doc Ccy)', 'Reference', 'Status'],
       rows.map(r => [r.receipt_no, r.customer_name, r.receipt_date, r.method, r.currency, aedVal(r.amount), r.reference, r.status]),
     )
   }
@@ -580,7 +581,21 @@ export function getDailyBackupStatus(): DailyBackupStatus {
   }
 }
 
+function sortedByMtimeAsc(files: string[]): string[] {
+  return files
+    .map(f => ({ f, mtimeMs: fs.statSync(path.join(dirs.backups, f)).mtimeMs }))
+    .sort((a, b) => a.mtimeMs - b.mtimeMs)
+    .map(x => x.f)
+}
+
 export async function runDailyFullBackup(reason: 'daily-auto' | 'manual' = 'manual'): Promise<DailyBackupStatus> {
+  if (inDemo()) throw forbidden('Production backups cannot be created from the demo workspace')
+  if (reason === 'daily-auto') {
+    const prev = getDailyBackupStatus()
+    if (prev.reason === 'daily-auto' && prev.last_run_at && prev.last_run_at.slice(0, 10) === todayStr()) {
+      return prev
+    }
+  }
   fs.mkdirSync(dirs.backups, { recursive: true })
   const stamp = nowIso().replace(/[:.]/g, '-').slice(0, 19)
   const dbFile = `swk-daily-${stamp}${BACKUP_EXT}`
@@ -609,17 +624,18 @@ export async function runDailyFullBackup(reason: 'daily-auto' | 'manual' = 'manu
     }
   }
 
-  // Rolling 30-file local retention for both DB and Excel backups
+  // Rolling 30-file local retention sorted by actual file mtime (never lexicographically!)
   const allFiles = fs.readdirSync(dirs.backups)
-  for (const f of allFiles.filter(isBackupFile).sort().slice(0, -MAX_LOCAL_BACKUPS)) {
+  for (const f of sortedByMtimeAsc(allFiles.filter(isBackupFile)).slice(0, -MAX_LOCAL_BACKUPS)) {
     fs.rmSync(path.join(dirs.backups, f), { force: true })
   }
-  for (const f of allFiles.filter(isExcelBackupFile).sort().slice(0, -MAX_LOCAL_BACKUPS)) {
+  for (const f of sortedByMtimeAsc(allFiles.filter(isExcelBackupFile)).slice(0, -MAX_LOCAL_BACKUPS)) {
     fs.rmSync(path.join(dirs.backups, f), { force: true })
   }
 
+  const now = nowIso()
   const status: DailyBackupStatus = {
-    last_run_at: nowIso(),
+    last_run_at: now,
     reason,
     db_file: dbFile,
     db_bytes: dbBytes,
@@ -633,9 +649,10 @@ export async function runDailyFullBackup(reason: 'daily-auto' | 'manual' = 'manu
   }
 
   q.run(
-    `INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     DAILY_BACKUP_SETTING_KEY,
     JSON.stringify(status),
+    now,
   )
   logIntegration(
     'backup',
@@ -647,15 +664,21 @@ export async function runDailyFullBackup(reason: 'daily-auto' | 'manual' = 'manu
 }
 
 export function listFullBackups() {
+  if (inDemo()) throw forbidden('Production backups cannot be accessed from the demo workspace')
   fs.mkdirSync(dirs.backups, { recursive: true })
   const all = fs.readdirSync(dirs.backups)
   const toInfo = (f: string) => {
     const st = fs.statSync(path.join(dirs.backups, f))
-    return { name: f, bytes: st.size, at: st.mtime.toISOString() }
+    return { name: f, bytes: st.size, at: st.mtime.toISOString(), _m: st.mtimeMs }
   }
+  const sortNewest = (list: string[]) =>
+    list
+      .map(toInfo)
+      .sort((a, b) => b._m - a._m)
+      .map(({ name, bytes, at }) => ({ name, bytes, at }))
   return {
     status: getDailyBackupStatus(),
-    db_backups: all.filter(isBackupFile).sort().reverse().map(toInfo),
-    excel_backups: all.filter(isExcelBackupFile).sort().reverse().map(toInfo),
+    db_backups: sortNewest(all.filter(isBackupFile)),
+    excel_backups: sortNewest(all.filter(isExcelBackupFile)),
   }
 }

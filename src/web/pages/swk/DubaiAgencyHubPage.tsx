@@ -19,18 +19,22 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react'
-import { downloadAuthFile, get, post } from '../../lib/api'
+import { downloadAuthFile, downloadAuthPostFile, get, post, resolveApiUrl } from '../../lib/api'
+import { useMeta } from '../../lib/meta'
 import { useToast } from '../../lib/toast'
 import { ErrorBox, Loading } from '../../ui/kit'
 import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 import { GlossyBlackCard, ShineButton } from '../../components/ui/PremiumPrimitives'
+import { isAdminSwkUser, isOwnerSwkUser } from '@shared/swk-staff-access'
 
 type HubTab = 'portals' | 'sla-matcher' | 'compare' | 'leaderboard' | 'compliance'
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
 export default function DubaiAgencyHubPage() {
+  const { me } = useMeta()
   const toast = useToast()
+  const canBackupExcel = (isOwnerSwkUser(me) || isAdminSwkUser(me)) && !me?.demo
   const [tab, setTab] = useState<HubTab>('portals')
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null)
   const [matchResult, setMatchResult] = useState<any>(null)
@@ -110,29 +114,23 @@ export default function DubaiAgencyHubPage() {
   }
 
   const exportCompare = async (format: 'pdf' | 'docx' | 'jpeg') => {
-    if (!activeCompareIds.length) return
+    if (!activeCompareIds.length) {
+      toast.error('Select at least 1 project to export.')
+      return
+    }
     try {
-      const res = await fetch('/api/agency-hub/compare/export', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'X-SWK-Client': 'web' },
-        body: JSON.stringify({
+      await downloadAuthPostFile(
+        '/api/agency-hub/compare/export',
+        {
           property_ids: activeCompareIds,
           down_payment_pct: downPct,
           interest_rate_pct: ratePct,
           loan_years: loanYears,
           service_charge_psf: scPsf,
           format,
-        }),
-      })
-      if (!res.ok) throw new Error('Export failed')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `SWK-Investor-Comparison.${format === 'jpeg' ? 'jpg' : format}`
-      a.click()
-      URL.revokeObjectURL(url)
+        },
+        `SWK-Investor-Comparison.${format === 'jpeg' ? 'jpg' : format}`,
+      )
       toast.ok(`Downloaded ${format.toUpperCase()} comparison sheet`)
     } catch (e: any) {
       toast.error(e.message || 'Export failed')
@@ -178,9 +176,11 @@ export default function DubaiAgencyHubPage() {
             >
               <Globe size={14} /> Bayut / Dubizzle XML
             </button>
-            <BracketLink to="/admin/backup" variant="dark" size="sm">
-              <FileSpreadsheet size={13} className="text-[#ebc97c]" /> Excel &amp; Daily Backup
-            </BracketLink>
+            {canBackupExcel && (
+              <BracketLink to="/admin/backup" variant="dark" size="sm">
+                <FileSpreadsheet size={13} className="text-[#ebc97c]" /> Excel &amp; Daily Backup
+              </BracketLink>
+            )}
           </>
         }
       >
@@ -267,7 +267,7 @@ export default function DubaiAgencyHubPage() {
                 <ShineButton
                   variant="obsidian"
                   size="sm"
-                  onClick={() => void copyText(`${window.location.origin}/api/agency-hub/feeds/propertyfinder.xml`, 'Property Finder feed URL')}
+                  onClick={() => void copyText(resolveApiUrl('/api/agency-hub/feeds/propertyfinder.xml'), 'Property Finder feed URL')}
                 >
                   <Copy size={13} /> Copy Feed URL
                 </ShineButton>
@@ -293,7 +293,7 @@ export default function DubaiAgencyHubPage() {
                 <ShineButton
                   variant="obsidian"
                   size="sm"
-                  onClick={() => void copyText(`${window.location.origin}/api/agency-hub/feeds/bayut.xml`, 'Bayut feed URL')}
+                  onClick={() => void copyText(resolveApiUrl('/api/agency-hub/feeds/bayut.xml'), 'Bayut feed URL')}
                 >
                   <Copy size={13} /> Copy Feed URL
                 </ShineButton>
@@ -323,7 +323,9 @@ export default function DubaiAgencyHubPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {listings.slice(0, 40).map(p => (
+                  {listings.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center text-muted py-6">No active projects found yet. Add a project to see listing quality scores.</td></tr>
+                  ) : listings.slice(0, 40).map(p => (
                     <tr key={p.id}>
                       <td>
                         <Link to={`/e/properties/${p.id}`} className="link font-semibold">{p.title}</Link>
@@ -500,19 +502,19 @@ export default function DubaiAgencyHubPage() {
             <div className="grid gap-3 sm:grid-cols-4">
               <div>
                 <label className="label">Down Payment %</label>
-                <input className="input" type="number" min={10} max={100} value={downPct} onChange={e => setDownPct(Number(e.target.value) || 20)} />
+                <input className="input" type="number" min={10} max={100} value={downPct} onChange={e => { const n = Number(e.target.value); setDownPct(Number.isFinite(n) ? Math.min(100, Math.max(10, n)) : 20) }} />
               </div>
               <div>
                 <label className="label">Mortgage Interest %</label>
-                <input className="input" type="number" step="0.1" min={0} max={15} value={ratePct} onChange={e => setRatePct(Number(e.target.value) || 4.25)} />
+                <input className="input" type="number" step="0.1" min={0} max={15} value={ratePct} onChange={e => { const n = Number(e.target.value); setRatePct(Number.isFinite(n) ? Math.min(15, Math.max(0, n)) : 0) }} />
               </div>
               <div>
                 <label className="label">Loan Term (Years)</label>
-                <input className="input" type="number" min={5} max={25} value={loanYears} onChange={e => setLoanYears(Number(e.target.value) || 25)} />
+                <input className="input" type="number" min={5} max={25} value={loanYears} onChange={e => { const n = Number(e.target.value); setLoanYears(Number.isFinite(n) ? Math.min(25, Math.max(5, n)) : 25) }} />
               </div>
               <div>
                 <label className="label">Service Charge (AED/sqft)</label>
-                <input className="input" type="number" min={0} max={100} value={scPsf} onChange={e => setScPsf(Number(e.target.value) || 16)} />
+                <input className="input" type="number" min={0} max={100} value={scPsf} onChange={e => { const n = Number(e.target.value); setScPsf(Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0) }} />
               </div>
             </div>
 
@@ -599,7 +601,9 @@ export default function DubaiAgencyHubPage() {
                 </tr>
               </thead>
               <tbody>
-                {leaderboard.map((ag, idx) => (
+                {leaderboard.length === 0 ? (
+                  <tr><td colSpan={9} className="text-center text-muted py-6">No active RERA brokers found yet.</td></tr>
+                ) : leaderboard.map((ag, idx) => (
                   <tr key={ag.id}>
                     <td>
                       <span className={`inline-grid size-7 place-items-center rounded-full font-mono text-xs font-bold ${idx === 0 ? 'bg-[#0a0b0e] text-[#ebc97c]' : 'bg-[#f4f5f7] text-[#0a0b0e]'}`}>

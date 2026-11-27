@@ -105,6 +105,7 @@ try {
   const ownerH = await loginAs(config.accounts.ownerEmail, config.accounts.ownerPassword)
   const adminH = await loginAs(config.accounts.adminSwkEmail, config.accounts.adminSwkPassword)
   const managerH = await loginAs('haseeb@swk.properties', config.accounts.managerPassword)
+  const officeAdminH = await loginAs('meenakshi@swk.properties', config.accounts.bdmPassword)
   const restrictedH = await loginAs('umar@swk.rent', config.accounts.bdmPassword)
 
   // 3. Seed realistic Dubai + Abu Dhabi projects & a buyer lead
@@ -183,9 +184,11 @@ try {
   assert.equal(leadRes.statusCode, 201, `Failed creating lead: ${leadRes.body}`)
   const lead = leadRes.json()
 
-  // 4. Dubai Agency Hub API & RBAC
+  // 4. Dubai Agency Hub API & RBAC (restricted staff AND Office Admin without properties:view must be 403)
   const hubDenied = await app.inject({ method: 'GET', url: '/api/agency-hub/overview', headers: restrictedH })
   assert.equal(hubDenied.statusCode, 403, 'Restricted staff must be blocked from Dubai Agency Hub')
+  const hubDeniedOffice = await app.inject({ method: 'GET', url: '/api/agency-hub/overview', headers: officeAdminH })
+  assert.equal(hubDeniedOffice.statusCode, 403, 'Office Admin without properties:view must be blocked from Dubai Agency Hub')
 
   const hubRes = await app.inject({ method: 'GET', url: '/api/agency-hub/overview', headers: managerH })
   assert.equal(hubRes.statusCode, 200, `Manager Agency Hub failed: ${hubRes.body}`)
@@ -253,6 +256,90 @@ try {
   assert.ok(bayutRes.body.includes('<Price>2500000</Price>'))
   assert.ok(!/shabib/i.test(bayutRes.body), 'Bayut XML feed must not leak Shabib')
 
+  // Verify 0% interest financing calculation works cleanly
+  const cmpZeroRes = await app.inject({
+    method: 'POST',
+    url: '/api/agency-hub/compare',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { property_ids: [pDubai.id], down_payment_pct: 20, interest_rate_pct: 0, loan_years: 20, service_charge_psf: 0 },
+  })
+  assert.equal(cmpZeroRes.statusCode, 200)
+  const zItem = cmpZeroRes.json().items[0]
+  assert.equal(zItem.monthly_mortgage_aed, Math.round(2_000_000 / 240), '0% interest must divide loan evenly across months')
+  assert.equal(zItem.annual_service_charge_aed, 0, '0 service charge psf must yield 0')
+
+  // Seed Shabib Workspace records (forensic visit, closing dossier + cheque, commission entry) to verify all 21 Master Excel sheets!
+  const fVisitRes = await app.inject({
+    method: 'POST',
+    url: '/api/field-reports',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: {
+      report_type: 'Viewing',
+      visit_date: '2026-11-27',
+      community: 'Dubai Marina',
+      building_or_project: 'Marina Crown',
+      unit_no: '2204',
+      gps_lat: '25.0805',
+      gps_lng: '55.1403',
+      met_person_name: 'Elena Rostova',
+      asking_price_aed: 2500000,
+    },
+  })
+  assert.equal(fVisitRes.statusCode, 201, `Seed forensic visit failed: ${fVisitRes.body}`)
+
+  const cDossierRes = await app.inject({
+    method: 'POST',
+    url: '/api/shabib-workspace/closings',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: {
+      track: 'Secondary',
+      title: 'Marina Crown 2204 Closing',
+      community: 'Dubai Marina',
+      building_or_project: 'Marina Crown',
+      unit_no: '2204',
+      client_name: 'Elena Rostova',
+      agreed_price_aed: 2450000,
+      agency_commission_aed: 49000,
+    },
+  })
+  assert.equal(cDossierRes.statusCode, 201, `Seed closing dossier failed: ${cDossierRes.body}`)
+  const cDossier = cDossierRes.json()
+
+  const cChqRes = await app.inject({
+    method: 'POST',
+    url: `/api/shabib-workspace/closings/${cDossier.id}/cheques`,
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: {
+      cheque_no: 'CHQ-998877',
+      bank_name: 'Emirates NBD',
+      payee_name: 'SWK Properties LLC',
+      purpose: 'Booking Deposit',
+      payment_method: 'Cheque / PDC',
+      amount_aed: 245000,
+      cheque_date: '2026-12-01',
+      status: 'Received',
+    },
+  })
+  assert.equal(cChqRes.statusCode, 201, `Seed cheque failed: ${cChqRes.body}`)
+
+  const commRes = await app.inject({
+    method: 'POST',
+    url: '/api/shabib-workspace/commissions-expenses',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: {
+      entry_type: 'Commission',
+      agent_name: 'Fareed',
+      property_label: 'Marina Crown 2204',
+      gross_amount_aed: 49000,
+      split_pct: 50,
+      net_amount_aed: 24500,
+      status: 'Pending',
+      payment_mode: 'Bank Transfer (BT)',
+      entry_date: '2026-11-27',
+    },
+  })
+  assert.equal(commRes.statusCode, 201, `Seed commission failed: ${commRes.body}`)
+
   // 8. Master All-Data Excel Workbook (.xlsx) & Automated Daily Full Backups
   const xlDeniedStaff = await app.inject({ method: 'GET', url: '/api/admin/excel/master.xlsx', headers: restrictedH })
   assert.equal(xlDeniedStaff.statusCode, 403, 'Restricted staff must not download Master Excel')
@@ -265,13 +352,24 @@ try {
   const xlEntries = readZipEntries(xlRes.rawPayload)
   assert.ok(xlEntries['xl/workbook.xml'], 'XLSX must contain xl/workbook.xml')
   assert.ok(xlEntries['xl/styles.xml'], 'XLSX must contain xl/styles.xml')
-  assert.ok(xlEntries['xl/workbook.xml'].includes('00_Summary'))
-  assert.ok(xlEntries['xl/workbook.xml'].includes('01_Projects'))
-  assert.ok(xlEntries['xl/workbook.xml'].includes('05_Leads'))
+  for (const sheetName of [
+    '00_Summary',
+    '01_Projects',
+    '05_Leads',
+    '12_Forensic_Visits',
+    '13_Closing_Dossiers',
+    '14_Cheque_Ledger',
+    '15_Commissions_Expenses',
+  ]) {
+    assert.ok(xlEntries['xl/workbook.xml'].includes(sheetName), `Master Excel missing required sheet: ${sheetName}`)
+  }
   const allXml = Object.values(xlEntries).join('\n')
   assert.ok(allXml.includes('Marina Crown Waterfront Residences'), 'Master Excel must include live project')
   assert.ok(allXml.includes('2500000'), 'Master Excel must convert price from cents to AED')
   assert.ok(allXml.includes('Elena Rostova'), 'Master Excel must include live lead')
+  assert.ok(allXml.includes('Marina Crown 2204 Closing'), 'Master Excel must include seeded closing dossier')
+  assert.ok(allXml.includes('CHQ-998877'), 'Master Excel must include seeded cheque ledger row')
+  assert.ok(allXml.includes('24500'), 'Master Excel must include seeded commission row')
   assert.ok(!allXml.includes('password_hash') && !allXml.includes('totp_secret'), 'Master Excel must NEVER export password hashes or TOTP secrets')
 
   // 9. Automated Daily Full Backup (DB Snapshot + Master Excel .xlsx)
@@ -280,7 +378,7 @@ try {
   const fullStatus = fullRunRes.json()
   assert.ok(fullStatus.db_file && fullStatus.db_bytes > 0)
   assert.ok(fullStatus.excel_file && fullStatus.excel_bytes > 1000)
-  assert.ok(fullStatus.sheet_count >= 15)
+  assert.equal(fullStatus.sheet_count, 21, `Expected all 21 Excel sheets, got ${fullStatus.sheet_count}`)
 
   const listRes = await app.inject({ method: 'GET', url: '/api/admin/backups/full', headers: ownerH })
   assert.equal(listRes.statusCode, 200)
@@ -292,8 +390,8 @@ try {
   assert.equal(dlArchRes.statusCode, 200)
   assert.equal(dlArchRes.rawPayload.subarray(0, 2).toString('utf8'), 'PK')
 
-  const travRes = await app.inject({ method: 'GET', url: '/api/admin/backups/excel/..%2F..%2Fpackage.json', headers: ownerH })
-  assert.equal(travRes.statusCode, 404, 'Path traversal in Excel backup download must return 404')
+  const travRes = await app.inject({ method: 'GET', url: `/api/admin/backups/excel/..%2F${fullStatus.excel_file}`, headers: ownerH })
+  assert.equal(travRes.statusCode, 404, 'Path traversal with valid filename suffix must still return 404')
 
   console.log('✅ premium-suite passed all assertions (8K brand + Agency Hub + XML feeds + Master Excel + Daily Backups)!')
 } finally {

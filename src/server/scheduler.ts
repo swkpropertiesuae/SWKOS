@@ -50,11 +50,6 @@ async function periodic() {
     const eb = await import('./domain/excel-backup')
     await eb.runDailyFullBackup('daily-auto')
   })
-  if (hhmm >= '02:00' && hhmm < '05:00' && getSetting('r2_backup_nightly') && once('r2-backup', day)) await safe('r2-backup', async () => {
-    const r = await import('./routes/integrations'); const name = await r.backupToR2(); const { logIntegration } = await import('./integrations/log'); logIntegration('backup', 'nightly', true, `Backup ${name} created${getSetting('r2_account_id') ? ' and uploaded to R2' : ''}`)
-    const fs = await import('node:fs'), path = await import('node:path'), { dirs, isBackupFile } = await import('./config')
-    for (const f of fs.readdirSync(dirs.backups).filter(isBackupFile).sort().slice(0, -14)) fs.rmSync(path.join(dirs.backups, f), { force: true })
-  })
 }
 
 export function daily() {

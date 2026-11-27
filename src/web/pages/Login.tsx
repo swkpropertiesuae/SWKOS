@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowUpRight, Eye, EyeOff, Lock, Mail, MapPin, QrCode, ShieldCheck } from 'lucide-react'
 import { SWK_TEAM_PROFILES } from '@shared/swk-team-profiles'
 import {
@@ -14,6 +15,7 @@ import {
 import { get, post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { clearMobileSession, getMobileDeviceAuthPayload, isNativeMobile, setMobileSession } from '../lib/mobileBridge'
+import { clearFastQueryCache } from '../lib/prefetch'
 import { SwissAtmosphereBackdrop } from '../components/ui/ShaderBackground'
 import { BracketButton, LiveStatusDot, SectionEyebrow } from '../components/ui/SwissPrimitives'
 
@@ -27,6 +29,7 @@ const WEBSITE_TEAM = SWK_TEAM_PROFILES.filter(m => m.onWebsite && m.photo)
  */
 export function Login() {
   const { reload } = useMeta()
+  const qc = useQueryClient()
   const nav = useNavigate()
   const [email, setEmail] = useState(() => localStorage.getItem('swk.remember') || '')
   const [password, setPassword] = useState('')
@@ -52,6 +55,7 @@ export function Login() {
     if (r.session_token) {
       await setMobileSession(r.session_token, r.device_id ?? (mobilePayload as any).device_id ?? null)
     }
+    clearFastQueryCache(qc)
     await reload()
     nav('/home', { replace: true })
   }

@@ -49,7 +49,7 @@ import { BiometricLockOverlay } from './BiometricLockOverlay'
 import { ChatDock } from './ChatDock'
 import { StaffPhoto } from './ui/staff-photo'
 import { SwissAtmosphereBackdrop } from './ui/ShaderBackground'
-import { preloadRoute } from '../lib/prefetch'
+import { clearFastQueryCache, preloadRoute } from '../lib/prefetch'
 import { clearMobileSession, lockScreenNow, openManageLockPin, registerNativePush, stopNativeFieldDuty, unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient, useSipClient } from '../lib/sipClient'
 import { APP_META, QUICK_CREATE, findNav, isNavItemVisible, launcherApps, rememberVisit } from '../swk/nav'
@@ -319,6 +319,7 @@ function WorkflowStepper({ pathname }: { pathname: string }) {
 
 export function Shell() {
   const { me, setMe, meta, can } = useMeta()
+  const qc = useQueryClient()
   const nav = useNavigate()
   const loc = useLocation()
   const sipSnap = useSipClient()
@@ -411,6 +412,7 @@ export function Shell() {
     try { await post('/api/auth/logout') } catch { /* ignore */ }
     try { await sipClient.disconnect() } catch { /* ignore */ }
     await clearMobileSession()
+    clearFastQueryCache(qc)
     setMe(null)
     nav('/login')
   }

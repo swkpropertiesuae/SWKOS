@@ -391,9 +391,10 @@ export default async function (app: FastifyInstance) {
     need(req, 'admin', 'export')
     requireBackupOwnerOrAdmin(req)
     const { isExcelBackupFile } = await import('../domain/excel-backup')
-    const name = path.basename(String((req.params as any).name))
+    const rawName = String((req.params as any).name ?? '')
+    const name = path.basename(rawName)
     const p = path.join(dirs.backups, name)
-    if (!isExcelBackupFile(name) || !fs.existsSync(p)) throw notFound('Excel backup not found')
+    if (rawName !== name || !isExcelBackupFile(name) || !fs.existsSync(p)) throw notFound('Excel backup not found')
     reply
       .header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       .header('content-disposition', `attachment; filename="${name}"`)

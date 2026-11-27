@@ -14,7 +14,7 @@ import { z } from 'zod'
 import { q, tableExists } from '../db'
 import { can } from '../engine'
 import { bad, forbidden, fromCents, notFound, nowIso, todayStr } from '../util'
-import { isRestrictedStaffUser } from '../../shared/swk-staff-access'
+import { canViewEmployeeRecords, isRestrictedStaffUser } from '../../shared/swk-staff-access'
 import { assertZeroShabibPublicPayload } from '../../shared/zero-shabib-guard'
 import {
   SWK_COMPANY_EMAIL,
@@ -32,10 +32,18 @@ function requireAgencyHubAccess(req: FastifyRequest) {
   if (isRestrictedStaffUser(req.user)) {
     throw forbidden('Dubai Agency Hub requires brokerage operations access.')
   }
-  if (!can(req.user, 'properties', 'view') && !can(req.user, 'crm', 'view') && !can(req.user, 'sales', 'view')) {
-    throw forbidden('You do not have permission to open Dubai Agency Hub.')
+  if (!can(req.user, 'properties', 'view')) {
+    throw forbidden('You do not have permission to open Dubai Agency Hub (properties access required).')
   }
   return req.user
+}
+
+function assertZeroShabibOrBad(payload: unknown, label: string) {
+  try {
+    assertZeroShabibPublicPayload(payload, label)
+  } catch (e: any) {
+    throw bad(e?.message || 'Blocked: private owner details cannot be included in public exports.')
+  }
 }
 
 const xmlEsc = (v: unknown): string =>
@@ -91,7 +99,10 @@ function scoreListingQuality(p: any, today: string) {
   } else {
     missing.push('Photos / 3D Tour / Floor Plan')
   }
-  if (p.syndicate_pf || p.syndicate_bayut || p.syndicate_dubizzle) {
+  const syndPf = p.syndicate_pf == null ? true : Boolean(p.syndicate_pf)
+  const syndBayut = p.syndicate_bayut == null ? true : Boolean(p.syndicate_bayut)
+  const syndDubizzle = p.syndicate_dubizzle == null ? true : Boolean(p.syndicate_dubizzle)
+  if (syndPf || syndBayut || syndDubizzle) {
     score += 10
   } else {
     missing.push('Enable Portal Syndication')
@@ -111,9 +122,9 @@ function scoreListingQuality(p: any, today: string) {
     bedrooms: Number(p.bedrooms ?? 0),
     rera_permit_no: p.rera_permit_no || '',
     permit_expiry: p.permit_expiry || '',
-    syndicate_pf: Boolean(p.syndicate_pf),
-    syndicate_bayut: Boolean(p.syndicate_bayut),
-    syndicate_dubizzle: Boolean(p.syndicate_dubizzle),
+    syndicate_pf: syndPf,
+    syndicate_bayut: syndBayut,
+    syndicate_dubizzle: syndDubizzle,
     quality_score: score,
     grade: score >= 85 ? 'SuperAgent Ready' : score >= 65 ? 'Good' : 'Needs Polish',
     missing,
@@ -143,17 +154,19 @@ export default async function (app: FastifyInstance) {
       : 0
 
     // --- B. 5-Minute Lead SLA Monitor ---
-    const leadRows = q.all(`
-      SELECT l.id, l.lead_no, l.company, l.contact_name, l.phone, l.source, l.status,
-             l.destination, l.bedrooms_wanted, l.est_value, l.interest, l.department_division,
-             l.buyer_finance_type, l.first_response_at, l.sla_due_at, l.created_at,
-             u.name AS advisor_name
-      FROM leads l
-      LEFT JOIN users u ON u.id = l.owner_id
-      WHERE l.deleted_at IS NULL AND l.status NOT IN ('Converted', 'Unqualified')
-      ORDER BY l.id DESC
-      LIMIT 60
-    `)
+    const leadRows = can(req.user, 'crm', 'view')
+      ? q.all(`
+          SELECT l.id, l.lead_no, l.company, l.contact_name, l.phone, l.source, l.status,
+                 l.destination, l.bedrooms_wanted, l.est_value, l.interest, l.department_division,
+                 l.buyer_finance_type, l.first_response_at, l.sla_due_at, l.created_at,
+                 u.name AS advisor_name
+          FROM leads l
+          LEFT JOIN users u ON u.id = l.owner_id
+          WHERE l.deleted_at IS NULL AND l.status NOT IN ('Converted', 'Unqualified')
+          ORDER BY l.id DESC
+          LIMIT 60
+        `)
+      : []
     const slaLeads = leadRows.map(l => {
       const createdMs = new Date(l.created_at || nowIso()).getTime()
       const respMs = l.first_response_at ? new Date(l.first_response_at).getTime() : null
@@ -191,6 +204,7 @@ export default async function (app: FastifyInstance) {
     const metCount = slaLeads.filter(l => l.sla_status === 'MET_5MIN').length
 
     // --- C. Live Broker Leaderboard & Monthly Target Tracker ---
+    const monthStart = `${today.slice(0, 7)}-01`
     const agents = q.all(`
       SELECT a.id, a.agent_no, a.name, a.department_division, a.dld_broker_id, a.dld_expiry,
              a.monthly_target, a.status, e.user_id
@@ -199,26 +213,32 @@ export default async function (app: FastifyInstance) {
       WHERE a.deleted_at IS NULL AND COALESCE(a.status, 'Active') = 'Active'
       ORDER BY a.name ASC
     `)
-    const dealAgg = q.all(`
-      SELECT agent_id, COUNT(*) AS deal_count,
-             COALESCE(SUM(deal_value), 0) AS volume_cents,
-             COALESCE(SUM(commission_amount), 0) AS gci_cents
-      FROM jobs
-      WHERE deleted_at IS NULL AND job_status NOT IN ('Cancelled')
-      GROUP BY agent_id
-    `)
-    const viewAgg = q.all(`
-      SELECT agent_id, COUNT(*) AS viewings_count
-      FROM viewings
-      WHERE deleted_at IS NULL AND status <> 'Cancelled'
-      GROUP BY agent_id
-    `)
-    const forensicAgg = tableExists('shabib_forensic_reports')
+    const canSales = can(req.user, 'sales', 'view')
+    const dealAgg = canSales
       ? q.all(`
-          SELECT staff_user_id, COUNT(*) AS visits_count
-          FROM shabib_forensic_reports
-          WHERE deleted_at IS NULL AND staff_user_id IS NOT NULL
-          GROUP BY staff_user_id
+          SELECT agent_id, COUNT(*) AS deal_count,
+                 COALESCE(SUM(deal_value), 0) AS volume_cents,
+                 COALESCE(SUM(commission_amount), 0) AS gci_cents,
+                 COALESCE(SUM(CASE WHEN deal_date >= ? THEN commission_amount ELSE 0 END), 0) AS mtd_gci_cents
+          FROM jobs
+          WHERE deleted_at IS NULL AND job_status NOT IN ('Cancelled')
+          GROUP BY agent_id
+        `, monthStart)
+      : []
+    const viewAgg = can(req.user, 'mandates', 'view')
+      ? q.all(`
+          SELECT agent_id, COUNT(*) AS viewings_count
+          FROM viewings
+          WHERE deleted_at IS NULL AND status <> 'Cancelled'
+          GROUP BY agent_id
+        `)
+      : []
+    const forensicAgg = tableExists('forensic_field_reports')
+      ? q.all(`
+          SELECT submitted_by_user_id, COUNT(*) AS visits_count
+          FROM forensic_field_reports
+          WHERE deleted_at IS NULL AND submitted_by_user_id IS NOT NULL
+          GROUP BY submitted_by_user_id
         `)
       : []
     const taskAgg = q.all(`
@@ -232,19 +252,21 @@ export default async function (app: FastifyInstance) {
 
     const dealMap = new Map(dealAgg.map(r => [Number(r.agent_id), r]))
     const viewMap = new Map(viewAgg.map(r => [Number(r.agent_id), Number(r.viewings_count || 0)]))
-    const forensicMap = new Map(forensicAgg.map(r => [Number(r.staff_user_id), Number(r.visits_count || 0)]))
+    const forensicMap = new Map(forensicAgg.map(r => [Number(r.submitted_by_user_id), Number(r.visits_count || 0)]))
     const taskMap = new Map(taskAgg.map(r => [Number(r.assignee_id), r]))
 
     const leaderboard = agents
       .map(ag => {
         const d = dealMap.get(Number(ag.id))
-        const targetAed = Math.max(1, fromCents(Number(ag.monthly_target ?? 6_000_000)))
+        const rawTarget = fromCents(Number(ag.monthly_target ?? 0))
+        const targetAed = rawTarget > 0 ? rawTarget : 60_000
         const gciAed = fromCents(Number(d?.gci_cents ?? 0))
+        const mtdGciAed = fromCents(Number(d?.mtd_gci_cents ?? 0))
         const volumeAed = fromCents(Number(d?.volume_cents ?? 0))
         const dealsCount = Number(d?.deal_count ?? 0)
         const viewings = (viewMap.get(Number(ag.id)) ?? 0) + (ag.user_id ? forensicMap.get(Number(ag.user_id)) ?? 0 : 0)
         const t = ag.user_id ? taskMap.get(Number(ag.user_id)) : null
-        const targetPct = Math.min(200, Math.round((gciAed / targetAed) * 100))
+        const targetPct = Math.min(200, Math.round((mtdGciAed / targetAed) * 100))
         return {
           id: ag.id,
           agent_no: ag.agent_no,
@@ -254,6 +276,7 @@ export default async function (app: FastifyInstance) {
           deals_count: dealsCount,
           volume_aed: volumeAed,
           gci_aed: gciAed,
+          mtd_gci_aed: mtdGciAed,
           monthly_target_aed: targetAed,
           target_pct: targetPct,
           viewings_and_visits: viewings,
@@ -261,7 +284,7 @@ export default async function (app: FastifyInstance) {
           tasks_open: Number(t?.open_tasks ?? 0),
         }
       })
-      .sort((a, b) => b.gci_aed - a.gci_aed || b.volume_aed - a.volume_aed || b.viewings_and_visits - a.viewings_and_visits)
+      .sort((a, b) => b.mtd_gci_aed - a.mtd_gci_aed || b.gci_aed - a.gci_aed || b.volume_aed - a.volume_aed || b.viewings_and_visits - a.viewings_and_visits)
 
     // --- D. Unified Dubai Compliance & Expiry Radar ---
     const expiries: Array<{
@@ -299,15 +322,21 @@ export default async function (app: FastifyInstance) {
         pushExpiry('RERA Broker Card (BRN)', ag.name, ag.dld_broker_id || ag.agent_no, ag.dld_expiry, 60, `/e/agents/${ag.id}`)
       }
     }
-    for (const m of q.all(`SELECT id, mandate_no, property_title, end_date FROM mandates WHERE deleted_at IS NULL AND status = 'Active' AND end_date IS NOT NULL`)) {
-      pushExpiry('Form A Mandate', m.property_title || m.mandate_no, m.mandate_no, m.end_date, 45, `/e/mandates/${m.id}`)
+    if (can(req.user, 'mandates', 'view')) {
+      for (const m of q.all(`SELECT id, mandate_no, property_title, end_date FROM mandates WHERE deleted_at IS NULL AND status = 'Active' AND end_date IS NOT NULL`)) {
+        pushExpiry('Form A Mandate', m.property_title || m.mandate_no, m.mandate_no, m.end_date, 45, `/e/mandates/${m.id}`)
+      }
     }
-    for (const l of q.all(`SELECT id, lease_no, unit_title, end_date, ejari_no FROM leases WHERE deleted_at IS NULL AND status IN ('Active','Ejari Registered','Notice Served') AND end_date IS NOT NULL`)) {
-      pushExpiry('Ejari Tenancy Lease', l.unit_title || l.lease_no, l.ejari_no || l.lease_no, l.end_date, 90, `/e/leases/${l.id}`)
+    if (can(req.user, 'leases', 'view')) {
+      for (const l of q.all(`SELECT id, lease_no, unit_title, end_date, ejari_no FROM leases WHERE deleted_at IS NULL AND status IN ('Active','Ejari Registered','Notice Served') AND end_date IS NOT NULL`)) {
+        pushExpiry('Ejari Tenancy Lease', l.unit_title || l.lease_no, l.ejari_no || l.lease_no, l.end_date, 90, `/e/leases/${l.id}`)
+      }
     }
-    for (const e of q.all(`SELECT id, emp_no, name, visa_expiry, eid_expiry FROM employees WHERE deleted_at IS NULL AND status = 'Active'`)) {
-      if (e.visa_expiry) pushExpiry('Staff UAE Visa', e.name, e.emp_no, e.visa_expiry, 60, `/e/employees/${e.id}`)
-      if (e.eid_expiry) pushExpiry('Staff Emirates ID', e.name, e.emp_no, e.eid_expiry, 60, `/e/employees/${e.id}`)
+    if (canViewEmployeeRecords(req.user)) {
+      for (const e of q.all(`SELECT id, emp_no, name, visa_expiry, eid_expiry FROM employees WHERE deleted_at IS NULL AND status = 'Active'`)) {
+        if (e.visa_expiry) pushExpiry('Staff UAE Visa', e.name, e.emp_no, e.visa_expiry, 60, `/e/employees/${e.id}`)
+        if (e.eid_expiry) pushExpiry('Staff Emirates ID', e.name, e.emp_no, e.eid_expiry, 60, `/e/employees/${e.id}`)
+      }
     }
 
     expiries.sort((a, b) => a.days_left - b.days_left)
@@ -335,6 +364,7 @@ export default async function (app: FastifyInstance) {
   /** 2. 1-Click Smart Buyer-to-Property Matcher */
   app.get('/api/agency-hub/match/:leadId', async (req) => {
     requireAgencyHubAccess(req)
+    if (!can(req.user, 'crm', 'view')) throw forbidden('CRM access required to match leads.')
     const leadId = idOf((req.params as any).leadId)
     const lead = q.get(`SELECT * FROM leads WHERE id = ? AND deleted_at IS NULL`, leadId)
     if (!lead) throw notFound('Lead not found')
@@ -418,7 +448,7 @@ export default async function (app: FastifyInstance) {
       .sort((a, b) => b.match_score - a.match_score)
       .slice(0, 8)
 
-    assertZeroShabibPublicPayload(matches.map(m => m.whatsapp_pitch), 'Smart Matcher WhatsApp Pitch')
+    assertZeroShabibOrBad(matches.map(m => m.whatsapp_pitch), 'Smart Matcher WhatsApp Pitch')
     return {
       lead: {
         id: lead.id,
@@ -456,8 +486,8 @@ export default async function (app: FastifyInstance) {
 
     return rows.map(p => {
       const priceAed = fromCents(Number(p.price ?? 0))
-      const areaSqft = Math.max(1, Number(p.area_sqft ?? 0))
-      const psfAed = priceAed > 0 && Number(p.area_sqft ?? 0) > 0 ? Math.round(priceAed / areaSqft) : 0
+      const rawAreaSqft = Number(p.area_sqft ?? 0)
+      const psfAed = priceAed > 0 && rawAreaSqft > 0 ? Math.round(priceAed / rawAreaSqft) : 0
       const emirate = String(p.emirate || 'Dubai')
       const isAbuDhabi = /abu dhabi/i.test(emirate)
       const govTransferPct = isAbuDhabi ? 2 : 4
@@ -467,19 +497,21 @@ export default async function (app: FastifyInstance) {
       const estYieldPct = Number(p.roi_percent || p.gross_yield_pct || 7.2)
       const storedRent = fromCents(Number(p.rent_annual ?? 0))
       const estAnnualRentAed = storedRent > 0 ? storedRent : Math.round((priceAed * estYieldPct) / 100)
-      const annualServiceChargeAed = Math.round(areaSqft * input.service_charge_psf)
+      const annualServiceChargeAed = rawAreaSqft > 0 ? Math.round(rawAreaSqft * input.service_charge_psf) : 0
       const netAnnualIncomeAed = Math.max(0, estAnnualRentAed - annualServiceChargeAed)
       const grossRoiPct = priceAed > 0 ? Number(((estAnnualRentAed / priceAed) * 100).toFixed(2)) : 0
       const netRoiPct = priceAed > 0 ? Number(((netAnnualIncomeAed / priceAed) * 100).toFixed(2)) : 0
 
-      // Monthly Mortgage Payment (Standard UAE Amortization)
+      // Monthly Mortgage Payment (Standard UAE Amortization + 0% Islamic / Developer financing)
       const downPaymentAed = Math.round((priceAed * input.down_payment_pct) / 100)
       const loanAed = Math.max(0, priceAed - downPaymentAed)
       const r = input.interest_rate_pct / 100 / 12
       const n = input.loan_years * 12
       const monthlyMortgageAed =
-        loanAed > 0 && r > 0 && n > 0
-          ? Math.round((loanAed * (r * Math.pow(1 + r, n))) / (Math.pow(1 + r, n) - 1))
+        loanAed > 0 && n > 0
+          ? r > 0
+            ? Math.round((loanAed * (r * Math.pow(1 + r, n))) / (Math.pow(1 + r, n) - 1))
+            : Math.round(loanAed / n)
           : 0
 
       const goldenVisaEligible = priceAed >= 2_000_000
@@ -598,7 +630,7 @@ export default async function (app: FastifyInstance) {
       ],
     }
 
-    assertZeroShabibPublicPayload(doc, 'Investor Comparison Export')
+    assertZeroShabibOrBad(doc, 'Investor Comparison Export')
     const out = await exportStructuredDossier(doc, fmt)
     reply
       .header('content-type', out.mime)
@@ -650,7 +682,7 @@ export default async function (app: FastifyInstance) {
     })
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<list last_update="${xmlEsc(nowIso())}" listing_count="${items.length}">\n${items.join('\n')}\n</list>\n`
-    assertZeroShabibPublicPayload(xml, 'Property Finder XML Feed')
+    assertZeroShabibOrBad(xml, 'Property Finder XML Feed')
     reply
       .header('content-type', 'application/xml; charset=utf-8')
       .header('content-disposition', 'inline; filename="swk-propertyfinder-feed.xml"')
@@ -674,6 +706,8 @@ export default async function (app: FastifyInstance) {
     const items = rows.map(p => {
       const isLease = /leasing|rent/i.test(String(p.department_division || '')) && !fromCents(Number(p.price ?? 0))
       const priceAed = Math.round(isLease ? fromCents(Number(p.rent_annual ?? 0)) : fromCents(Number(p.price ?? 0)))
+      const syndBayut = p.syndicate_bayut == null ? true : Boolean(p.syndicate_bayut)
+      const syndDubizzle = p.syndicate_dubizzle == null ? true : Boolean(p.syndicate_dubizzle)
       return `  <Property>
     <Property_Ref_No>${xmlEsc(p.property_no || `SWK-${p.id}`)}</Property_Ref_No>
     <Permit_Number>${xmlEsc(p.rera_permit_no || '')}</Permit_Number>
@@ -695,14 +729,14 @@ export default async function (app: FastifyInstance) {
     <Listing_Agent_Phone>${xmlEsc(SWK_COMPANY_PHONE)}</Listing_Agent_Phone>
     <Listing_Agent_Email>${xmlEsc(SWK_COMPANY_EMAIL)}</Listing_Agent_Email>
     <Portals>
-      ${p.syndicate_bayut ? '<Portal>Bayut</Portal>' : ''}
-      ${p.syndicate_dubizzle ? '<Portal>Dubizzle</Portal>' : ''}
+      ${syndBayut ? '<Portal>Bayut</Portal>' : ''}
+      ${syndDubizzle ? '<Portal>Dubizzle</Portal>' : ''}
     </Portals>
   </Property>`
     })
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Properties>\n${items.join('\n')}\n</Properties>\n`
-    assertZeroShabibPublicPayload(xml, 'Bayut / Dubizzle XML Feed')
+    assertZeroShabibOrBad(xml, 'Bayut / Dubizzle XML Feed')
     reply
       .header('content-type', 'application/xml; charset=utf-8')
       .header('content-disposition', 'inline; filename="swk-bayut-dubizzle-feed.xml"')

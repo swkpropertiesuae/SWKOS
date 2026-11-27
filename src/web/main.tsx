@@ -17,7 +17,7 @@ import { ToastProvider } from './lib/toast';
 import { DialogProvider } from './ui/kit';
 import { applyLangToDocument,startDomTranslator } from './lib/i18n';
 import { startOfflineSync } from './lib/offlineQueue';
-import { hydrateFastQueryCache, installFastQueryCacheSync, warmCoreRoutesOnIdle } from './lib/prefetch';
+import { installFastQueryCacheSync, warmCoreRoutesOnIdle } from './lib/prefetch';
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state: { error: Error | null } = { error: null }
@@ -70,7 +70,6 @@ const qc = new QueryClient({
     },
   },
 })
-hydrateFastQueryCache(qc)
 installFastQueryCacheSync(qc)
 warmCoreRoutesOnIdle()
 createRoot(document.getElementById('root')!).render(

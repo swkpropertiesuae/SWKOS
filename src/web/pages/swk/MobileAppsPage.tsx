@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { useToast } from '../../lib/toast'
+import { getApiBaseUrl, resolveApiUrl } from '../../lib/api'
 import { SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 import { GlossyBlackCard, ShineButton } from '../../components/ui/PremiumPrimitives'
 import { SWK_COMPANY_NAME, SWK_RERA_ORN } from '@shared/corporate-footer'
@@ -21,7 +22,7 @@ import { SWK_COMPANY_NAME, SWK_RERA_ORN } from '@shared/corporate-footer'
 export default function MobileAppsPage() {
   const toast = useToast()
   const [copied, setCopied] = useState(false)
-  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://os.swk.properties'
+  const appUrl = getApiBaseUrl() || (typeof window !== 'undefined' && !/^https?:\/\/localhost/i.test(window.location.origin) && !window.location.origin.startsWith('capacitor://') ? window.location.origin : 'https://os.swk.properties')
 
   const copyLink = async () => {
     try {
@@ -180,7 +181,7 @@ export default function MobileAppsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href="/brand/swk-emblem-8k-transparent.png" download="SWK-Emblem-8K-Transparent.png" className="btn green sm no-underline">
+            <a href={resolveApiUrl('/brand/swk-emblem-8k-transparent.png')} download="SWK-Emblem-8K-Transparent.png" target="_blank" rel="noopener noreferrer" className="btn green sm no-underline">
               <Download size={13} /> 8K Transparent PNG (7680×7680)
             </a>
             <a href="/favicon/favicon.svg?v=swk-8k-v1" download="swk-favicon.svg" className="btn outline sm no-underline">
