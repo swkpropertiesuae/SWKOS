@@ -18,7 +18,7 @@ export default function ReraCentre() {
   const [tab, setTab] = useState<TabKey>('overview')
   const [notice, setNotice] = useState<string | null>(null)
   const compQ = useQuery({ queryKey: ['rera-comp'], queryFn: () => get<any>('/api/e/compliance_items', { pageSize: 200 }) })
-  const propsQ = useQuery({ queryKey: ['rera-props'], queryFn: () => get<any>('/api/e/properties', { pageSize: 200 }) })
+  const propsQ = useQuery({ queryKey: ['rera-props'], queryFn: () => get<any>('/api/e/properties', { pageSize: 2000 }) })
   const mandQ = useQuery({ queryKey: ['rera-mand'], queryFn: () => get<any>('/api/e/mandates', { pageSize: 200 }) })
   const agentsQ = useQuery({ queryKey: ['rera-agents'], queryFn: () => get<any>('/api/e/agents', { pageSize: 200 }) })
   const partiesQ = useQuery({ queryKey: ['rera-parties'], queryFn: () => get<any>('/api/e/parties', { pageSize: 500 }) })

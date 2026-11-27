@@ -108,6 +108,8 @@ function extractMediaBundle(
     model_3d_url?: string | null
     floor_plan_url?: string | null
     brochure_url?: string | null
+    ppt_url?: string | null
+    payment_plan_pdf_url?: string | null
   },
 ) {
   const list = normalizeMediaList(mediaRaw)
@@ -143,6 +145,8 @@ function extractMediaBundle(
   pushAsset('tour3d', extras.model_3d_url, 'Interactive 3D Model', 'Interactive 3D Model')
   pushAsset('floorplan', extras.floor_plan_url, 'Official Floor Plan', 'Floor Plan')
   pushAsset('brochure', extras.brochure_url, 'Developer Brochure', 'Official Brochure')
+  pushAsset('ppt', extras.ppt_url, 'Presentation Deck (.PPTX)', 'Sales Deck (PPT)')
+  pushAsset('payment_plan', extras.payment_plan_pdf_url, 'Payment Plan PDF', 'Payment Plan PDF')
 
   return { photoUrls, rawAssets }
 }
@@ -225,6 +229,7 @@ function toRawItem(entity: string, r: any): RawItem {
       video_url: r.video_url,
       virtual_tour_url: r.virtual_tour_url,
       brochure_url: r.brochure_url,
+      ppt_url: r.ppt_url,
     })
     const projCount = q.val<number>(`SELECT COUNT(*) FROM properties WHERE developer_ref = ? AND deleted_at IS NULL`, r.id) ?? 0
     const emirate = r.emirate || 'Dubai'
@@ -258,6 +263,7 @@ function toRawItem(entity: string, r: any): RawItem {
       video_url: r.video_url,
       virtual_tour_url: r.virtual_tour_url,
       brochure_url: r.brochure_url,
+      ppt_url: r.ppt_url,
     })
     const emirate = r.emirate || 'Dubai'
     const ppsf = Number(r.avg_price_sqft || 0) || null
@@ -364,6 +370,8 @@ function toRawItem(entity: string, r: any): RawItem {
     model_3d_url: r.model_3d_url,
     floor_plan_url: r.floor_plan_url,
     brochure_url: r.brochure_url,
+    ppt_url: r.ppt_url,
+    payment_plan_pdf_url: r.payment_plan_pdf_url,
   })
   const rawImgs = fallbackImagesFor(Number(r.id || 1), `${r.title || ''} ${location}`, bundle.photoUrls)
   return {
@@ -601,6 +609,16 @@ export default async function (app: FastifyInstance) {
       const tours3d = mappedAssets.filter(a => a.kind === 'tour3d')
       const floor_plans = mappedAssets.filter(a => a.kind === 'floorplan')
       const brochures = mappedAssets.filter(a => a.kind === 'brochure')
+      const ppts = mappedAssets.filter(a => a.kind === 'ppt')
+      const payment_plans = mappedAssets.filter(a => a.kind === 'payment_plan')
+      const isUploadedOrExternal = (u?: string) => Boolean(u && !u.includes(`/kit/${itemIdx}/`))
+      const resolvePreferUploaded = (rawField: string | undefined, list: typeof brochures, generatedFallback?: string) => {
+        const direct = resolveSingle(rawField)
+        if (isUploadedOrExternal(direct)) return direct
+        const uploaded = list.find(a => isUploadedOrExternal(a.url))
+        if (uploaded) return uploaded.url
+        return generatedFallback || direct || list[0]?.url
+      }
       return {
         ...rest,
         watermarked: true,
@@ -609,13 +627,15 @@ export default async function (app: FastifyInstance) {
         tour: resolveSingle(rest.tour) || tours3d.find(t => !isModel3dAsset(t))?.url || tours3d[0]?.url,
         model_3d_url: resolveSingle(rest.model_3d_url) || tours3d.find(isModel3dAsset)?.url,
         floor_plan: resolveSingle(rest.floor_plan) || floor_plans[0]?.url,
-        brochure_url: resolveSingle(rest.brochure_url) || brochures[0]?.url || (supportsKit ? `${kitBase}/brochure.pdf` : undefined),
-        ppt_url: resolveSingle(rest.ppt_url) || (supportsKit ? `${kitBase}/deck.pptx` : undefined),
-        payment_plan_pdf_url: resolveSingle(rest.payment_plan_pdf_url) || (supportsKit && l.entity === 'properties' ? `${kitBase}/payment-plan.pdf` : undefined),
+        brochure_url: resolvePreferUploaded(rest.brochure_url, brochures, supportsKit ? `${kitBase}/brochure.pdf` : undefined),
+        ppt_url: resolvePreferUploaded(rest.ppt_url, ppts, supportsKit ? `${kitBase}/deck.pptx` : undefined),
+        payment_plan_pdf_url: resolvePreferUploaded(rest.payment_plan_pdf_url, payment_plans, supportsKit && l.entity === 'properties' ? `${kitBase}/payment-plan.pdf` : undefined),
         videos,
         tours3d,
         floor_plans,
         brochures,
+        ppts,
+        payment_plans,
       }
     })
     q.run(`UPDATE share_links SET views = views + 1, last_viewed_at = ? WHERE id = ?`, nowIso(), l.id)

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { q } from '../db'
+import { config } from '../config'
 import { createRecord, findOne, getDef, getRecord, updateRecord } from '../engine'
 import { bad, HttpError } from '../util'
 import { need } from './helpers'
@@ -104,7 +104,19 @@ export default async function (app: FastifyInstance) {
     const devName = prop._labels?.developer_ref || (typeof prop.developer_id === 'string' ? prop.developer_id : 'Master Developer')
     const commName = prop._labels?.community_ref || prop.community_id || prop.sub_community || prop.emirate || 'Dubai'
     const media = normalizeMediaList(prop.media)
-    const coverImg = media.find(m => m.kind === 'photo' && m.is_cover)?.url || media.find(m => m.kind === 'photo')?.url || '/media/communities/downtown-dubai.webp'
+    const rawCover = media.find(m => m.kind === 'photo' && m.is_cover)?.url || media.find(m => m.kind === 'photo')?.url || '/media/communities/downtown-dubai.webp'
+    const basePublic = config.baseUrl ? config.baseUrl.replace(/\/$/, '') : ''
+    const toPublicUrl = (u?: string | null): string | undefined => {
+      if (!u) return undefined
+      const clean = String(u).trim()
+      if (!clean || clean.startsWith('/api/catalog-kit/') || clean.startsWith('/api/files/')) return undefined
+      if (/^https?:\/\//i.test(clean)) return clean
+      return basePublic && clean.startsWith('/media/') ? `${basePublic}${clean}` : clean
+    }
+    const coverImg = toPublicUrl(rawCover) || rawCover
+    const publicBrochure = toPublicUrl(prop.brochure_url)
+    const publicTour = toPublicUrl(prop.virtual_tour_url)
+    const publicVideo = toPublicUrl(prop.video_url)
     const priceAed = Number(prop.price || 0) || 1_000_000
     const priceM = priceAed >= 1_000_000 ? `From AED ${(priceAed / 1_000_000).toFixed(2)}M` : `From AED ${Math.round(priceAed / 1000)}K`
 
@@ -123,9 +135,9 @@ export default async function (app: FastifyInstance) {
           payment_plan: prop.payment_plan_summary || prop.payment_plan || '60/40',
           handover: prop.handover_quarter || (prop.completion_year ? String(prop.completion_year) : 'Q4 2028'),
           image_url: coverImg,
-          brochure_url: prop.brochure_url || `/api/catalog-kit/properties/${id}/brochure.pdf`,
-          virtual_tour_url: prop.virtual_tour_url || undefined,
-          video_url: prop.video_url || undefined,
+          brochure_url: publicBrochure || null,
+          virtual_tour_url: publicTour,
+          video_url: publicVideo,
           description: prop.description || '',
           features: prop.amenities || prop.features || '',
         }
@@ -159,9 +171,9 @@ export default async function (app: FastifyInstance) {
         handover: prop.handover_quarter || (prop.completion_year ? String(prop.completion_year) : 'Q4 2028'),
         payment_plan: prop.payment_plan_summary || prop.payment_plan || '60/40',
         image_url: coverImg,
-        brochure_url: prop.brochure_url || `/api/catalog-kit/properties/${id}/brochure.pdf`,
-        virtual_tour_url: prop.virtual_tour_url || undefined,
-        video_url: prop.video_url || undefined,
+        brochure_url: publicBrochure || undefined,
+        virtual_tour_url: publicTour,
+        video_url: publicVideo,
         description: prop.description || '',
         features: prop.amenities || prop.features || '',
       }

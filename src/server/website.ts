@@ -12,6 +12,7 @@
  * Contents: read & write on the website repo), WEBSITE_GITHUB_REPO (default swkpropertiesuae/swkproperty.com),
  * WEBSITE_GITHUB_BRANCH (default main), WEBSITE_DEPLOY_HOOK_URL (optional).
  */
+import { config } from './config'
 import { q } from './db'
 import { createRecord,getDef,SYSTEM_CTX } from './engine'
 import { HttpError,fromCents,nowIso } from './util'
@@ -147,10 +148,16 @@ export function buildWebsiteExport() {
     const mediaBrochures = mediaList.filter(m => m.kind === 'brochure').map(m => ({ title: m.title || 'Brochure', url: m.url, category: m.category }))
     const agent = SWK_TEAM_PROFILES.find(p => p.slug === r.agent_slug) ?? SWK_TEAM_PROFILES.find(p => p.slug === 'mohammad-haseeb')!
     const area = Number(r.area_sqft) || 0
-    const image = String(r.image_url || mediaPhotos[0] || base.images?.[0] || '')
+    const cleanPublic = (u: unknown): string | undefined => {
+      const s = String(u ?? '').trim()
+      if (!s || s.startsWith('/api/catalog-kit/')) return undefined
+      if (s.startsWith('/media/') && config.baseUrl) return `${config.baseUrl.replace(/\/$/, '')}${s}`
+      return s
+    }
+    const image = cleanPublic(r.image_url || mediaPhotos[0] || base.images?.[0]) || ''
     if (!image) problems.push(`${r.reference}: add a main image`)
     if (!r.slug) problems.push(`${r.reference}: add a URL slug`)
-    const images = [...new Set([image, ...mediaPhotos, ...((base.images ?? []) as string[])].filter(Boolean))]
+    const images = [...new Set([image, ...mediaPhotos.map(cleanPublic), ...((base.images ?? []) as string[]).map(cleanPublic)].filter(Boolean) as string[])]
     const out: Record<string, any> = {
       // defaults for listings created in the OS (an imported listing keeps its own values from `base`)
       views: [], amenities: [], accessibility: [], petPolicy: 'Subject to landlord approval', nearMetro: false, isRender: false,
@@ -170,15 +177,21 @@ export function buildWebsiteExport() {
       agentPhone: base.agentPhone ?? COMPANY_PHONE,
       lastChecked: today, listedAt: r.listed_at || today, images, description: lines(r.description), features: lines(r.features),
     }
-    if (r.video_url || mediaVideos[0]?.url) out.videoUrl = r.video_url || mediaVideos[0]!.url
-    if (r.virtual_tour_url || mediaTours3d[0]?.url) out.virtualTourUrl = r.virtual_tour_url || mediaTours3d[0]!.url
-    if (r.model_3d_url) out.model3dUrl = r.model_3d_url
-    if (r.floor_plan_url || mediaFloorPlans[0]?.url) out.floorPlanUrl = r.floor_plan_url || mediaFloorPlans[0]!.url
-    if (r.brochure_url || mediaBrochures[0]?.url) out.brochureUrl = r.brochure_url || mediaBrochures[0]!.url
+    const pubVideo = cleanPublic(r.video_url || mediaVideos[0]?.url)
+    const pubTour = cleanPublic(r.virtual_tour_url || mediaTours3d[0]?.url)
+    const pubModel = cleanPublic(r.model_3d_url)
+    const pubFloor = cleanPublic(r.floor_plan_url || mediaFloorPlans[0]?.url)
+    const pubBrochure = cleanPublic(r.brochure_url || mediaBrochures[0]?.url)
+    if (pubVideo) out.videoUrl = pubVideo
+    if (pubTour) out.virtualTourUrl = pubTour
+    if (pubModel) out.model3dUrl = pubModel
+    if (pubFloor) out.floorPlanUrl = pubFloor
+    if (pubBrochure) out.brochureUrl = pubBrochure
     if (mediaVideos.length) out.videos = mediaVideos
     if (mediaTours3d.length) out.tours3d = mediaTours3d
     if (mediaFloorPlans.length) out.floorPlans = mediaFloorPlans
-    if (mediaBrochures.length) out.brochures = mediaBrochures
+    const pubBrochures = mediaBrochures.filter(b => cleanPublic(b.url))
+    if (pubBrochures.length) out.brochures = pubBrochures
     if (r.badge) out.badge = r.badge; else delete out.badge
     if (r.payment_plan) out.paymentPlan = r.payment_plan; else delete out.paymentPlan
     if (r.down_payment_pct != null && r.down_payment_pct !== '') out.downPaymentPct = Number(r.down_payment_pct); else delete out.downPaymentPct

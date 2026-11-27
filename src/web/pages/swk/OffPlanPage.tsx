@@ -198,7 +198,7 @@ export default function OffPlanPage() {
 
       {all.length > 0 && (
         <Reveal>
-          <Card title="Explore UAE Off-Plan Launches & Promotions" actions={<Segmented layoutId="op-emirate" value={emirate} onChange={setEmirate} options={[{ value: 'all', label: `All UAE (${all.length})` }, { value: 'Dubai', label: `Dubai (${dubaiCount})` }, { value: 'Abu Dhabi', label: `Abu Dhabi (${auhCount})` }]} />}>
+          <Card title="Explore UAE Off-Plan Launches & Promotions" actions={<Segmented layoutId="op-emirate" value={emirate} onChange={v => { setEmirate(v); setDev('all'); setComm('all') }} options={[{ value: 'all', label: `All UAE (${all.length})` }, { value: 'Dubai', label: `Dubai (${dubaiCount})` }, { value: 'Abu Dhabi', label: `Abu Dhabi (${auhCount})` }]} />}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_0.9fr_1.2fr_auto] items-end">
               <SearchField value={searchQ} onChange={setSearchQ} placeholder="Search Shahrukhz, Danube, Aldar, Saadiyat…" />
               <SelectField label="Developer" value={dev} onChange={setDev} options={opt(all.filter(p => emirate === 'all' || p.emirate === emirate).map(p => p.developer))} />
@@ -402,8 +402,11 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
   const gross = price * p.commission / 100
   const minPaid = price * p.minPaidResale / 100
   const phaseColor = (ph: string) => ph === 'Booking' ? PHASE_COLORS.booking : ph === 'Construction' ? PHASE_COLORS.construction : ph === 'Handover' ? PHASE_COLORS.handover : ph === 'Post-handover' ? PHASE_COLORS.post : SWK.champDeep
+  const isAuh = p.emirate === 'Abu Dhabi'
+  const regFeePct = isAuh ? 2 : 4
+  const regLabel = isAuh ? 'ADM' : 'DLD Oqood'
   const wa = [
-    `*${p.project}* by ${p.developer}`, `📍 ${p.community}, Dubai`, `🏠 ${p.types.join(', ')}`, `💰 From ${aed(p.from)}`, `🗓 Handover ${p.handoverQ} · ${p.completion}% built`,
+    `*${p.project}*`, `📍 ${p.community}, ${p.emirate}`, `🏠 ${p.types.join(', ')}`, `💰 From ${aed(p.from)}`, `🗓 Handover ${p.handoverQ} · ${p.completion}% built`,
     `💳 Payment plan ${planLabel(p.plan)}`, `🏦 Escrow: ${p.escrow} · ${p.reraNo}`,
     p.videoUrl && /^https?:\/\//i.test(p.videoUrl) ? `🎬 Video: ${p.videoUrl}` : '',
     p.tourUrl && /^https?:\/\//i.test(p.tourUrl) ? `🧊 3D Tour: ${p.tourUrl}` : '',
@@ -435,7 +438,7 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
         ) : mediaTab === '3d' ? (
           <div className="flex flex-col gap-3">
             {/* indicative model from the listing's type, beds and size; the real tour/site view follows when one exists */}
-            <Property3DViewer title={p.project} type={p.ptype} beds={p.beds} area={p.areaSqft} location={`${p.community}, Dubai`} />
+            <Property3DViewer title={p.project} type={p.ptype} beds={p.beds} area={p.areaSqft} location={`${p.community}, ${p.emirate}`} />
             {(p.tourUrl || p.model3dUrl) && <MediaTour3DEmbed url={(p.tourUrl || p.model3dUrl)!} title={p.project} />}
           </div>
         ) : (
@@ -469,7 +472,7 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
       <div className="swk-card"><div className="swk-card-body flex flex-col gap-4">
         <div className="flex items-end gap-3 flex-wrap">
           <div className="flex-1 min-w-[200px]"><Field label="Unit price" prefix="AED" value={price} onChange={setPrice} step={10000} hint={`Launch from ${aed(p.from)}`} /></div>
-          <div className="text-right"><div className="text-[11px] uppercase tracking-wider text-muted">Total incl. 4% Oqood</div><div className="font-display text-[20px] font-semibold text-ink">{aed(price * 1.04)}</div></div>
+          <div className="text-right"><div className="text-[11px] uppercase tracking-wider text-muted">Total incl. {regFeePct}% {regLabel}</div><div className="font-display text-[20px] font-semibold text-ink">{aed(price * (1 + regFeePct / 100))}</div></div>
         </div>
         <PlanBar plan={p.plan} height={12} />
         <div className="max-h-[300px] overflow-y-auto rounded-xl" style={{ border: `1px solid ${SWK.line}` }}>
@@ -491,8 +494,12 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white p-4" style={{ border: `1px solid ${SWK.line}` }}>
-          <div className="flex items-center gap-2 font-semibold text-ink text-[13.5px]"><ShieldCheck size={16} style={{ color: SWK.oasis }} /> Escrow & Oqood</div>
-          <p className="text-[12px] text-muted mt-1.5 leading-relaxed">All instalments must be paid into the project escrow account at {p.escrow} (Dubai Law 8 of 2007) — never to the developer or SWK directly. The SPA is registered on the DLD interim register (Oqood) for a 4% fee; buyers receive an Oqood certificate until the title deed is issued at handover.</p>
+          <div className="flex items-center gap-2 font-semibold text-ink text-[13.5px]"><ShieldCheck size={16} style={{ color: SWK.oasis }} /> {isAuh ? 'Escrow & ADM Registration' : 'Escrow & Oqood'}</div>
+          <p className="text-[12px] text-muted mt-1.5 leading-relaxed">
+            {isAuh
+              ? `All instalments are deposited into the regulated ${p.escrow} (Abu Dhabi DMT Law 3 of 2015). Off-plan registration with Abu Dhabi Municipality (ADM) carries a 2% transfer fee.`
+              : `All instalments must be paid into the project escrow account at ${p.escrow} (Dubai Law 8 of 2007) — never to the developer or SWK directly. The SPA is registered on the DLD interim register (Oqood) for a 4% fee.`}
+          </p>
         </div>
         <div className="rounded-2xl bg-white p-4" style={{ border: `1px solid ${SWK.line}` }}>
           <div className="flex items-center gap-2 font-semibold text-ink text-[13.5px]"><Lock size={16} style={{ color: SWK.dune }} /> Anti-flipping / resale</div>

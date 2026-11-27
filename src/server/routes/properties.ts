@@ -181,6 +181,7 @@ export default async function (app: FastifyInstance) {
     const firstPpt = list.find(i => i.kind === 'ppt')?.url
     const firstPayPlan = list.find(i => i.kind === 'payment_plan')?.url
 
+    const canReplaceKitDefault = (cur: unknown) => !cur || String(cur).startsWith('/api/catalog-kit/')
     if (entity === 'website_listings') {
       if (cover && (!rec.image_url || String(rec.image_url).startsWith('/api/files/') || list.some(i => i.url === rec.image_url))) {
         patch.image_url = cover
@@ -189,20 +190,30 @@ export default async function (app: FastifyInstance) {
       if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
       if (firstModel3d && !rec.model_3d_url) patch.model_3d_url = firstModel3d
       if (firstFloor && !rec.floor_plan_url) patch.floor_plan_url = firstFloor
-      if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+      if (firstBrochure && canReplaceKitDefault(rec.brochure_url)) patch.brochure_url = firstBrochure
     } else if (entity === 'properties') {
       if (firstVideo && !rec.video_url) patch.video_url = firstVideo
       if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
       if (firstModel3d && !rec.model_3d_url) patch.model_3d_url = firstModel3d
       if (firstFloor && !rec.floor_plan_url) patch.floor_plan_url = firstFloor
-      if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
-      if (firstPpt && !rec.ppt_url) patch.ppt_url = firstPpt
-      if (firstPayPlan && !rec.payment_plan_pdf_url) patch.payment_plan_pdf_url = firstPayPlan
+      const uploadedBrochure = list.find(i => i.kind === 'brochure' && !i.url.startsWith('/api/catalog-kit/'))?.url
+      const uploadedPpt = list.find(i => i.kind === 'ppt' && !i.url.startsWith('/api/catalog-kit/'))?.url
+      const uploadedPayPlan = list.find(i => i.kind === 'payment_plan' && !i.url.startsWith('/api/catalog-kit/'))?.url
+      if (uploadedBrochure && canReplaceKitDefault(rec.brochure_url)) patch.brochure_url = uploadedBrochure
+      else if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+      if (uploadedPpt && canReplaceKitDefault(rec.ppt_url)) patch.ppt_url = uploadedPpt
+      else if (firstPpt && !rec.ppt_url) patch.ppt_url = firstPpt
+      if (uploadedPayPlan && canReplaceKitDefault(rec.payment_plan_pdf_url)) patch.payment_plan_pdf_url = uploadedPayPlan
+      else if (firstPayPlan && !rec.payment_plan_pdf_url) patch.payment_plan_pdf_url = firstPayPlan
     } else if (entity === 'developers' || entity === 'communities') {
       if (firstVideo && !rec.video_url) patch.video_url = firstVideo
       if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
-      if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
-      if (firstPpt && !rec.ppt_url) patch.ppt_url = firstPpt
+      const uploadedBrochure = list.find(i => i.kind === 'brochure' && !i.url.startsWith('/api/catalog-kit/'))?.url
+      const uploadedPpt = list.find(i => i.kind === 'ppt' && !i.url.startsWith('/api/catalog-kit/'))?.url
+      if (uploadedBrochure && canReplaceKitDefault(rec.brochure_url)) patch.brochure_url = uploadedBrochure
+      else if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+      if (uploadedPpt && canReplaceKitDefault(rec.ppt_url)) patch.ppt_url = uploadedPpt
+      else if (firstPpt && !rec.ppt_url) patch.ppt_url = firstPpt
     } else if (entity === 'units') {
       if (firstVideo && !rec.video_url) patch.video_url = firstVideo
       if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
@@ -538,7 +549,7 @@ export default async function (app: FastifyInstance) {
           let code = baseCode
           let n = 1
           while (q.val(`SELECT 1 FROM developers WHERE lower(code) = lower(?) AND deleted_at IS NULL`, code)) code = `${baseCode.slice(0, 8)}${++n}`
-          const createdDev = createRecord(developerDef(), { code, name: devName, emirate: 'Dubai', active: true }, req.ctx)
+          const createdDev = createRecord(developerDef(), { code, name: devName, emirate: b.emirate || 'Dubai', active: true }, req.ctx)
           devRef = createdDev.id
         }
       }
@@ -561,7 +572,7 @@ export default async function (app: FastifyInstance) {
           let code = baseCode
           let n = 1
           while (q.val(`SELECT 1 FROM communities WHERE lower(code) = lower(?) AND deleted_at IS NULL`, code)) code = `${baseCode.slice(0, 8)}${++n}`
-          const createdComm = createRecord(communityDef(), { code, name: commName, emirate: 'Dubai', area: 'Dubai', active: true }, req.ctx)
+          const createdComm = createRecord(communityDef(), { code, name: commName, emirate: b.emirate || 'Dubai', area: b.emirate || 'Dubai', active: true }, req.ctx)
           commRef = createdComm.id
         }
       }

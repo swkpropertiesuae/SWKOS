@@ -166,17 +166,39 @@ export async function watermarkPropertyImage(
   const maxH = 1040
   let w = 1280
   let h = 800
-  if (img && img.width > 0 && img.height > 0) {
+  const isSmallOrLogo = Boolean(img && (img.width < 640 || img.height < 400))
+  if (img && img.width > 0 && img.height > 0 && !isSmallOrLogo) {
     const scale = Math.min(1, maxW / img.width, maxH / img.height)
     w = Math.max(640, Math.round(img.width * scale))
     h = Math.max(400, Math.round(img.height * scale))
+  } else if (isSmallOrLogo) {
+    w = 960
+    h = 600
   }
 
   const canvas = createCanvas(w, h)
   const ctx = canvas.getContext('2d')
 
-  // 1. Base property photograph (or bespoke dark architectural plate if source failed)
-  if (img) {
+  // 1. Base property photograph (or aspect-ratio-preserving luxury showcase plate for small/wide SVG emblems)
+  if (img && isSmallOrLogo) {
+    const grad = ctx.createLinearGradient(0, 0, w, h)
+    grad.addColorStop(0, '#09251e')
+    grad.addColorStop(0.55, '#0e3a2f')
+    grad.addColorStop(1, '#091f1a')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, w, h)
+    ctx.strokeStyle = 'rgba(200,162,83,0.35)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(24, 24, w - 48, h - 48)
+    const padX = Math.round(w * 0.14)
+    const padY = Math.round(h * 0.22)
+    const availW = w - padX * 2
+    const availH = h - padY * 2
+    const fit = Math.min(availW / img.width, availH / img.height)
+    const drawW = Math.round(img.width * fit)
+    const drawH = Math.round(img.height * fit)
+    ctx.drawImage(img, Math.round((w - drawW) / 2), Math.round((h - drawH) / 2), drawW, drawH)
+  } else if (img) {
     ctx.drawImage(img, 0, 0, w, h)
   } else {
     const grad = ctx.createLinearGradient(0, 0, w, h)

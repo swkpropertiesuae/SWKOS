@@ -392,6 +392,88 @@ try {
     }
   }
   console.log('uae-projects-catalog Task 6 checks: OK (watermarked share links + token-gated brochure/payment-plan/PPTX downloads for projects, developers & communities)')
+
+  // --- Review-Fix Regression Tests ---
+  const { buildPaymentMilestones } = await import('../src/server/domain/catalog-kit')
+  const { watermarkPropertyImage } = await import('../src/server/domain/watermark')
+  const { loadImage } = await import('@napi-rs/canvas')
+
+  // R1: Every payment plan variant sums strictly to 100%, and Post-handover 2y matches 10/50/15/25
+  const planCases: Array<{ label: string; rec: Record<string, any>; expectHandover?: number; expectPost?: number }> = [
+    { label: 'Post-handover 2y', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: 'Post-handover 2y', payment_plan_summary: '2-Year Post-Handover Plan' }, expectHandover: 15, expectPost: 25 },
+    { label: 'Post-handover 3y', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: 'Post-handover 3y', payment_plan_summary: '3-Year Post-Handover Plan' }, expectHandover: 10, expectPost: 25 },
+    { label: '1% Monthly', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: '1% Monthly', payment_plan_summary: '1% Monthly · 65/35' }, expectHandover: 0, expectPost: 35 },
+    { label: '50/50', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: '50/50', payment_plan_summary: '50/50' }, expectHandover: 50, expectPost: 0 },
+    { label: '60/40', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: '60/40', payment_plan_summary: '60/40' }, expectHandover: 40, expectPost: 0 },
+    { label: '70/30', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: '70/30', payment_plan_summary: '70/30' }, expectHandover: 30, expectPost: 0 },
+    { label: '80/20', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: '80/20', payment_plan_summary: '80/20' }, expectHandover: 20, expectPost: 0 },
+    { label: '100% on completion', rec: { price: 1_000_000, is_off_plan: 0, payment_plan: '100% on completion', payment_plan_summary: '100% on completion' } },
+    { label: 'Explicit summary', rec: { price: 1_000_000, is_off_plan: 1, payment_plan: 'Custom', payment_plan_summary: '20% Booking · 40% Construction · 15% Handover · 25% Post-Handover' }, expectHandover: 15, expectPost: 25 },
+  ]
+  for (const tc of planCases) {
+    const { rows } = buildPaymentMilestones(tc.rec)
+    const totalPct = Number(rows.reduce((s, r) => s + r.pct, 0).toFixed(2))
+    assert.equal(totalPct, 100, `Payment plan "${tc.label}" must sum to 100%, got ${totalPct}%`)
+    if (tc.expectHandover !== undefined) {
+      const hRow = rows.find(r => /handover/i.test(r.stage) && !/post/i.test(r.stage))
+      assert.equal(hRow?.pct ?? 0, tc.expectHandover, `Plan "${tc.label}" handover pct mismatch`)
+    }
+    if (tc.expectPost !== undefined) {
+      const pRow = rows.find(r => /post-handover/i.test(r.stage))
+      assert.equal(pRow?.pct ?? 0, tc.expectPost, `Plan "${tc.label}" post-handover pct mismatch`)
+    }
+  }
+
+  // R2: promote-website MUST NOT write auth-gated /api/catalog-kit/ URLs into public website_listings
+  const promotedListingRow = q.get<any>(`SELECT brochure_url, floor_plan_url, image_url FROM website_listings WHERE id = ?`, promoBody1.listing.id)
+  assert.ok(promotedListingRow, 'Promoted website_listing must exist')
+  assert.ok(!String(promotedListingRow.brochure_url || '').includes('/api/catalog-kit/'), `website_listings.brochure_url leaked auth-gated URL: ${promotedListingRow.brochure_url}`)
+  assert.ok(!String(promotedListingRow.floor_plan_url || '').includes('/api/catalog-kit/'), `website_listings.floor_plan_url leaked auth-gated URL: ${promotedListingRow.floor_plan_url}`)
+
+  // R3: Canonical payment_plan_templates seeded during catalog sync
+  const tplCount = q.val<number>(`SELECT COUNT(*) FROM payment_plan_templates WHERE deleted_at IS NULL`)!
+  assert.ok(tplCount >= 8, `Expected >= 8 seeded payment_plan_templates, got ${tplCount}`)
+
+  // R4: Uploaded custom official brochure replaces /api/catalog-kit/ default on record, manifest, and /api/public/share/:token
+  const boundary = '----SWKRegressionPdfBoundary'
+  const fakePdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n', 'utf8')
+  const mpBody = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="kind"\r\n\r\nbrochure\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="title"\r\n\r\nOfficial Danube Brochure\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="shahrukhz-official.pdf"\r\nContent-Type: application/pdf\r\n\r\n`),
+    fakePdf,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ])
+  const uploadBrochureRes = await app.inject({
+    method: 'POST',
+    url: `/api/media/properties/${shahrukhzRow.id}/upload`,
+    headers: { ...authHeaders, 'content-type': `multipart/form-data; boundary=${boundary}` },
+    payload: mpBody,
+  })
+  assert.equal(uploadBrochureRes.statusCode, 200, `Official brochure upload failed: ${uploadBrochureRes.body}`)
+  const uploadedUrl = String(uploadBrochureRes.json().record?.brochure_url || '')
+  assert.ok(uploadedUrl.startsWith('/api/files/'), `Uploaded brochure should replace /api/catalog-kit/ default on record, got ${uploadedUrl}`)
+  const manifestAfterUpload = (await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${shahrukhzRow.id}`, headers: authHeaders })).json()
+  assert.equal(manifestAfterUpload.brochureUrl, uploadedUrl, 'Catalog kit manifest must prefer uploaded brochureUrl')
+  assert.ok(manifestAfterUpload.generatedBrochureUrl?.includes('/api/catalog-kit/'), 'Catalog kit manifest must still expose generatedBrochureUrl')
+  const customShare = await app.inject({
+    method: 'POST',
+    url: '/api/share-links',
+    headers: { ...authHeaders, 'content-type': 'application/json' },
+    payload: { entity: 'properties', ids: [shahrukhzRow.id], title: 'Custom Brochure Share' },
+  })
+  const customToken = customShare.json().token
+  const customPub = (await app.inject({ method: 'GET', url: `/api/public/share/${customToken}` })).json()
+  assert.ok(String(customPub.items[0]?.brochure_url || '').includes(`/api/public/share/${customToken}/asset/`), `Public share must prioritize uploaded brochure asset, got ${customPub.items[0]?.brochure_url}`)
+
+  // R5: Wide SVG developer emblem renders onto 960x600 non-stretched watermark plate
+  const wmBuf = await watermarkPropertyImage('/media/developers/aldar-properties.svg', { propertyRef: 'DEV-ALDAR' })
+  assert.ok(wmBuf.length > 5000, 'Watermarked SVG emblem buffer too small')
+  const wmImg = await loadImage(wmBuf)
+  assert.equal(wmImg.width, 960, `Expected 960px emblem plate width, got ${wmImg.width}`)
+  assert.equal(wmImg.height, 600, `Expected 600px emblem plate height, got ${wmImg.height}`)
+
+  console.log('uae-projects-catalog Review-Fix regression checks: OK (payment milestones 100%, website URL hygiene, 8 payment templates, uploaded brochure precedence, 960x600 SVG watermark plate)')
 } finally {
   await app.close()
   db.close()

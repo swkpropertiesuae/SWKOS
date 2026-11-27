@@ -208,7 +208,7 @@ export default function MarketPage() {
                     <div className="text-xs font-extrabold uppercase tracking-wider text-ink flex items-center gap-1.5">
                       <TrendingUp size={14} className="text-[#16363f]" /> 15-Year Future Trajectory (2026 → 2041)
                     </div>
-                    <Pill tone="oasis">Dubai 2040 Aligned</Pill>
+                    <Pill tone="oasis">{companionArea.emirate === 'Abu Dhabi' ? 'Abu Dhabi Vision 2030/2040' : 'Dubai 2040 Aligned'}</Pill>
                   </div>
                   <p className="text-xs text-muted mb-3">{companionArea.future15YearOutlook}</p>
                   <div className="space-y-2">
@@ -643,10 +643,18 @@ function TrendCard() {
 
 // ---------------------------------------------------------------- scatter
 function ScatterCard({ onPick }: { onPick: (c: Community) => void }) {
-  const pts = COMMUNITIES.map((c, i) => ({ x: c.ppsf, y: c.yieldPct, z: c.transactionsQ, name: c.name, id: c.id, color: CHART[i % CHART.length] }))
+  const sample = useMemo(() => [
+    ...COMMUNITIES.filter(c => c.emirate === 'Dubai').slice(0, 14),
+    ...COMMUNITIES.filter(c => c.emirate === 'Abu Dhabi').slice(0, 10),
+  ], [])
+  const pts = sample.map((c, i) => ({ x: c.ppsf, y: c.yieldPct, z: c.transactionsQ, name: c.name, id: c.id, color: CHART[i % CHART.length] }))
   const ax = avg(pts.map(p => p.x)), ay = avg(pts.map(p => p.y))
+  const minX = Math.max(400, Math.floor(Math.min(...pts.map(p => p.x)) / 200) * 200 - 200)
+  const maxX = Math.ceil(Math.max(...pts.map(p => p.x)) / 500) * 500 + 300
+  const minY = Math.max(2, Math.floor(Math.min(...pts.map(p => p.y)) - 0.5))
+  const maxY = Math.ceil(Math.max(...pts.map(p => p.y)) + 0.6)
   return (
-    <Card title="Where investors get value (24 Corridors)" subtitle="x = price per sq ft · y = gross yield · bubble = quarterly transactions"
+    <Card title="Where investors get value (Top 24 Dubai & Abu Dhabi Corridors)" subtitle="x = price per sq ft · y = gross yield · bubble = quarterly transactions"
       actions={<Pill tone="oasis">Top-left = High Yield</Pill>}>
       <div className="h-[340px] relative">
         <div className="absolute left-14 top-2 text-[11px] font-semibold uppercase tracking-wider pointer-events-none" style={{ color: SWK.oasis }}>High yield · lower entry</div>
@@ -654,8 +662,8 @@ function ScatterCard({ onPick }: { onPick: (c: Community) => void }) {
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 22, right: 20, bottom: 8, left: 0 }}>
             <CartesianGrid stroke="#f4f0e8" />
-            <XAxis type="number" dataKey="x" name="Price/sqft" tickFormatter={v => `${(v / 1000).toFixed(1)}k`} tick={{ fontSize: 11, fill: SWK.muted }} domain={[900, 5100]} />
-            <YAxis type="number" dataKey="y" name="Yield" tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: SWK.muted }} domain={[4.5, 8.6]} width={44} />
+            <XAxis type="number" dataKey="x" name="Price/sqft" tickFormatter={v => `${(v / 1000).toFixed(1)}k`} tick={{ fontSize: 11, fill: SWK.muted }} domain={[minX, maxX]} />
+            <YAxis type="number" dataKey="y" name="Yield" tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: SWK.muted }} domain={[minY, maxY]} width={44} />
             <ZAxis type="number" dataKey="z" range={[120, 900]} />
             <ReferenceLine x={ax} stroke={SWK.champ} strokeDasharray="4 4" />
             <ReferenceLine y={ay} stroke={SWK.champ} strokeDasharray="4 4" />

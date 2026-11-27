@@ -61,7 +61,10 @@ export function generateSocialMediaKit(input: SocialKitInput): SocialKitBundle {
   const emirate = input.emirate || 'Dubai'
   const emirateAr = emirate === 'Abu Dhabi' ? 'أبوظبي' : 'دبي'
   const url = input.shareUrl || 'https://www.swkpropertiesuae.com'
-  const footerEn = `${SWK_COMPANY_NAME} · RERA ORN ${SWK_RERA_ORN} · ${SWK_COMPANY_PHONE} · ${url}`
+  const permitNoticeEn = emirate === 'Abu Dhabi'
+    ? 'Verify Abu Dhabi ADM / DMT advertising permit & Madmoun details before paid ad publishing.'
+    : 'Verify RERA Trakheesi advertising permit & Madmoun QR before paid ad publishing.'
+  const footerEn = `${SWK_COMPANY_NAME} · RERA ORN ${SWK_RERA_ORN} · ${SWK_COMPANY_PHONE} · ${url}\n(${permitNoticeEn})`
   const footerAr = `شركة SWK للعقارات ذ.م.م · ترخيص ريرا ${SWK_RERA_ORN} · ${SWK_COMPANY_PHONE} · ${url}`
 
   const priceLineEn = input.priceLabel ? `Starting from ${input.priceLabel}` : 'Direct Developer Allocation'

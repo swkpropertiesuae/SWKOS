@@ -555,14 +555,17 @@ export async function runUaeCatalogMigrationAndSeed(opts: { seedProjects?: boole
       }
 
       // 3. Developers: soft-archive referenced (plus those referenced by soft-archived properties), hard-delete unreferenced
-      const refDevs = findReferencedIds('developers', new Set(['developers', 'communities']))
+      const refDevs = findReferencedIds('developers', new Set(['developers', 'communities', 'payment_plan_templates']))
+      if (tableExists('payment_plan_templates')) {
+        q.run(`DELETE FROM payment_plan_templates`)
+      }
       if (tableExists('developers')) {
         if (refDevs.size > 0) {
           const arr = [...refDevs]
           for (let i = 0; i < arr.length; i += 200) {
             const ch = arr.slice(i, i + 200)
             result.archived.developers += q.run(
-              `UPDATE developers SET deleted_at = COALESCE(deleted_at, ?), active = 0, code = CASE WHEN code LIKE '%-ARCH-%' THEN code ELSE code || '-ARCH-' || id END, updated_at = ? WHERE id IN (${ch.map(() => '?').join(',')})`,
+              `UPDATE developers SET deleted_at = COALESCE(deleted_at, ?), active = 0, code = CASE WHEN code LIKE '%-ARCH-%' THEN code ELSE COALESCE(code, 'DEV') || '-ARCH-' || CAST(id AS TEXT) END, updated_at = ? WHERE id IN (${ch.map(() => '?').join(',')})`,
               ts, ts, ...ch,
             ).changes
           }
@@ -584,7 +587,7 @@ export async function runUaeCatalogMigrationAndSeed(opts: { seedProjects?: boole
           for (let i = 0; i < arr.length; i += 200) {
             const ch = arr.slice(i, i + 200)
             result.archived.communities += q.run(
-              `UPDATE communities SET deleted_at = COALESCE(deleted_at, ?), active = 0, code = CASE WHEN code LIKE '%-ARCH-%' THEN code ELSE code || '-ARCH-' || id END, updated_at = ? WHERE id IN (${ch.map(() => '?').join(',')})`,
+              `UPDATE communities SET deleted_at = COALESCE(deleted_at, ?), active = 0, code = CASE WHEN code LIKE '%-ARCH-%' THEN code ELSE COALESCE(code, 'COM') || '-ARCH-' || CAST(id AS TEXT) END, updated_at = ? WHERE id IN (${ch.map(() => '?').join(',')})`,
               ts, ts, ...ch,
             ).changes
           }
@@ -595,6 +598,24 @@ export async function runUaeCatalogMigrationAndSeed(opts: { seedProjects?: boole
           }
         } else {
           result.cleared.communities = q.run(`DELETE FROM communities`).changes
+        }
+      }
+
+      // 5. Clean orphaned polymorphic links for hard-deleted catalog records (keeps preserved archived refs intact)
+      const polyPairs: [string, string][] = [
+        ['properties', 'properties'],
+        ['units', 'units'],
+        ['developers', 'developers'],
+        ['communities', 'communities'],
+      ]
+      for (const [ent, tbl] of polyPairs) {
+        if (!tableExists(tbl)) continue
+        for (const polyTbl of ['comments', 'record_refs', 'record_tags', 'record_links', 'record_likes']) {
+          if (!tableExists(polyTbl)) continue
+          try { q.run(`DELETE FROM ${qi(polyTbl)} WHERE entity = ? AND record_id NOT IN (SELECT id FROM ${qi(tbl)})`, ent) } catch { /* ignore schema variance */ }
+        }
+        if (tableExists('attachments')) {
+          try { q.run(`DELETE FROM attachments WHERE link_entity = ? AND link_id NOT IN (SELECT id FROM ${qi(tbl)})`, ent) } catch { /* ignore */ }
         }
       }
 
@@ -621,11 +642,36 @@ export async function runUaeCatalogMigrationAndSeed(opts: { seedProjects?: boole
     result.resetRan = true
   }
 
-  // Always ensure all 81 UAE developers & 276 communities exist once
+  // Always ensure all 81 UAE developers, 276 communities & 8 standard UAE payment plan templates exist once
   if (!q.val(`SELECT 1 FROM settings WHERE key = ?`, CATALOG_DEVS_COMMS_SEED_KEY)) {
     const dc = seedUaeDevelopersAndCommunities()
     result.seeded.developers = dc.developers
     result.seeded.communities = dc.communities
+    if (tableExists('payment_plan_templates')) {
+      const ts = nowIso()
+      const existingPlans = new Set(q.all<{ name: string }>(`SELECT name FROM payment_plan_templates WHERE deleted_at IS NULL`).map(r => r.name.toLowerCase()))
+      const devId = (code: string) => q.val<number>(`SELECT id FROM developers WHERE code = ? AND deleted_at IS NULL`, code) ?? null
+      const standardPlans: [string, string | null, number, number, number, number, number, number, number, string][] = [
+        ['1% Monthly Post-Handover (Danube / Samana Style)', 'DANUBE', 10, 55, 55, 0, 35, 35, 1, '10% booking, 1% monthly during construction (55%) and 35% post-handover at 0% interest.'],
+        ['80/20 Construction-Linked (Emaar / Nakheel Standard)', 'EMAAR', 10, 70, 7, 20, 0, 0, 4, '10% on booking, 70% construction milestones, 20% on completion & handover.'],
+        ['70/30 Investor Plan (DAMAC / Binghatti Standard)', 'DAMAC', 10, 60, 6, 30, 0, 0, 4, '10% booking, 60% construction instalments, 30% on key handover.'],
+        ['60/40 Prime Milestone Plan (Sobha / Aldar / Ellington)', 'ALDAR', 10, 50, 5, 40, 0, 0, 4, '10% booking, 50% construction-linked, 40% on handover (Dubai 4% DLD / Abu Dhabi 2% ADM).'],
+        ['50/50 Balanced Handover Plan (Meraas / Abu Dhabi Islands)', 'MERAAS', 10, 40, 4, 50, 0, 0, 5, '10% booking, 40% construction, 50% upon handover — ideal for mortgage-backed end users.'],
+        ['60/40 with 2-Year Post-Handover (10/50/15/25)', 'BLOOM', 10, 50, 5, 15, 25, 24, 4, '10% booking, 50% construction, 15% on handover, 25% over 24 months post-handover.'],
+        ['65/35 with 3-Year Post-Handover (10/55/10/25)', 'EXPOCITY', 10, 55, 6, 10, 25, 36, 4, '10% booking, 55% construction, 10% on handover, 25% over 36 months post-handover.'],
+        ['Ready Transfer / Up to 80% UAE Bank Mortgage', null, 20, 0, 0, 80, 0, 0, 1, '20% down payment + 80% UAE bank financing (up to 25-year tenure).'],
+      ]
+      tx(() => {
+        for (const [name, devCode, bPct, cPct, cInst, hPct, pPct, pMon, gap, notes] of standardPlans) {
+          if (existingPlans.has(name.toLowerCase())) continue
+          q.run(
+            `INSERT INTO payment_plan_templates (name, developer_id, active, booking_pct, construction_pct, construction_instalments, handover_pct, post_handover_pct, post_handover_months, instalment_gap_months, notes, created_at, updated_at, version)
+             VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+            name, devCode ? devId(devCode) : null, bPct, cPct, cInst, hPct, pPct, pMon, gap, notes, ts, ts,
+          )
+        }
+      })
+    }
     q.run(
       `INSERT INTO settings(key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       CATALOG_DEVS_COMMS_SEED_KEY,

@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import { q } from '../db'
+import { fromCents } from '../util'
 import { SWK_COMPANY_ADDRESS, SWK_COMPANY_EMAIL, SWK_COMPANY_NAME, SWK_COMPANY_PHONE, SWK_OFFICIAL_WEBSITES_TEXT, SWK_RERA_ORN, SWK_TRADE_LICENSE } from '../../shared/corporate-footer'
 import { normalizeMediaList } from '../../shared/media'
 import { generateSocialMediaKit, type SocialKitBundle } from '../../shared/social-templates'
@@ -74,12 +75,15 @@ export function computeEmirateFeeSummary(emirateRaw: string | null | undefined, 
 export function buildPaymentMilestones(rec: Record<string, any>): { planLabel: string; rows: PaymentMilestoneRow[] } {
   const price = Number(rec.price || 0)
   const isOffPlan = Boolean(rec.is_off_plan)
-  const planStr = String(rec.payment_plan_summary || rec.payment_plan || (isOffPlan ? '60/40' : '100% on completion'))
+  const planSummary = String(rec.payment_plan_summary || '').trim()
+  const planOption = String(rec.payment_plan || '').trim()
+  const planLabel = planSummary || planOption || (isOffPlan ? '60/40' : '100% on completion')
+  const combined = `${planOption} ${planSummary}`.trim()
   const handover = String(rec.handover_quarter || (rec.completion_year ? `Q4 ${rec.completion_year}` : 'On Handover'))
 
-  if (!isOffPlan) {
+  if (!isOffPlan || /100%\s*on\s*completion/i.test(combined)) {
     return {
-      planLabel: planStr,
+      planLabel,
       rows: [
         { stage: 'MOU / Booking Deposit (Form F)', timing: 'Upon Signing', pct: 10, amountAed: Math.round(price * 0.1) },
         { stage: 'Down Payment Balance / Mortgage Equity', timing: 'At Transfer Prep', pct: 10, amountAed: Math.round(price * 0.1) },
@@ -93,33 +97,67 @@ export function buildPaymentMilestones(rec: Record<string, any>): { planLabel: s
   let handoverPct = 40
   let postPct = 0
 
-  if (/1%\s*monthly/i.test(planStr)) {
+  // 1) Parse explicit percentages from summary if present (e.g. "10% Booking · 50% Construction · 15% Handover · 25% Post-Handover")
+  const mBook = combined.match(/(\d+(?:\.\d+)?)%\s*(?:booking|down)/i)
+  const mConst = combined.match(/(\d+(?:\.\d+)?)%\s*(?:during\s+)?construction/i)
+  const mHand = combined.match(/(\d+(?:\.\d+)?)%\s*(?:on\s+)?handover(?!\s*-)/i)
+  const mPost = combined.match(/(\d+(?:\.\d+)?)%\s*post[\s-]*handover/i)
+  if (mBook || mConst || mHand || mPost) {
+    booking = mBook ? Number(mBook[1]) : 10
+    construction = mConst ? Number(mConst[1]) : 0
+    handoverPct = mHand ? Number(mHand[1]) : 0
+    postPct = mPost ? Number(mPost[1]) : 0
+    const sum = booking + construction + handoverPct + postPct
+    if (Math.abs(sum - 100) > 0.1) {
+      // Normalize rounding drift cleanly onto construction/handover
+      const diff = Number((100 - sum).toFixed(2))
+      if (construction > 0) construction = Math.max(0, Number((construction + diff).toFixed(2)))
+      else handoverPct = Math.max(0, Number((handoverPct + diff).toFixed(2)))
+    }
+  } else if (/1%\s*monthly/i.test(combined)) {
     booking = 10; construction = 55; handoverPct = 0; postPct = 35
-  } else if (/post-handover\s*3y|65\/35/i.test(planStr)) {
+  } else if (/post[\s-]*handover\s*3y|3[\s-]*year\s+post[\s-]*handover|65\/35/i.test(combined)) {
     booking = 10; construction = 55; handoverPct = 10; postPct = 25
-  } else if (/post-handover\s*2y/i.test(planStr)) {
+  } else if (/post[\s-]*handover\s*2y|2[\s-]*year\s+post[\s-]*handover/i.test(combined)) {
     booking = 10; construction = 50; handoverPct = 15; postPct = 25
-  } else if (/80\/20/.test(planStr)) {
-    booking = 10; construction = 70; handoverPct = 20
-  } else if (/70\/30/.test(planStr)) {
-    booking = 10; construction = 60; handoverPct = 30
-  } else if (/50\/50/.test(planStr)) {
-    booking = 10; construction = 40; handoverPct = 50
+  } else if (/80\/20/.test(combined)) {
+    booking = 10; construction = 70; handoverPct = 20; postPct = 0
+  } else if (/70\/30/.test(combined)) {
+    booking = 10; construction = 60; handoverPct = 30; postPct = 0
+  } else if (/50\/50/.test(combined)) {
+    booking = 10; construction = 40; handoverPct = 50; postPct = 0
+  } else if (/60\/40/.test(combined)) {
+    booking = 10; construction = 50; handoverPct = 40; postPct = 0
   }
 
-  const rows: PaymentMilestoneRow[] = [
-    { stage: 'Booking / EOI Reservation', timing: 'Immediate', pct: booking, amountAed: Math.round(price * booking / 100) },
-    { stage: 'SPA Signing & First Construction Milestone', timing: 'Within 60 Days', pct: 10, amountAed: Math.round(price * 0.1) },
-    { stage: 'Mid-Construction Progress Instalments', timing: 'Construction Phase', pct: Math.max(0, construction - 20), amountAed: Math.round(price * Math.max(0, construction - 20) / 100) },
-    { stage: 'Structure Top-Out & Fit-Out Milestone', timing: 'Pre-Completion', pct: 10, amountAed: Math.round(price * 0.1) },
-  ]
+  const rows: PaymentMilestoneRow[] = []
+  if (booking > 0) {
+    rows.push({ stage: 'Booking / EOI Reservation', timing: 'Immediate', pct: booking, amountAed: Math.round(price * booking / 100) })
+  }
+  // Dynamically split construction share so total ALWAYS equals exactly 100%
+  if (construction >= 30) {
+    const first = 10
+    const last = 10
+    const mid = Number((construction - first - last).toFixed(2))
+    rows.push({ stage: 'SPA Signing & First Construction Milestone', timing: 'Within 60 Days', pct: first, amountAed: Math.round(price * first / 100) })
+    rows.push({ stage: 'Mid-Construction Progress Instalments', timing: 'Construction Phase', pct: mid, amountAed: Math.round(price * mid / 100) })
+    rows.push({ stage: 'Structure Top-Out & Fit-Out Milestone', timing: 'Pre-Completion', pct: last, amountAed: Math.round(price * last / 100) })
+  } else if (construction >= 10) {
+    const first = Math.round(construction / 2)
+    const rest = Number((construction - first).toFixed(2))
+    rows.push({ stage: 'SPA Signing & Construction Milestone 1', timing: 'Within 60 Days', pct: first, amountAed: Math.round(price * first / 100) })
+    rows.push({ stage: 'Construction Progress Milestone 2', timing: 'Pre-Completion', pct: rest, amountAed: Math.round(price * rest / 100) })
+  } else if (construction > 0) {
+    rows.push({ stage: 'Construction Progress Instalment', timing: 'Construction Phase', pct: construction, amountAed: Math.round(price * construction / 100) })
+  }
   if (handoverPct > 0) {
     rows.push({ stage: 'On Completion & Key Handover', timing: handover, pct: handoverPct, amountAed: Math.round(price * handoverPct / 100) })
   }
   if (postPct > 0) {
-    rows.push({ stage: 'Post-Handover Monthly Instalments (0% Interest)', timing: '24–36 Months Post-Handover', pct: postPct, amountAed: Math.round(price * postPct / 100) })
+    const postWindow = /2y|2[\s-]*year/i.test(combined) ? '24 Months Post-Handover' : '36 Months Post-Handover'
+    rows.push({ stage: 'Post-Handover Monthly Instalments (0% Interest)', timing: postWindow, pct: postPct, amountAed: Math.round(price * postPct / 100) })
   }
-  return { planLabel: planStr, rows }
+  return { planLabel, rows }
 }
 
 function resolveEnrichedContext(entity: CatalogKitEntity, rec: Record<string, any>) {
@@ -431,7 +469,7 @@ export async function buildCatalogBrochurePdf(entity: CatalogKitEntity, rec: Rec
     p3.drawText(toPdfSafeText(`FEATURED PROJECTS (${ctx.relatedProjects.length} LINKED IN SWK OS)`), { x: 36, y: y3, size: 10.5, font: bold, color: forest })
     y3 -= 22
     for (const rp of ctx.relatedProjects.slice(0, 12)) {
-      const rpPrice = Number(rp.price || 0) > 10000000 ? Math.round(Number(rp.price) / 100) : Number(rp.price || 0)
+      const rpPrice = fromCents(rp.price)
       p3.drawText(toPdfSafeText(`* ${rp.title} — ${aed(rpPrice)} (${rp.handover_quarter || (rp.is_off_plan ? 'Off-Plan' : 'Ready')})`).slice(0, 88), { x: 40, y: y3, size: 9.5, font, color: ink })
       y3 -= 17
     }
@@ -655,6 +693,10 @@ export function buildCatalogKitManifest(entity: CatalogKitEntity, rec: Record<st
   const ctx = resolveEnrichedContext(entity, rec)
   const social = buildCatalogSocialKit(entity, rec)
   const base = `/api/catalog-kit/${entity}/${id}`
+  const isCustomUrl = (u: unknown) => typeof u === 'string' && u.trim().length > 0 && !u.trim().startsWith('/api/catalog-kit/')
+  const uploadedBrochure = isCustomUrl(rec.brochure_url) ? String(rec.brochure_url).trim() : ctx.media.find(m => m.kind === 'brochure' && isCustomUrl(m.url))?.url
+  const uploadedPayPlan = isCustomUrl(rec.payment_plan_pdf_url) ? String(rec.payment_plan_pdf_url).trim() : ctx.media.find(m => m.kind === 'payment_plan' && isCustomUrl(m.url))?.url
+  const uploadedPpt = isCustomUrl(rec.ppt_url) ? String(rec.ppt_url).trim() : ctx.media.find(m => m.kind === 'ppt' && isCustomUrl(m.url))?.url
   const manifest = {
     entity,
     id,
@@ -672,9 +714,12 @@ export function buildCatalogKitManifest(entity: CatalogKitEntity, rec: Record<st
     amenities: ctx.amenities,
     features: ctx.features,
     images: ctx.images,
-    brochureUrl: `${base}/brochure.pdf`,
-    paymentPlanUrl: entity === 'properties' ? `${base}/payment-plan.pdf` : null,
-    pptUrl: `${base}/deck.pptx`,
+    brochureUrl: uploadedBrochure || `${base}/brochure.pdf`,
+    generatedBrochureUrl: `${base}/brochure.pdf`,
+    paymentPlanUrl: entity === 'properties' ? (uploadedPayPlan || `${base}/payment-plan.pdf`) : null,
+    generatedPaymentPlanUrl: entity === 'properties' ? `${base}/payment-plan.pdf` : null,
+    pptUrl: uploadedPpt || `${base}/deck.pptx`,
+    generatedPptUrl: `${base}/deck.pptx`,
     socialUrl: `${base}/social`,
     videoUrl: rec.video_url || null,
     virtualTourUrl: rec.virtual_tour_url || null,

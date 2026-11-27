@@ -70,6 +70,7 @@ type Item = {
   ppt_url?: string
   payment_plan_pdf_url?: string
   video_url?: string
+  emirate?: string
   videos?: SharedAsset[]
   tours3d?: SharedAsset[]
   floor_plans?: SharedAsset[]
@@ -187,7 +188,7 @@ function WatermarkedGallery({ images, title }: { images: string[]; title: string
   )
 }
 
-function DubaiInvestmentCalculator({ price, purpose, roiPercent }: { price: number; purpose: string; roiPercent?: number | null }) {
+function DubaiInvestmentCalculator({ price, purpose, roiPercent, emirate }: { price: number; purpose: string; roiPercent?: number | null; emirate?: string }) {
   const [downPct, setDownPct] = useState(20)
   const [ratePct, setRatePct] = useState(4.25)
   const [years, setYears] = useState(25)
@@ -195,13 +196,15 @@ function DubaiInvestmentCalculator({ price, purpose, roiPercent }: { price: numb
   const isRent = /rent/i.test(purpose)
   if (!price || price <= 0 || isRent) return null
 
+  const isAbuDhabi = /abu\s*dhabi/i.test(String(emirate || ''))
   const downPayment = (price * downPct) / 100
   const loan = Math.max(0, price - downPayment)
   const r = ratePct / 100 / 12
   const n = years * 12
   const monthly = r > 0 ? (loan * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) : loan / n
-  const dldFee = price * 0.04
-  const trusteeFee = price >= 500_000 ? 4200 : 2100
+  const regFeePct = isAbuDhabi ? 2 : 4
+  const dldFee = price * (regFeePct / 100)
+  const trusteeFee = isAbuDhabi ? 0 : (price >= 500_000 ? 4200 : 2100)
   const estYield = roiPercent && roiPercent > 0 ? roiPercent : 7.0
   const estAnnualRent = price * (estYield / 100)
   const goldenVisa = price >= 2_000_000
@@ -214,8 +217,8 @@ function DubaiInvestmentCalculator({ price, purpose, roiPercent }: { price: numb
             <Calculator size={17} />
           </span>
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8a621c]">DUBAI FINANCIAL ADVISORY</div>
-            <h3 className="m-0 text-[17px] font-bold text-[#0b1f2a]">UAE Mortgage, DLD 4% Fee &amp; Yield Estimator</h3>
+            <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8a621c]">{isAbuDhabi ? 'ABU DHABI' : 'DUBAI'} FINANCIAL ADVISORY</div>
+            <h3 className="m-0 text-[17px] font-bold text-[#0b1f2a]">UAE Mortgage, {isAbuDhabi ? 'ADM 2%' : 'DLD 4%'} Fee &amp; Yield Estimator</h3>
           </div>
         </div>
         {goldenVisa && (
@@ -253,9 +256,9 @@ function DubaiInvestmentCalculator({ price, purpose, roiPercent }: { price: numb
           <div className="text-[11px] text-slate-300 mt-0.5">Loan {fmtAed(loan)}</div>
         </div>
         <div className="rounded-2xl bg-[#f8f5ef] border border-[#e6e0d4] p-4">
-          <div className="text-[11px] uppercase tracking-wider text-[#64748b] font-semibold">DLD Transfer (4%)</div>
+          <div className="text-[11px] uppercase tracking-wider text-[#64748b] font-semibold">{isAbuDhabi ? 'ADM Registration (2%)' : 'DLD Transfer (4%)'}</div>
           <div className="mt-1 font-mono text-lg font-bold text-[#0b1f2a]">{fmtAed(dldFee)}</div>
-          <div className="text-[11px] text-[#64748b] mt-0.5">+ Trustee fee {fmtAed(trusteeFee)}</div>
+          <div className="text-[11px] text-[#64748b] mt-0.5">{isAbuDhabi ? 'Abu Dhabi DMT / ADM Fee' : `+ Trustee fee ${fmtAed(trusteeFee)}`}</div>
         </div>
         <div className="rounded-2xl bg-[#f8f5ef] border border-[#e6e0d4] p-4">
           <div className="text-[11px] uppercase tracking-wider text-[#64748b] font-semibold">Est. Gross Rental Yield</div>
@@ -470,16 +473,25 @@ export function PublicListing() {
                   <WatermarkedGallery images={it.images} title={it.title} />
 
                   {/* 2. Complete Architectural Specs Matrix */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <SpecBox icon={<BedDouble size={16} />} label="Bedrooms" value={it.type === 'Office' ? 'Commercial' : it.beds ? `${it.beds} Bedrooms` : 'Studio'} />
-                    <SpecBox icon={<Bath size={16} />} label="Bathrooms" value={it.baths ? `${it.baths} Bathrooms` : 'En-suite'} />
-                    <SpecBox icon={<Expand size={16} />} label="Built-Up Area" value={it.area ? `${Number(it.area).toLocaleString('en-US')} ft²${sqm ? ` (${sqm} m²)` : ''}` : 'On Request'} />
-                    <SpecBox icon={<Building2 size={16} />} label="Tenure & Status" value={[it.tenure || 'Freehold', it.completion ? `Handover ${it.completion}` : it.status].filter(Boolean).join(' · ')} />
-                    {it.furnishing && <SpecBox icon={<Layers size={16} />} label="Furnishing" value={it.furnishing} />}
-                    {it.floor_no && <SpecBox icon={<Compass size={16} />} label="Floor Level" value={`Floor ${it.floor_no}`} />}
-                    {it.parking_slots && <SpecBox icon={<Car size={16} />} label="Parking" value={`${it.parking_slots} Covered Bay${it.parking_slots > 1 ? 's' : ''}`} />}
-                    {it.payment_plan && <SpecBox icon={<Calendar size={16} />} label="Payment Plan" value={it.payment_plan} />}
-                  </div>
+                  {it.purpose === 'Developer Profile' || it.purpose === 'Community Guide' ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <SpecBox icon={<Building2 size={16} />} label="Portfolio Type" value={it.type || it.purpose} />
+                      <SpecBox icon={<MapPin size={16} />} label="Emirate / Corridor" value={it.emirate || it.location || 'UAE'} />
+                      <SpecBox icon={<Award size={16} />} label="Status / Segment" value={it.status || 'Verified'} />
+                      <SpecBox icon={<Calendar size={16} />} label="Reference" value={it.reference || 'SWK Master'} />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <SpecBox icon={<BedDouble size={16} />} label="Bedrooms" value={it.type === 'Office' ? 'Commercial' : it.beds ? `${it.beds} Bedrooms` : 'Studio'} />
+                      <SpecBox icon={<Bath size={16} />} label="Bathrooms" value={it.baths ? `${it.baths} Bathrooms` : 'En-suite'} />
+                      <SpecBox icon={<Expand size={16} />} label="Built-Up Area" value={it.area ? `${Number(it.area).toLocaleString('en-US')} ft²${sqm ? ` (${sqm} m²)` : ''}` : 'On Request'} />
+                      <SpecBox icon={<Building2 size={16} />} label="Tenure & Status" value={[it.tenure || 'Freehold', it.completion ? `Handover ${it.completion}` : it.status].filter(Boolean).join(' · ')} />
+                      {it.furnishing && <SpecBox icon={<Layers size={16} />} label="Furnishing" value={it.furnishing} />}
+                      {it.floor_no && <SpecBox icon={<Compass size={16} />} label="Floor Level" value={`Floor ${it.floor_no}`} />}
+                      {it.parking_slots && <SpecBox icon={<Car size={16} />} label="Parking" value={`${it.parking_slots} Covered Bay${it.parking_slots > 1 ? 's' : ''}`} />}
+                      {it.payment_plan && <SpecBox icon={<Calendar size={16} />} label="Payment Plan" value={it.payment_plan} />}
+                    </div>
+                  )}
 
                   {/* 3. Architectural Editorial & Features */}
                   {(it.description.length > 0 || it.features.length > 0) && (
@@ -552,8 +564,8 @@ export function PublicListing() {
                     />
                   </div>
 
-                  {/* 6. Live UAE Mortgage, DLD 4% Fee & Yield Estimator */}
-                  {it.price && <DubaiInvestmentCalculator price={it.price} purpose={it.purpose} roiPercent={it.roi_percent} />}
+                  {/* 6. Live UAE Mortgage, DLD 4% / ADM 2% Fee & Yield Estimator */}
+                  {it.price && <DubaiInvestmentCalculator price={it.price} purpose={it.purpose} roiPercent={it.roi_percent} emirate={it.emirate || it.location} />}
 
                   {/* Action Buttons */}
                   <div className="no-print flex flex-wrap items-center gap-3 pt-2 border-t border-[#ece5d8]">
