@@ -71,7 +71,9 @@ export function DeveloperProjectLaunchModal({
   const [shareOpen, setShareOpen] = useState(false)
 
   // Step 1: Project Identity & Payment Plan
+  const [projectName, setProjectName] = useState('')
   const [title, setTitle] = useState('')
+  const [emirate, setEmirate] = useState<'Dubai' | 'Abu Dhabi'>('Dubai')
   const [subtitle, setSubtitle] = useState('')
   const [developerId, setDeveloperId] = useState<number | null>(null)
   const [developerName, setDeveloperName] = useState('')
@@ -157,6 +159,8 @@ export function DeveloperProjectLaunchModal({
 
       const res = await post<{ property: any; units: any[]; websiteListing?: any }>('/api/projects/launch', {
         title: title.trim(),
+        project_name: (projectName || title).trim().replace(/\s+by\s+.+$/i, '').trim(),
+        emirate,
         subtitle: subtitle.trim() || undefined,
         developer_id: developerId,
         developer_name: developerName.trim() || undefined,
@@ -338,9 +342,30 @@ export function DeveloperProjectLaunchModal({
             {/* STEP 1: Project Identity */}
             {step === 1 && (
               <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="sm:col-span-2">
-                  <label className="label">Project Name <span className="req">*</span></label>
+                <div>
+                  <label className="label">Pure Project Name <span className="req">*</span></label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Shahrukhz"
+                    value={projectName}
+                    onChange={e => {
+                      const val = e.target.value
+                      setProjectName(val)
+                      const shortDev = developerName.replace(/\s+(Properties|Developments|Development|Realty|Holding|Group|Real Estate).*$/i, '').trim()
+                      setTitle(val.trim() && shortDev ? `${val.trim()} by ${shortDev}` : val)
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="label">Full Display Title (&lt;Project&gt; by &lt;Developer&gt;) <span className="req">*</span></label>
                   <input className="input" placeholder="e.g. Shahrukhz by Danube" value={title} onChange={e => setTitle(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Emirate</label>
+                  <CustomSelect className="select" value={emirate} onChange={e => setEmirate(e.target.value as 'Dubai' | 'Abu Dhabi')}>
+                    <option value="Dubai">Dubai (4% DLD)</option>
+                    <option value="Abu Dhabi">Abu Dhabi (2% ADM)</option>
+                  </CustomSelect>
                 </div>
                 <div>
                   <label className="label">Property / Asset Type</label>
@@ -355,7 +380,14 @@ export function DeveloperProjectLaunchModal({
                     value={developerId}
                     label={developerName}
                     placeholder="e.g. Danube Properties"
-                    onChange={(id, lbl) => { setDeveloperId(id); if (lbl !== undefined) setDeveloperName(lbl) }}
+                    onChange={(id, lbl) => {
+                      setDeveloperId(id)
+                      if (lbl !== undefined) {
+                        setDeveloperName(lbl)
+                        const shortDev = lbl.replace(/\s+(Properties|Developments|Development|Realty|Holding|Group|Real Estate).*$/i, '').trim()
+                        if (projectName.trim() && shortDev) setTitle(`${projectName.trim()} by ${shortDev}`)
+                      }
+                    }}
                   />
                 </div>
                 <div>

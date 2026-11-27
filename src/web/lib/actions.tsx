@@ -180,6 +180,8 @@ export const RELATED: Record<string, { key: string; label: string; entity: strin
   campaigns: [{ key: 'leads', label: 'Leads', entity: 'leads', field: 'campaign_id' }],
   opportunities: [{ key: 'quotes', label: 'Quotations', entity: 'quotations', field: 'opportunity_id' }],
   properties: [{ key: 'mandates', label: 'Mandates', entity: 'mandates', field: 'property_id' }, { key: 'viewings', label: 'Viewings', entity: 'viewings', field: 'property_id' }, { key: 'offers', label: 'Offers', entity: 'offers', field: 'property_id' }],
+  developers: [{ key: 'projects', label: 'Projects', entity: 'properties', field: 'developer_ref' }],
+  communities: [{ key: 'projects', label: 'Projects', entity: 'properties', field: 'community_ref' }],
   leases: [{ key: 'rent', label: 'Rent schedule', entity: 'rent_schedules', field: 'lease_id' }, { key: 'maint', label: 'Maintenance', entity: 'maintenance', field: 'lease_id' }],
   projects: [{ key: 'tasks', label: 'Tasks', entity: 'tasks', field: 'project_id' }],
 }

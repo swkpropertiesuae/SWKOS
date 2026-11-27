@@ -54,9 +54,10 @@ export function PropertyVideoTour({
     const pick = (i: number) => images[i % Math.max(1, images.length)] || ''
     const bedDesc = beds ? `${beds}-bedroom` : 'signature studio'
     const areaDesc = area ? `${Number(area).toLocaleString('en-US')} square feet` : 'generously proportioned interiors'
+    const emirateName = /abu\s*dhabi/i.test(String(location || '')) ? 'Abu Dhabi' : 'Dubai'
     const goldenVisa = price && price >= 2_000_000
       ? 'This residence also qualifies for the UAE 10-year Golden Visa.'
-      : 'Positioned in a prime high-demand Dubai investment corridor.'
+      : `Positioned in a prime high-demand ${emirateName} investment corridor.`
     const featTxt = features.length
       ? `Key highlights include ${features.slice(0, 4).join(', ')}.`
       : 'Crafted with floor-to-ceiling glazing, bespoke joinery, and private resort-grade amenities.'
@@ -65,20 +66,20 @@ export function PropertyVideoTour({
       {
         eyebrow: 'CHAPTER 01 · ARCHITECTURAL ARRIVAL',
         headline: title,
-        narration: `Welcome to ${title}, privately curated by SWK Properties Dubai. Located in ${location || 'one of Dubai’s most sought-after addresses'}${developer ? `, developed by ${developer}` : ''}.`,
+        narration: `Welcome to ${title}, privately curated by SWK Properties UAE. Located in ${location || `one of ${emirateName}’s most sought-after addresses`}${developer ? `, developed by ${developer}` : ''}.`,
         image: pick(0),
         motion: 'zoom-in',
       },
       {
-        eyebrow: 'CHAPTER 02 · RESIDENCE SPECIFICATIONS',
-        headline: `${bedDesc.toUpperCase()} · ${area ? `${Number(area).toLocaleString('en-US')} SQ FT` : 'LUXURY EDITION'}`,
-        narration: `Offered ${purpose.toLowerCase()} at ${priceLabel || 'price upon private request'}, this ${bedDesc} residence spans ${areaDesc}${baths ? ` with ${baths} designer bathrooms` : ''}.`,
+        eyebrow: 'CHAPTER 02 · PROJECT SPECIFICATIONS',
+        headline: `${bedDesc.toUpperCase()} · ${area ? `${Number(area).toLocaleString('en-US')} SQ FT` : 'UAE EDITION'}`,
+        narration: `Offered ${purpose.toLowerCase()} at ${priceLabel || 'price upon private request'}, spanning ${areaDesc}${baths ? ` with ${baths} designer bathrooms` : ''}.`,
         image: pick(1),
         motion: 'pan-right',
       },
       {
         eyebrow: 'CHAPTER 03 · LIFESTYLE & AMENITIES',
-        headline: 'Bespoke Dubai Living',
+        headline: `Bespoke ${emirateName} Living`,
         narration: featTxt,
         image: pick(2),
         motion: 'zoom-out',

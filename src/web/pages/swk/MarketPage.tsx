@@ -47,7 +47,7 @@ export default function MarketPage() {
   const qc = useQueryClient()
   const toast = useToast()
   const canProps = useMeta().can('properties')
-  const { data, isLoading } = useQuery({ queryKey: ['market-props'], enabled: canProps, queryFn: () => get<{ rows: Prop[] }>('/api/e/properties?pageSize=500') })
+  const { data, isLoading } = useQuery({ queryKey: ['market-props'], enabled: canProps, queryFn: () => get<{ rows: Prop[] }>('/api/e/properties?pageSize=2000') })
   const pulseQ = useQuery({
     queryKey: ['swk-market-pulse'],
     queryFn: () => get<{ areas: any[]; dldTransactions: any[]; news: any[]; mortgageBanks: any[]; lastUpdated: string }>('/api/swk-ops/market-pulse'),
@@ -56,7 +56,10 @@ export default function MarketPage() {
   const props = data?.rows ?? []
   const [open, setOpen] = useState<Community | null>(null)
   const [companionCode, setCompanionCode] = useState<string>('PALM')
+  const [emirateFilter, setEmirateFilter] = useState<'All' | 'Dubai' | 'Abu Dhabi'>('All')
   const [segFilter, setSegFilter] = useState<string>('All')
+  const [commQuery, setCommQuery] = useState('')
+  const [commVisible, setCommVisible] = useState(24)
   const [syncingDld, setSyncingDld] = useState(false)
 
   // Quick Mortgage State
@@ -83,9 +86,13 @@ export default function MarketPage() {
   }, [pulseQ.data, companionCode])
 
   const filteredCommunities = useMemo(() => {
-    if (segFilter === 'All') return COMMUNITIES
-    return COMMUNITIES.filter(c => c.segment === segFilter)
-  }, [segFilter])
+    const qLow = commQuery.trim().toLowerCase()
+    return COMMUNITIES.filter(c =>
+      (emirateFilter === 'All' || c.emirate === emirateFilter) &&
+      (segFilter === 'All' || c.segment === segFilter) &&
+      (!qLow || `${c.name} ${c.emirate} ${c.area ?? ''} ${c.code ?? ''} ${c.masterDeveloper ?? ''}`.toLowerCase().includes(qLow)),
+    )
+  }, [emirateFilter, segFilter, commQuery])
 
   const syncDldNow = async () => {
     setSyncingDld(true)
@@ -117,22 +124,23 @@ export default function MarketPage() {
   return (
     <div className="space-y-6 pb-10">
       <ModuleHeader
-        eyebrow="Market Intelligence · 24 Dubai Areas · Daily DLD Feed · Field Companion"
+        eyebrow={`Market Intelligence · ${COMMUNITIES.length} Dubai & Abu Dhabi Communities · Daily DLD Feed · Field Companion`}
         icon={<Activity size={22} />}
         title={<>Market <span className="swk-shimmer-text">Pulse</span> & Site-Visit Companion</>}
-        subtitle="Stock-market style Dubai area intelligence across all 24 corridors — live daily DLD transactions, 15-year future masterplan outlook (2026–2041), field-visit client closing keywords, real estate news alerts, and live UAE mortgage rates."
+        subtitle={`Complete Dubai & Abu Dhabi community intelligence across all ${COMMUNITIES.length} master corridors — live DLD transactions, 15-year future masterplan outlook (2026–2041), field-visit client closing keywords, real estate news alerts, and live UAE mortgage rates.`}
         actions={<>
           <button type="button" className="swk-btn swk-btn-primary" disabled={syncingDld} onClick={() => void syncDldNow()}>
             <RefreshCw size={15} className={syncingDld ? 'animate-spin' : ''} /> {syncingDld ? 'Syncing DLD…' : 'Sync Daily DLD Feed'}
           </button>
-          <Link to="/toolkit" className="swk-btn swk-btn-ghost"><Calculator size={16} /> Full Deal & Mortgage Toolkit</Link>
+          <Link to="/e/communities" className="swk-btn swk-btn-ghost"><MapPin size={16} /> All {COMMUNITIES.length} Communities</Link>
+          <Link to="/toolkit" className="swk-btn swk-btn-ghost"><Calculator size={16} /> Deal & Mortgage Toolkit</Link>
         </>}
       />
 
       <Reveal className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile tone="navy" label="Avg price / sq ft (24 Areas)" value={kpi.ppsf} format={fmtPpsf} delta={kpi.ppsfYoY} hint="YoY · All 24 Dubai corridors" spark={kpi.ppsfSpark} icon={<Landmark size={16} />} />
-        <StatTile label="Avg gross rental yield" value={kpi.yieldPct} format={v => pct(v, 2)} hint="RERA index rents" spark={kpi.yieldSpark} icon={<Percent size={16} />} />
-        <StatTile label="Quarterly DLD volume" value={kpi.tx} format={fmtInt} delta={(kpi.txSpark[8] / kpi.txSpark[4] - 1) * 100} hint="Across 24 communities" spark={kpi.txSpark} icon={<Activity size={16} />} />
+        <StatTile tone="navy" label={`Avg price / sq ft (${COMMUNITIES.length} Areas)`} value={kpi.ppsf} format={fmtPpsf} delta={kpi.ppsfYoY} hint="YoY · Dubai & Abu Dhabi corridors" spark={kpi.ppsfSpark} icon={<Landmark size={16} />} />
+        <StatTile label="Avg gross rental yield" value={kpi.yieldPct} format={v => pct(v, 2)} hint="RERA / ADM index rents" spark={kpi.yieldSpark} icon={<Percent size={16} />} />
+        <StatTile label="Quarterly UAE volume" value={kpi.tx} format={fmtInt} delta={(kpi.txSpark[8] / kpi.txSpark[4] - 1) * 100} hint={`Across ${COMMUNITIES.length} communities`} spark={kpi.txSpark} icon={<Activity size={16} />} />
         <StatTile tone="champ" label="Off-plan share" value={kpi.offPlan} format={fmtPct1} hint="Oqood vs Ready Title Deed" icon={<Building2 size={16} />} />
       </Reveal>
 
@@ -456,15 +464,32 @@ export default function MarketPage() {
       <section aria-labelledby="explorer-h" className="space-y-3">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
-            <div className="swk-eyebrow">All 24 Dubai Corridors</div>
-            <h2 id="explorer-h" className="font-display text-[22px] font-semibold text-ink">Tap any of the 24 Dubai communities for its Site-Visit Brief, Rent Index & SWK Stock</h2>
+            <div className="swk-eyebrow">All {COMMUNITIES.length} Dubai &amp; Abu Dhabi Corridors</div>
+            <h2 id="explorer-h" className="font-display text-[22px] font-semibold text-ink">Explore every Dubai &amp; Abu Dhabi community for Site-Visit Briefs, Rent Index &amp; SWK Projects</h2>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="search"
+              className="input !h-8 !text-xs w-[210px]"
+              placeholder="Search community (e.g. Saadiyat, JVC)…"
+              value={commQuery}
+              onChange={e => { setCommQuery(e.target.value); setCommVisible(24) }}
+            />
+            {(['All', 'Dubai', 'Abu Dhabi'] as const).map(em => (
+              <button
+                key={em}
+                type="button"
+                onClick={() => { setEmirateFilter(em); setCommVisible(24) }}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition ${emirateFilter === em ? 'bg-[#8a621c] text-white border-[#8a621c]' : 'bg-white text-ink border-[#f4f0e8]'}`}
+              >
+                {em}
+              </button>
+            ))}
             {(['All', 'Prime', 'Upper-mid', 'Mid', 'Value'] as const).map(seg => (
               <button
                 key={seg}
                 type="button"
-                onClick={() => setSegFilter(seg)}
+                onClick={() => { setSegFilter(seg); setCommVisible(24) }}
                 className={`px-3 py-1 rounded-full text-xs font-bold border transition ${segFilter === seg ? 'bg-[#0f2a33] text-white border-[#0f2a33]' : 'bg-white text-ink border-[#f4f0e8]'}`}
               >
                 {seg}
@@ -473,20 +498,27 @@ export default function MarketPage() {
           </div>
         </div>
         <Reveal className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-          {filteredCommunities.map(c => {
+          {filteredCommunities.slice(0, commVisible).map(c => {
             const ours = props.filter(p => matchCommunity(p)?.id === c.id).length
             return (
               <motion.button key={c.id} type="button" onClick={() => { setOpen(c); if (c.code) setCompanionCode(c.code) }} whileTap={{ scale: 0.98 }}
                 className="text-left block w-full rounded-[20px] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#8a621c]/50"
                 aria-label={`Open ${c.name} market detail`}>
                 <PhotoCard src={c.image} title={`${c.name} (${c.ticker ?? c.code})`}
-                  subtitle={`${aed(c.ppsf)}/sq ft · ${pct(c.yieldPct)} gross · SC AED ${c.serviceCharge}/sq ft`}
-                  badge={<><Pill tone={c.segment === 'Prime' ? 'champ' : c.segment === 'Value' ? 'oasis' : 'navy'}>{c.segment}</Pill>{ours > 0 && <Pill tone="grey">{ours} SWK</Pill>}</>}
+                  subtitle={`${c.emirate} · ${aed(c.ppsf)}/sq ft · ${pct(c.yieldPct)} gross · SC AED ${c.serviceCharge}/sq ft`}
+                  badge={<><Pill tone={c.emirate === 'Abu Dhabi' ? 'champ' : 'oasis'}>{c.emirate}</Pill><Pill tone={c.segment === 'Prime' ? 'champ' : c.segment === 'Value' ? 'oasis' : 'navy'}>{c.segment}</Pill>{ours > 0 && <Pill tone="grey">{ours} SWK</Pill>}</>}
                   footer={<div className="flex items-center gap-2 text-[12px]"><DeltaChip value={yoy(c)} /><span className="text-[#eae4d7]">{num(c.transactionsQ)} deals / qtr</span></div>} />
               </motion.button>
             )
           })}
         </Reveal>
+        {filteredCommunities.length > commVisible && (
+          <div className="flex justify-center pt-1">
+            <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setCommVisible(v => v + 24)}>
+              Load more communities ({commVisible} of {filteredCommunities.length} shown)
+            </button>
+          </div>
+        )}
       </section>
 
       <Reveal className="grid gap-4 grid-cols-1 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
@@ -520,18 +552,22 @@ export default function MarketPage() {
 
 // ---------------------------------------------------------------- ticker
 function Ticker({ onPick }: { onPick: (c: Community) => void }) {
-  const items = [...COMMUNITIES, ...COMMUNITIES]
+  const base = useMemo(() => [
+    ...COMMUNITIES.filter(c => c.emirate === 'Dubai').slice(0, 14),
+    ...COMMUNITIES.filter(c => c.emirate === 'Abu Dhabi').slice(0, 10),
+  ], [])
+  const items = [...base, ...base]
   return (
     <RevealItem className="swk-card overflow-hidden !p-0" >
       <div className="flex items-stretch">
         <div className="flex-none flex items-center gap-2 px-4 text-[11px] font-semibold uppercase tracking-[.14em] text-white" style={{ background: `linear-gradient(135deg, ${SWK.navy}, ${SWK.midnight})` }}>
           <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full opacity-70 animate-ping" style={{ background: SWK.champ }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: SWK.champ }} /></span>
-          DLD 24-Area Ticker
+          UAE Live Index Ticker
         </div>
         <div className="relative overflow-hidden flex-1" style={{ maskImage: 'linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)' }}>
           <div className="swk-ticker" aria-label="Community price ticker">
             {items.map((c, i) => (
-              <button key={`${c.id}-${i}`} type="button" onClick={() => onPick(c)} tabIndex={i >= COMMUNITIES.length ? -1 : 0} aria-hidden={i >= COMMUNITIES.length || undefined}
+              <button key={`${c.id}-${i}`} type="button" onClick={() => onPick(c)} tabIndex={i >= base.length ? -1 : 0} aria-hidden={i >= base.length || undefined}
                 className="flex items-center gap-2.5 px-5 py-3 whitespace-nowrap border-r border-[#f4f0e8] hover:bg-[#ffffff] transition-colors">
                 <span className="font-mono text-[11px] font-bold text-[#16363f]">{c.ticker}</span>
                 <span className="text-[13px] font-semibold text-ink">{c.name}</span>
@@ -554,18 +590,22 @@ const METRIC_META: Record<Metric, { label: string; fmt: (v: number) => string; a
 }
 function TrendCard() {
   const [metric, setMetric] = useState<Metric>('ppsf')
-  const [sel, setSel] = useState<string[]>(['palm-jumeirah', 'downtown-dubai', 'dubai-hills-estate', 'jvc', 'dubai-south'])
+  const quickComms = useMemo(() => [
+    ...COMMUNITIES.filter(c => c.emirate === 'Dubai').slice(0, 14),
+    ...COMMUNITIES.filter(c => c.emirate === 'Abu Dhabi').slice(0, 10),
+  ], [])
+  const [sel, setSel] = useState<string[]>(['palm-jumeirah', 'downtown-dubai', 'dubai-hills-estate', 'saadiyat-island', 'yas-island'])
   const chosen = COMMUNITIES.filter(c => sel.includes(c.id))
   const rows = QUARTERS.map((q, i) => Object.fromEntries([['q', q], ...chosen.map(c => [c.id, seriesFor(c, metric)[i]])]))
-  const colorOf = (id: string) => CHART[COMMUNITIES.findIndex(c => c.id === id) % CHART.length]
+  const colorOf = (id: string) => CHART[Math.max(0, quickComms.findIndex(c => c.id === id)) % CHART.length]
   const toggle = (id: string) => setSel(s => (s.includes(id) ? (s.length > 1 ? s.filter(x => x !== id) : s) : [...s, id]))
   const m = METRIC_META[metric]
   return (
     <Reveal>
-      <Card title={<span className="flex items-center gap-2"><LineIc size={17} /> {m.label} trend</span>} subtitle={`${QUARTERS[0]} → ${QUARTERS[QUARTERS.length - 1]} · select any of the 24 Dubai communities to compare`}
+      <Card title={<span className="flex items-center gap-2"><LineIc size={17} /> {m.label} trend</span>} subtitle={`${QUARTERS[0]} → ${QUARTERS[QUARTERS.length - 1]} · compare flagship Dubai & Abu Dhabi corridors`}
         actions={<Segmented layoutId="mk-metric" value={metric} onChange={setMetric} options={[{ value: 'ppsf', label: 'Price/sqft' }, { value: 'yield', label: 'Yield' }, { value: 'tx', label: 'Transactions' }]} />}>
         <div className="flex flex-wrap gap-1.5 mb-4" role="group" aria-label="Communities">
-          {COMMUNITIES.map(c => {
+          {quickComms.map(c => {
             const on = sel.includes(c.id)
             return (
               <motion.button key={c.id} type="button" layout onClick={() => toggle(c.id)} aria-pressed={on} whileTap={{ scale: 0.95 }}
@@ -580,7 +620,7 @@ function TrendCard() {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
-                {COMMUNITIES.map(c => (
+                {chosen.map(c => (
                   <linearGradient key={c.id} id={`mk-g-${c.id}`} x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor={colorOf(c.id)} stopOpacity={0.28} /><stop offset="100%" stopColor={colorOf(c.id)} stopOpacity={0} />
                   </linearGradient>

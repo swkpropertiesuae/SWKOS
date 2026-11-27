@@ -20,6 +20,7 @@ import { AuthImg } from '../../components/AuthMedia'
 import { DeveloperProjectLaunchModal } from '../../components/DeveloperProjectLaunchModal'
 import { ShareWithClient } from '../../components/ShareWithClient'
 import { BulkInventoryModal } from '../../components/BulkInventoryModal'
+import { CatalogMarketingKit } from '../../components/CatalogMarketingKit'
 import { Card,CHART,EmptyState,ModuleHeader,Pill,ProgressRing,Reveal,RevealItem,Segmented,StatTile,SWK,aed,num } from '../../swk/ui'
 import { communityByName,type Community } from '../../swk/uae'
 import { copyText,daysBetween,Drawer,hash,parseDate,SearchField,SelectField,useToasts } from './kit3/parts'
@@ -84,7 +85,7 @@ function scoreListing(p: Row, community: Community | undefined, mandate: Row | u
 }
 
 function useListings() {
-  const props = useQuery({ queryKey: ['swk-ls', 'properties'], queryFn: () => get<List>('/api/e/properties', { pageSize: 500 }) })
+  const props = useQuery({ queryKey: ['swk-ls', 'properties'], queryFn: () => get<List>('/api/e/properties', { pageSize: 2000 }) })
   const units = useQuery({ queryKey: ['swk-ls', 'units'], queryFn: () => get<List>('/api/e/units', { pageSize: 500 }) })
   const mandates = useQuery({ queryKey: ['swk-ls', 'mandates'], queryFn: () => get<List>('/api/e/mandates', { pageSize: 500 }) })
   const leads = useQuery({ queryKey: ['swk-ls', 'leads'], queryFn: () => get<List>('/api/e/leads', { pageSize: 500 }) })
@@ -158,23 +159,26 @@ export default function ListingsStudio() {
   const toasts = useToasts()
   const [view, setView] = useState<'gallery' | 'table'>('gallery')
   const [q, setQ] = useState('')
+  const [emirate, setEmirate] = useState<'all' | 'Dubai' | 'Abu Dhabi'>('all')
   const [status, setStatus] = useState('all')
   const [type, setType] = useState('all')
   const [comm, setComm] = useState('all')
   const [stage, setStage] = useState<'all' | 'offplan' | 'ready'>('all')
   const [sort, setSort] = useState<'score' | 'newest' | 'price'>('score')
-  const [panel, setPanel] = useState<{ id: number; tab: 'quality' | 'copy' } | null>(null)
+  const [visibleCount, setVisibleCount] = useState(24)
+  const [panel, setPanel] = useState<{ id: number; tab: 'quality' | 'copy' | 'kit' } | null>(null)
   const [shareItem, setShareItem] = useState<{ id: number; title: string } | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [launchOpen, setLaunchOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
-    const out = listings.filter(l => (status === 'all' || l.p.status === status) && (type === 'all' || l.p.property_type === type)
+    const out = listings.filter(l => (emirate === 'all' || (l.p.emirate || l.community?.emirate || 'Dubai') === emirate)
+      && (status === 'all' || l.p.status === status) && (type === 'all' || l.p.property_type === type)
       && (comm === 'all' || (l.community?.name ?? 'Other') === comm) && (stage === 'all' || (stage === 'offplan' ? !!l.p.is_off_plan : !l.p.is_off_plan))
-      && (!s || `${l.p.title} ${l.p.property_no} ${l.p.rera_permit_no ?? ''} ${l.community?.name ?? ''} ${l.p.building_name ?? ''}`.toLowerCase().includes(s)))
+      && (!s || `${l.p.title} ${l.p.project_name ?? ''} ${l.p.developer_id ?? ''} ${l.p.emirate ?? ''} ${l.p.property_no} ${l.p.rera_permit_no ?? ''} ${l.community?.name ?? ''} ${l.p.building_name ?? ''}`.toLowerCase().includes(s)))
     return out.sort((a, b) => sort === 'score' ? b.score - a.score : sort === 'price' ? Number(b.p.price || 0) - Number(a.p.price || 0) : a.days - b.days)
-  }, [listings, q, status, type, comm, stage, sort])
+  }, [listings, q, emirate, status, type, comm, stage, sort])
 
   const live = listings.filter(l => ['Available', 'Off-Plan', 'Under Offer'].includes(l.p.status) && l.p.active !== false)
   const avgScore = listings.length ? listings.reduce((s, l) => s + l.score, 0) / listings.length : 0
@@ -188,13 +192,13 @@ export default function ListingsStudio() {
 
   return (
     <div className="flex flex-col gap-6">
-      <ModuleHeader eyebrow="Marketing · Portals" icon={<Wand2 size={22} />} title="Listing Studio"
-        subtitle="Score every listing like Property Finder & Bayut do, clear the Trakheesi gate, and syndicate with confidence."
+      <ModuleHeader eyebrow="Marketing · Dubai & Abu Dhabi Projects" icon={<Wand2 size={22} />} title="Project Listing Studio"
+        subtitle="Manage every Dubai & Abu Dhabi project (<Project> by <Developer>) with brochures, payment plans, PPTX decks, 3D tours, 8-platform social drafts & portal compliance."
         actions={<>
-          <button className="swk-btn swk-btn-ghost" disabled={!listings.length} onClick={() => filtered[0] && setPanel({ id: filtered[0].p.id, tab: 'copy' })}><Sparkles size={16} /> AI listing copy</button>
+          <button className="swk-btn swk-btn-ghost" disabled={!listings.length} onClick={() => filtered[0] && setPanel({ id: filtered[0].p.id, tab: 'kit' })}><Sparkles size={16} /> Brochure &amp; Social Kit</button>
           {can('properties', 'create') && <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setBulkOpen(true)}><Upload size={16} /> Bulk Upload</button>}
           {can('properties', 'create') && <button type="button" className="swk-btn swk-btn-primary" onClick={() => setLaunchOpen(true)}><Rocket size={16} /> Launch Developer Project</button>}
-          {can('properties', 'create') && <Link to="/e/properties?new=1" className="swk-btn swk-btn-ghost"><Rows3 size={16} /> New listing</Link>}
+          {can('properties', 'create') && <Link to="/e/properties?new=1" className="swk-btn swk-btn-ghost"><Rows3 size={16} /> New Project</Link>}
         </>} />
 
       <Reveal className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
@@ -253,9 +257,12 @@ export default function ListingsStudio() {
               <SelectField label="Sort" value={sort} onChange={v => setSort(v as any)} options={[{ value: 'score', label: 'Quality score' }, { value: 'newest', label: 'Newest' }, { value: 'price', label: 'Price' }]} className="min-w-[140px]" />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Segmented layoutId="ls-stage" value={stage} onChange={setStage} options={[{ value: 'all', label: 'All' }, { value: 'offplan', label: 'Off-plan' }, { value: 'ready', label: 'Ready' }]} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Segmented layoutId="ls-emirate" value={emirate} onChange={v => { setEmirate(v); setVisibleCount(24) }} options={[{ value: 'all', label: 'All UAE' }, { value: 'Dubai', label: 'Dubai' }, { value: 'Abu Dhabi', label: 'Abu Dhabi' }]} />
+                <Segmented layoutId="ls-stage" value={stage} onChange={v => { setStage(v); setVisibleCount(24) }} options={[{ value: 'all', label: 'All' }, { value: 'offplan', label: 'Off-plan' }, { value: 'ready', label: 'Ready' }]} />
+              </div>
               <div className="flex items-center gap-3">
-                <span className="text-[12.5px] text-muted tabular-nums">{filtered.length} of {listings.length}</span>
+                <span className="text-[12.5px] text-muted tabular-nums">{filtered.length} of {listings.length} projects</span>
                 <Segmented layoutId="ls-view" value={view} onChange={setView} options={[{ value: 'gallery', label: <span className="inline-flex items-center gap-1.5"><LayoutGrid size={14} /> Gallery</span> }, { value: 'table', label: <span className="inline-flex items-center gap-1.5"><Rows3 size={14} /> Table</span> }]} />
               </div>
             </div>
@@ -264,22 +271,31 @@ export default function ListingsStudio() {
       </Reveal>
 
       {loading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map(i => <div key={i} className="swk-card h-[420px] animate-pulse" />)}</div>
-        : error ? <EmptyState title="Could not load listings" hint={error.message} />
-          : !filtered.length ? <EmptyState title="No listings match" hint="Clear filters or add a property." />
+        : error ? <EmptyState title="Could not load projects" hint={error.message} />
+          : !filtered.length ? <EmptyState title="No projects match" hint="Clear filters or add a project." />
             : view === 'gallery' ? (
-              <motion.div layout className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                <AnimatePresence mode="popLayout">
-                  {filtered.map((l, i) => <ListingCard key={l.p.id} l={l} i={i} onQuality={() => setPanel({ id: l.p.id, tab: 'quality' })} onCopy={() => setPanel({ id: l.p.id, tab: 'copy' })} onShare={() => setShareItem({ id: l.p.id, title: l.p.title })} />)}
-                </AnimatePresence>
-              </motion.div>
-            ) : <ListingTable rows={filtered} onOpen={id => setPanel({ id, tab: 'quality' })} />}
+              <>
+                <motion.div layout className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <AnimatePresence mode="popLayout">
+                    {filtered.slice(0, visibleCount).map((l, i) => <ListingCard key={l.p.id} l={l} i={i} onQuality={() => setPanel({ id: l.p.id, tab: 'quality' })} onCopy={() => setPanel({ id: l.p.id, tab: 'kit' })} onShare={() => setShareItem({ id: l.p.id, title: l.p.title })} />)}
+                  </AnimatePresence>
+                </motion.div>
+                {filtered.length > visibleCount && (
+                  <div className="flex justify-center">
+                    <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setVisibleCount(v => v + 24)}>
+                      Load more projects ({visibleCount} of {filtered.length} shown)
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : <ListingTable rows={filtered.slice(0, Math.max(visibleCount, 100))} onOpen={id => setPanel({ id, tab: 'kit' })} />}
 
-      <Drawer open={!!selected} onClose={() => setPanel(null)} eyebrow={selected ? `${selected.p.property_no ?? ''} · ${selected.community?.name ?? 'Dubai'}` : ''} title={selected?.p.title ?? ''} width={620}
-        footer={selected && <div className="flex items-center gap-2 flex-wrap"><button type="button" className="swk-btn swk-btn-gold" onClick={() => setShareItem({ id: selected.p.id, title: selected.p.title })}><Share2 size={15} /> Share Watermarked Brochure</button><Link to={`/e/properties/${selected.p.id}`} className="swk-btn swk-btn-primary"><ArrowUpRight size={16} /> Open property record</Link></div>}>
+      <Drawer open={!!selected} onClose={() => setPanel(null)} eyebrow={selected ? `${selected.p.property_no ?? ''} · ${selected.community?.name ?? selected.p.emirate ?? 'Dubai'}` : ''} title={selected?.p.title ?? ''} width={720}
+        footer={selected && <div className="flex items-center gap-2 flex-wrap"><button type="button" className="swk-btn swk-btn-gold" onClick={() => setShareItem({ id: selected.p.id, title: selected.p.title })}><Share2 size={15} /> Share Watermarked Brochure</button><Link to={`/e/properties/${selected.p.id}`} className="swk-btn swk-btn-primary"><ArrowUpRight size={16} /> Open project record</Link></div>}>
         {selected && panel && (
           <div className="flex flex-col gap-5">
-            <Segmented layoutId="ls-panel" value={panel.tab} onChange={t => setPanel({ ...panel, tab: t })} options={[{ value: 'quality', label: 'Quality & fixes' }, { value: 'copy', label: 'AI listing copy' }]} />
-            {panel.tab === 'quality' ? <QualityPanel l={selected} /> : <CopyPanel l={selected} onCopied={m => toasts.push(m)} />}
+            <Segmented layoutId="ls-panel" value={panel.tab} onChange={t => setPanel({ ...panel, tab: t })} options={[{ value: 'kit', label: 'Brochure, PPT & Social Kit' }, { value: 'quality', label: 'Quality & fixes' }, { value: 'copy', label: 'AI listing copy' }]} />
+            {panel.tab === 'kit' ? <CatalogMarketingKit entity="properties" id={selected.p.id} compact /> : panel.tab === 'quality' ? <QualityPanel l={selected} /> : <CopyPanel l={selected} onCopied={m => toasts.push(m)} />}
           </div>
         )}
       </Drawer>

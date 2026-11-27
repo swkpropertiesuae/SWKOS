@@ -15,17 +15,18 @@ import { AuthImg,MediaTour3DEmbed,MediaVideoPlayer } from '../../components/Auth
 import { Property3DViewer } from '../../components/brochure/Property3DViewer'
 import { DeveloperProjectLaunchModal } from '../../components/DeveloperProjectLaunchModal'
 import { ShareWithClient } from '../../components/ShareWithClient'
-import { Bar,Card,EmptyState,Field,ModuleHeader,Pill,ProgressRing,Reveal,StatTile,SWK,aed,num } from '../../swk/ui'
+import { CatalogMarketingKit } from '../../components/CatalogMarketingKit'
+import { Bar,Card,EmptyState,Field,ModuleHeader,Pill,ProgressRing,Reveal,Segmented,StatTile,SWK,aed,num } from '../../swk/ui'
 import { COMMUNITIES,DEVELOPERS,UAE,communityByName,paymentPlan } from '../../swk/uae'
-import { copyText,Drawer,SelectField,useToasts } from './kit3/parts'
+import { copyText,Drawer,SearchField,SelectField,useToasts } from './kit3/parts'
 
 type Plan = { booking: number; construction: number; handover: number; post: number }
 type Project = {
-  id: string; project: string; developer: string; community: string; image: string; from: number; types: string[]; handoverQ: string; handover: Date
+  id: string; project: string; projectName: string; developer: string; community: string; emirate: string; image: string; from: number; types: string[]; handoverQ: string; handover: Date
   plan: Plan; completion: number; escrow: string; reraNo: string; oqood: boolean; avail: number; total: number; commission: number; minPaidResale: number
-  blurb: string; featured?: boolean; swkId: number
+  blurb: string; promoBadge?: string; promoHeadline?: string; featured?: boolean; swkId: number
   beds: number | null; areaSqft: number | null; ptype: string
-  media: ProjectMediaItem[]; videoUrl?: string | null; tourUrl?: string | null; model3dUrl?: string | null; floorPlanUrl?: string | null; brochureUrl?: string | null
+  media: ProjectMediaItem[]; videoUrl?: string | null; tourUrl?: string | null; model3dUrl?: string | null; floorPlanUrl?: string | null; brochureUrl?: string | null; pptUrl?: string | null; paymentPlanPdfUrl?: string | null
 }
 
 const PHASE_COLORS = { booking: SWK.navy, construction: SWK.champ, handover: SWK.oasis, post: SWK.sky }
@@ -70,7 +71,7 @@ function countdown(to: Date, now: Date) {
 
 export default function OffPlanPage() {
   const { can } = useMeta()
-  const props = useQuery({ queryKey: ['swk-op', 'properties'], queryFn: () => get<{ rows: any[] }>('/api/e/properties', { pageSize: 500 }) })
+  const props = useQuery({ queryKey: ['swk-op', 'properties'], queryFn: () => get<{ rows: any[] }>('/api/e/properties', { pageSize: 2000 }) })
   const unitsQ = useQuery({ queryKey: ['swk-op', 'units'], queryFn: () => get<{ rows: any[] }>('/api/e/units', { pageSize: 500 }) })
   const devsQ = useQuery({ queryKey: ['swk-op', 'developers'], queryFn: () => get<{ rows: any[] }>('/api/e/developers', { pageSize: 200 }) })
   const toasts = useToasts()
@@ -85,14 +86,15 @@ export default function OffPlanPage() {
 
     return (props.data?.rows ?? []).filter(r => r.is_off_plan || r.status === 'Off-Plan').map(r => {
       const c = communityByName(r._labels?.community_ref) ?? communityByName(r.community_id) ?? communityByName(r.title) ?? communityByName(r.address)
+      const emirate = String(r.emirate || c?.emirate || 'Dubai')
       const curYear = now.getFullYear()
       const year = Number(r.completion_year) || curYear + 2
       const hd = r.available_date ? new Date(r.available_date) : null
-      const hq = hd && !isNaN(hd.getTime()) && hd.getFullYear() >= curYear ? `Q${Math.floor(hd.getMonth() / 3) + 1} ${hd.getFullYear()}` : `Q4 ${year < curYear ? curYear + 1 : year}`
+      const hq = r.handover_quarter || (hd && !isNaN(hd.getTime()) && hd.getFullYear() >= curYear ? `Q${Math.floor(hd.getMonth() / 3) + 1} ${hd.getFullYear()}` : `Q4 ${year < curYear ? curYear + 1 : year}`)
       const pUnits = unitRows.filter((u: any) => u.property_id === r.id)
       const availUnits = pUnits.filter((u: any) => u.status === 'Available').length
-      const totalUnits = pUnits.length || 1
-      const avail = pUnits.length ? availUnits : (r.status === 'Sold' ? 0 : 1)
+      const totalUnits = Number(r.total_units) || pUnits.length || 1
+      const avail = Number(r.available_units) || (pUnits.length ? availUnits : (r.status === 'Sold' ? 0 : 1))
       const devName = r._labels?.developer_ref || devById.get(Number(r.developer_ref)) || (isNaN(Number(r.developer_id)) && r.developer_id ? r.developer_id : devById.get(Number(r.developer_id))) || 'Developer'
       const yearsLeft = Math.max(0, year - curYear)
       const completion = yearsLeft === 0 ? 90 : yearsLeft === 1 ? 65 : yearsLeft === 2 ? 35 : 15
@@ -102,24 +104,28 @@ export default function OffPlanPage() {
       return {
         id: `swk-${r.id}`,
         project: r.title || r.building_name || `Project #${r.id}`,
+        projectName: r.project_name || r.title || `Project #${r.id}`,
         developer: devName,
-        community: c?.name ?? r.community_id ?? r.sub_community ?? 'Dubai',
+        community: c?.name ?? r.community_id ?? r.sub_community ?? emirate,
+        emirate,
         image: firstMedia ?? c?.image ?? img('golf-fields-1'),
         from: Number(r.price) || 0,
-        types: pUnits.length ? [...new Set(pUnits.map((u: any) => u.unit_no || (u.bedrooms ? `${u.bedrooms} BR` : u.unit_type)))].slice(0, 4) as string[] : [r.bedrooms ? `${r.bedrooms} BR ${r.property_type ?? ''}`.trim() : r.property_type ?? 'Unit'],
+        types: r.unit_mix ? [String(r.unit_mix)] : pUnits.length ? [...new Set(pUnits.map((u: any) => u.unit_no || (u.bedrooms ? `${u.bedrooms} BR` : u.unit_type)))].slice(0, 4) as string[] : [r.bedrooms ? `${r.bedrooms} BR ${r.property_type ?? ''}`.trim() : r.property_type ?? 'Unit'],
         handoverQ: hq,
-        handover: q2date(hq),
+        handover: /^Q[1-4]\s+\d{4}$/.test(hq) ? q2date(hq) : (hd && !isNaN(hd.getTime()) ? hd : new Date(year, 11, 28)),
         plan: planFromRecord(r),
         completion,
-        escrow: 'DLD Registered Project Escrow',
-        reraNo: r.rera_permit_no || 'Pending permit',
-        oqood: Boolean(r.rera_permit_no || r.title_deed_no),
+        escrow: emirate === 'Abu Dhabi' ? 'Abu Dhabi DMT / ADM Project Escrow' : 'DLD Registered Project Escrow',
+        reraNo: r.rera_permit_no || (emirate === 'Abu Dhabi' ? 'ADM Registered Project' : 'DLD Registered Project'),
+        oqood: Boolean(r.rera_permit_no || r.title_deed_no || r.is_off_plan),
         avail,
         total: totalUnits,
-        commission: Number(r.roi_percent) > 0 && Number(r.roi_percent) <= 10 ? Number(r.roi_percent) : 4,
+        commission: Number(r.roi_percent) > 0 && Number(r.roi_percent) <= 10 ? Number(r.roi_percent) : 5,
         minPaidResale: 40,
-        blurb: r.description || `${r.property_type || 'Residential'} off-plan launch in ${c?.name ?? r.community_id ?? 'Dubai'}.`,
-        featured: Boolean(r.is_exclusive),
+        blurb: r.description || `${r.property_type || 'Residential'} off-plan launch in ${c?.name ?? r.community_id ?? emirate}.`,
+        promoBadge: r.promo_badge || undefined,
+        promoHeadline: r.promo_headline || undefined,
+        featured: Boolean(r.is_exclusive || /shahrukhz|fahid|saadiyat|palm jebel ali|creek haven|damac islands/i.test(String(r.title || ''))),
         swkId: r.id,
         beds: r.bedrooms != null && r.bedrooms !== '' ? Number(r.bedrooms) : null, areaSqft: Number(r.area_sqft) || null, ptype: r.property_type || 'Apartment',
         media,
@@ -127,34 +133,51 @@ export default function OffPlanPage() {
         tourUrl: r.virtual_tour_url || media.find(m => m.kind === 'tour3d')?.url || null,
         model3dUrl: r.model_3d_url || null,
         floorPlanUrl: r.floor_plan_url || media.find(m => m.kind === 'floorplan')?.url || null,
-        brochureUrl: r.brochure_url || media.find(m => m.kind === 'brochure')?.url || null,
+        brochureUrl: r.brochure_url || `/api/catalog-kit/properties/${r.id}/brochure.pdf`,
+        pptUrl: r.ppt_url || `/api/catalog-kit/properties/${r.id}/deck.pptx`,
+        paymentPlanPdfUrl: r.payment_plan_pdf_url || `/api/catalog-kit/properties/${r.id}/payment-plan.pdf`,
       }
     })
   }, [props.data, unitsQ.data, devsQ.data, now])
 
   const featured = useMemo(() => {
     const excl = all.filter(p => p.featured)
-    if (excl.length) return excl
+    if (excl.length) return excl.slice(0, 8)
     const withPhotos = all.filter(p => p.media.some(m => m.kind === 'photo' && m.url.startsWith('/media/launches/')))
-    return (withPhotos.length ? withPhotos : all).slice(0, 6)
+    return (withPhotos.length ? withPhotos : all).slice(0, 8)
   }, [all])
 
+  const [emirate, setEmirate] = useState<'all' | 'Dubai' | 'Abu Dhabi'>('all')
+  const [searchQ, setSearchQ] = useState('')
   const [dev, setDev] = useState('all'); const [comm, setComm] = useState('all'); const [year, setYear] = useState('all')
   const maxBudget = Math.max(5_000_000, Math.ceil(Math.max(0, ...all.map(p => p.from)) / 500_000) * 500_000)
   const [budget, setBudget] = useState(maxBudget); const [postOnly, setPostOnly] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(24)
   useEffect(() => setBudget(maxBudget), [maxBudget])
+  useEffect(() => setVisibleCount(24), [emirate, searchQ, dev, comm, year, budget, postOnly])
   const [open, setOpen] = useState<Project | null>(null)
 
-  const list = all.filter(p => (dev === 'all' || p.developer === dev) && (comm === 'all' || p.community === comm) && (year === 'all' || String(p.handover.getFullYear()) === year) && (p.from <= budget || budget >= maxBudget) && (!postOnly || isPost(p)))
+  const qLow = searchQ.trim().toLowerCase()
+  const list = all.filter(p =>
+    (emirate === 'all' || p.emirate === emirate) &&
+    (dev === 'all' || p.developer === dev) &&
+    (comm === 'all' || p.community === comm) &&
+    (year === 'all' || String(p.handover.getFullYear()) === year) &&
+    (p.from <= budget || budget >= maxBudget) &&
+    (!postOnly || isPost(p)) &&
+    (!qLow || `${p.project} ${p.developer} ${p.community} ${p.emirate} ${p.promoBadge ?? ''}`.toLowerCase().includes(qLow)),
+  )
   const opt = (a: string[]) => [{ value: 'all', label: 'All' }, ...[...new Set(a)].sort().map(v => ({ value: v, label: v }))]
   const avgEntry = all.length ? all.reduce((s, p) => s + p.from, 0) / all.length : 0
+  const dubaiCount = all.filter(p => p.emirate === 'Dubai').length
+  const auhCount = all.filter(p => p.emirate === 'Abu Dhabi').length
 
   return (
     <div className="flex flex-col gap-6">
-      <ModuleHeader eyebrow="Primary market · Developers" icon={<Rocket size={22} />} title="Off-Plan Launches"
-        subtitle="Live off-plan inventory with milestone payment plans, DLD escrow & Oqood status, construction progress and brokerage commission."
+      <ModuleHeader eyebrow="Primary Market · Dubai & Abu Dhabi Off-Plan Launches & Promotions" icon={<Rocket size={22} />} title="Off-Plan Launches & Promotions"
+        subtitle="Every launched unhanded-over off-plan project across Dubai and Abu Dhabi — complete with dedicated PDF Brochures, Payment Plan PDFs, PowerPoint Decks, 3D Plans, Video Tours & 8-Platform Social Media Kits."
         actions={<>
-          {all.length > 0 && <Pill tone="oasis">{all.length} active launch{all.length > 1 ? 'es' : ''}</Pill>}
+          {all.length > 0 && <Pill tone="oasis">{all.length} active ({dubaiCount} DXB · {auhCount} AUH)</Pill>}
           <Link to="/e/developers" className="swk-btn swk-btn-ghost"><Building size={15} /> Developers</Link>
           {can('properties', 'create') && (
             <button type="button" onClick={() => setLaunchOpen(true)} className="swk-btn swk-btn-primary">
@@ -167,30 +190,31 @@ export default function OffPlanPage() {
       {featured.length > 0 && <Spotlight items={featured} now={now} onOpen={setOpen} />}
 
       <Reveal className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Projects tracked" value={all.length} icon={<Building size={16} />} hint={`${new Set(all.map(p => p.developer)).size} developers`} tone="navy" />
-        <StatTile label="Avg entry price" value={avgEntry} format={v => aed(v, { compact: true })} icon={<HandCoins size={16} />} hint="Off-plan portfolio" />
-        <StatTile label="Post-handover plans" value={all.filter(isPost).length} icon={<CalendarClock size={16} />} hint="Pay after keys" />
-        <StatTile label="Units available" value={all.reduce((s, p) => s + p.avail, 0)} icon={<Landmark size={16} />} hint="Available inventory" tone="champ" />
+        <StatTile label="Active off-plan launches" value={all.length} icon={<Building size={16} />} hint={`${new Set(all.map(p => p.developer)).size} UAE developers`} tone="navy" />
+        <StatTile label="Avg entry price" value={avgEntry} format={v => aed(v, { compact: true })} icon={<HandCoins size={16} />} hint={`${dubaiCount} Dubai · ${auhCount} Abu Dhabi`} />
+        <StatTile label="Post-handover plans" value={all.filter(isPost).length} icon={<CalendarClock size={16} />} hint="1% monthly & post-handover" />
+        <StatTile label="Units available" value={all.reduce((s, p) => s + p.avail, 0)} icon={<Landmark size={16} />} hint="Direct developer allocations" tone="champ" />
       </Reveal>
 
       {all.length > 0 && (
         <Reveal>
-          <Card title="Find a launch">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.4fr_auto] items-end">
-              <SelectField label="Developer" value={dev} onChange={setDev} options={opt(all.map(p => p.developer))} />
-              <SelectField label="Community" value={comm} onChange={setComm} options={opt(all.map(p => p.community))} />
+          <Card title="Explore UAE Off-Plan Launches & Promotions" actions={<Segmented layoutId="op-emirate" value={emirate} onChange={setEmirate} options={[{ value: 'all', label: `All UAE (${all.length})` }, { value: 'Dubai', label: `Dubai (${dubaiCount})` }, { value: 'Abu Dhabi', label: `Abu Dhabi (${auhCount})` }]} />}>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_0.9fr_1.2fr_auto] items-end">
+              <SearchField value={searchQ} onChange={setSearchQ} placeholder="Search Shahrukhz, Danube, Aldar, Saadiyat…" />
+              <SelectField label="Developer" value={dev} onChange={setDev} options={opt(all.filter(p => emirate === 'all' || p.emirate === emirate).map(p => p.developer))} />
+              <SelectField label="Community" value={comm} onChange={setComm} options={opt(all.filter(p => emirate === 'all' || p.emirate === emirate).map(p => p.community))} />
               <SelectField label="Handover year" value={year} onChange={setYear} options={opt(all.map(p => String(p.handover.getFullYear())))} />
               <label className="swk-field">
-                <span className="swk-field-label">Budget — launch price up to <b className="text-ink">{aed(budget, { compact: true })}</b></span>
+                <span className="swk-field-label">Budget up to <b className="text-ink">{aed(budget, { compact: true })}</b></span>
                 <input type="range" min={500_000} max={maxBudget} step={250_000} value={budget} onChange={e => setBudget(Number(e.target.value))} aria-label="Maximum launch price" className="w-full h-11" style={{ accentColor: SWK.champDeep }} />
               </label>
-              <label className="swk-toggle h-11"><input type="checkbox" checked={postOnly} onChange={e => setPostOnly(e.target.checked)} /> Post-handover only</label>
+              <label className="swk-toggle h-11"><input type="checkbox" checked={postOnly} onChange={e => setPostOnly(e.target.checked)} /> Post-handover</label>
             </div>
           </Card>
         </Reveal>
       )}
 
-      {props.isLoading && <div className="text-[12.5px] text-muted">Loading SWK off-plan inventory…</div>}
+      {props.isLoading && <div className="text-[12.5px] text-muted">Loading Dubai &amp; Abu Dhabi off-plan launches…</div>}
       {!props.isLoading && all.length === 0 ? (
         <EmptyState
           title="No off-plan launches recorded yet"
@@ -200,9 +224,18 @@ export default function OffPlanPage() {
       ) : !list.length ? (
         <EmptyState title="No launches match filters" hint="Widen your budget or clear filters." />
       ) : (
-        <motion.div layout className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          <AnimatePresence mode="popLayout">{list.map((p, i) => <ProjectCard key={p.id} p={p} i={i} now={now} onOpen={() => setOpen(p)} />)}</AnimatePresence>
-        </motion.div>
+        <>
+          <motion.div layout className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <AnimatePresence mode="popLayout">{list.slice(0, visibleCount).map((p, i) => <ProjectCard key={p.id} p={p} i={i} now={now} onOpen={() => setOpen(p)} />)}</AnimatePresence>
+          </motion.div>
+          {list.length > visibleCount && (
+            <div className="flex justify-center">
+              <button type="button" className="swk-btn swk-btn-ghost" onClick={() => setVisibleCount(v => v + 24)}>
+                Show more launches ({visibleCount} of {list.length} shown)
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {all.length > 0 && <DeveloperLeague projects={all} />}
@@ -317,12 +350,11 @@ function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; 
         </AnimatePresence>
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,42,51,0) 35%, rgba(15,42,51,.82) 100%)' }} />
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-          <Pill tone="oasis">SWK inventory</Pill>
+          <Pill tone={p.emirate === 'Abu Dhabi' ? 'champ' : 'oasis'}>{p.emirate}</Pill>
+          {p.promoBadge && <Pill tone="sky">{p.promoBadge}</Pill>}
           {photoCount > 0 && <Pill tone="grey"><ImageIcon size={11} /> {photoCount}</Pill>}
           {p.videoUrl && <Pill tone="champ"><Film size={11} /> Video</Pill>}
           <Pill tone="sky"><Box size={11} /> 3D</Pill>
-          {isPost(p) && <Pill tone="sky">Post-handover</Pill>}
-          {!p.oqood && <Pill tone="dune">Permit / Oqood pending</Pill>}
         </div>
         {logo && <span className="absolute top-3 right-3 h-8 px-2 rounded-lg bg-white/95 grid place-items-center"><img src={logo} alt={p.developer} className="h-5 max-w-[80px] object-contain" /></span>}
         <div className="absolute bottom-3 left-4 right-4 text-white">
@@ -488,14 +520,10 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
             <a className="swk-btn swk-btn-ghost" href={p.floorPlanUrl} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Floor Plan</a>
           )
         )}
-        {p.brochureUrl && (
-          p.brochureUrl.startsWith('/api/files/') ? (
-            <button type="button" className="swk-btn swk-btn-ghost" onClick={() => void openAuthFile(p.brochureUrl!, `${p.project}-brochure.pdf`)}><FileText size={14} /> Brochure PDF</button>
-          ) : (
-            <a className="swk-btn swk-btn-ghost" href={p.brochureUrl} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Brochure PDF</a>
-          )
-        )}
       </div>
+
+      {/* Dedicated Brochure PDF, Payment Plan PDF, PPTX Deck, 3D, Video & 8-Platform Social Studio */}
+      <CatalogMarketingKit entity="properties" id={p.swkId} compact />
     </div>
   )
 }
