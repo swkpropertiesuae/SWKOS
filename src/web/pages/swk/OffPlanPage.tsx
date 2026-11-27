@@ -12,6 +12,7 @@ import { coverPhotoUrl,normalizeMediaList,type ProjectMediaItem } from '@shared/
 import { get,openAuthFile } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
 import { AuthImg,MediaTour3DEmbed,MediaVideoPlayer } from '../../components/AuthMedia'
+import { Property3DViewer } from '../../components/brochure/Property3DViewer'
 import { DeveloperProjectLaunchModal } from '../../components/DeveloperProjectLaunchModal'
 import { ShareWithClient } from '../../components/ShareWithClient'
 import { Bar,Card,EmptyState,Field,ModuleHeader,Pill,ProgressRing,Reveal,StatTile,SWK,aed,num } from '../../swk/ui'
@@ -23,6 +24,7 @@ type Project = {
   id: string; project: string; developer: string; community: string; image: string; from: number; types: string[]; handoverQ: string; handover: Date
   plan: Plan; completion: number; escrow: string; reraNo: string; oqood: boolean; avail: number; total: number; commission: number; minPaidResale: number
   blurb: string; featured?: boolean; swkId: number
+  beds: number | null; areaSqft: number | null; ptype: string
   media: ProjectMediaItem[]; videoUrl?: string | null; tourUrl?: string | null; model3dUrl?: string | null; floorPlanUrl?: string | null; brochureUrl?: string | null
 }
 
@@ -119,6 +121,7 @@ export default function OffPlanPage() {
         blurb: r.description || `${r.property_type || 'Residential'} off-plan launch in ${c?.name ?? r.community_id ?? 'Dubai'}.`,
         featured: Boolean(r.is_exclusive),
         swkId: r.id,
+        beds: r.bedrooms != null && r.bedrooms !== '' ? Number(r.bedrooms) : null, areaSqft: Number(r.area_sqft) || null, ptype: r.property_type || 'Apartment',
         media,
         videoUrl: r.video_url || media.find(m => m.kind === 'video')?.url || null,
         tourUrl: r.virtual_tour_url || media.find(m => m.kind === 'tour3d')?.url || null,
@@ -317,7 +320,7 @@ function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; 
           <Pill tone="oasis">SWK inventory</Pill>
           {photoCount > 0 && <Pill tone="grey"><ImageIcon size={11} /> {photoCount}</Pill>}
           {p.videoUrl && <Pill tone="champ"><Film size={11} /> Video</Pill>}
-          {(p.tourUrl || p.model3dUrl) && <Pill tone="sky"><Box size={11} /> 3D</Pill>}
+          <Pill tone="sky"><Box size={11} /> 3D</Pill>
           {isPost(p) && <Pill tone="sky">Post-handover</Pill>}
           {!p.oqood && <Pill tone="dune">Permit / Oqood pending</Pill>}
         </div>
@@ -388,19 +391,21 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
               <Film size={12} className="inline mr-1" /> Launch Video
             </button>
           )}
-          {(p.tourUrl || p.model3dUrl) && (
-            <button type="button" onClick={() => setMediaTab('3d')} className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${mediaTab === '3d' ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-ink border-line'}`}>
-              <Box size={12} className="inline mr-1" /> 3D / 360° Tour
-            </button>
-          )}
+          <button type="button" onClick={() => setMediaTab('3d')} className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${mediaTab === '3d' ? 'bg-[#121212] text-white border-[#121212]' : 'bg-white text-ink border-line'}`}>
+            <Box size={12} className="inline mr-1" /> 3D Model & Floor Layout
+          </button>
           <div className="flex-1" />
           <Link to={`/e/properties/${p.swkId}`} className="swk-pill swk-pill-champ no-underline">Manage Media Studio →</Link>
         </div>
 
         {mediaTab === 'video' && p.videoUrl ? (
           <MediaVideoPlayer url={p.videoUrl} title={p.project} />
-        ) : mediaTab === '3d' && (p.tourUrl || p.model3dUrl) ? (
-          <MediaTour3DEmbed url={(p.tourUrl || p.model3dUrl)!} title={p.project} />
+        ) : mediaTab === '3d' ? (
+          <div className="flex flex-col gap-3">
+            {/* indicative model from the listing's type, beds and size; the real tour/site view follows when one exists */}
+            <Property3DViewer title={p.project} type={p.ptype} beds={p.beds} area={p.areaSqft} location={`${p.community}, Dubai`} />
+            {(p.tourUrl || p.model3dUrl) && <MediaTour3DEmbed url={(p.tourUrl || p.model3dUrl)!} title={p.project} />}
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <div className="relative h-[200px] rounded-2xl overflow-hidden bg-[#0b1824]">
