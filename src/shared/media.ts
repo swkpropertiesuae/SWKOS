@@ -134,6 +134,9 @@ export function coverPhotoUrl(raw: unknown): string | null {
   return (items.find(i => i.is_cover) ?? items[0]!).url
 }
 
+/** Satellite location embed for a project's coordinates; shown as its aerial / location tour. */
+export const satelliteViewUrl = (lat: number, lng: number) => `https://maps.google.com/maps?q=${lat},${lng}&t=k&z=17&output=embed`
+
 export function classifyEmbedUrl(rawUrl: string | null | undefined, mimeHint?: string): ClassifiedEmbed | null {
   if (!rawUrl || !rawUrl.trim()) return null
   const url = rawUrl.trim()
@@ -232,6 +235,11 @@ export function classifyEmbedUrl(rawUrl: string | null | undefined, mimeHint?: s
       }
     }
     return { mode: 'iframe', embedUrl: url.replace(/^http:/i, 'https:'), provider: 'Sketchfab 3D', originalUrl: url }
+  }
+
+  // Google Maps satellite embed (aerial location view for launches without a developer 3D tour)
+  if ((host === 'google.com' || host === 'maps.google.com') && parsed.pathname.startsWith('/maps') && parsed.searchParams.get('output') === 'embed') {
+    return { mode: 'iframe', embedUrl: url.replace(/^http:/i, 'https:'), provider: 'Satellite View', originalUrl: url }
   }
 
   return { mode: 'external', embedUrl: url, provider: host, originalUrl: url }

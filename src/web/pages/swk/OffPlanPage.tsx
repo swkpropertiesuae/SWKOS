@@ -6,7 +6,7 @@
 import { useEffect,useMemo,useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AnimatePresence,motion } from 'motion/react'
+import { AnimatePresence,motion,useMotionValue,useReducedMotion,useSpring,useTransform } from 'motion/react'
 import { ArrowUpRight,Box,Building,CalendarClock,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Film,HandCoins,Image as ImageIcon,Landmark,Lock,MessageCircle,Plus,Rocket,Share2,ShieldCheck,Trophy } from 'lucide-react'
 import { coverPhotoUrl,normalizeMediaList,type ProjectMediaItem } from '@shared/media'
 import { get,openAuthFile } from '../../lib/api'
@@ -74,7 +74,8 @@ export default function OffPlanPage() {
       const c = communityByName(r._labels?.community_ref) ?? communityByName(r.community_id) ?? communityByName(r.title) ?? communityByName(r.address)
       const curYear = now.getFullYear()
       const year = Number(r.completion_year) || curYear + 2
-      const hq = `Q4 ${year < curYear ? curYear + 1 : year}`
+      const hd = r.available_date ? new Date(r.available_date) : null
+      const hq = hd && !isNaN(hd.getTime()) && hd.getFullYear() >= curYear ? `Q${Math.floor(hd.getMonth() / 3) + 1} ${hd.getFullYear()}` : `Q4 ${year < curYear ? curYear + 1 : year}`
       const pUnits = unitRows.filter((u: any) => u.property_id === r.id)
       const availUnits = pUnits.filter((u: any) => u.status === 'Available').length
       const totalUnits = pUnits.length || 1
@@ -119,7 +120,9 @@ export default function OffPlanPage() {
 
   const featured = useMemo(() => {
     const excl = all.filter(p => p.featured)
-    return excl.length ? excl : all.slice(0, 4)
+    if (excl.length) return excl
+    const withPhotos = all.filter(p => p.media.some(m => m.kind === 'photo' && m.url.startsWith('/media/launches/')))
+    return (withPhotos.length ? withPhotos : all).slice(0, 6)
   }, [all])
 
   const [dev, setDev] = useState('all'); const [comm, setComm] = useState('all'); const [year, setYear] = useState('all')
@@ -225,7 +228,7 @@ function Spotlight({ items, now, onOpen }: { items: Project[]; now: Date; onOpen
             <h2 className="font-display text-[30px] md:text-[42px] font-semibold leading-[1.05] !text-white" style={{ color: '#fff' }}>{p.project}</h2>
             <p className="text-[14px] text-white/75">{p.blurb}</p>
             <div className="flex flex-wrap gap-6 mt-1">
-              <div><div className="text-[11px] uppercase tracking-wider text-white/55">From</div><div className="font-display text-[22px] font-semibold" style={{ color: '#f8f5ef' }}>{aed(p.from, { compact: true })}</div></div>
+              <div><div className="text-[11px] uppercase tracking-wider text-white/55">From</div><div className="font-display text-[22px] font-semibold" style={{ color: '#f8f5ef' }}>{p.from ? aed(p.from, { compact: true }) : 'On request'}</div></div>
               <div><div className="text-[11px] uppercase tracking-wider text-white/55">Payment plan</div><div className="font-display text-[22px] font-semibold">{planLabel(p.plan)}</div></div>
               <div><div className="text-[11px] uppercase tracking-wider text-white/55">Community</div><div className="font-display text-[22px] font-semibold">{p.community}</div></div>
             </div>
@@ -266,13 +269,38 @@ function PlanBar({ plan, height = 10 }: { plan: Plan; height?: number }) {
   )
 }
 
+/** Pointer-driven 3D tilt; flat when the viewer prefers reduced motion. */
+function useTilt(max = 7) {
+  const reduce = useReducedMotion()
+  const x = useMotionValue(0.5), y = useMotionValue(0.5)
+  const rotateY = useSpring(useTransform(x, [0, 1], [-max, max]), { stiffness: 180, damping: 18 })
+  const rotateX = useSpring(useTransform(y, [0, 1], [max, -max]), { stiffness: 180, damping: 18 })
+  if (reduce) return { style: {}, handlers: {} }
+  return {
+    style: { rotateX, rotateY, transformPerspective: 900 },
+    handlers: {
+      onPointerMove: (e: React.PointerEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); x.set((e.clientX - r.left) / r.width); y.set((e.clientY - r.top) / r.height) },
+      onPointerLeave: () => { x.set(0.5); y.set(0.5) },
+    },
+  }
+}
+
 function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; onOpen: () => void }) {
   const logo = devLogo(p.developer); const cd = countdown(p.handover, now)
-  const photoCount = p.media.filter(m => m.kind === 'photo').length
+  const photos = p.media.filter(m => m.kind === 'photo')
+  const photoCount = photos.length
+  const tilt = useTilt()
+  const [hover, setHover] = useState(false); const [shot, setShot] = useState(0)
+  useEffect(() => { if (!hover || photos.length < 2) return; const t = setInterval(() => setShot(v => (v + 1) % photos.length), 1400); return () => clearInterval(t) }, [hover, photos.length])
+  const src = hover && photos.length > 1 ? photos[shot].url : p.image
   return (
-    <motion.article layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .45, delay: Math.min(i, 8) * .04 }} whileHover={{ y: -4 }} className="swk-card overflow-hidden flex flex-col group">
+    <motion.article layout initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .45, delay: Math.min(i, 8) * .04 }} whileHover={{ y: -4 }} style={tilt.style} {...tilt.handlers} onHoverStart={() => setHover(true)} onHoverEnd={() => { setHover(false); setShot(0) }} className="swk-card overflow-hidden flex flex-col group">
       <button onClick={onOpen} className="relative h-[180px] overflow-hidden text-left" aria-label={`Open ${p.project}`}>
-        <AuthImg src={p.image} fallback={communityImg(p.community)} alt={p.project} className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1.2s] group-hover:scale-[1.06]" />
+        <AnimatePresence initial={false}>
+          <motion.div key={src} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: .5 }}>
+            <AuthImg src={src} fallback={communityImg(p.community)} alt={p.project} className="h-full w-full object-cover transition-transform duration-[1.2s] group-hover:scale-[1.06]" />
+          </motion.div>
+        </AnimatePresence>
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(15,42,51,0) 35%, rgba(15,42,51,.82) 100%)' }} />
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           <Pill tone="oasis">SWK inventory</Pill>
@@ -293,7 +321,7 @@ function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; 
           <ProgressRing value={p.completion} size={70} stroke={7} color={SWK.oasis} sub="built" />
           <div className="flex-1 min-w-0">
             <div className="text-[11px] uppercase tracking-wider text-muted">Launch price from</div>
-            <div className="font-display text-[20px] font-semibold text-ink">{aed(p.from, { compact: true })}</div>
+            <div className="font-display text-[20px] font-semibold text-ink">{p.from ? aed(p.from, { compact: true }) : 'Price on request'}</div>
             <div className="text-[12px] text-muted truncate">{p.types.join(' · ')}</div>
           </div>
         </div>
