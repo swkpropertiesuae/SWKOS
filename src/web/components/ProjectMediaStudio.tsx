@@ -27,7 +27,7 @@ import { useToast } from '../lib/toast'
 import { CustomSelect } from './CustomSelect'
 import { AuthImg, MediaTour3DEmbed, MediaVideoPlayer } from './AuthMedia'
 
-type MediaEntity = 'properties' | 'units' | 'website_listings'
+type MediaEntity = 'properties' | 'units' | 'website_listings' | 'developers' | 'communities'
 
 const KIND_META: Record<ProjectMediaKind, { label: string; short: string; accept: string; hint: string }> = {
   photo: {
@@ -46,7 +46,7 @@ const KIND_META: Record<ProjectMediaKind, { label: string; short: string; accept
     label: '3D & 360° Tours',
     short: '3D / 360°',
     accept: '.glb,.gltf,.usdz',
-    hint: 'Paste Matterport, Kuula, Sketchfab, or Danube/developer 3D tour links — or upload .glb / .gltf 3D models',
+    hint: 'Paste Matterport, Kuula, Sketchfab, or developer 3D tour links — or upload .glb / .gltf 3D models',
   },
   floorplan: {
     label: 'Floor Plans',
@@ -57,12 +57,24 @@ const KIND_META: Record<ProjectMediaKind, { label: string; short: string; accept
   brochure: {
     label: 'Brochures & Fact Sheets',
     short: 'Brochures',
-    accept: 'application/pdf,.pdf,.pptx,.xlsx',
-    hint: 'Upload official developer brochures, payment plan sheets, and price lists (PDF)',
+    accept: 'application/pdf,.pdf',
+    hint: 'Upload official developer brochures, community guides, and price lists (PDF)',
+  },
+  ppt: {
+    label: 'PPT Presentations',
+    short: 'PPT Decks',
+    accept: '.pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    hint: 'Upload developer pitch decks or launch slide presentations (.pptx)',
+  },
+  payment_plan: {
+    label: 'Payment Plan PDFs',
+    short: 'Payment Plans',
+    accept: 'application/pdf,.pdf',
+    hint: 'Upload official milestone payment plan schedules and DLD/ADM fee sheets (PDF)',
   },
 }
 
-const ALL_KINDS: ProjectMediaKind[] = ['photo', 'video', 'tour3d', 'floorplan', 'brochure']
+const ALL_KINDS: ProjectMediaKind[] = ['photo', 'video', 'tour3d', 'floorplan', 'brochure', 'ppt', 'payment_plan']
 
 export function ProjectMediaStudio({
   entity,
@@ -102,7 +114,7 @@ export function ProjectMediaStudio({
 
   const items = useMemo(() => normalizeMediaList(q.data?.items ?? []), [q.data?.items])
   const counts = useMemo(() => {
-    const c: Record<ProjectMediaKind, number> = { photo: 0, video: 0, tour3d: 0, floorplan: 0, brochure: 0 }
+    const c: Record<ProjectMediaKind, number> = { photo: 0, video: 0, tour3d: 0, floorplan: 0, brochure: 0, ppt: 0, payment_plan: 0 }
     for (const it of items) c[it.kind]++
     return c
   }, [items])
@@ -203,7 +215,7 @@ export function ProjectMediaStudio({
   return (
     <div className="flex flex-col gap-5">
       {/* Header Summary Strip */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
         {ALL_KINDS.map(k => (
           <button
             key={k}
@@ -310,6 +322,8 @@ export function ProjectMediaStudio({
                 <option value="photo">Photo / Render URL</option>
                 <option value="floorplan">Floor Plan Link</option>
                 <option value="brochure">Brochure PDF Link</option>
+                <option value="ppt">PPT Presentation Deck Link</option>
+                <option value="payment_plan">Payment Plan PDF Link</option>
               </CustomSelect>
               <input
                 className="input !h-9 !text-xs"

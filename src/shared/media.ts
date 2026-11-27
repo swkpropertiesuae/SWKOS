@@ -1,4 +1,4 @@
-export type ProjectMediaKind = 'photo' | 'video' | 'tour3d' | 'floorplan' | 'brochure'
+export type ProjectMediaKind = 'photo' | 'video' | 'tour3d' | 'floorplan' | 'brochure' | 'ppt' | 'payment_plan'
 
 export interface ProjectMediaItem {
   id: string
@@ -27,19 +27,24 @@ export const MEDIA_CATEGORIES: Record<ProjectMediaKind, string[]> = {
   video: ['Project Launch Film', 'Walkthrough', 'Drone & Location', 'Show Apartment', 'Developer Presentation'],
   tour3d: ['360° Virtual Tour', 'Interactive 3D Model', 'Masterplan 3D', 'Show Unit Matterport'],
   floorplan: ['Studio', '1 Bedroom', '2 Bedroom', '3 Bedroom', 'Penthouse / Villa', 'Office / Retail', 'Typical Floor Plate'],
-  brochure: ['Official Brochure', 'Payment Plan Sheet', 'Fact Sheet', 'Masterplan Deck', 'Price List'],
+  brochure: ['Official Brochure', 'Fact Sheet', 'Masterplan Brochure', 'Price List', 'Community Guide'],
+  ppt: ['Developer Pitch Deck', 'Investor Presentation', 'Launch Slides (.pptx)', 'Community Masterplan Deck'],
+  payment_plan: ['Official Payment Plan PDF', 'Milestone Schedule', 'Post-Handover Plan', 'DLD / ADM Fee Sheet'],
 }
 
-const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'])
+const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'svg'])
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogg'])
 const MODEL3D_EXTS = new Set(['glb', 'gltf', 'usdz'])
+const PPT_EXTS = new Set(['ppt', 'pptx', 'key'])
 
 export function inferMediaKindFromFile(fileName: string, mime = '', preferred?: ProjectMediaKind): ProjectMediaKind {
   const ext = (fileName.split('.').pop() || '').toLowerCase()
   const lowMime = mime.toLowerCase()
   if (VIDEO_EXTS.has(ext) || lowMime.startsWith('video/')) return 'video'
   if (MODEL3D_EXTS.has(ext) || lowMime.includes('gltf') || lowMime.includes('model/')) return 'tour3d'
+  if (PPT_EXTS.has(ext) || lowMime.includes('presentation') || lowMime.includes('powerpoint')) return 'ppt'
   if (ext === 'pdf' || lowMime === 'application/pdf') {
+    if (preferred === 'payment_plan' || /payment[\s_-]*plan|instal+ment|milestone/i.test(fileName)) return 'payment_plan'
     if (preferred === 'floorplan' || /floor[\s_-]*plan|layout/i.test(fileName)) return 'floorplan'
     return 'brochure'
   }
@@ -54,7 +59,7 @@ export function isSafeMediaUrl(raw: unknown): raw is string {
   if (typeof raw !== 'string') return false
   const s = raw.trim()
   if (!s) return false
-  if (s.startsWith('/api/files/') || s.startsWith('/api/public/share/') || s.startsWith('/media/') || s.startsWith('/img/')) return true
+  if (s.startsWith('/api/files/') || s.startsWith('/api/public/share/') || s.startsWith('/api/catalog-kit/') || s.startsWith('/media/') || s.startsWith('/img/')) return true
   try {
     const u = new URL(s)
     return u.protocol === 'https:' || u.protocol === 'http:'
@@ -100,7 +105,7 @@ export function normalizeMediaList(raw: unknown): ProjectMediaItem[] {
     seen.add(dedupeKey)
     const rawKind = String(obj.kind || '').toLowerCase()
     const kind: ProjectMediaKind =
-      rawKind === 'photo' || rawKind === 'video' || rawKind === 'tour3d' || rawKind === 'floorplan' || rawKind === 'brochure'
+      rawKind === 'photo' || rawKind === 'video' || rawKind === 'tour3d' || rawKind === 'floorplan' || rawKind === 'brochure' || rawKind === 'ppt' || rawKind === 'payment_plan'
         ? rawKind
         : inferMediaKindFromFile(String(obj.title || url), String(obj.mime || ''))
     out.push({

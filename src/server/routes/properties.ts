@@ -153,11 +153,12 @@ export default async function (app: FastifyInstance) {
     return { id, unit: getRecord(unitDef(), id, req.ctx, { children: { media: true } }) }
   }
 
-  const MEDIA_ENTITIES = new Set(['properties', 'units', 'website_listings'])
+  const MEDIA_ENTITIES = new Set(['properties', 'units', 'website_listings', 'developers', 'communities'])
+  const MEDIA_KIND_ENUM = z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure', 'ppt', 'payment_plan'])
 
   const loadMediaTarget = (req: any, edit = false) => {
     const entity = String((req.params as any).entity || '')
-    if (!MEDIA_ENTITIES.has(entity)) throw bad('Media Studio supports properties, units, and website_listings only')
+    if (!MEDIA_ENTITIES.has(entity)) throw bad('Media Studio supports properties, units, website_listings, developers, and communities only')
     const def = getDef(entity)
     const id = idOf((req.params as any).id)
     if (edit) assertCan(req.ctx, def.module, 'edit')
@@ -177,6 +178,8 @@ export default async function (app: FastifyInstance) {
     const firstModel3d = list.find(isModel3dMedia)?.url
     const firstFloor = list.find(i => i.kind === 'floorplan')?.url
     const firstBrochure = list.find(i => i.kind === 'brochure')?.url
+    const firstPpt = list.find(i => i.kind === 'ppt')?.url
+    const firstPayPlan = list.find(i => i.kind === 'payment_plan')?.url
 
     if (entity === 'website_listings') {
       if (cover && (!rec.image_url || String(rec.image_url).startsWith('/api/files/') || list.some(i => i.url === rec.image_url))) {
@@ -193,6 +196,13 @@ export default async function (app: FastifyInstance) {
       if (firstModel3d && !rec.model_3d_url) patch.model_3d_url = firstModel3d
       if (firstFloor && !rec.floor_plan_url) patch.floor_plan_url = firstFloor
       if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+      if (firstPpt && !rec.ppt_url) patch.ppt_url = firstPpt
+      if (firstPayPlan && !rec.payment_plan_pdf_url) patch.payment_plan_pdf_url = firstPayPlan
+    } else if (entity === 'developers' || entity === 'communities') {
+      if (firstVideo && !rec.video_url) patch.video_url = firstVideo
+      if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
+      if (firstBrochure && !rec.brochure_url) patch.brochure_url = firstBrochure
+      if (firstPpt && !rec.ppt_url) patch.ppt_url = firstPpt
     } else if (entity === 'units') {
       if (firstVideo && !rec.video_url) patch.video_url = firstVideo
       if (firstTour && !rec.virtual_tour_url) patch.virtual_tour_url = firstTour
@@ -201,20 +211,22 @@ export default async function (app: FastifyInstance) {
     return patch
   }
 
-  // Unified Project Media Studio API (properties, units, website_listings)
+  // Unified Project Media Studio API (properties, units, website_listings, developers, communities)
   app.get('/api/media/:entity/:id', async (req) => {
     const { entity, rec } = loadMediaTarget(req, false)
     const items = normalizeMediaList(rec.media)
     return {
       entity,
       id: rec.id,
-      title: rec._title ?? rec.title ?? rec.unit_no ?? '',
+      title: rec._title ?? rec.title ?? rec.name ?? rec.unit_no ?? '',
       items,
       video_url: rec.video_url ?? null,
       virtual_tour_url: rec.virtual_tour_url ?? null,
       model_3d_url: rec.model_3d_url ?? null,
       floor_plan_url: rec.floor_plan_url ?? null,
       brochure_url: rec.brochure_url ?? null,
+      ppt_url: rec.ppt_url ?? null,
+      payment_plan_pdf_url: rec.payment_plan_pdf_url ?? null,
       image_url: rec.image_url ?? coverPhotoUrl(items),
     }
   })
@@ -263,11 +275,13 @@ export default async function (app: FastifyInstance) {
     const current = normalizeMediaList(rec.media)
     const added: ProjectMediaItem[] = []
     const attCategoryMap: Record<ProjectMediaKind, string> = {
-      photo: 'Property Photo',
-      video: 'Property Video',
+      photo: 'Project Photo',
+      video: 'Project Video',
       tour3d: '3D Model / Tour',
       floorplan: 'Floor Plan',
       brochure: 'Project Brochure',
+      ppt: 'Presentation Deck',
+      payment_plan: 'Payment Plan PDF',
     }
 
     for (const f of saved) {
@@ -297,7 +311,7 @@ export default async function (app: FastifyInstance) {
         attachment_id: attId,
         title: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, 140),
         caption,
-        category: category || (kind === 'photo' ? 'Exterior' : kind === 'video' ? 'Project Launch Film' : kind === 'floorplan' ? 'Typical Floor Plate' : kind === 'tour3d' ? 'Interactive 3D Model' : 'Official Brochure'),
+        category: category || (kind === 'photo' ? 'Exterior' : kind === 'video' ? 'Project Launch Film' : kind === 'floorplan' ? 'Typical Floor Plate' : kind === 'tour3d' ? 'Interactive 3D Model' : kind === 'ppt' ? 'Developer Pitch Deck' : kind === 'payment_plan' ? 'Official Payment Plan PDF' : 'Official Brochure'),
         is_cover: kind === 'photo' && !current.some(x => x.kind === 'photo') && !added.some(x => x.kind === 'photo'),
         order: current.length + added.length,
         mime: f.mime,
@@ -316,7 +330,7 @@ export default async function (app: FastifyInstance) {
     const { entity, def, id, rec } = loadMediaTarget(req, true)
     const b = z
       .object({
-        kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']),
+        kind: MEDIA_KIND_ENUM,
         url: z.string().trim().min(4).max(2000),
         title: z.string().trim().max(160).optional(),
         caption: z.string().trim().max(240).optional(),
@@ -348,13 +362,15 @@ export default async function (app: FastifyInstance) {
     }
     if (b.kind === 'tour3d') {
       if (/\.(glb|gltf|usdz)(\?|#|$)/i.test(b.url)) {
-        if (entity !== 'units' && (b.set_primary || !rec.model_3d_url)) patch.model_3d_url = b.url
+        if ((entity === 'properties' || entity === 'website_listings') && (b.set_primary || !rec.model_3d_url)) patch.model_3d_url = b.url
       } else if (b.set_primary || !rec.virtual_tour_url) {
         patch.virtual_tour_url = b.url
       }
     }
-    if (b.kind === 'floorplan' && (b.set_primary || !rec.floor_plan_url)) patch.floor_plan_url = b.url
+    if (b.kind === 'floorplan' && (entity === 'properties' || entity === 'units' || entity === 'website_listings') && (b.set_primary || !rec.floor_plan_url)) patch.floor_plan_url = b.url
     if (b.kind === 'brochure' && entity !== 'units' && (b.set_primary || !rec.brochure_url)) patch.brochure_url = b.url
+    if (b.kind === 'ppt' && (entity === 'properties' || entity === 'developers' || entity === 'communities') && (b.set_primary || !rec.ppt_url)) patch.ppt_url = b.url
+    if (b.kind === 'payment_plan' && entity === 'properties' && (b.set_primary || !rec.payment_plan_pdf_url)) patch.payment_plan_pdf_url = b.url
     const updated = patchRecord(def, id, patch, req.ctx)
     return { items: normalizeMediaList(updated.media), added: item, record: updated }
   })
@@ -366,7 +382,7 @@ export default async function (app: FastifyInstance) {
         items: z.array(
           z.object({
             id: z.string().min(1).max(80),
-            kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']),
+            kind: MEDIA_KIND_ENUM,
             url: z.string().min(1).max(2000),
             attachment_id: z.number().int().positive().optional(),
             title: z.string().max(160).optional(),
@@ -384,6 +400,8 @@ export default async function (app: FastifyInstance) {
         model_3d_url: z.string().trim().max(2000).nullable().optional(),
         floor_plan_url: z.string().trim().max(2000).nullable().optional(),
         brochure_url: z.string().trim().max(2000).nullable().optional(),
+        ppt_url: z.string().trim().max(2000).nullable().optional(),
+        payment_plan_pdf_url: z.string().trim().max(2000).nullable().optional(),
       })
       .parse(req.body ?? {})
 
@@ -391,11 +409,13 @@ export default async function (app: FastifyInstance) {
     const patch = syncPrimaryMediaFields(entity, rec, next)
     if (b.video_url !== undefined) patch.video_url = b.video_url || null
     if (b.virtual_tour_url !== undefined) patch.virtual_tour_url = b.virtual_tour_url || null
-    if (b.floor_plan_url !== undefined) patch.floor_plan_url = b.floor_plan_url || null
+    if (b.floor_plan_url !== undefined && (entity === 'properties' || entity === 'units' || entity === 'website_listings')) patch.floor_plan_url = b.floor_plan_url || null
     if (entity !== 'units') {
-      if (b.model_3d_url !== undefined) patch.model_3d_url = b.model_3d_url || null
+      if (b.model_3d_url !== undefined && (entity === 'properties' || entity === 'website_listings')) patch.model_3d_url = b.model_3d_url || null
       if (b.brochure_url !== undefined) patch.brochure_url = b.brochure_url || null
     }
+    if (b.ppt_url !== undefined && (entity === 'properties' || entity === 'developers' || entity === 'communities')) patch.ppt_url = b.ppt_url || null
+    if (b.payment_plan_pdf_url !== undefined && entity === 'properties') patch.payment_plan_pdf_url = b.payment_plan_pdf_url || null
     const updated = patchRecord(def, id, patch, req.ctx)
     return { items: normalizeMediaList(updated.media), record: updated }
   })
@@ -436,10 +456,14 @@ export default async function (app: FastifyInstance) {
         model_3d_url: z.string().trim().max(2000).optional(),
         floor_plan_url: z.string().trim().max(2000).optional(),
         brochure_url: z.string().trim().max(2000).optional(),
+        ppt_url: z.string().trim().max(2000).optional(),
+        payment_plan_pdf_url: z.string().trim().max(2000).optional(),
+        project_name: z.string().trim().max(160).optional(),
+        emirate: z.string().trim().max(60).optional(),
         media_links: z
           .array(
             z.object({
-              kind: z.enum(['photo', 'video', 'tour3d', 'floorplan', 'brochure']),
+              kind: MEDIA_KIND_ENUM,
               url: z.string().trim().min(4).max(2000),
               title: z.string().trim().max(160).optional(),
               caption: z.string().trim().max(240).optional(),
@@ -545,15 +569,18 @@ export default async function (app: FastifyInstance) {
       const unitMinPrice = (b.units ?? []).map(u => u.sale_price ?? 0).filter(n => n > 0)
       const startingPrice = b.starting_price || (unitMinPrice.length ? Math.min(...unitMinPrice) : null)
 
-      // 3. Create Off-Plan Property record
+      // 3. Create Off-Plan Project record
       const prop = createRecord(
         propertyDef(),
         {
           title: b.title,
+          project_name: b.project_name || b.title.replace(/\s+by\s+.+$/i, '').trim() || b.title,
+          emirate: b.emirate || 'Dubai',
           department_division: 'Sales of Off-Plan Projects',
           inventory_source_type: 'Direct Developer',
           property_type: normalizePropertyType(b.property_type),
           status: 'Off-Plan',
+          launch_status: 'New Launch',
           seller_finance_status: 'Off-Plan Payment Plan (Oqood)',
           developer_ref: devRef,
           developer_id: devName || null,
@@ -569,13 +596,15 @@ export default async function (app: FastifyInstance) {
           price: startingPrice,
           roi_percent: b.roi_percent ?? 5,
           completion_year: b.completion_year ?? new Date().getFullYear() + 3,
+          handover_quarter: b.handover_label || (b.completion_year ? `Q4 ${b.completion_year}` : null),
           payment_plan: b.payment_plan || '60/40',
+          payment_plan_summary: b.payment_plan || '60/40 Construction-Linked',
           is_off_plan: true,
           is_exclusive: b.is_exclusive,
           rera_permit_no: b.rera_permit_no || null,
           permit_expiry: b.permit_expiry || null,
-          address: [b.building_name || b.title, b.sub_community, commName || 'Dubai', 'UAE'].filter(Boolean).join(', '),
-          description: b.description || `${b.title}${devName ? ` by ${devName}` : ''} — new Dubai off-plan launch${commName ? ` in ${commName}` : ''}.`,
+          address: [b.building_name || b.title, b.sub_community, commName || (b.emirate || 'Dubai'), 'UAE'].filter(Boolean).join(', '),
+          description: b.description || `${b.title}${devName ? ` by ${devName}` : ''} — new ${b.emirate || 'Dubai'} off-plan launch${commName ? ` in ${commName}` : ''}.`,
           features: b.features || null,
           amenities: b.amenities || null,
           video_url: b.video_url || null,
@@ -583,6 +612,8 @@ export default async function (app: FastifyInstance) {
           model_3d_url: b.model_3d_url || null,
           floor_plan_url: b.floor_plan_url || null,
           brochure_url: b.brochure_url || null,
+          ppt_url: b.ppt_url || null,
+          payment_plan_pdf_url: b.payment_plan_pdf_url || null,
           media: mediaList,
           listed_date: todayStr(),
           active: true,

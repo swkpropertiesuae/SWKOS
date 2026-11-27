@@ -480,10 +480,13 @@ export function findOne(entity: string, where: string, ...args: any[]): Rec | nu
 }
 
 // ------------------------------------------------------------------ write
-function assertRefs(def: EntityDef, rec: Rec) {
+function assertRefs(def: EntityDef, rec: Rec, old?: Rec | null) {
   for (const f of def.fields) {
     if (f.type !== 'ref' || !rec[f.name]) continue
-    const ok = q.val<number>(`SELECT 1 FROM ${qi(f.ref!)} WHERE id = ? AND deleted_at IS NULL`, rec[f.name])
+    const unchanged = old != null && old[f.name] != null && Number(old[f.name]) === Number(rec[f.name])
+    const ok = unchanged
+      ? q.val<number>(`SELECT 1 FROM ${qi(f.ref!)} WHERE id = ?`, rec[f.name])
+      : q.val<number>(`SELECT 1 FROM ${qi(f.ref!)} WHERE id = ? AND deleted_at IS NULL`, rec[f.name])
     if (!ok) throw bad(`${f.label}: referenced record no longer exists`)
   }
 }
@@ -703,7 +706,7 @@ export function updateRecord(def: EntityDef, id: number, payload: Rec, ctx: Ctx)
     const h = hooksFor(def.key)
     h.beforeSave?.({ def, rec, old, children, isNew: false, ctx: c2 })
     checkRequired(def, rec)
-    assertRefs(def, rec)
+    assertRefs(def, rec, old)
     assertUnique(def, rec, id)
     const custom = def.customFields ? validateCustom(def, payload.custom, old.custom ?? {}) : {}
     writeRow(def, rec, c2, id, def.customFields && Object.keys(custom).length ? JSON.stringify(custom) : null)

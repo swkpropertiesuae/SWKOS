@@ -44,6 +44,7 @@ export function verifyFileMagicBytes(fullPath: string, ext: string) {
   if (bytesRead >= 4 && ext === 'png' && !(buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47)) throw bad('Invalid PNG file header')
   if (bytesRead >= 3 && (ext === 'jpg' || ext === 'jpeg') && !(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) throw bad('Invalid JPEG file header')
   if (bytesRead >= 4 && ext === 'gif' && !(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38)) throw bad('Invalid GIF file header')
+  if (bytesRead >= 4 && ext === 'pptx' && !(buf[0] === 0x50 && buf[1] === 0x4b && (buf[2] === 0x03 || buf[2] === 0x05))) throw bad('Invalid PPTX file header')
 }
 
 export async function sendStoredAttachment(f: Record<string, any>, req: any, reply: any, opts?: { forceDownload?: boolean; cachePublic?: boolean }) {
