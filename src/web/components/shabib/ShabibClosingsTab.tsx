@@ -92,18 +92,45 @@ export function ShabibClosingsTab() {
     e.preventDefault()
     setBusy(true)
     try {
+      const optStr = (v: string) => (v.trim() ? v.trim() : undefined)
+      const optNum = (v: string) => (v.trim() !== '' && Number(v) > 0 ? Number(v) : undefined)
       const created = await post<any>('/api/shabib-workspace/closings', {
-        ...form,
+        track: form.track,
         job_id: form.job_id ? Number(form.job_id) : undefined,
         lease_id: form.lease_id ? Number(form.lease_id) : undefined,
-        asking_price_aed: Number(form.asking_price_aed) || 0,
-        agreed_price_aed: Number(form.agreed_price_aed) || 0,
-        yearly_rent_aed: Number(form.yearly_rent_aed) || 0,
-        deposit_aed: Number(form.deposit_aed) || 0,
-        dld_or_adm_fee_aed: Number(form.dld_or_adm_fee_aed) || 0,
-        agency_commission_aed: Number(form.agency_commission_aed) || 0,
-        vat_aed: Number(form.vat_aed) || 0,
-        total_cheques_count: Number(form.total_cheques_count) || 0,
+        title: optStr(form.title),
+        agent_name: optStr(form.agent_name),
+        community: optStr(form.community),
+        building_or_project: optStr(form.building_or_project),
+        unit_no: optStr(form.unit_no),
+        client_name: optStr(form.client_name),
+        client_phone: optStr(form.client_phone),
+        client_email: optStr(form.client_email),
+        client_passport_eid: optStr(form.client_passport_eid),
+        counterparty_name: optStr(form.counterparty_name),
+        counterparty_phone: optStr(form.counterparty_phone),
+        counterparty_email: optStr(form.counterparty_email),
+        is_third_party: form.is_third_party,
+        third_party_agency: optStr(form.third_party_agency),
+        third_party_agent: optStr(form.third_party_agent),
+        third_party_brn: optStr(form.third_party_brn),
+        third_party_phone: optStr(form.third_party_phone),
+        third_party_email: optStr(form.third_party_email),
+        asking_price_aed: optNum(form.asking_price_aed),
+        agreed_price_aed: optNum(form.agreed_price_aed),
+        yearly_rent_aed: optNum(form.yearly_rent_aed),
+        deposit_aed: optNum(form.deposit_aed),
+        dld_or_adm_fee_aed: optNum(form.dld_or_adm_fee_aed),
+        agency_commission_aed: optNum(form.agency_commission_aed),
+        vat_aed: optNum(form.vat_aed),
+        total_cheques_count: optNum(form.total_cheques_count),
+        payment_mode: form.payment_mode,
+        escrow_or_bank_ref: optStr(form.escrow_or_bank_ref),
+        ejari_or_oqood_or_deed_ref: optStr(form.ejari_or_oqood_or_deed_ref),
+        noc_ref: optStr(form.noc_ref),
+        handover_date: optStr(form.handover_date),
+        keys_and_meters_summary: optStr(form.keys_and_meters_summary),
+        notes: optStr(form.notes),
       })
       toast.ok(`Pin-to-Pin Closing Dossier ${created.dossier_no} created`)
       setSelectedId(created.id)
@@ -314,7 +341,7 @@ export function ShabibClosingsTab() {
                 <h4 className="m-0 mb-2.5 text-xs font-bold uppercase tracking-wider text-muted">Pin-to-Pin Closing Milestones (Scratch → Handover)</h4>
                 <div className="space-y-2">
                   {(active.stages || []).map((st: ClosingStageItem, idx: number) => (
-                    <div key={st.code || idx} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-soft/40 p-2.5 text-xs">
+                    <div key={`${active.id}-${st.code || idx}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-soft/40 p-2.5 text-xs">
                       <CheckCircle2 size={15} className={st.status === 'Completed' ? 'text-emerald-600' : 'text-muted/50'} />
                       <span className="font-semibold text-ink flex-1 min-w-[200px]">{st.label}</span>
                       <CustomSelect

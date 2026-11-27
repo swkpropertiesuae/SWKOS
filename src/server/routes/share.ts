@@ -340,7 +340,7 @@ function toRawItem(entity: string, r: any): RawItem {
       view: r.view || null,
       rera_permit_no: prop?.rera_permit_no || null,
       roi_percent: 6.9,
-      description: [r.view ? `Panoramic ${r.view} view` : '', r.floor_no ? `Positioned on Floor ${r.floor_no}` : ''].filter(Boolean),
+      description: [r.view ? `Panoramic ${r.view} view` : '', r.floor_no ? `Positioned on Floor ${r.floor_no}` : '', r.unit_notes ? String(r.unit_notes) : ''].filter(Boolean),
       features: [
         r.has_balcony && 'Private Balcony',
         r.has_maid_room && "Maid's Room",
@@ -550,21 +550,27 @@ export default async function (app: FastifyInstance) {
       const rec = getRecord(def, recId, { user: null, system: true })
       const ent = l.entity as CatalogKitEntity
       const slug = String(rec.title || rec.name || 'swk-catalog').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'swk-catalog'
-      if (kind === 'brochure.pdf') {
-        const buf = await buildCatalogBrochurePdf(ent, rec)
-        reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-swk-brochure.pdf"`).header('cache-control', 'public, max-age=300')
-        return buf
-      }
-      if (kind === 'payment-plan.pdf') {
-        if (ent !== 'properties' && ent !== 'units') throw new HttpError(404, 'Payment plan PDF applies to projects and units')
-        const buf = await buildPaymentPlanPdf(rec, ent)
-        reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-payment-plan.pdf"`).header('cache-control', 'public, max-age=300')
-        return buf
-      }
-      if (kind === 'deck.pptx') {
-        const buf = buildCatalogDeckPptx(ent, rec)
-        reply.header('content-type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation').header('content-disposition', `attachment; filename="${slug}-swk-deck.pptx"`).header('cache-control', 'public, max-age=300')
-        return buf
+      try {
+        if (kind === 'brochure.pdf') {
+          const buf = await buildCatalogBrochurePdf(ent, rec)
+          reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-swk-brochure.pdf"`).header('cache-control', 'public, max-age=300')
+          return buf
+        }
+        if (kind === 'payment-plan.pdf') {
+          if (ent !== 'properties' && ent !== 'units') throw new HttpError(404, 'Payment plan PDF applies to projects and units')
+          const buf = await buildPaymentPlanPdf(rec, ent)
+          reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-payment-plan.pdf"`).header('cache-control', 'public, max-age=300')
+          return buf
+        }
+        if (kind === 'deck.pptx') {
+          const buf = buildCatalogDeckPptx(ent, rec)
+          reply.header('content-type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation').header('content-disposition', `attachment; filename="${slug}-swk-deck.pptx"`).header('cache-control', 'public, max-age=300')
+          return buf
+        }
+      } catch (e: any) {
+        if (e instanceof HttpError) throw e
+        if (/HARD LOCK BLOCKED/i.test(String(e?.message || ''))) throw new HttpError(403, e.message)
+        throw e
       }
       throw new HttpError(404, 'Unsupported kit asset')
     },
@@ -629,7 +635,7 @@ export default async function (app: FastifyInstance) {
         floor_plan: resolveSingle(rest.floor_plan) || floor_plans[0]?.url,
         brochure_url: resolvePreferUploaded(rest.brochure_url, brochures, supportsKit ? `${kitBase}/brochure.pdf` : undefined),
         ppt_url: resolvePreferUploaded(rest.ppt_url, ppts, supportsKit ? `${kitBase}/deck.pptx` : undefined),
-        payment_plan_pdf_url: resolvePreferUploaded(rest.payment_plan_pdf_url, payment_plans, supportsKit && l.entity === 'properties' ? `${kitBase}/payment-plan.pdf` : undefined),
+        payment_plan_pdf_url: resolvePreferUploaded(rest.payment_plan_pdf_url, payment_plans, supportsKit && (l.entity === 'properties' || l.entity === 'units') ? `${kitBase}/payment-plan.pdf` : undefined),
         videos,
         tours3d,
         floor_plans,

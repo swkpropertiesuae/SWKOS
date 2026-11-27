@@ -59,21 +59,24 @@ export interface StructuredForensicDoc {
 const fmtDateNow = () => new Date().toISOString().slice(0, 10)
 
 function wrapPdf(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  const safe = toPdfSafeText(text)
-  if (!safe) return ['—']
-  const words = safe.split(/\s+/).filter(Boolean)
+  const paragraphs = String(text ?? '').split(/\r?\n/)
   const out: string[] = []
-  let line = ''
-  for (const w of words) {
-    const cand = line ? `${line} ${w}` : w
-    if (font.widthOfTextAtSize(cand, size) <= maxWidth) line = cand
-    else {
-      if (line) out.push(line)
-      line = w
+  for (const para of paragraphs) {
+    const safe = toPdfSafeText(para)
+    if (!safe) continue
+    const words = safe.split(/\s+/).filter(Boolean)
+    let line = ''
+    for (const w of words) {
+      const cand = line ? `${line} ${w}` : w
+      if (font.widthOfTextAtSize(cand, size) <= maxWidth) line = cand
+      else {
+        if (line) out.push(line)
+        line = w
+      }
     }
+    if (line) out.push(line)
   }
-  if (line) out.push(line)
-  return out.length ? out : ['—']
+  return out.length ? out : ['-']
 }
 
 function drawPdfFooter(page: PDFPage, font: PDFFont, bold: PDFFont, pageNo: number, total: number) {
@@ -427,8 +430,45 @@ export async function buildStructuredForensicJpeg(doc: StructuredForensicDoc): P
 
   const W = 1240
   const PAD = 60
-  const lineH = 34
-  const estH = Math.min(1754 * 5, Math.max(1754, 340 + lines.length * 42 + 160))
+  const lineH = 30
+
+  // Measure true height before creating final canvas so no lines or long notes get clipped
+  const measureCanvas = createCanvas(W, 120)
+  const mctx = measureCanvas.getContext('2d')
+  let measuredH = 262 + (doc.badges?.length ? 40 : 0)
+  const prewrapped: Array<
+    | { kind: 'sec'; text: string }
+    | { kind: 'pair'; label: string; valLines: string[] }
+    | { kind: 'row'; text: string }
+    | { kind: 'text'; textLines: string[] }
+  > = []
+
+  for (const item of lines) {
+    if (item.kind === 'sec') {
+      prewrapped.push({ kind: 'sec', text: item.text })
+      measuredH += 44
+    } else if (item.kind === 'pair') {
+      mctx.font = '18px sans-serif'
+      const valLines = wrapCanvasLines(mctx, String(item.sub || '—'), W - PAD * 2 - 345)
+      prewrapped.push({ kind: 'pair', label: item.text, valLines })
+      measuredH += Math.max(38, valLines.length * 26 + 14)
+    } else if (item.kind === 'row') {
+      prewrapped.push({ kind: 'row', text: item.text })
+      measuredH += 36
+    } else {
+      mctx.font = '18px sans-serif'
+      const textLines: string[] = []
+      for (const para of String(item.text || '').split(/\r?\n/)) {
+        const t = para.trim()
+        if (!t) continue
+        textLines.push(...wrapCanvasLines(mctx, t, W - PAD * 2 - 20))
+      }
+      prewrapped.push({ kind: 'text', textLines: textLines.length ? textLines : ['—'] })
+      measuredH += Math.max(1, textLines.length) * lineH + 10
+    }
+  }
+
+  const estH = Math.min(1754 * 8, Math.max(1754, measuredH + 150))
   const canvas = createCanvas(W, estH)
   const ctx = canvas.getContext('2d')
 
@@ -472,7 +512,7 @@ export async function buildStructuredForensicJpeg(doc: StructuredForensicDoc): P
     y += 40
   }
 
-  for (const item of lines) {
+  for (const item of prewrapped) {
     if (y > estH - 130) break
     if (item.kind === 'sec') {
       y += 10
@@ -483,15 +523,18 @@ export async function buildStructuredForensicJpeg(doc: StructuredForensicDoc): P
       ctx.fillText(item.text, PAD + 14, y)
       y += 30
     } else if (item.kind === 'pair') {
+      const boxH = Math.max(34, item.valLines.length * 26 + 10)
       ctx.fillStyle = '#F8F9FA'
-      ctx.fillRect(PAD, y - 22, W - PAD * 2, 34)
+      ctx.fillRect(PAD, y - 22, W - PAD * 2, boxH)
       ctx.fillStyle = '#475569'
       ctx.font = 'bold 17px sans-serif'
-      ctx.fillText(`${item.text}:`, PAD + 12, y)
+      ctx.fillText(`${item.label}:`, PAD + 12, y)
       ctx.fillStyle = '#111827'
       ctx.font = '18px sans-serif'
-      ctx.fillText(String(item.sub || '—').slice(0, 74), PAD + 330, y)
-      y += 38
+      item.valLines.forEach((vl, vi) => {
+        if (y + vi * 26 <= estH - 130) ctx.fillText(vl, PAD + 330, y + vi * 26)
+      })
+      y += boxH + 4
     } else if (item.kind === 'row') {
       ctx.fillStyle = '#E8EFEA'
       ctx.fillRect(PAD, y - 22, W - PAD * 2, 32)
@@ -502,12 +545,12 @@ export async function buildStructuredForensicJpeg(doc: StructuredForensicDoc): P
     } else {
       ctx.fillStyle = '#1F2937'
       ctx.font = '18px sans-serif'
-      for (const wl of wrapCanvasLines(ctx, item.text, W - PAD * 2 - 20).slice(0, 3)) {
+      for (const wl of item.textLines) {
         if (y > estH - 130) break
         ctx.fillText(wl, PAD + 10, y)
-        y += lineH - 6
+        y += lineH
       }
-      y += 4
+      y += 6
     }
   }
 
@@ -549,9 +592,104 @@ export async function exportStructuredDossier(
   }
 }
 
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_m, n) => {
+      const code = Number(n)
+      return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : ''
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_m, hex) => {
+      const code = parseInt(hex, 16)
+      return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : ''
+    })
+}
+
+type WordBlock =
+  | { kind: 'h1' | 'h2' | 'h3'; text: string }
+  | { kind: 'table_row'; cells: string[]; header: boolean }
+  | { kind: 'bullet'; text: string }
+  | { kind: 'para'; text: string }
+  | { kind: 'rule' }
+
+function parseWordHtmlBlocks(rawHtml: string): WordBlock[] {
+  const cleaned = String(rawHtml || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+  const blocks: WordBlock[] = []
+
+  // First extract block-level elements in document order
+  const tokenRe = /<(h[1-3]|tr|li|p|div|hr)\b[^>]*>([\s\S]*?)<\/\1>|<hr\b[^>]*\/?>/gi
+  const stripInline = (s: string) =>
+    decodeHtmlEntities(s.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''))
+      .replace(/[ \t]+/g, ' ')
+      .trim()
+
+  let matchedAny = false
+  let m: RegExpExecArray | null
+  while ((m = tokenRe.exec(cleaned)) !== null) {
+    matchedAny = true
+    const tag = (m[1] || 'hr').toLowerCase()
+    const inner = m[2] || ''
+    if (tag === 'hr') {
+      blocks.push({ kind: 'rule' })
+      continue
+    }
+    // Skip wrapper <div> elements that contain nested block tags so we don't duplicate child blocks
+    if (tag === 'div' && /<(h[1-3]|tr|li|p|table|ul|ol|div)\b/i.test(inner)) {
+      const innerBlocks = parseWordHtmlBlocks(inner)
+      blocks.push(...innerBlocks)
+      continue
+    }
+    if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+      const t = stripInline(inner).replace(/\n+/g, ' ')
+      if (t) blocks.push({ kind: tag, text: t })
+      continue
+    }
+    if (tag === 'tr') {
+      const cells: string[] = []
+      let isHeader = false
+      const cellRe = /<(th|td)\b[^>]*>([\s\S]*?)<\/\1>/gi
+      let cm: RegExpExecArray | null
+      while ((cm = cellRe.exec(inner)) !== null) {
+        if (cm[1]!.toLowerCase() === 'th') isHeader = true
+        cells.push(stripInline(cm[2] || '').replace(/\n+/g, ' '))
+      }
+      if (cells.some(Boolean)) blocks.push({ kind: 'table_row', cells, header: isHeader })
+      continue
+    }
+    if (tag === 'li') {
+      const t = stripInline(inner).replace(/\n+/g, ' ')
+      if (t) blocks.push({ kind: 'bullet', text: t })
+      continue
+    }
+    // p or leaf div
+    const txt = stripInline(inner)
+    for (const ln of txt.split(/\r?\n/)) {
+      const s = ln.trim()
+      if (s) blocks.push({ kind: 'para', text: s })
+    }
+  }
+
+  if (!matchedAny) {
+    const fallback = htmlToText(rawHtml || '')
+    for (const ln of fallback.split(/\r?\n/)) {
+      const s = ln.trim()
+      if (s) blocks.push({ kind: 'para', text: s })
+    }
+  }
+  return blocks
+}
+
 /**
  * Multi-page A4 JPEG renderer for Word Studio & Legal Forms (A2A, LOI, Tenancy, Ejari, NOC, Agreements).
- * Stacks A4 pages vertically (up to 6 pages, 1240px wide) so full contracts are preserved crisply as JPEG.
+ * Preserves HTML headings, tables, bullet lists, and paragraphs, and paginates dynamically by true pixel height
+ * (up to 8 vertical A4 pages @ 1240x1754) so zero lines are dropped.
  */
 export async function renderWordHtmlToJpegBuffer(opts: {
   title: string
@@ -561,32 +699,80 @@ export async function renderWordHtmlToJpegBuffer(opts: {
   include_seal?: boolean
   include_signature?: boolean
 }): Promise<Buffer> {
-  const plain = htmlToText(opts.html_content || '') || opts.title || 'SWK Document'
-  const rawParagraphs = plain.split(/\r?\n/).map(s => s.trim())
+  const blocks = parseWordHtmlBlocks(opts.html_content || '')
+  if (!blocks.length) blocks.push({ kind: 'para', text: opts.title || 'SWK Document' })
+
   const W = 1240
   const PAGE_H = 1754
   const PAD = 74
+  const CONTENT_W = W - PAD * 2
 
-  // Measure lines using a scratch canvas
-  const scratch = createCanvas(W, 100)
+  const scratch = createCanvas(W, 120)
   const sctx = scratch.getContext('2d')
-  sctx.font = '22px sans-serif'
 
-  const wrapped: Array<{ text: string; heading: boolean; blank: boolean }> = []
-  for (const p of rawParagraphs) {
-    if (!p) {
-      wrapped.push({ text: '', heading: false, blank: true })
-      continue
-    }
-    const isHeading = p.length < 72 && (p === p.toUpperCase() || /^\d+\.\s/.test(p))
-    sctx.font = isHeading ? 'bold 24px sans-serif' : '22px sans-serif'
-    for (const l of wrapCanvasLines(sctx, p, W - PAD * 2)) {
-      wrapped.push({ text: l, heading: isHeading, blank: false })
+  type DrawOp =
+    | { kind: 'heading'; text: string; font: string; height: number; topGap: number }
+    | { kind: 'table_row'; cells: string[]; header: boolean; linesPerCell: string[][]; height: number }
+    | { kind: 'line'; text: string; font: string; indent: number; height: number; color: string }
+    | { kind: 'rule'; height: number }
+    | { kind: 'spacer'; height: number }
+
+  const ops: DrawOp[] = []
+  for (const b of blocks) {
+    if (b.kind === 'rule') {
+      ops.push({ kind: 'rule', height: 22 })
+    } else if (b.kind === 'h1' || b.kind === 'h2' || b.kind === 'h3') {
+      const font = b.kind === 'h1' ? 'bold 26px sans-serif' : b.kind === 'h2' ? 'bold 23px sans-serif' : 'bold 20px sans-serif'
+      const lh = b.kind === 'h1' ? 36 : b.kind === 'h2' ? 32 : 28
+      sctx.font = font
+      const ls = wrapCanvasLines(sctx, b.text, CONTENT_W)
+      ls.forEach((l, i) => ops.push({ kind: 'heading', text: l, font, height: lh, topGap: i === 0 ? 12 : 0 }))
+      ops.push({ kind: 'spacer', height: 6 })
+    } else if (b.kind === 'table_row') {
+      const colCount = Math.max(1, Math.min(6, b.cells.length))
+      const colW = Math.floor((CONTENT_W - 16) / colCount) - 14
+      sctx.font = b.header ? 'bold 18px sans-serif' : '18px sans-serif'
+      const linesPerCell = b.cells.slice(0, colCount).map(c => wrapCanvasLines(sctx, c || '—', Math.max(80, colW)))
+      const maxLines = Math.max(1, ...linesPerCell.map(l => l.length))
+      ops.push({ kind: 'table_row', cells: b.cells.slice(0, colCount), header: b.header, linesPerCell, height: maxLines * 25 + 16 })
+    } else if (b.kind === 'bullet') {
+      sctx.font = '20px sans-serif'
+      const ls = wrapCanvasLines(sctx, `•  ${b.text}`, CONTENT_W - 18)
+      for (const l of ls) ops.push({ kind: 'line', text: l, font: '20px sans-serif', indent: 14, height: 29, color: '#1E293B' })
+      ops.push({ kind: 'spacer', height: 4 })
+    } else {
+      sctx.font = '20px sans-serif'
+      const ls = wrapCanvasLines(sctx, b.text, CONTENT_W)
+      for (const l of ls) ops.push({ kind: 'line', text: l, font: '20px sans-serif', indent: 0, height: 29, color: '#1E293B' })
+      ops.push({ kind: 'spacer', height: 8 })
     }
   }
 
-  const linesPerPage = 40
-  const totalPages = Math.min(6, Math.max(1, Math.ceil(wrapped.length / linesPerPage)))
+  // Dynamic cursor-based pagination (zero dropped lines, up to 8 vertical A4 pages)
+  sctx.font = 'bold 30px sans-serif'
+  const titleLines = wrapCanvasLines(sctx, opts.title || 'SWK Properties Document', CONTENT_W).slice(0, 2)
+  const firstPageStart = (opts.include_letterhead !== false ? 218 : 72) + titleLines.length * 40 + 28
+  const nextPageStart = opts.include_letterhead !== false ? 124 : 72
+  const bottomLimit = (isLastCandidate: boolean) => PAGE_H - (isLastCandidate && (opts.include_seal || opts.include_signature) ? 265 : 135)
+
+  const pages: DrawOp[][] = [[]]
+  let curY = firstPageStart
+  for (const op of ops) {
+    const needH = op.height + (op.kind === 'heading' ? op.topGap : 0)
+    if (curY + needH > PAGE_H - 135 && pages[pages.length - 1]!.length > 0) {
+      if (pages.length >= 8) break
+      pages.push([])
+      curY = nextPageStart
+    }
+    pages[pages.length - 1]!.push(op)
+    curY += needH
+  }
+  // Ensure seal/signature fits cleanly on final page without colliding with last paragraph
+  if ((opts.include_seal || opts.include_signature) && curY > bottomLimit(true) && pages.length < 8) {
+    pages.push([])
+  }
+
+  const totalPages = Math.max(1, pages.length)
   const totalH = PAGE_H * totalPages
   const canvas = createCanvas(W, totalH)
   const ctx = canvas.getContext('2d')
@@ -599,7 +785,6 @@ export async function renderWordHtmlToJpegBuffer(opts: {
 
   for (let p = 0; p < totalPages; p++) {
     const topY = p * PAGE_H
-    // Page separator line if multi-page
     if (p > 0) {
       ctx.fillStyle = '#CBD5E1'
       ctx.fillRect(0, topY, W, 2)
@@ -627,32 +812,68 @@ export async function renderWordHtmlToJpegBuffer(opts: {
 
     if (p === 0) {
       ctx.fillStyle = '#0E3A2F'
-      ctx.font = 'bold 32px sans-serif'
-      for (const tl of wrapCanvasLines(ctx, opts.title || 'SWK Properties Document', W - PAD * 2).slice(0, 2)) {
+      ctx.font = 'bold 30px sans-serif'
+      for (const tl of titleLines) {
         ctx.fillText(tl, PAD, y)
-        y += 42
+        y += 40
       }
       ctx.fillStyle = '#C8A253'
-      ctx.fillRect(PAD, y - 16, 180, 3)
-      y += 24
+      ctx.fillRect(PAD, y - 14, 180, 3)
+      y += 28
     }
 
-    const slice = wrapped.slice(p * linesPerPage, (p + 1) * linesPerPage)
-    for (const row of slice) {
-      if (y > topY + PAGE_H - 180) break
-      if (row.blank) {
-        y += 16
-        continue
-      }
-      ctx.fillStyle = row.heading ? '#0E3A2F' : '#1E293B'
-      ctx.font = row.heading ? 'bold 23px sans-serif' : '21px sans-serif'
-      if (opts.rtl) {
-        const tw = ctx.measureText(row.text).width
-        ctx.fillText(row.text, Math.max(PAD, W - PAD - tw), y)
+    for (const op of pages[p]!) {
+      if (op.kind === 'spacer') {
+        y += op.height
+      } else if (op.kind === 'rule') {
+        ctx.fillStyle = '#CBD5E1'
+        ctx.fillRect(PAD, y - 8, CONTENT_W, 2)
+        y += op.height
+      } else if (op.kind === 'heading') {
+        y += op.topGap
+        ctx.fillStyle = '#0E3A2F'
+        ctx.font = op.font
+        if (opts.rtl) {
+          const tw = ctx.measureText(op.text).width
+          ctx.fillText(op.text, Math.max(PAD, W - PAD - tw), y)
+        } else {
+          ctx.fillText(op.text, PAD, y)
+        }
+        y += op.height
+      } else if (op.kind === 'table_row') {
+        const colCount = op.linesPerCell.length
+        const colW = Math.floor(CONTENT_W / colCount)
+        ctx.fillStyle = op.header ? '#0E3A2F' : '#F8FAFC'
+        ctx.fillRect(PAD, y - 20, CONTENT_W, op.height)
+        ctx.strokeStyle = '#CBD5E1'
+        ctx.lineWidth = 1
+        ctx.strokeRect(PAD, y - 20, CONTENT_W, op.height)
+        ctx.font = op.header ? 'bold 18px sans-serif' : '18px sans-serif'
+        ctx.fillStyle = op.header ? '#FFFFFF' : '#1E293B'
+        op.linesPerCell.forEach((cellLines, ci) => {
+          const cx = PAD + ci * colW + 10
+          if (ci > 0) {
+            ctx.beginPath()
+            ctx.moveTo(PAD + ci * colW, y - 20)
+            ctx.lineTo(PAD + ci * colW, y - 20 + op.height)
+            ctx.stroke()
+          }
+          cellLines.forEach((cl, li) => {
+            ctx.fillText(cl, cx, y + 2 + li * 25)
+          })
+        })
+        y += op.height + 2
       } else {
-        ctx.fillText(row.text, PAD, y)
+        ctx.fillStyle = op.color
+        ctx.font = op.font
+        if (opts.rtl) {
+          const tw = ctx.measureText(op.text).width
+          ctx.fillText(op.text, Math.max(PAD, W - PAD - op.indent - tw), y)
+        } else {
+          ctx.fillText(op.text, PAD + op.indent, y)
+        }
+        y += op.height
       }
-      y += row.heading ? 36 : 31
     }
 
     // Optional authorized seal & signature on final page

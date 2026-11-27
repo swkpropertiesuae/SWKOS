@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { config } from '../config'
 import { q } from '../db'
-import { createRecord, findOne, getDef, getRecord, updateRecord } from '../engine'
+import { createRecord, findOne, getDef, getRecord, patchRecord, updateRecord } from '../engine'
 import { bad, forbidden, HttpError, nowIso } from '../util'
 import { need } from './helpers'
 import {
@@ -67,6 +67,19 @@ const safeFileSlug = (s: unknown) =>
     .replace(/^-|-$/g, '')
     .slice(0, 64) || 'swk-catalog'
 
+function uniqueCatalogCode(table: 'communities' | 'developers', requested: unknown, fallbackName: string, prefix: string): string {
+  const base =
+    String(requested || fallbackName.replace(/[^A-Za-z0-9]/g, '').slice(0, 8))
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, '') || `${prefix}${Date.now() % 10000}`
+  if (!q.val(`SELECT 1 FROM "${table}" WHERE upper(code) = ? AND deleted_at IS NULL`, base)) return base
+  for (let i = 2; i <= 99; i++) {
+    const cand = `${base.slice(0, 12)}-${i}`
+    if (!q.val(`SELECT 1 FROM "${table}" WHERE upper(code) = ? AND deleted_at IS NULL`, cand)) return cand
+  }
+  return `${base.slice(0, 8)}${Date.now().toString().slice(-4)}`
+}
+
 export default async function (app: FastifyInstance) {
   // 0a. Company Default Brochure Theme & Presets
   app.get('/api/catalog-kit/theme/default', async (req) => {
@@ -90,7 +103,7 @@ export default async function (app: FastifyInstance) {
     const rec = getRecord(def, id, req.ctx)
     const base = resolveEffectiveBrochureTheme(rec)
     const theme = runThemeCheck(() => normalizeBrochureTheme(req.body ?? {}, base))
-    q.run(`UPDATE "${entity}" SET brochure_theme_json = ?, updated_at = ? WHERE id = ?`, JSON.stringify(theme), nowIso(), id)
+    patchRecord(def, id, { brochure_theme_json: theme }, req.ctx)
     return { ok: true, entity, id, theme }
   })
 
@@ -122,7 +135,7 @@ export default async function (app: FastifyInstance) {
     if (entity === 'communities') {
       const name = String(b.name || '').trim()
       if (!name) throw bad('Community name is required')
-      const code = String(b.code || name.replace(/[^A-Za-z0-9]/g, '').slice(0, 8)).toUpperCase() || `COM${Date.now() % 10000}`
+      const code = uniqueCatalogCode('communities', b.code, name, 'COM')
       payload = {
         code,
         name,
@@ -155,7 +168,7 @@ export default async function (app: FastifyInstance) {
     } else if (entity === 'developers') {
       const name = String(b.name || '').trim()
       if (!name) throw bad('Developer name is required')
-      const code = String(b.code || name.replace(/[^A-Za-z0-9]/g, '').slice(0, 8)).toUpperCase() || `DEV${Date.now() % 10000}`
+      const code = uniqueCatalogCode('developers', b.code, name, 'DEV')
       payload = {
         code,
         name,
@@ -257,25 +270,28 @@ export default async function (app: FastifyInstance) {
       }
     }
 
+    runThemeCheck(() => assertZeroShabibPublicPayload(payload, `Catalog ${entity} Create`))
     const created = createRecord(def, payload, req.ctx)
     const id = Number(created.id)
     if (entity === 'properties' || entity === 'developers' || entity === 'communities') {
-      const updates: string[] = []
-      const vals: any[] = []
-      if (!created.brochure_url) { updates.push('brochure_url = ?'); vals.push(`/api/catalog-kit/${entity}/${id}/brochure.pdf`) }
-      if (!created.ppt_url) { updates.push('ppt_url = ?'); vals.push(`/api/catalog-kit/${entity}/${id}/deck.pptx`) }
-      if (entity === 'properties' && !created.payment_plan_pdf_url) { updates.push('payment_plan_pdf_url = ?'); vals.push(`/api/catalog-kit/${entity}/${id}/payment-plan.pdf`) }
-      if (updates.length) {
-        q.run(`UPDATE "${entity}" SET ${updates.join(', ')} WHERE id = ?`, ...vals, id)
+      const urlPatch: Record<string, any> = {}
+      if (!created.brochure_url) urlPatch.brochure_url = `/api/catalog-kit/${entity}/${id}/brochure.pdf`
+      if (!created.ppt_url) urlPatch.ppt_url = `/api/catalog-kit/${entity}/${id}/deck.pptx`
+      if (entity === 'properties' && !created.payment_plan_pdf_url) {
+        urlPatch.payment_plan_pdf_url = `/api/catalog-kit/${entity}/${id}/payment-plan.pdf`
+      }
+      if (Object.keys(urlPatch).length) {
+        patchRecord(def, id, urlPatch, req.ctx)
       }
     }
     const fresh = getRecord(def, id, req.ctx)
+    const kit = runThemeCheck(() => buildCatalogKitManifest(entity, fresh))
     reply.status(201)
     return {
       ok: true,
       entity,
       record: fresh,
-      kit: buildCatalogKitManifest(entity, fresh),
+      kit,
     }
   })
 
@@ -283,7 +299,7 @@ export default async function (app: FastifyInstance) {
   app.get('/api/catalog-kit/:entity/:id', async (req) => {
     const { entity, id } = parseEntityAndId(req)
     const rec = loadAuthorizedRecord(req, entity, id)
-    return buildCatalogKitManifest(entity, rec)
+    return runThemeCheck(() => buildCatalogKitManifest(entity, rec))
   })
 
   // 2. On-Demand Branded Brochure PDF (Project, Developer, Community, or Unit)
@@ -291,7 +307,12 @@ export default async function (app: FastifyInstance) {
     const { entity, id } = parseEntityAndId(req)
     const rec = loadAuthorizedRecord(req, entity, id)
     const override = parseQueryThemeOverride(req.query)
-    const buf = await buildCatalogBrochurePdf(entity, rec, override)
+    let buf: Buffer
+    try {
+      buf = await buildCatalogBrochurePdf(entity, rec, override)
+    } catch (e: any) {
+      throw bad(e?.message || 'Could not generate brochure PDF')
+    }
     const fname = `${safeFileSlug(rec.title || rec.name || rec.unit_no)}-swk-brochure.pdf`
     reply
       .header('content-type', 'application/pdf')
@@ -306,7 +327,12 @@ export default async function (app: FastifyInstance) {
     if (entity !== 'properties' && entity !== 'units') throw bad('Payment plan PDF is generated for projects and units')
     const rec = loadAuthorizedRecord(req, entity, id)
     const override = parseQueryThemeOverride(req.query)
-    const buf = await buildPaymentPlanPdf(rec, entity, override)
+    let buf: Buffer
+    try {
+      buf = await buildPaymentPlanPdf(rec, entity, override)
+    } catch (e: any) {
+      throw bad(e?.message || 'Could not generate payment plan PDF')
+    }
     const fname = `${safeFileSlug(rec.title || rec.unit_no)}-payment-plan.pdf`
     reply
       .header('content-type', 'application/pdf')
@@ -320,7 +346,7 @@ export default async function (app: FastifyInstance) {
     const { entity, id } = parseEntityAndId(req)
     const rec = loadAuthorizedRecord(req, entity, id)
     const override = parseQueryThemeOverride(req.query)
-    const buf = buildCatalogDeckPptx(entity, rec, override)
+    const buf = runThemeCheck(() => buildCatalogDeckPptx(entity, rec, override))
     const fname = `${safeFileSlug(rec.title || rec.name || rec.unit_no)}-swk-deck.pptx`
     reply
       .header('content-type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')

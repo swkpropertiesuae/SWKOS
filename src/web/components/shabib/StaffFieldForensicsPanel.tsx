@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { get, openAuthFile, patch, post, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { AuthImg } from '../AuthMedia'
 import { CustomSelect } from '../CustomSelect'
 
 export function StaffFieldForensicsPanel() {
@@ -163,7 +164,7 @@ export function StaffFieldForensicsPanel() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="m-0 text-sm font-bold text-ink flex items-center gap-2">
-              <ClipboardList size={15} className="text-[#0e9f6e]" /> My Daily To-Do List ({myTasks.filter(t => t.status !== 'Done').length} open)
+              <ClipboardList size={15} className="text-[#0e9f6e]" /> My Daily To-Do List ({myTasks.filter(t => t.status !== 'Done' && t.status !== 'Cancelled').length} open)
             </h2>
             <p className="m-0 text-xs text-muted">Tasks assigned to you by Owner / Leadership — tick off as you complete each task today.</p>
           </div>
@@ -280,7 +281,58 @@ export function StaffFieldForensicsPanel() {
                 </button>
               </div>
               <div className="text-muted">
-                Submitted by <b>{r.submitted_by_name}</b> · Met: <b>{r.met_person_name || '—'}</b> · GPS: {r.gps_lat && r.gps_lng ? `${r.gps_lat}, ${r.gps_lng}` : 'None'} · Photos: {r.photos?.length || 0}
+                Submitted by <b>{r.submitted_by_name}</b> · Met: <b>{r.met_person_name || '—'}</b> ({r.met_person_phone || '—'}) · GPS: {r.gps_lat && r.gps_lng ? `${r.gps_lat}, ${r.gps_lng}` : 'None'}
+              </div>
+              <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4 rounded-xl bg-soft/40 p-2 text-[11px] text-ink">
+                <span>Asking: <b>{r.asking_price_aed ? `AED ${Number(r.asking_price_aed).toLocaleString('en-US')}` : '—'}</b></span>
+                <span>Final: <b>{r.final_price_aed ? `AED ${Number(r.final_price_aed).toLocaleString('en-US')}` : '—'}</b></span>
+                <span>Yearly Rent: <b>{r.yearly_rent_aed ? `AED ${Number(r.yearly_rent_aed).toLocaleString('en-US')}` : '—'}</b></span>
+                <span>Cheques: <b>{r.cheques_count || '—'}</b></span>
+              </div>
+              {(r.owner_or_agent_name || r.is_third_party) && (
+                <div className="text-[11px] text-muted">
+                  {r.owner_or_agent_name && <span>Owner/Agent: <b className="text-ink">{r.owner_or_agent_name}</b> ({r.owner_or_agent_phone || '—'} · {r.owner_or_agent_email || '—'}) </span>}
+                  {r.is_third_party && <span className="text-amber-800 font-semibold">· 3rd Party: {r.third_party_agency} / {r.third_party_agent_name} (BRN {r.third_party_brn || '—'} · {r.third_party_phone || '—'} · {r.third_party_email || '—'})</span>}
+                </div>
+              )}
+              {r.outcome === 'Not Closed' && r.not_closed_reason && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 py-1 text-[11px] text-rose-900">
+                  <b>Not-Closed Reason:</b> {r.not_closed_reason}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {(r.photos || []).map((ph: any, idx: number) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => void openAuthFile(ph.url)}
+                    className="h-14 w-20 overflow-hidden rounded-lg border border-line p-0 bg-transparent cursor-pointer"
+                    title={ph.caption || 'Unit Photo'}
+                  >
+                    <AuthImg src={ph.url} alt={ph.caption || 'Unit'} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+                {(isVerifier || r.verification_status !== 'Verified') && (
+                  <label className="inline-flex items-center gap-1 rounded-lg border border-dashed border-line px-2 py-1 text-[11px] font-semibold text-muted hover:text-ink cursor-pointer">
+                    <Camera size={12} /> + Add Photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async e => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        try {
+                          await upload([file], { caption: `${r.building_or_project || 'Unit'} ${r.unit_no || ''}` }, `/api/field-reports/${r.id}/photos`)
+                          toast.ok('Unit photo attached')
+                          refresh()
+                        } catch (err: any) {
+                          toast.error(err.message || 'Upload failed')
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
               {isVerifier && (
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line">

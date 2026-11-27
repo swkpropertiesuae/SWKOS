@@ -74,8 +74,9 @@ export default function ShabibsCornerPage() {
   const [tab, setTab] = useState<Tab>(initialTab)
   useEffect(() => {
     const t = sp.get('tab') as Tab | null
-    if (t && VALID_TABS.includes(t) && t !== tab) setTab(t)
-  }, [sp, tab])
+    const next: Tab = t && VALID_TABS.includes(t) ? t : 'team-tasks'
+    setTab(next)
+  }, [sp])
   const qc = useQueryClient()
   const toast = useToast()
 
@@ -126,7 +127,7 @@ export default function ShabibsCornerPage() {
 
   const switchTab = (next: Tab) => {
     setTab(next)
-    setSp(next === 'fast-track' ? {} : { tab: next })
+    setSp(next === 'team-tasks' ? {} : { tab: next })
   }
 
   const createFastJob = async (e: React.FormEvent) => {

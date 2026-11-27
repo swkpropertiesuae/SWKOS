@@ -123,6 +123,8 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
   const [tplOpen, setTplOpen] = useState(false)
   const [tplSearch, setTplSearch] = useState('')
   const [tplBusyId, setTplBusyId] = useState<number | null>(null)
+  const [fillOpen, setFillOpen] = useState(false)
+  const [fillVals, setFillVals] = useState<Record<string, string>>({})
 
   const [aiOpen, setAiOpen] = useState(true)
   const [aiPrompt, setAiPrompt] = useState('')
@@ -243,6 +245,46 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
     setHtml(nextHtml)
     setDirty(true)
   }, [])
+
+  const detectedPlaceholders = useMemo(() => {
+    const cleaned = String(html || '').replace(/<[^>]+>/g, ' ')
+    const seen = new Set<string>()
+    const out: string[] = []
+    const re = /\[([^\[\]\r\n]{1,80})\]/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(cleaned)) !== null) {
+      const k = m[1]!.trim()
+      if (k && !seen.has(k)) {
+        seen.add(k)
+        out.push(k)
+      }
+    }
+    return out
+  }, [html])
+
+  const applyFillValues = () => {
+    let next = htmlRef.current || html
+    let replaced = 0
+    for (const k of detectedPlaceholders) {
+      const v = (fillVals[k] ?? '').trim()
+      if (!v) continue
+      const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const safeV = v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const spanRe = new RegExp(`<span[^>]*class="ph"[^>]*>\\[${esc}\\]<\\/span>`, 'g')
+      next = next.replace(spanRe, `<strong>${safeV}</strong>`).replace(new RegExp(`\\[${esc}\\]`, 'g'), `<strong>${safeV}</strong>`)
+      replaced++
+    }
+    if (!replaced) {
+      toast.error('Enter at least one field value to fill')
+      return
+    }
+    const clean = safeHtml(next)
+    htmlRef.current = clean
+    setHtml(clean)
+    setDirty(true)
+    setFillVals({})
+    toast.ok(`Filled ${replaced} template field(s)`)
+  }
 
   const newBlank = async () => {
     if (dirty && !(await dlg.confirm({ title: 'Discard unsaved changes?', message: 'Start a new blank Word document?', ok: 'New document' }))) return
@@ -522,6 +564,9 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
                   <BookTemplate size={15} /> Templates
                 </button>
               )}
+              <button type="button" className="btn outline sm" onClick={() => setFillOpen(v => !v)}>
+                <Sparkles size={15} /> Fill Form ({detectedPlaceholders.length})
+              </button>
               <button
                 type="button"
                 className="btn outline sm"
@@ -588,6 +633,38 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
             <button type="button" className="btn outline sm" onClick={() => void exportFile('txt')}><FileText size={14} /> .txt</button>
             <button type="button" className="btn outline sm" onClick={() => void handleShareInside()}><MessagesSquare size={14} /> Inside</button>
           </div>
+        </div>
+      )}
+
+      {fillOpen && (
+        <div className="rounded-2xl border border-[#0e9f6e]/30 bg-card p-4 space-y-3 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <b className="text-sm text-ink">Fillable Form Mode ({detectedPlaceholders.length} detected field{detectedPlaceholders.length === 1 ? '' : 's'})</b>
+              <p className="m-0 text-xs text-muted">Fill bracketed template fields below (e.g. A2A, LOI, Tenancy, Ejari, NOC) and click Apply to inject cleanly into the document.</p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" className="btn green sm" onClick={applyFillValues}>Apply Fields to Document</button>
+              <button type="button" className="btn outline sm" onClick={() => setFillOpen(false)}>Close</button>
+            </div>
+          </div>
+          {detectedPlaceholders.length === 0 ? (
+            <p className="m-0 text-xs text-muted">No [bracketed] placeholders found in this draft. Load a template from Templates (A2A, LOI, Tenancy, Ejari, NOC) to auto-generate fillable fields.</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 max-h-[260px] overflow-auto pr-1">
+              {detectedPlaceholders.map(ph => (
+                <label key={ph} className="block">
+                  <span className="block text-[11px] font-bold text-muted mb-0.5 truncate" title={ph}>{ph}</span>
+                  <input
+                    className="input !h-8 text-xs"
+                    placeholder={`Enter ${ph}…`}
+                    value={fillVals[ph] || ''}
+                    onChange={e => setFillVals(prev => ({ ...prev, [ph]: e.target.value }))}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

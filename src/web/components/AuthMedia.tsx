@@ -14,7 +14,7 @@ export function AuthImg({
   fallback?: string
 }) {
   const raw = src || fallback || ''
-  const isAuthApi = raw.startsWith('/api/files/')
+  const isAuthApi = raw.startsWith('/api/files/') || raw.startsWith('/api/field-reports/')
   const objUrl = useAuthObjectUrl(isAuthApi ? raw : null)
   const resolved = isAuthApi ? objUrl : raw ? resolveApiUrl(raw) : undefined
   if (!resolved) {

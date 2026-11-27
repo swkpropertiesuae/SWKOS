@@ -284,7 +284,7 @@ export function ShabibTeamTasksTab() {
                     <div className="font-semibold text-ink">{t.title}</div>
                     <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-muted">
                       <span>{assignee ? assignee.name : 'Team Shared'}</span>
-                      <span>· Due {t.due_date || date}</span>
+                      <span>· Due {t.due_date || 'No due date'}</span>
                       <span className="font-semibold text-amber-700">{t.priority || 'Normal'}</span>
                     </div>
                   </div>

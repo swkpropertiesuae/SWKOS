@@ -176,9 +176,11 @@ export function ShabibCommissionsTab() {
               {staffNames.map(n => <option key={n} value={n} />)}
             </datalist>
             <input className="input" placeholder="Deal Ref / Unit" value={form.deal_ref} onChange={e => setForm({ ...form, deal_ref: e.target.value })} />
+            <input className="input" placeholder="Project / Property Label" value={form.property_label} onChange={e => setForm({ ...form, property_label: e.target.value })} />
             <CustomSelect className="select" value={form.track} onChange={e => setForm({ ...form, track: e.target.value })}>
               {CLOSING_TRACKS.map(t => <option key={t} value={t}>{t}</option>)}
             </CustomSelect>
+            <input type="number" className="input" placeholder="Agent Split % (e.g. 50)" value={form.split_pct} onChange={e => setForm({ ...form, split_pct: e.target.value })} />
             <input type="number" className="input" placeholder="Gross Commission (AED)" value={form.gross_amount_aed} onChange={e => setForm({ ...form, gross_amount_aed: e.target.value })} />
             <input type="number" className="input" required placeholder="Net Amount (AED) *" value={form.net_amount_aed} onChange={e => setForm({ ...form, net_amount_aed: e.target.value })} />
             <CustomSelect className="select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
@@ -227,7 +229,8 @@ export function ShabibCommissionsTab() {
                   <th className="py-2 px-2">Paid</th>
                   <th className="py-2 px-2">Pending</th>
                   <th className="py-2 px-2">Expenses</th>
-                  <th className="py-2 pl-2 text-right">Net Balance</th>
+                  <th className="py-2 px-2">3rd Party</th>
+                  <th className="py-2 pl-2 text-right">Net Due</th>
                 </tr>
               </thead>
               <tbody>
@@ -238,11 +241,25 @@ export function ShabibCommissionsTab() {
                     <td className="py-2.5 px-2 font-mono text-sky-700">{aed(a.commission_paid)}</td>
                     <td className="py-2.5 px-2 font-mono text-amber-700">{aed(a.commission_pending)}</td>
                     <td className="py-2.5 px-2 font-mono text-rose-700">-{aed(a.expenses_total)}</td>
+                    <td className="py-2.5 px-2 font-mono text-muted">{aed(a.third_party_total)}</td>
                     <td className="py-2.5 pl-2 text-right font-mono font-bold text-ink">{aed(a.net_due_aed)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+          {((q.data?.os_sync_reference?.agent_commissions?.length ?? 0) > 0 || (q.data?.os_sync_reference?.employee_expenses?.length ?? 0) > 0) && (
+            <div className="mt-4 rounded-2xl border border-line bg-soft/50 p-3 text-[11px] text-muted space-y-1">
+              <div className="font-bold uppercase tracking-wider text-ink">Live ERP Finance Reference (Auto-Synced)</div>
+              <div className="flex flex-wrap gap-3">
+                {(q.data?.os_sync_reference?.agent_commissions ?? []).map((r: any) => (
+                  <span key={`c-${r.status}`}>ERP Commissions ({r.status}): <b>{aed(r.agent_share_aed)}</b></span>
+                ))}
+                {(q.data?.os_sync_reference?.employee_expenses ?? []).map((r: any) => (
+                  <span key={`e-${r.status}`}>ERP Expenses ({r.status}): <b>{aed(r.amount_aed)}</b></span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

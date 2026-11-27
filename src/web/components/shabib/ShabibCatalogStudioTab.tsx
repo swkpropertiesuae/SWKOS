@@ -43,6 +43,8 @@ export function ShabibCatalogStudioTab() {
     project_name: '',
     unit_no: '',
     property_id: '',
+    developer_ref: '',
+    community_ref: '',
     emirate: 'Dubai',
     segment: 'Prime',
     tier: 'Tier-1 Developer',
@@ -91,6 +93,16 @@ export function ShabibCatalogStudioTab() {
     queryFn: () => get<{ rows: any[] }>('/api/e/properties', { pageSize: 200 }),
   })
 
+  const developersQ = useQuery({
+    queryKey: ['catalog-studio-developers-lookup'],
+    queryFn: () => get<{ rows: any[] }>('/api/e/developers', { pageSize: 150 }),
+  })
+
+  const communitiesQ = useQuery({
+    queryKey: ['catalog-studio-communities-lookup'],
+    queryFn: () => get<{ rows: any[] }>('/api/e/communities', { pageSize: 300 }),
+  })
+
   const applyPreset = (presetKey: (typeof BROCHURE_PRESETS)[number]['key']) => {
     const p = BROCHURE_PRESETS.find(x => x.key === presetKey)
     if (!p) return
@@ -114,7 +126,7 @@ export function ShabibCatalogStudioTab() {
         emirate: f.emirate,
         description: f.description,
         amenities: f.amenities,
-        amenities_standard: f.amenities,
+        ...(entity === 'developers' ? { amenities_standard: f.amenities } : {}),
         cover_image_url: f.cover_image_url || undefined,
         video_url: f.video_url || undefined,
         virtual_tour_url: f.virtual_tour_url || undefined,
@@ -146,6 +158,8 @@ export function ShabibCatalogStudioTab() {
         Object.assign(payload, {
           title: f.title,
           project_name: f.project_name || f.title.replace(/\s+by\s+.+$/i, '').trim(),
+          developer_ref: f.developer_ref ? Number(f.developer_ref) : undefined,
+          community_ref: f.community_ref ? Number(f.community_ref) : undefined,
           property_type: f.property_type,
           is_off_plan: f.is_off_plan,
           price: Number(f.price) || 0,
@@ -298,6 +312,14 @@ export function ShabibCatalogStudioTab() {
               <>
                 <input className="input" required placeholder="Full Title (<Project> by <Developer>, e.g. Shahrukhz by Danube) *" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} />
                 <input className="input" placeholder="Pure Project Name (e.g. Shahrukhz)" value={f.project_name} onChange={e => setF({ ...f, project_name: e.target.value })} />
+                <CustomSelect className="select" value={f.developer_ref} onChange={e => setF({ ...f, developer_ref: e.target.value })}>
+                  <option value="">Link Developer (optional)…</option>
+                  {(developersQ.data?.rows ?? []).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </CustomSelect>
+                <CustomSelect className="select" value={f.community_ref} onChange={e => setF({ ...f, community_ref: e.target.value })}>
+                  <option value="">Link Community (optional)…</option>
+                  {(communitiesQ.data?.rows ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.name} ({c.emirate})</option>)}
+                </CustomSelect>
                 <CustomSelect className="select" value={f.property_type} onChange={e => setF({ ...f, property_type: e.target.value })}>
                   {['Apartment', 'Villa', 'Townhouse', 'Penthouse', 'Studio', 'Duplex', 'Office'].map(t => <option key={t} value={t}>{t}</option>)}
                 </CustomSelect>
@@ -343,7 +365,9 @@ export function ShabibCatalogStudioTab() {
             <input className="input" placeholder="Cover Photo URL (/media/... or https://...)" value={f.cover_image_url} onChange={e => setF({ ...f, cover_image_url: e.target.value })} />
             <input className="input" placeholder="Video Tour URL (YouTube/Vimeo/MP4)" value={f.video_url} onChange={e => setF({ ...f, video_url: e.target.value })} />
             <input className="input" placeholder="3D / 360° Virtual Tour URL (Matterport/Kuula)" value={f.virtual_tour_url} onChange={e => setF({ ...f, virtual_tour_url: e.target.value })} />
-            <input className="input" placeholder="Official Floor Plan / Brochure PDF URL" value={f.brochure_url} onChange={e => setF({ ...f, brochure_url: e.target.value })} />
+            <input className="input" placeholder="Floor Plan URL (PDF / Image)" value={f.floor_plan_url} onChange={e => setF({ ...f, floor_plan_url: e.target.value })} />
+            <input className="input" placeholder="Custom Brochure PDF URL (optional)" value={f.brochure_url} onChange={e => setF({ ...f, brochure_url: e.target.value })} />
+            <input className="input" placeholder="Custom PPTX Deck URL (optional)" value={f.ppt_url} onChange={e => setF({ ...f, ppt_url: e.target.value })} />
           </div>
 
           <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
@@ -443,11 +467,32 @@ export function ShabibCatalogStudioTab() {
 
           <input className="input text-xs" placeholder="Brochure Header Tagline" value={theme.headerTagline} onChange={e => setTheme({ ...theme, headerTagline: e.target.value })} />
           <input className="input text-xs" placeholder="Optional Custom Footer Note (no personal names)" value={theme.footerNote} onChange={e => setTheme({ ...theme, footerNote: e.target.value })} />
+          <div className="flex flex-wrap gap-3 text-xs font-semibold text-ink">
+            <label className="flex items-center gap-1.5">
+              <input type="checkbox" checked={theme.showPaymentPlan} onChange={e => setTheme({ ...theme, showPaymentPlan: e.target.checked })} /> Include Payment Plan Section
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input type="checkbox" checked={theme.showAmenities} onChange={e => setTheme({ ...theme, showAmenities: e.target.checked })} /> Include Amenities Section
+            </label>
+          </div>
 
           {/* Target Record for Applying/Previewing Existing Record Theme */}
           <div className="border-t border-line pt-3 space-y-2">
             <label className="text-[11px] font-bold uppercase text-muted">Apply / Preview on Existing {entity.slice(0, -1)}</label>
-            <CustomSelect className="select" value={selectedRecordId} onChange={e => setSelectedRecordId(e.target.value)}>
+            <CustomSelect
+              className="select"
+              value={selectedRecordId}
+              onChange={e => {
+                const nextId = e.target.value
+                setSelectedRecordId(nextId)
+                const rec = records.find((r: any) => String(r.id) === nextId)
+                if (rec?.brochure_theme_json && typeof rec.brochure_theme_json === 'object') {
+                  setTheme(prev => ({ ...prev, ...rec.brochure_theme_json }))
+                } else if (defaultThemeQ.data?.theme) {
+                  setTheme(defaultThemeQ.data.theme)
+                }
+              }}
+            >
               <option value="">Select {entity.slice(0, -1)} ({records.length})…</option>
               {records.map((r: any) => (
                 <option key={r.id} value={r.id}>{r.title || r.name || `Unit ${r.unit_no}`} (#{r.id})</option>

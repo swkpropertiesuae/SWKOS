@@ -15,7 +15,29 @@ import { get, post } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { postForDownload } from '../../lib/utilities'
 import { safeHtml } from '../../studio/safe-html'
+import {
+  SWK_COMPANY_ADDRESS,
+  SWK_COMPANY_EMAIL,
+  SWK_COMPANY_NAME,
+  SWK_COMPANY_PHONE,
+  SWK_OFFICIAL_WEBSITES_TEXT,
+  SWK_RERA_ORN,
+  SWK_TRADE_LICENSE,
+} from '@shared/corporate-footer'
 import { CustomSelect } from '../CustomSelect'
+
+function applyCompanyDefaults(html: string): string {
+  const today = new Date().toISOString().slice(0, 10)
+  return String(html || '')
+    .replace(/\{\{\s*company_name\s*\}\}/gi, SWK_COMPANY_NAME)
+    .replace(/\{\{\s*company_address\s*\}\}/gi, SWK_COMPANY_ADDRESS)
+    .replace(/\{\{\s*company_phone\s*\}\}/gi, SWK_COMPANY_PHONE)
+    .replace(/\{\{\s*company_email\s*\}\}/gi, SWK_COMPANY_EMAIL)
+    .replace(/\{\{\s*company_website\s*\}\}/gi, SWK_OFFICIAL_WEBSITES_TEXT)
+    .replace(/\{\{\s*rera_orn\s*\}\}/gi, SWK_RERA_ORN)
+    .replace(/\{\{\s*trade_license\s*\}\}/gi, SWK_TRADE_LICENSE)
+    .replace(/\{\{\s*today\s*\}\}/gi, today)
+}
 
 function extractPlaceholders(html: string): string[] {
   const seen = new Set<string>()
@@ -66,11 +88,12 @@ export function ShabibLegalFormsTab() {
         const full = await get<any>(`/api/e/doc_templates/${tid}`)
         html = full.content || ''
       }
+      const cleanedHtml = applyCompanyDefaults(html)
       setSourceTemplateId(tid ?? null)
       setTitle(tpl.title)
-      setRawTemplateHtml(html)
-      setManualHtml(html)
-      const placeholders = extractPlaceholders(html)
+      setRawTemplateHtml(cleanedHtml)
+      setManualHtml(cleanedHtml)
+      const placeholders = extractPlaceholders(cleanedHtml)
       const init: Record<string, string> = {}
       const today = new Date().toISOString().slice(0, 10)
       for (const p of placeholders) {
@@ -105,6 +128,14 @@ export function ShabibLegalFormsTab() {
   const switchToEditMode = () => {
     setManualHtml(mergedHtml)
     setMode('edit')
+  }
+
+  const switchToFormMode = () => {
+    // Preserve any manual edits made in Edit Template mode as the new fillable base
+    if (mode === 'edit' && manualHtml.trim()) {
+      setRawTemplateHtml(manualHtml)
+    }
+    setMode('form')
   }
 
   const doExport = async (kind: 'docx' | 'jpeg' | 'pdf') => {
@@ -224,7 +255,7 @@ export function ShabibLegalFormsTab() {
             <div className="flex gap-1.5">
               <button
                 type="button"
-                onClick={() => setMode('form')}
+                onClick={switchToFormMode}
                 className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer ${mode === 'form' ? 'bg-[#121212] text-[#51fec0] border-[#121212]' : 'bg-white text-ink border-line'}`}
               >
                 <Sparkles size={12} className="inline mr-1" /> Fillable Form ({placeholders.length})

@@ -54,7 +54,7 @@ export function resolveEffectiveBrochureTheme(
     : recTheme
 }
 
-/** Sanitize arbitrary UTF-8 strings for pdf-lib StandardFonts (WinAnsi encoding) so non-WinAnsi glyphs never throw. */
+/** Sanitize arbitrary UTF-8 strings for pdf-lib StandardFonts (WinAnsi encoding) so non-WinAnsi glyphs or control chars never throw. */
 export function toPdfSafeText(input: unknown): string {
   return String(input ?? '')
     .replace(/[\u2018\u2019]/g, "'")
@@ -67,8 +67,9 @@ export function toPdfSafeText(input: unknown): string {
     .replace(/\u2192/g, '->')
     .replace(/\u2265/g, '>=')
     .replace(/\u2264/g, '<=')
-    .replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, ' ')
-    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ')
+    .replace(/ {2,}/g, ' ')
     .trim()
 }
 
@@ -240,7 +241,10 @@ function resolveEnrichedContext(entity: CatalogKitEntity, rec: Record<string, an
     const parentCtx = parentRaw
       ? resolveEnrichedContext('properties', { ...parentRaw, price: fromCents(parentRaw.price), rent_annual: fromCents(parentRaw.rent_annual) })
       : null
-    const unitPrice = Number(rec.sale_price || 0) || parentCtx?.price || 0
+    const unitSale = Number(rec.sale_price || 0)
+    const unitRent = Number(rec.rent_annual || 0)
+    const isRentalOnly = unitSale <= 0 && unitRent > 0
+    const unitPrice = unitSale > 0 ? unitSale : (isRentalOnly ? unitRent : (parentCtx?.price || 0))
     const emirate = parentCtx?.emirate || 'Dubai'
     const media = normalizeMediaList(rec.media)
     const unitImgs = media.filter(m => m.kind === 'photo').map(m => m.url)
@@ -249,7 +253,7 @@ function resolveEnrichedContext(entity: CatalogKitEntity, rec: Record<string, an
       : `Unit ${rec.unit_no || rec.id}`
     const payment = buildPaymentMilestones({
       price: unitPrice,
-      is_off_plan: parentCtx?.isOffPlan ?? false,
+      is_off_plan: isRentalOnly ? false : (parentCtx?.isOffPlan ?? false),
       payment_plan: parentRaw?.payment_plan,
       payment_plan_summary: parentRaw?.payment_plan_summary,
       handover_quarter: parentRaw?.handover_quarter,
@@ -263,7 +267,7 @@ function resolveEnrichedContext(entity: CatalogKitEntity, rec: Record<string, an
       communityName: parentCtx?.communityName || emirate,
       emirate,
       price: unitPrice,
-      priceLabel: aed(unitPrice),
+      priceLabel: isRentalOnly ? `${aed(unitRent)} / yr` : aed(unitPrice),
       isOffPlan: parentCtx?.isOffPlan ?? false,
       handover: parentCtx?.handover || 'Ready',
       yieldPct: parentCtx?.yieldPct || 6.8,
@@ -482,6 +486,21 @@ export async function buildCatalogBrochurePdf(
 ): Promise<Buffer> {
   const ctx = resolveEnrichedContext(entity, rec)
   const theme = resolveEffectiveBrochureTheme(rec, themeOverride)
+  assertZeroShabibPublicPayload(
+    {
+      title: ctx.title,
+      subtitle: ctx.subtitle,
+      description: ctx.description,
+      promoHeadline: ctx.promoHeadline,
+      promoBadge: ctx.promoBadge,
+      promoBenefits: ctx.promoBenefits,
+      amenities: ctx.amenities,
+      features: ctx.features,
+      relatedProjects: ctx.relatedProjects.map(rp => rp.title),
+      theme,
+    },
+    `Brochure PDF (${ctx.title})`,
+  )
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
@@ -576,15 +595,19 @@ export async function buildCatalogBrochurePdf(
     cy -= 14.5
   }
 
-  cy -= 14
-  p2.drawText('SIGNATURE AMENITIES & LIFESTYLE', { x: 36, y: cy, size: 11, font: bold, color: forest })
-  cy -= 18
-  ctx.amenities.slice(0, 10).forEach((am, idx) => {
-    const col = idx % 2
-    const row = Math.floor(idx / 2)
-    p2.drawText(toPdfSafeText(`* ${am}`).slice(0, 44), { x: 36 + col * 265, y: cy - row * 16, size: 9.5, font, color: ink })
-  })
-  cy -= Math.ceil(Math.min(10, ctx.amenities.length) / 2) * 16 + 18
+  if (theme.showAmenities && ctx.amenities.length > 0) {
+    cy -= 14
+    p2.drawText('SIGNATURE AMENITIES & LIFESTYLE', { x: 36, y: cy, size: 11, font: bold, color: forest })
+    cy -= 18
+    ctx.amenities.slice(0, 10).forEach((am, idx) => {
+      const col = idx % 2
+      const row = Math.floor(idx / 2)
+      p2.drawText(toPdfSafeText(`* ${am}`).slice(0, 44), { x: 36 + col * 265, y: cy - row * 16, size: 9.5, font, color: ink })
+    })
+    cy -= Math.ceil(Math.min(10, ctx.amenities.length) / 2) * 16 + 18
+  } else {
+    cy -= 14
+  }
 
   p2.drawText('KEY SPECIFICATIONS & CONNECTIVITY', { x: 36, y: cy, size: 11, font: bold, color: forest })
   cy -= 18
@@ -668,6 +691,16 @@ export async function buildPaymentPlanPdf(
 ): Promise<Buffer> {
   const ctx = resolveEnrichedContext(entity, rec)
   const theme = resolveEffectiveBrochureTheme(rec, themeOverride)
+  assertZeroShabibPublicPayload(
+    {
+      title: ctx.title,
+      subtitle: ctx.subtitle,
+      unitMix: ctx.unitMix,
+      planLabel: ctx.payment.planLabel,
+      theme,
+    },
+    `Payment Plan PDF (${ctx.title})`,
+  )
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
@@ -771,12 +804,12 @@ export function buildCatalogDeckPptx(
 ): Buffer {
   const ctx = resolveEnrichedContext(entity, rec)
   const theme = resolveEffectiveBrochureTheme(rec, themeOverride)
-  const footer = `${SWK_COMPANY_NAME} · RERA ORN ${SWK_RERA_ORN} · ${SWK_COMPANY_PHONE} · ${SWK_OFFICIAL_WEBSITES_TEXT}`
+  const footer = `${theme.footerNote ? `${theme.footerNote} · ` : ''}${SWK_COMPANY_NAME} · RERA ORN ${SWK_RERA_ORN} · ${SWK_COMPANY_PHONE} · ${SWK_OFFICIAL_WEBSITES_TEXT}`
 
   const slides: PptxSlideSpec[] = [
     {
       dark: true,
-      eyebrow: `SWK PROPERTIES EXCLUSIVE · ${ctx.emirate.toUpperCase()} REAL ESTATE`,
+      eyebrow: `${theme.headerTagline.toUpperCase()} · ${ctx.emirate.toUpperCase()} REAL ESTATE`,
       title: ctx.title,
       subtitle: ctx.subtitle,
       metrics: [
@@ -798,30 +831,38 @@ export function buildCatalogDeckPptx(
       ],
       footer,
     },
-    {
-      eyebrow: '02 · PAYMENT PLAN & FINANCIAL STRUCTURE',
-      title: `${ctx.emirate} Investment & Fee Breakdown`,
-      subtitle: ctx.payment.planLabel,
-      metrics: [
-        { label: 'Purchase Guide', value: ctx.priceLabel },
-        { label: `${ctx.emirate === 'Abu Dhabi' ? 'ADM' : 'DLD'} Fee`, value: `${ctx.fees.registrationFeePct}% (${aed(ctx.fees.registrationFeeAed)})` },
-        { label: 'Est. Gross Yield', value: `~${ctx.yieldPct}% p.a.` },
-        { label: 'Golden Visa', value: ctx.fees.goldenVisaEligible ? '10-Yr Eligible' : 'AED 2M+ Rule' },
-      ],
-      bullets: ctx.payment.rows.length
-        ? ctx.payment.rows.map(r => `${r.stage} (${r.timing}): ${r.pct}% — ${aed(r.amountAed)}`)
-        : ctx.relatedProjects.slice(0, 6).map(rp => `${rp.title} — ${rp.handover_quarter || 'Ready'}`),
-      footer,
-    },
-    {
-      eyebrow: '03 · LIFESTYLE, AMENITIES & CONNECTIVITY',
-      title: 'Curated Amenities & Community Advantage',
-      columns: [
-        { heading: 'Signature Amenities', items: ctx.amenities.slice(0, 8) },
-        { heading: 'Key Highlights & Access', items: (ctx.features.length ? ctx.features : ctx.promoBenefits).slice(0, 8) },
-      ],
-      footer,
-    },
+    ...(theme.showPaymentPlan
+      ? [
+          {
+            eyebrow: '02 · PAYMENT PLAN & FINANCIAL STRUCTURE',
+            title: `${ctx.emirate} Investment & Fee Breakdown`,
+            subtitle: ctx.payment.planLabel,
+            metrics: [
+              { label: 'Purchase Guide', value: ctx.priceLabel },
+              { label: `${ctx.emirate === 'Abu Dhabi' ? 'ADM' : 'DLD'} Fee`, value: `${ctx.fees.registrationFeePct}% (${aed(ctx.fees.registrationFeeAed)})` },
+              { label: 'Est. Gross Yield', value: `~${ctx.yieldPct}% p.a.` },
+              { label: 'Golden Visa', value: ctx.fees.goldenVisaEligible ? '10-Yr Eligible' : 'AED 2M+ Rule' },
+            ],
+            bullets: ctx.payment.rows.length
+              ? ctx.payment.rows.map(r => `${r.stage} (${r.timing}): ${r.pct}% — ${aed(r.amountAed)}`)
+              : ctx.relatedProjects.slice(0, 6).map(rp => `${rp.title} — ${rp.handover_quarter || 'Ready'}`),
+            footer,
+          },
+        ]
+      : []),
+    ...(theme.showAmenities
+      ? [
+          {
+            eyebrow: '03 · LIFESTYLE, AMENITIES & CONNECTIVITY',
+            title: 'Curated Amenities & Community Advantage',
+            columns: [
+              { heading: 'Signature Amenities', items: ctx.amenities.slice(0, 8) },
+              { heading: 'Key Highlights & Access', items: (ctx.features.length ? ctx.features : ctx.promoBenefits).slice(0, 8) },
+            ],
+            footer,
+          },
+        ]
+      : []),
     {
       eyebrow: '04 · OFF-PLAN LAUNCH & PROMOTION',
       title: ctx.promoBadge || 'Direct Developer Priority Allocation',

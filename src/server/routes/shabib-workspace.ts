@@ -11,8 +11,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { dirs } from '../config'
-import { q, tableExists } from '../db'
-import { createRecord, getDef, SYSTEM_CTX } from '../engine'
+import { q, tableExists, tx } from '../db'
+import { createRecord, getDef, nextSeq, SYSTEM_CTX } from '../engine'
 import { openStored, persistUpload } from '../integrations/storage'
 import { notify } from '../notify'
 import { bad, forbidden, fromCents, notFound, nowIso, safeJson, todayStr } from '../util'
@@ -82,13 +82,43 @@ function requireStaff(req: FastifyRequest) {
 
 function nextCode(table: string, col: string, prefix: string): string {
   const yr = String(new Date().getFullYear()).slice(-2)
-  const count = (q.val<number>(`SELECT COUNT(*) FROM "${table}"`) ?? 0) + 1
-  for (let i = 0; i < 20; i++) {
-    const cand = `${prefix}-${yr}${String(count + i).padStart(5, '0')}`
-    const exists = q.val<number>(`SELECT 1 FROM "${table}" WHERE "${col}" = ?`, cand)
-    if (!exists) return cand
+  return tx(() => {
+    for (let i = 0; i < 20; i++) {
+      const seq = nextSeq(`shabib:${table}:${prefix}:${yr}`)
+      const cand = `${prefix}-${yr}${String(seq).padStart(5, '0')}`
+      const exists = q.val<number>(`SELECT 1 FROM "${table}" WHERE "${col}" = ?`, cand)
+      if (!exists) return cand
+    }
+    return `${prefix}-${yr}${Date.now().toString().slice(-6)}`
+  })
+}
+
+const VALID_REPORT_TYPES = new Set(['Site Visit', 'Viewing'])
+const VALID_REPORT_OUTCOMES = new Set(['Closed', 'Not Closed', 'Follow-Up Pending'])
+const VALID_COMM_TYPES = new Set(['Commission', 'Expense', 'Advance', '3rd-Party Split'])
+const VALID_COMM_STATUSES = new Set(['Pending', 'Received', 'Paid'])
+
+function numOrKeep(incoming: unknown, fallback: number, label: string, positiveOnly = false): number {
+  if (incoming === undefined || incoming === null || incoming === '') return fallback
+  const n = Number(incoming)
+  if (!Number.isFinite(n) || (positiveOnly && n <= 0) || (!positiveOnly && n < 0)) {
+    throw bad(`Invalid numeric value for ${label}`)
   }
-  return `${prefix}-${yr}${Date.now().toString().slice(-6)}`
+  return n
+}
+
+function pickStr(incoming: unknown, prefill: unknown): string | null {
+  const s = typeof incoming === 'string' ? incoming.trim() : incoming !== undefined && incoming !== null ? String(incoming).trim() : ''
+  if (s) return s
+  const p = typeof prefill === 'string' ? prefill.trim() : prefill !== undefined && prefill !== null ? String(prefill).trim() : ''
+  return p || null
+}
+
+function pickPosNum(incoming: unknown, prefill: unknown): number {
+  const n = Number(incoming)
+  if (Number.isFinite(n) && n > 0) return n
+  const p = Number(prefill)
+  return Number.isFinite(p) && p > 0 ? p : 0
 }
 
 const aed = (n: unknown) => {
@@ -312,7 +342,7 @@ export default async function (app: FastifyInstance) {
     const verifiers = getFieldVerifiers()
     const verifierSet = new Set(verifiers.map(v => Number(v.user_id)))
 
-    const users = q.all<any>(
+    const rawUsers = q.all<any>(
       `SELECT u.id, u.name, u.email, u.active, r.name AS role_name,
               e.id AS employee_id, e.emp_no, e.designation, e.phone, e.status AS emp_status,
               d.name AS department_name
@@ -321,8 +351,15 @@ export default async function (app: FastifyInstance) {
        LEFT JOIN employees e ON (e.user_id = u.id OR lower(e.email) = lower(u.email)) AND e.deleted_at IS NULL
        LEFT JOIN departments d ON d.id = e.department_id
        WHERE u.deleted_at IS NULL AND u.party_id IS NULL AND COALESCE(u.active, 1) = 1
-       ORDER BY u.id ASC`,
+       ORDER BY u.id ASC, CASE WHEN e.user_id = u.id THEN 0 ELSE 1 END, e.id ASC`,
     )
+    const seenUserIds = new Set<number>()
+    const users = rawUsers.filter(u => {
+      const uid = Number(u.id)
+      if (seenUserIds.has(uid)) return false
+      seenUserIds.add(uid)
+      return true
+    })
 
     const allTasks = tableExists('tasks')
       ? q.all<any>(
@@ -387,7 +424,7 @@ export default async function (app: FastifyInstance) {
       }
     })
 
-    const teamTodo = allTasks.filter(t => !t.assignee_id || t.status !== 'Done').slice(0, 120)
+    const teamTodo = allTasks.filter(t => t.status !== 'Done' && t.status !== 'Cancelled').slice(0, 120)
     const teamDoneToday = allTasks.filter(
       t => t.status === 'Done' && String(t.completed_at || t.updated_at || '').startsWith(date),
     )
@@ -697,6 +734,10 @@ export default async function (app: FastifyInstance) {
       throw forbidden('Only Owner, Verification Authority, or submitter (while pending) may edit this report')
     }
     const b = body<Record<string, any>>(req)
+    const nextReportType = b.report_type !== undefined ? String(b.report_type) : cur.report_type
+    if (!VALID_REPORT_TYPES.has(nextReportType)) throw bad('report_type must be Site Visit or Viewing')
+    const nextOutcome = b.outcome !== undefined ? String(b.outcome) : cur.outcome
+    if (!VALID_REPORT_OUTCOMES.has(nextOutcome)) throw bad('outcome must be Closed, Not Closed, or Follow-Up Pending')
     const ts = nowIso()
     q.run(
       `UPDATE forensic_field_reports SET
@@ -709,14 +750,14 @@ export default async function (app: FastifyInstance) {
         outcome = ?, not_closed_reason = ?, next_action_date = ?,
         payment_summary_json = ?, stage_log_json = ?, forensic_notes = ?, updated_at = ?
        WHERE id = ?`,
-      b.report_type ?? cur.report_type,
+      nextReportType,
       b.visit_date ?? cur.visit_date,
       b.community ?? cur.community,
       b.building_or_project ?? cur.building_or_project,
       b.unit_no ?? cur.unit_no,
       b.gps_lat !== undefined ? (b.gps_lat === '' ? null : String(b.gps_lat)) : cur.gps_lat,
       b.gps_lng !== undefined ? (b.gps_lng === '' ? null : String(b.gps_lng)) : cur.gps_lng,
-      b.gps_accuracy_m !== undefined ? Number(b.gps_accuracy_m) : cur.gps_accuracy_m,
+      b.gps_accuracy_m !== undefined ? numOrKeep(b.gps_accuracy_m, Number(cur.gps_accuracy_m || 0), 'gps_accuracy_m') : cur.gps_accuracy_m,
       b.gps_address_label ?? cur.gps_address_label,
       b.met_person_name ?? cur.met_person_name,
       b.met_person_role ?? cur.met_person_role,
@@ -732,11 +773,11 @@ export default async function (app: FastifyInstance) {
       b.third_party_phone ?? cur.third_party_phone,
       b.third_party_email ?? cur.third_party_email,
       b.deal_category ?? cur.deal_category,
-      b.asking_price_aed !== undefined ? Number(b.asking_price_aed) : cur.asking_price_aed,
-      b.final_price_aed !== undefined ? Number(b.final_price_aed) : cur.final_price_aed,
-      b.yearly_rent_aed !== undefined ? Number(b.yearly_rent_aed) : cur.yearly_rent_aed,
-      b.cheques_count !== undefined ? Number(b.cheques_count) : cur.cheques_count,
-      b.outcome ?? cur.outcome,
+      numOrKeep(b.asking_price_aed, Number(cur.asking_price_aed || 0), 'asking_price_aed'),
+      numOrKeep(b.final_price_aed, Number(cur.final_price_aed || 0), 'final_price_aed'),
+      numOrKeep(b.yearly_rent_aed, Number(cur.yearly_rent_aed || 0), 'yearly_rent_aed'),
+      Math.trunc(numOrKeep(b.cheques_count, Number(cur.cheques_count || 0), 'cheques_count')),
+      nextOutcome,
       b.not_closed_reason ?? cur.not_closed_reason,
       b.next_action_date ?? cur.next_action_date,
       b.payment_summary !== undefined ? JSON.stringify(b.payment_summary) : cur.payment_summary_json,
@@ -755,8 +796,8 @@ export default async function (app: FastifyInstance) {
     const cur = q.get<any>(`SELECT * FROM forensic_field_reports WHERE id = ? AND deleted_at IS NULL`, id)
     if (!cur) throw notFound('Forensic field report not found')
     const isAuth = isFieldVerificationAuthority(user)
-    if (!isAuth && Number(cur.submitted_by_user_id) !== Number(user.id)) {
-      throw forbidden('Not authorized to upload photos to this report')
+    if (!isAuth && (Number(cur.submitted_by_user_id) !== Number(user.id) || cur.verification_status === 'Verified')) {
+      throw forbidden('Only Owner, Verification Authority, or submitter (while pending) may upload unit photos')
     }
 
     const photos = safeJson<any[]>(cur.photos_json, []) ?? []
@@ -802,13 +843,14 @@ export default async function (app: FastifyInstance) {
     const user = requireStaff(req)
     const id = idOf((req.params as any).id)
     const idx = Number((req.params as any).idx)
+    if (!Number.isInteger(idx) || idx < 0) throw notFound('Photo not found')
     const cur = q.get<any>(`SELECT * FROM forensic_field_reports WHERE id = ? AND deleted_at IS NULL`, id)
     if (!cur) throw notFound('Report not found')
     if (!isFieldVerificationAuthority(user) && Number(cur.submitted_by_user_id) !== Number(user.id)) {
       throw forbidden('Not authorized to view this photo')
     }
-    const photos = safeJson<any[]>(cur.photos_json, []) ?? []
-    const item = photos[idx]
+    const photos = safeJson<any[]>(cur.photos_json, [])
+    const item = Array.isArray(photos) ? photos[idx] : undefined
     if (!item?.stored_name) throw notFound('Photo not found')
     const stream = await openStored(String(item.stored_name))
     if (!stream) throw notFound('Photo binary not found')
@@ -939,10 +981,11 @@ export default async function (app: FastifyInstance) {
     if (b.job_id) {
       const j = q.get<any>(
         `SELECT j.*, p.name AS client_name, p.phone AS client_phone, p.email AS client_email,
-                pr.title AS prop_title, pr.community_id AS comm, a.name AS agent_name
+                pr.title AS prop_title, COALESCE(c.name, pr.community_id) AS comm, a.name AS agent_name
          FROM jobs j
          LEFT JOIN parties p ON p.id = j.client_id
          LEFT JOIN properties pr ON pr.id = j.property_id
+         LEFT JOIN communities c ON c.id = pr.community_ref
          LEFT JOIN agents a ON a.id = j.agent_id
          WHERE j.id = ? AND j.deleted_at IS NULL`,
         Number(b.job_id),
@@ -1022,27 +1065,27 @@ export default async function (app: FastifyInstance) {
       b.lease_id ? Number(b.lease_id) : null,
       b.handover_id ? Number(b.handover_id) : null,
       b.agent_id ? Number(b.agent_id) : (pre.agent_id ?? null),
-      b.agent_name ?? pre.agent_name ?? null,
-      b.community ?? pre.community ?? null,
-      b.building_or_project ?? pre.building_or_project ?? null,
-      b.unit_no ?? null,
-      clientName, b.client_phone ?? pre.client_phone ?? null, b.client_email ?? pre.client_email ?? null, b.client_passport_eid ?? null,
-      b.counterparty_name ?? pre.counterparty_name ?? null, b.counterparty_phone ?? pre.counterparty_phone ?? null, b.counterparty_email ?? pre.counterparty_email ?? null,
-      b.is_third_party ? 1 : 0, b.third_party_agency ?? null, b.third_party_agent ?? null, b.third_party_brn ?? null, b.third_party_phone ?? null, b.third_party_email ?? null,
-      Number(b.asking_price_aed ?? 0) || 0,
-      Number(b.agreed_price_aed ?? pre.agreed_price_aed ?? 0) || 0,
-      Number(b.yearly_rent_aed ?? pre.yearly_rent_aed ?? 0) || 0,
-      Number(b.deposit_aed ?? pre.deposit_aed ?? 0) || 0,
-      Number(b.dld_or_adm_fee_aed ?? 0) || 0,
-      Number(b.agency_commission_aed ?? pre.agency_commission_aed ?? 0) || 0,
-      Number(b.vat_aed ?? 0) || 0,
-      Number(b.total_cheques_count ?? pre.total_cheques_count ?? 0) || 0,
+      pickStr(b.agent_name, pre.agent_name),
+      pickStr(b.community, pre.community),
+      pickStr(b.building_or_project, pre.building_or_project),
+      pickStr(b.unit_no, null),
+      clientName, pickStr(b.client_phone, pre.client_phone), pickStr(b.client_email, pre.client_email), pickStr(b.client_passport_eid, null),
+      pickStr(b.counterparty_name, pre.counterparty_name), pickStr(b.counterparty_phone, pre.counterparty_phone), pickStr(b.counterparty_email, pre.counterparty_email),
+      b.is_third_party ? 1 : 0, pickStr(b.third_party_agency, null), pickStr(b.third_party_agent, null), pickStr(b.third_party_brn, null), pickStr(b.third_party_phone, null), pickStr(b.third_party_email, null),
+      pickPosNum(b.asking_price_aed, 0),
+      pickPosNum(b.agreed_price_aed, pre.agreed_price_aed),
+      pickPosNum(b.yearly_rent_aed, pre.yearly_rent_aed),
+      pickPosNum(b.deposit_aed, pre.deposit_aed),
+      pickPosNum(b.dld_or_adm_fee_aed, 0),
+      pickPosNum(b.agency_commission_aed, pre.agency_commission_aed),
+      pickPosNum(b.vat_aed, 0),
+      Math.trunc(pickPosNum(b.total_cheques_count, pre.total_cheques_count)),
       b.payment_mode || 'Bank Transfer (BT)',
-      b.escrow_or_bank_ref ?? null,
-      b.ejari_or_oqood_or_deed_ref ?? pre.ejari_or_oqood_or_deed_ref ?? null,
-      b.noc_ref ?? null,
-      b.handover_date ?? null,
-      b.keys_and_meters_summary ?? null,
+      pickStr(b.escrow_or_bank_ref, null),
+      pickStr(b.ejari_or_oqood_or_deed_ref, pre.ejari_or_oqood_or_deed_ref),
+      pickStr(b.noc_ref, null),
+      pickStr(b.handover_date, null),
+      pickStr(b.keys_and_meters_summary, null),
       JSON.stringify(stages),
       b.notes ?? null,
       owner.id,
@@ -1060,6 +1103,8 @@ export default async function (app: FastifyInstance) {
     const cur = q.get<any>(`SELECT * FROM closing_forensic_dossiers WHERE id = ? AND deleted_at IS NULL`, id)
     if (!cur) throw notFound('Closing dossier not found')
     const b = body<Record<string, any>>(req)
+    const nextTrack = b.track !== undefined ? String(b.track) : cur.track
+    if (!CLOSING_TRACKS.includes(nextTrack as ClosingTrack)) throw bad('Invalid closing track')
     const ts = nowIso()
     q.run(
       `UPDATE closing_forensic_dossiers SET
@@ -1071,20 +1116,20 @@ export default async function (app: FastifyInstance) {
         total_cheques_count = ?, payment_mode = ?, escrow_or_bank_ref = ?, ejari_or_oqood_or_deed_ref = ?, noc_ref = ?,
         handover_date = ?, keys_and_meters_summary = ?, stages_json = ?, notes = ?, updated_at = ?
        WHERE id = ?`,
-      b.track ?? cur.track, b.title ?? cur.title, b.status ?? cur.status, b.agent_name ?? cur.agent_name,
+      nextTrack, b.title ?? cur.title, b.status ?? cur.status, b.agent_name ?? cur.agent_name,
       b.community ?? cur.community, b.building_or_project ?? cur.building_or_project, b.unit_no ?? cur.unit_no,
       b.client_name ?? cur.client_name, b.client_phone ?? cur.client_phone, b.client_email ?? cur.client_email, b.client_passport_eid ?? cur.client_passport_eid,
       b.counterparty_name ?? cur.counterparty_name, b.counterparty_phone ?? cur.counterparty_phone, b.counterparty_email ?? cur.counterparty_email,
       b.is_third_party !== undefined ? (b.is_third_party ? 1 : 0) : cur.is_third_party,
       b.third_party_agency ?? cur.third_party_agency, b.third_party_agent ?? cur.third_party_agent, b.third_party_brn ?? cur.third_party_brn, b.third_party_phone ?? cur.third_party_phone, b.third_party_email ?? cur.third_party_email,
-      b.asking_price_aed !== undefined ? Number(b.asking_price_aed) : cur.asking_price_aed,
-      b.agreed_price_aed !== undefined ? Number(b.agreed_price_aed) : cur.agreed_price_aed,
-      b.yearly_rent_aed !== undefined ? Number(b.yearly_rent_aed) : cur.yearly_rent_aed,
-      b.deposit_aed !== undefined ? Number(b.deposit_aed) : cur.deposit_aed,
-      b.dld_or_adm_fee_aed !== undefined ? Number(b.dld_or_adm_fee_aed) : cur.dld_or_adm_fee_aed,
-      b.agency_commission_aed !== undefined ? Number(b.agency_commission_aed) : cur.agency_commission_aed,
-      b.vat_aed !== undefined ? Number(b.vat_aed) : cur.vat_aed,
-      b.total_cheques_count !== undefined ? Number(b.total_cheques_count) : cur.total_cheques_count,
+      numOrKeep(b.asking_price_aed, Number(cur.asking_price_aed || 0), 'asking_price_aed'),
+      numOrKeep(b.agreed_price_aed, Number(cur.agreed_price_aed || 0), 'agreed_price_aed'),
+      numOrKeep(b.yearly_rent_aed, Number(cur.yearly_rent_aed || 0), 'yearly_rent_aed'),
+      numOrKeep(b.deposit_aed, Number(cur.deposit_aed || 0), 'deposit_aed'),
+      numOrKeep(b.dld_or_adm_fee_aed, Number(cur.dld_or_adm_fee_aed || 0), 'dld_or_adm_fee_aed'),
+      numOrKeep(b.agency_commission_aed, Number(cur.agency_commission_aed || 0), 'agency_commission_aed'),
+      numOrKeep(b.vat_aed, Number(cur.vat_aed || 0), 'vat_aed'),
+      Math.trunc(numOrKeep(b.total_cheques_count, Number(cur.total_cheques_count || 0), 'total_cheques_count')),
       b.payment_mode ?? cur.payment_mode, b.escrow_or_bank_ref ?? cur.escrow_or_bank_ref, b.ejari_or_oqood_or_deed_ref ?? cur.ejari_or_oqood_or_deed_ref, b.noc_ref ?? cur.noc_ref,
       b.handover_date ?? cur.handover_date, b.keys_and_meters_summary ?? cur.keys_and_meters_summary,
       b.stages !== undefined ? JSON.stringify(b.stages) : cur.stages_json,
@@ -1189,6 +1234,8 @@ export default async function (app: FastifyInstance) {
     let totalPending = 0
     let totalExpenses = 0
     let totalThirdParty = 0
+    let totalThirdPartyPending = 0
+    let totalThirdPartyPaid = 0
 
     for (const e of entries) {
       const amt = Number(e.net_amount_aed || 0)
@@ -1210,15 +1257,15 @@ export default async function (app: FastifyInstance) {
       } else if (e.entry_type === '3rd-Party Split') {
         cur.third_party_total += amt
         totalThirdParty += amt
-        if (e.status === 'Paid') totalPaid += amt
-        else if (e.status === 'Received') totalReceived += amt
-        else totalPending += amt
+        if (e.status === 'Paid') totalThirdPartyPaid += amt
+        else totalThirdPartyPending += amt
       } else {
         if (e.status === 'Received') { cur.commission_received += amt; totalReceived += amt }
         else if (e.status === 'Paid') { cur.commission_paid += amt; totalPaid += amt }
         else { cur.commission_pending += amt; totalPending += amt }
       }
-      cur.net_due_aed = Math.round((cur.commission_received + cur.commission_pending - cur.commission_paid - cur.expenses_total) * 100) / 100
+      // Paid rows are already settled to the agent; unpaid earned balance = (received + pending) - expenses/advances
+      cur.net_due_aed = Math.round((cur.commission_received + cur.commission_pending - cur.expenses_total) * 100) / 100
       byAgent.set(key, cur)
     }
 
@@ -1232,7 +1279,9 @@ export default async function (app: FastifyInstance) {
         pending_aed: Math.round(totalPending * 100) / 100,
         expenses_aed: Math.round(totalExpenses * 100) / 100,
         third_party_aed: Math.round(totalThirdParty * 100) / 100,
-        net_payable_aed: Math.round((totalReceived + totalPending - totalPaid - totalExpenses) * 100) / 100,
+        third_party_pending_aed: Math.round(totalThirdPartyPending * 100) / 100,
+        third_party_paid_aed: Math.round(totalThirdPartyPaid * 100) / 100,
+        net_payable_aed: Math.round((totalReceived + totalPending - totalExpenses) * 100) / 100,
       },
       os_sync_reference: {
         agent_commissions: osCommRows.map(r => ({ status: r.status, agent_share_aed: fromCents(r.agent_share_c), gross_aed: fromCents(r.gross_c) })),
@@ -1290,8 +1339,14 @@ export default async function (app: FastifyInstance) {
     const cur = q.get<any>(`SELECT * FROM shabib_commission_expenses WHERE id = ? AND deleted_at IS NULL`, id)
     if (!cur) throw notFound('Entry not found')
     const b = body<Record<string, any>>(req)
-    const status = b.status ?? cur.status
-    const settled = (status === 'Paid' || status === 'Received') ? (b.settled_date || cur.settled_date || todayStr()) : cur.settled_date
+    const entryType = b.entry_type !== undefined ? String(b.entry_type) : cur.entry_type
+    if (!VALID_COMM_TYPES.has(entryType)) throw bad('entry_type must be Commission, Expense, Advance, or 3rd-Party Split')
+    const status = b.status !== undefined ? String(b.status) : cur.status
+    if (!VALID_COMM_STATUSES.has(status)) throw bad('status must be Pending, Received, or Paid')
+    const netAmt = numOrKeep(b.net_amount_aed, Number(cur.net_amount_aed), 'net_amount_aed', true)
+    const grossAmt = numOrKeep(b.gross_amount_aed, Number(cur.gross_amount_aed || netAmt), 'gross_amount_aed')
+    const splitPct = numOrKeep(b.split_pct, Number(cur.split_pct ?? 50), 'split_pct')
+    const settled = (status === 'Paid' || status === 'Received') ? (b.settled_date || cur.settled_date || todayStr()) : null
     q.run(
       `UPDATE shabib_commission_expenses SET
         entry_type = ?, agent_name = ?, deal_ref = ?, property_label = ?, track = ?,
@@ -1300,10 +1355,10 @@ export default async function (app: FastifyInstance) {
         is_third_party = ?, third_party_agency = ?, third_party_agent_name = ?, third_party_brn = ?, third_party_phone = ?, third_party_email = ?, third_party_payment_details = ?,
         notes = ?, updated_at = ?
        WHERE id = ?`,
-      b.entry_type ?? cur.entry_type, b.agent_name ?? cur.agent_name, b.deal_ref ?? cur.deal_ref, b.property_label ?? cur.property_label, b.track ?? cur.track,
-      b.gross_amount_aed !== undefined ? Number(b.gross_amount_aed) : cur.gross_amount_aed,
-      b.split_pct !== undefined ? Number(b.split_pct) : cur.split_pct,
-      b.net_amount_aed !== undefined ? Number(b.net_amount_aed) : cur.net_amount_aed,
+      entryType, b.agent_name ?? cur.agent_name, b.deal_ref ?? cur.deal_ref, b.property_label ?? cur.property_label, b.track ?? cur.track,
+      grossAmt,
+      splitPct,
+      netAmt,
       status, b.payment_mode ?? cur.payment_mode, b.payment_reference ?? cur.payment_reference,
       b.entry_date ?? cur.entry_date, settled, b.expense_category ?? cur.expense_category,
       b.is_third_party !== undefined ? (b.is_third_party ? 1 : 0) : cur.is_third_party,

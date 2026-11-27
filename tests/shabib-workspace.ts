@@ -183,6 +183,12 @@ try {
   })
   assert.equal(unauthVerif.statusCode, 403, 'Non-assigned staff MUST get 403 on verify')
 
+  // Cross-agent isolation: Fareed (not submitter, not verifier) cannot view Umar's report, photo, or export
+  const fareedList = (await app.inject({ method: 'GET', url: '/api/field-reports', headers: fareedH })).json()
+  assert.ok(!fareedList.rows.some((r: any) => r.id === visit.id), 'Unrelated staff must NOT see other agents field reports')
+  assert.equal((await app.inject({ method: 'GET', url: `/api/field-reports/${visit.id}/photos/0`, headers: fareedH })).statusCode, 403)
+  assert.equal((await app.inject({ method: 'GET', url: `/api/field-reports/${visit.id}/export?format=pdf`, headers: fareedH })).statusCode, 403)
+
   const authVerif = await app.inject({
     method: 'POST',
     url: `/api/field-reports/${visit.id}/verify`,
@@ -192,6 +198,15 @@ try {
   assert.equal(authVerif.statusCode, 200, authVerif.body)
   assert.equal(authVerif.json().verification_status, 'Verified')
   assert.equal(authVerif.json().verified_by_user_id, talhaRow.user_id)
+
+  // Post-verification tamper lock: submitter Umar cannot upload extra photos once Verified
+  const postVerifPhoto = await app.inject({
+    method: 'POST',
+    url: `/api/field-reports/${visit.id}/photos`,
+    headers: { ...umarH, 'content-type': `multipart/form-data; boundary=${bnd}` },
+    payload: mpPhoto,
+  })
+  assert.equal(postVerifPhoto.statusCode, 403, 'Submitter must NOT upload photos to an already Verified field report')
 
   // Export Forensic Report as PDF, DOCX, and JPEG
   for (const [fmt, magic] of [['pdf', '%PDF-'], ['docx', 'PK'], ['jpeg', '\xff\xd8\xff']] as const) {
@@ -304,9 +319,46 @@ try {
   const unitDeck = await app.inject({ method: 'GET', url: `/api/catalog-kit/units/${newUnit.record.id}/deck.pptx`, headers: ownerH })
   assert.equal(unitDeck.statusCode, 200)
   assert.equal(unitDeck.rawPayload.subarray(0, 2).toString('utf8'), 'PK')
+
+  // Verify Zero-Shabib guard rejects query override with personal owner name with HTTP 400
+  const badQueryOverride = await app.inject({
+    method: 'GET',
+    url: `/api/catalog-kit/units/${newUnit.record.id}/brochure.pdf?tagline=Shabib%20Edition`,
+    headers: ownerH,
+  })
+  assert.equal(badQueryOverride.statusCode, 400, 'Query override containing owner name must return HTTP 400')
+
+  // Verify public Share Link for Units exposes payment_plan_pdf_url and serves themed brochure/payment-plan/deck
+  const unitShareRes = await app.inject({
+    method: 'POST',
+    url: '/api/share-links',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { title: 'Unit 1402-A Exclusive Kit', entity: 'units', ids: [newUnit.record.id] },
+  })
+  assert.equal(unitShareRes.statusCode, 200, unitShareRes.body)
+  const shareTok = unitShareRes.json().token
+  const pubShare = await app.inject({ method: 'GET', url: `/api/public/share/${shareTok}` })
+  assert.equal(pubShare.statusCode, 200, pubShare.body)
+  assert.ok(pubShare.json().items?.[0]?.payment_plan_pdf_url?.includes('/payment-plan.pdf'), 'Shared unit must expose payment_plan_pdf_url')
+  const pubUnitPay = await app.inject({ method: 'GET', url: `/api/public/share/${shareTok}/kit/0/payment-plan.pdf` })
+  assert.equal(pubUnitPay.statusCode, 200)
+  assert.equal(pubUnitPay.rawPayload.subarray(0, 5).toString('utf8'), '%PDF-')
+
+  // Verify Shared unassigned task marked Done disappears from team_todo cleanly
+  const sharedTaskRes = await app.inject({
+    method: 'POST',
+    url: '/api/shabib-workspace/tasks',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { title: 'Shared Morning Team Briefing', assigned_to_id: null, priority: 'Medium' },
+  })
+  assert.equal(sharedTaskRes.statusCode, 201)
+  const sharedTaskId = sharedTaskRes.json().id
+  await app.inject({ method: 'PATCH', url: `/api/shabib-workspace/tasks/${sharedTaskId}/toggle`, headers: ownerH })
+  const teamAfterDone = (await app.inject({ method: 'GET', url: '/api/shabib-workspace/team-daily', headers: ownerH })).json()
+  assert.ok(!teamAfterDone.team_todo.some((t: any) => t.id === sharedTaskId), 'Completed shared task must leave team_todo')
   console.log('shabib-workspace [4/7] Unified Community/Developer/Project/Unit creator + Brochure Theme Customizer: OK')
 
-  // 5. LEGAL TEMPLATES (A2A, LOI, TENANCY, EJARI, NOC) + MULTI-PAGE JPEG EXPORT
+  // 5. LEGAL TEMPLATES (A2A, LOI, TENANCY, EJARI, NOC) + MULTI-PAGE STRUCTURED JPEG EXPORT
   const shelfRes = await app.inject({ method: 'GET', url: '/api/shabib-workspace/legal-shelf', headers: ownerH })
   assert.equal(shelfRes.statusCode, 200)
   const featuredCodes = new Set(shelfRes.json().featured.filter((x: any) => x.template_id).map((x: any) => x.code))
@@ -314,14 +366,20 @@ try {
     assert.ok(featuredCodes.has(code), `Missing seeded legal shelf template ${code}`)
   }
 
-  // Export filled agreement as JPEG (Owner with seal/signature allowed; restricted staff with seal blocked!)
+  // Export multi-section HTML contract with tables & >50 lines as JPEG (Owner with seal/signature allowed; restricted staff with seal blocked!)
+  const longContractHtml = [
+    '<h1>Agent-to-Agent (Form I) Co-Brokering Agreement</h1>',
+    '<table><tr><th>Field</th><th>Details</th></tr><tr><td>Brokerage A</td><td>SWK Properties LLC (ORN 42068)</td></tr><tr><td>Brokerage B</td><td>Co-Brokerage Partner LLC</td></tr></table>',
+    '<h2>Terms & Clauses</h2>',
+    ...Array.from({ length: 45 }, (_, i) => `<p>Clause ${i + 1}: All commission splits, RERA Form I obligations, viewing protection periods, and DLD compliance requirements apply strictly across the entire transaction lifecycle.</p>`),
+  ].join('')
   const jpegRes = await app.inject({
     method: 'POST',
     url: '/api/utilities/word/export-jpeg',
     headers: { ...ownerH, 'content-type': 'application/json' },
     payload: {
       title: 'Letter of Intent — Marina Gate 2404',
-      html_content: '<h1>Letter of Intent (LOI)</h1><p>Agreed Final Price: AED 3,250,000 across 4 cheques.</p>',
+      html_content: longContractHtml,
       include_letterhead: true,
       include_seal: true,
       include_signature: true,
@@ -330,6 +388,7 @@ try {
   assert.equal(jpegRes.statusCode, 200, `Word JPEG export failed: ${jpegRes.body}`)
   assert.equal(jpegRes.headers['content-type'], 'image/jpeg')
   assert.equal(jpegRes.rawPayload.subarray(0, 3).toString('latin1'), '\xff\xd8\xff', 'Invalid JPEG header')
+  assert.ok(jpegRes.rawPayload.length > 50_000, `Expected rich multi-page JPEG (>50KB), got ${jpegRes.rawPayload.length}`)
 
   const unauthSealJpeg = await app.inject({
     method: 'POST',
@@ -340,7 +399,7 @@ try {
   assert.equal(unauthSealJpeg.statusCode, 403, 'Non-owner staff MUST NOT export JPEG with unauthorized company seal')
   console.log('shabib-workspace [5/7] Legal forms shelf (A2A/LOI/Tenancy/Ejari/NOC) & JPEG export: OK')
 
-  // 6. PIN-TO-PIN CLOSING FORENSIC DOSSIERS (ALL 5 TRACKS + CHEQUE LEDGER + EXPORTS)
+  // 6. PIN-TO-PIN CLOSING FORENSIC DOSSIERS (ALL 5 TRACKS + CHEQUE LEDGER + MULTILINE NOTES + EXPORTS)
   let firstClosingId = 0
   for (const track of ['Off-Plan', 'Secondary', 'Handover', 'Leasing', 'Property Management'] as const) {
     const cRes = await app.inject({
@@ -356,6 +415,7 @@ try {
         yearly_rent_aed: 185_000,
         agency_commission_aed: 56_000,
         total_cheques_count: 4,
+        notes: 'Line 1: KYC checked\nLine 2:\tNOC cleared & keys scheduled',
       },
     })
     assert.equal(cRes.statusCode, 201, `Closing create failed for ${track}: ${cRes.body}`)
@@ -363,6 +423,39 @@ try {
     assert.ok(d.stages.length >= 8, `Track ${track} must have >= 8 pin-to-pin stages`)
     if (!firstClosingId) firstClosingId = d.id
   }
+
+  // Test 1-click bootstrap from live Job even when UI sends empty strings / 0s
+  const partyId = (await app.inject({
+    method: 'POST',
+    url: '/api/e/parties',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { name: 'Bootstrap Buyer LLC', is_customer: true, phone: '+971509988776', email: 'buyer@example.com' },
+  })).json().id
+  const branchId = q.val<number>(`SELECT id FROM branches WHERE deleted_at IS NULL LIMIT 1`) || 1
+  const jobId = (await app.inject({
+    method: 'POST',
+    url: '/api/e/jobs',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: {
+      deal_name: 'Bootstrap Deal Marina',
+      deal_type: 'Sale',
+      branch_id: branchId,
+      client_id: partyId,
+      property_id: newProj.record.id,
+      deal_value: 3_100_000,
+      commission_pct: 2,
+    },
+  })).json().id
+  const bootRes = await app.inject({
+    method: 'POST',
+    url: '/api/shabib-workspace/closings',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { track: 'Secondary', job_id: jobId, title: '', client_name: '', agreed_price_aed: 0, community: '' },
+  })
+  assert.equal(bootRes.statusCode, 201, `Job bootstrap failed: ${bootRes.body}`)
+  const bootD = bootRes.json()
+  assert.equal(bootD.agreed_price_aed, 3_100_000, 'Bootstrap must preserve live Deal value in AED via fromCents')
+  assert.equal(bootD.community, 'Yas Bay Waterfront Custom', 'Bootstrap must resolve community_ref name')
 
   const chqRes = await app.inject({
     method: 'POST',
@@ -373,14 +466,15 @@ try {
   assert.equal(chqRes.statusCode, 201)
   for (const [fmt, magic] of [['pdf', '%PDF-'], ['docx', 'PK'], ['jpeg', '\xff\xd8\xff']] as const) {
     const exp = await app.inject({ method: 'GET', url: `/api/shabib-workspace/closings/${firstClosingId}/export?format=${fmt}`, headers: ownerH })
-    assert.equal(exp.statusCode, 200)
+    assert.equal(exp.statusCode, 200, `Closing export (${fmt}) failed on multiline notes: ${exp.body}`)
     assert.equal(exp.rawPayload.subarray(0, magic.length).toString('latin1'), magic)
   }
-  console.log('shabib-workspace [6/7] 5-Track Pin-to-Pin Closing Dossiers, Cheque Ledger & exports: OK')
+  console.log('shabib-workspace [6/7] 5-Track Pin-to-Pin Closing Dossiers, Bootstrap, Cheque Ledger & exports: OK')
 
   // 7. AGENT COMMISSIONS & EXPENSES LEDGER (PAID / RECEIVED / PENDING · CASH / BT / BOTIM · 3RD PARTY)
+  let commEntryId = 0
   for (const entry of [
-    { entry_type: 'Commission', agent_name: 'Umar', deal_ref: 'DL-2600001', gross_amount_aed: 100_000, split_pct: 50, net_amount_aed: 50_000, status: 'Received', payment_mode: 'Bank Transfer (BT)', payment_reference: 'BT-8810' },
+    { entry_type: 'Commission', agent_name: 'Umar', deal_ref: 'DL-2600001', gross_amount_aed: 100_000, split_pct: 50, net_amount_aed: 50_000, status: 'Received', payment_mode: 'Bank Transfer (BT)', payment_reference: 'BT-8810', notes: '50/50 split\nVerified by Owner' },
     { entry_type: 'Expense', agent_name: 'Umar', expense_category: 'Client Viewing Fuel & Portal Boost', net_amount_aed: 4_500, status: 'Paid', payment_mode: 'Cash', payment_reference: 'PETTY-12' },
     { entry_type: '3rd-Party Split', agent_name: 'Umar', deal_ref: 'DL-2600001', net_amount_aed: 25_000, status: 'Pending', payment_mode: 'Botim', payment_reference: 'BOTIM-97155', is_third_party: true, third_party_agency: 'Marina Star Brokerage', third_party_agent_name: 'Sami R.', third_party_phone: '+971551234567' },
   ]) {
@@ -391,14 +485,38 @@ try {
       payload: entry,
     })
     assert.equal(r.statusCode, 201, r.body)
+    if (entry.entry_type === 'Commission') commEntryId = r.json().id
   }
 
   const ceList = (await app.inject({ method: 'GET', url: '/api/shabib-workspace/commissions-expenses', headers: ownerH })).json()
   assert.equal(ceList.totals.received_aed, 50_000)
   assert.equal(ceList.totals.expenses_aed, 4_500)
   assert.equal(ceList.totals.third_party_aed, 25_000)
+  assert.equal(ceList.totals.third_party_pending_aed, 25_000)
   const umarSum = ceList.agent_summary.find((a: any) => a.agent_name === 'Umar')
-  assert.ok(umarSum && umarSum.net_due_aed === 45_500, `Expected Umar net balance 45500, got ${umarSum?.net_due_aed}`)
+  assert.equal(umarSum?.net_due_aed, 45_500, `Expected Umar net balance 45500, got ${umarSum?.net_due_aed}`)
+  assert.equal(ceList.totals.net_payable_aed, 45_500, `totals.net_payable_aed must equal sum of internal agent net balances (45500), got ${ceList.totals.net_payable_aed}`)
+
+  // Verify invalid numeric update returns HTTP 400 (never 500)
+  const badPut = await app.inject({
+    method: 'PUT',
+    url: `/api/shabib-workspace/commissions-expenses/${commEntryId}`,
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { net_amount_aed: 'not-a-number' },
+  })
+  assert.equal(badPut.statusCode, 400, 'Invalid net_amount_aed must return HTTP 400')
+
+  // Verify Received -> Paid settles commission cleanly without double-subtracting (-4500 net, NOT -54500!)
+  const markPaid = await app.inject({
+    method: 'PUT',
+    url: `/api/shabib-workspace/commissions-expenses/${commEntryId}`,
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { status: 'Paid' },
+  })
+  assert.equal(markPaid.statusCode, 200)
+  const ceAfterPaid = (await app.inject({ method: 'GET', url: '/api/shabib-workspace/commissions-expenses', headers: ownerH })).json()
+  assert.equal(ceAfterPaid.totals.paid_aed, 50_000)
+  assert.equal(ceAfterPaid.totals.net_payable_aed, -4_500, 'Settling AED 50,000 commission must NOT double-subtract paid amount')
 
   for (const [fmt, magic] of [['pdf', '%PDF-'], ['docx', 'PK'], ['jpeg', '\xff\xd8\xff']] as const) {
     const exp = await app.inject({ method: 'GET', url: `/api/shabib-workspace/commissions-expenses/export?format=${fmt}`, headers: ownerH })

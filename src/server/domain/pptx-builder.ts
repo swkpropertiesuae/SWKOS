@@ -82,6 +82,17 @@ export interface PptxThemePalette {
   ink?: string
 }
 
+function mixHex(baseHex: string, targetHex: string, ratio: number): string {
+  const parse = (h: string) => {
+    const clean = h.replace(/^#/, '')
+    return [parseInt(clean.slice(0, 2), 16) || 0, parseInt(clean.slice(2, 4), 16) || 0, parseInt(clean.slice(4, 6), 16) || 0]
+  }
+  const [r1, g1, b1] = parse(baseHex)
+  const [r2, g2, b2] = parse(targetHex)
+  const mix = (a: number, b: number) => Math.max(0, Math.min(255, Math.round(a + (b - a) * ratio)))
+  return [mix(r1, r2), mix(g1, g2), mix(b1, b2)].map(n => n.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
 // 16:9 widescreen slide canvas: 12192000 x 6858000 EMU (13.333 in x 7.5 in)
 function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?: PptxThemePalette): string {
   const primary = pal?.primary || '0E3A2F'
@@ -91,9 +102,15 @@ function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?:
   const dark = Boolean(slide.dark)
   const bgColor = dark ? primary : surface
   const titleColor = dark ? 'FFFFFF' : primary
-  const subColor = dark ? 'E2D5B5' : '4A5A54'
+  const subColor = dark ? mixHex(accent, 'FFFFFF', 0.45) : mixHex(ink, 'FFFFFF', 0.25)
   const bodyColor = dark ? 'F0EFEA' : ink
   const gold = accent
+  const darkCardFill = mixHex(primary, 'FFFFFF', 0.08)
+  const darkPanelFill = mixHex(primary, 'FFFFFF', 0.05)
+  const darkBorder = mixHex(primary, 'FFFFFF', 0.22)
+  const lightBorder = mixHex(surface, ink, 0.14)
+  const darkHeading = mixHex(accent, 'FFFFFF', 0.4)
+  const footerRule = dark ? accent : mixHex(surface, ink, 0.18)
 
   const shapes: string[] = []
   let sid = 2
@@ -138,11 +155,11 @@ function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?:
           y: cursorY,
           cx: cardW,
           cy: 1080000,
-          fill: dark ? '164A3D' : 'FFFFFF',
-          border: dark ? 'C8A253' : 'DDD4C2',
+          fill: dark ? darkCardFill : 'FFFFFF',
+          border: dark ? accent : lightBorder,
           paragraphs: [
             { text: m.label.toUpperCase(), sizePt: 9.5, bold: true, color: gold, spaceAfterPt: 6 },
-            { text: m.value, sizePt: 17, bold: true, color: dark ? 'FFFFFF' : '0E3A2F' },
+            { text: m.value, sizePt: 17, bold: true, color: dark ? 'FFFFFF' : primary },
           ],
         }),
       )
@@ -165,10 +182,10 @@ function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?:
           y: cursorY,
           cx: colW,
           cy: availH,
-          fill: dark ? '134337' : 'FFFFFF',
-          border: dark ? '2A6355' : 'E4DEC9',
+          fill: dark ? darkPanelFill : 'FFFFFF',
+          border: dark ? darkBorder : lightBorder,
           paragraphs: [
-            { text: col.heading, sizePt: 13.5, bold: true, color: dark ? 'E2D5B5' : '0E3A2F', spaceAfterPt: 8 },
+            { text: col.heading, sizePt: 13.5, bold: true, color: dark ? darkHeading : primary, spaceAfterPt: 8 },
             ...col.items.slice(0, 8).map(item => ({
               text: `•  ${item}`,
               sizePt: 11.5,
@@ -189,8 +206,8 @@ function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?:
         y: cursorY,
         cx: 10830000,
         cy: availH,
-        fill: dark ? '134337' : 'FFFFFF',
-        border: dark ? '2A6355' : 'E4DEC9',
+        fill: dark ? darkPanelFill : 'FFFFFF',
+        border: dark ? darkBorder : lightBorder,
         paragraphs: slide.bullets.slice(0, 10).map(b => ({
           text: `•  ${b}`,
           sizePt: 13,
@@ -202,7 +219,7 @@ function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?:
   }
 
   // Footer band
-  shapes.push(rectShape(sid++, 'FooterRule', 680000, 6280000, 10830000, 18000, dark ? 'C8A253' : 'D8CEBC'))
+  shapes.push(rectShape(sid++, 'FooterRule', 680000, 6280000, 10830000, 18000, footerRule))
   shapes.push(
     textShape({
       id: sid++,
