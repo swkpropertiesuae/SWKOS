@@ -8,9 +8,51 @@ import { UAE_COMMUNITIES } from '../../shared/uae-catalog/communities'
 import { UAE_DEVELOPERS } from '../../shared/uae-catalog/developers'
 import { UAE_PROJECTS } from '../../shared/uae-catalog/projects'
 import { assertZeroShabibPublicPayload } from '../../shared/zero-shabib-guard'
+import {
+  DEFAULT_BROCHURE_THEME,
+  hexNoHash,
+  hexToRgbUnit,
+  normalizeBrochureTheme,
+  type BrochureThemeConfig,
+} from '../../shared/brochure-theme'
 import { buildPptxBuffer, type PptxSlideSpec } from './pptx-builder'
 
-export type CatalogKitEntity = 'properties' | 'developers' | 'communities'
+export type CatalogKitEntity = 'properties' | 'developers' | 'communities' | 'units'
+
+const DEFAULT_THEME_SETTING_KEY = 'catalog:default_brochure_theme'
+
+export function getCompanyDefaultBrochureTheme(): BrochureThemeConfig {
+  try {
+    const raw = q.val<string>(`SELECT value FROM settings WHERE key = ?`, DEFAULT_THEME_SETTING_KEY)
+    if (raw) return normalizeBrochureTheme(raw, DEFAULT_BROCHURE_THEME)
+  } catch {
+    /* ignore if settings table unavailable */
+  }
+  return { ...DEFAULT_BROCHURE_THEME }
+}
+
+export function saveCompanyDefaultBrochureTheme(input: unknown): BrochureThemeConfig {
+  const theme = normalizeBrochureTheme(input, DEFAULT_BROCHURE_THEME)
+  q.run(
+    `INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    DEFAULT_THEME_SETTING_KEY,
+    JSON.stringify(theme),
+  )
+  return theme
+}
+
+export function resolveEffectiveBrochureTheme(
+  rec: Record<string, any> | null | undefined,
+  override?: Partial<BrochureThemeConfig> | null,
+): BrochureThemeConfig {
+  const companyDef = getCompanyDefaultBrochureTheme()
+  const recTheme = rec?.brochure_theme_json
+    ? normalizeBrochureTheme(rec.brochure_theme_json, companyDef)
+    : companyDef
+  return override && Object.keys(override).length > 0
+    ? normalizeBrochureTheme(override, recTheme)
+    : recTheme
+}
 
 /** Sanitize arbitrary UTF-8 strings for pdf-lib StandardFonts (WinAnsi encoding) so non-WinAnsi glyphs never throw. */
 export function toPdfSafeText(input: unknown): string {
@@ -160,7 +202,98 @@ export function buildPaymentMilestones(rec: Record<string, any>): { planLabel: s
   return { planLabel, rows }
 }
 
-function resolveEnrichedContext(entity: CatalogKitEntity, rec: Record<string, any>) {
+interface EnrichedCatalogContext {
+  title: string
+  subtitle: string
+  projectName: string
+  developerName: string
+  communityName: string
+  emirate: string
+  price: number
+  priceLabel: string
+  isOffPlan: boolean
+  handover: string
+  yieldPct: number
+  unitMix: string
+  areaSqft: number
+  description: string
+  amenities: string[]
+  features: string[]
+  promoHeadline: string
+  promoBadge: string
+  promoBenefits: string[]
+  images: string[]
+  media: ReturnType<typeof normalizeMediaList>
+  payment: { planLabel: string; rows: PaymentMilestoneRow[] }
+  fees: ReturnType<typeof computeEmirateFeeSummary>
+  commRow: any
+  devRow: any
+  relatedProjects: any[]
+  spec: any
+}
+
+function resolveEnrichedContext(entity: CatalogKitEntity, rec: Record<string, any>): EnrichedCatalogContext {
+  if (entity === 'units') {
+    const parentRaw = rec.property_id
+      ? q.get<any>(`SELECT * FROM properties WHERE id = ? AND deleted_at IS NULL`, rec.property_id)
+      : null
+    const parentCtx = parentRaw
+      ? resolveEnrichedContext('properties', { ...parentRaw, price: fromCents(parentRaw.price), rent_annual: fromCents(parentRaw.rent_annual) })
+      : null
+    const unitPrice = Number(rec.sale_price || 0) || parentCtx?.price || 0
+    const emirate = parentCtx?.emirate || 'Dubai'
+    const media = normalizeMediaList(rec.media)
+    const unitImgs = media.filter(m => m.kind === 'photo').map(m => m.url)
+    const title = parentCtx
+      ? `Unit ${rec.unit_no || rec.id} · ${parentCtx.title}`
+      : `Unit ${rec.unit_no || rec.id}`
+    const payment = buildPaymentMilestones({
+      price: unitPrice,
+      is_off_plan: parentCtx?.isOffPlan ?? false,
+      payment_plan: parentRaw?.payment_plan,
+      payment_plan_summary: parentRaw?.payment_plan_summary,
+      handover_quarter: parentRaw?.handover_quarter,
+      completion_year: parentRaw?.completion_year,
+    })
+    return {
+      title,
+      subtitle: `${rec.unit_type || 'Residential'} · ${rec.bedrooms ?? 1} BR · ${rec.area_sqft || parentCtx?.areaSqft || 0} sq ft · ${parentCtx?.communityName || emirate}`,
+      projectName: parentCtx?.projectName || title,
+      developerName: parentCtx?.developerName || '',
+      communityName: parentCtx?.communityName || emirate,
+      emirate,
+      price: unitPrice,
+      priceLabel: aed(unitPrice),
+      isOffPlan: parentCtx?.isOffPlan ?? false,
+      handover: parentCtx?.handover || 'Ready',
+      yieldPct: parentCtx?.yieldPct || 6.8,
+      unitMix: `${rec.bedrooms ?? 1}BR / ${rec.bathrooms ?? 1}BA · Floor ${rec.floor_no ?? 'Mid'} · ${rec.view || 'Signature View'}`,
+      areaSqft: Number(rec.area_sqft || parentCtx?.areaSqft || 0),
+      description: String(rec.unit_notes || parentCtx?.description || ''),
+      amenities: parentCtx?.amenities || ['Swimming Pool', 'Fitness Studio', '24/7 Concierge', 'Covered Parking'],
+      features: [
+        rec.view ? `View: ${rec.view}` : '',
+        rec.floor_no ? `Floor: ${rec.floor_no}` : '',
+        rec.parking_slots ? `Parking: ${rec.parking_slots}` : '',
+        rec.furnishing ? `Furnishing: ${rec.furnishing}` : '',
+        rec.has_balcony ? 'Private Balcony' : '',
+        rec.has_maid_room ? "Maid's Room" : '',
+        ...(parentCtx?.features || []).slice(0, 4),
+      ].filter(Boolean),
+      promoHeadline: parentCtx?.promoHeadline || `${title} — Exclusive SWK Unit Offering`,
+      promoBadge: `Unit ${rec.unit_no || rec.id} · ${rec.status || 'Available'}`,
+      promoBenefits: parentCtx?.promoBenefits || ['Direct Verified Allocation via SWK Properties', 'Full Brochure, Payment Plan & Viewing Pack'],
+      images: unitImgs.length ? unitImgs : (parentCtx?.images || []),
+      media: media.length ? media : (parentCtx?.media || []),
+      payment,
+      fees: computeEmirateFeeSummary(emirate, unitPrice),
+      commRow: parentCtx?.commRow || null,
+      devRow: parentCtx?.devRow || null,
+      relatedProjects: [] as any[],
+      spec: parentCtx?.spec,
+    }
+  }
+
   if (entity === 'properties') {
     const devRow = rec.developer_ref ? q.get<any>(`SELECT id, code, name, short_name, tier, rera_id, website FROM developers WHERE id = ?`, rec.developer_ref) : null
     const commRow = rec.community_ref ? q.get<any>(`SELECT id, code, name, emirate, segment, avg_price_sqft, gross_yield_pct, service_charge_sqft, metro_transit, key_landmarks, schools, hospitals FROM communities WHERE id = ?`, rec.community_ref) : null
@@ -320,47 +453,81 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
   return lines.length ? lines : ['']
 }
 
-function drawFooter(page: PDFPage, font: PDFFont, bold: PDFFont, pageNo: number, totalPages: number) {
+function drawFooter(
+  page: PDFPage,
+  font: PDFFont,
+  bold: PDFFont,
+  pageNo: number,
+  totalPages: number,
+  theme: BrochureThemeConfig,
+) {
   const { width } = page.getSize()
-  page.drawRectangle({ x: 36, y: 44, width: width - 72, height: 1, color: rgb(0.78, 0.63, 0.32) })
-  page.drawText(toPdfSafeText(`${SWK_COMPANY_NAME} | RERA ORN ${SWK_RERA_ORN} | DET Licence ${SWK_TRADE_LICENSE}`), { x: 36, y: 30, size: 8, font: bold, color: rgb(0.055, 0.227, 0.184) })
+  const [pr, pg, pb] = hexToRgbUnit(theme.primaryHex)
+  const [ar, ag, ab] = hexToRgbUnit(theme.accentHex)
+  page.drawRectangle({ x: 36, y: 44, width: width - 72, height: 1, color: rgb(ar, ag, ab) })
+  page.drawText(
+    toPdfSafeText(`${SWK_COMPANY_NAME} | RERA ORN ${SWK_RERA_ORN} | DET Licence ${SWK_TRADE_LICENSE}${theme.footerNote ? ` | ${theme.footerNote}` : ''}`).slice(0, 105),
+    { x: 36, y: 30, size: 7.5, font: bold, color: rgb(pr, pg, pb) },
+  )
   page.drawText(toPdfSafeText(`${SWK_COMPANY_ADDRESS} | ${SWK_COMPANY_PHONE} | ${SWK_COMPANY_EMAIL}`), { x: 36, y: 18, size: 7.5, font, color: rgb(0.32, 0.38, 0.36) })
   const rightTxt = toPdfSafeText(`${SWK_OFFICIAL_WEBSITES_TEXT}   |   Page ${pageNo} of ${totalPages}`)
   const rw = font.widthOfTextAtSize(rightTxt, 7.5)
   page.drawText(rightTxt, { x: width - 36 - rw, y: 30, size: 7.5, font, color: rgb(0.32, 0.38, 0.36) })
 }
 
-export async function buildCatalogBrochurePdf(entity: CatalogKitEntity, rec: Record<string, any>): Promise<Buffer> {
+export async function buildCatalogBrochurePdf(
+  entity: CatalogKitEntity,
+  rec: Record<string, any>,
+  themeOverride?: Partial<BrochureThemeConfig> | null,
+): Promise<Buffer> {
   const ctx = resolveEnrichedContext(entity, rec)
+  const theme = resolveEffectiveBrochureTheme(rec, themeOverride)
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
 
-  const forest = rgb(0.055, 0.227, 0.184)
-  const gold = rgb(0.784, 0.635, 0.325)
-  const ivory = rgb(0.973, 0.965, 0.945)
-  const ink = rgb(0.11, 0.16, 0.15)
+  const [pr, pg, pb] = hexToRgbUnit(theme.primaryHex)
+  const [ar, ag, ab] = hexToRgbUnit(theme.accentHex)
+  const [sr, sg, sb] = hexToRgbUnit(theme.surfaceHex)
+  const [ir, ig, ib] = hexToRgbUnit(theme.inkHex)
+  const forest = rgb(pr, pg, pb)
+  const gold = rgb(ar, ag, ab)
+  const ivory = rgb(sr, sg, sb)
+  const ink = rgb(ir, ig, ib)
   const muted = rgb(0.35, 0.42, 0.40)
 
-  // Page 1 — Luxury Executive Cover
+  // Page 1 — Luxury Executive Cover (respects coverLayout + custom brand theme)
   const p1 = pdf.addPage([595.28, 841.89])
-  p1.drawRectangle({ x: 0, y: 0, width: 595.28, height: 841.89, color: forest })
-  p1.drawRectangle({ x: 0, y: 822, width: 595.28, height: 20, color: gold })
-  p1.drawRectangle({ x: 36, y: 748, width: 120, height: 2.5, color: gold })
-
-  p1.drawText(toPdfSafeText(`SWK PROPERTIES OFFICIAL ${entity === 'developers' ? 'DEVELOPER' : entity === 'communities' ? 'COMMUNITY' : 'PROJECT'} BROCHURE`), { x: 36, y: 762, size: 10, font: bold, color: gold })
-  let y = 695
-  for (const l of wrapText(ctx.title, bold, 28, 520)) {
-    p1.drawText(l, { x: 36, y, size: 28, font: bold, color: rgb(1, 1, 1) })
-    y -= 36
+  if (theme.coverLayout === 'minimal_frame') {
+    p1.drawRectangle({ x: 0, y: 0, width: 595.28, height: 841.89, color: ivory })
+    p1.drawRectangle({ x: 24, y: 24, width: 547.28, height: 793.89, borderColor: forest, borderWidth: 2, color: ivory })
+    p1.drawRectangle({ x: 24, y: 620, width: 547.28, height: 197.89, color: forest })
+    p1.drawRectangle({ x: 24, y: 614, width: 547.28, height: 6, color: gold })
+  } else if (theme.coverLayout === 'editorial_split') {
+    p1.drawRectangle({ x: 0, y: 0, width: 595.28, height: 841.89, color: forest })
+    p1.drawRectangle({ x: 0, y: 0, width: 18, height: 841.89, color: gold })
+    p1.drawRectangle({ x: 18, y: 0, width: 577.28, height: 320, color: ivory })
+  } else {
+    p1.drawRectangle({ x: 0, y: 0, width: 595.28, height: 841.89, color: forest })
+    p1.drawRectangle({ x: 0, y: 822, width: 595.28, height: 20, color: gold })
+    p1.drawRectangle({ x: 36, y: 748, width: 120, height: 2.5, color: gold })
   }
-  for (const l of wrapText(ctx.subtitle, font, 13, 520)) {
-    p1.drawText(l, { x: 36, y, size: 13, font, color: rgb(0.89, 0.84, 0.71) })
-    y -= 20
+
+  const kindLbl = entity === 'developers' ? 'DEVELOPER' : entity === 'communities' ? 'COMMUNITY' : entity === 'units' ? 'UNIT' : 'PROJECT'
+  p1.drawText(toPdfSafeText(`${theme.headerTagline} · ${kindLbl} BROCHURE`).slice(0, 72), { x: 36, y: 762, size: 9.5, font: bold, color: gold })
+  let y = 708
+  for (const l of wrapText(ctx.title, bold, 26, 520).slice(0, 2)) {
+    p1.drawText(l, { x: 36, y, size: 26, font: bold, color: rgb(1, 1, 1) })
+    y -= 34
+  }
+  for (const l of wrapText(ctx.subtitle, font, 12.5, 520).slice(0, 2)) {
+    p1.drawText(l, { x: 36, y, size: 12.5, font, color: rgb(0.89, 0.84, 0.71) })
+    y -= 18
   }
 
   // Highlight KPI band
-  p1.drawRectangle({ x: 36, y: 465, width: 523, height: 118, color: rgb(0.086, 0.29, 0.24), borderColor: gold, borderWidth: 1 })
+  const kpiFill = theme.coverLayout === 'minimal_frame' ? forest : rgb(Math.min(1, pr + 0.04), Math.min(1, pg + 0.05), Math.min(1, pb + 0.05))
+  p1.drawRectangle({ x: 36, y: 465, width: 523, height: 118, color: kpiFill, borderColor: gold, borderWidth: 1 })
   const kpis = [
     ['PRICE / GUIDE', ctx.priceLabel],
     ['EMIRATE', ctx.emirate],
@@ -377,19 +544,22 @@ export async function buildCatalogBrochurePdf(entity: CatalogKitEntity, rec: Rec
   })
 
   // Promo Banner
-  p1.drawRectangle({ x: 36, y: 340, width: 523, height: 96, color: ivory })
-  p1.drawText(toPdfSafeText(ctx.promoBadge || 'SWK PROPERTIES EXCLUSIVE ALLOCATION'), { x: 52, y: 412, size: 9, font: bold, color: rgb(0.54, 0.38, 0.11) })
+  p1.drawRectangle({ x: 36, y: 340, width: 523, height: 96, color: ivory, borderColor: gold, borderWidth: 0.7 })
+  p1.drawText(toPdfSafeText(ctx.promoBadge || 'SWK PROPERTIES EXCLUSIVE ALLOCATION'), { x: 52, y: 412, size: 9, font: bold, color: forest })
   let py = 392
   for (const l of wrapText(ctx.promoHeadline || ctx.description, bold, 11.5, 490).slice(0, 3)) {
-    p1.drawText(l, { x: 52, y: py, size: 11.5, font: bold, color: forest })
+    p1.drawText(l, { x: 52, y: py, size: 11.5, font: bold, color: ink })
     py -= 16
   }
 
   // Cover advisory box
-  p1.drawText(toPdfSafeText(`Prepared exclusively by ${SWK_COMPANY_NAME}`), { x: 36, y: 135, size: 11, font: bold, color: gold })
-  p1.drawText(toPdfSafeText(`RERA ORN ${SWK_RERA_ORN} | DET Licence ${SWK_TRADE_LICENSE} | ${SWK_COMPANY_PHONE}`), { x: 36, y: 116, size: 9.5, font, color: rgb(0.9, 0.9, 0.9) })
-  p1.drawText(toPdfSafeText(`${SWK_COMPANY_ADDRESS}`), { x: 36, y: 100, size: 9, font, color: rgb(0.8, 0.85, 0.83) })
-  p1.drawText(toPdfSafeText(SWK_OFFICIAL_WEBSITES_TEXT), { x: 36, y: 82, size: 9.5, font: bold, color: gold })
+  const advLightBg = theme.coverLayout === 'minimal_frame' || theme.coverLayout === 'editorial_split'
+  const advTextCol = advLightBg ? ink : rgb(0.9, 0.9, 0.9)
+  const advHeadCol = advLightBg ? forest : gold
+  p1.drawText(toPdfSafeText(`Prepared exclusively by ${SWK_COMPANY_NAME}`), { x: 36, y: 135, size: 11, font: bold, color: advHeadCol })
+  p1.drawText(toPdfSafeText(`RERA ORN ${SWK_RERA_ORN} | DET Licence ${SWK_TRADE_LICENSE} | ${SWK_COMPANY_PHONE}`), { x: 36, y: 116, size: 9.5, font, color: advTextCol })
+  p1.drawText(toPdfSafeText(`${SWK_COMPANY_ADDRESS}`), { x: 36, y: 100, size: 9, font, color: advTextCol })
+  p1.drawText(toPdfSafeText(SWK_OFFICIAL_WEBSITES_TEXT), { x: 36, y: 82, size: 9.5, font: bold, color: advHeadCol })
 
   // Page 2 — Overview, Amenities, Location & Highlights
   const p2 = pdf.addPage([595.28, 841.89])
@@ -438,7 +608,7 @@ export async function buildCatalogBrochurePdf(entity: CatalogKitEntity, rec: Rec
       }
     }
   }
-  drawFooter(p2, font, bold, 2, 3)
+  drawFooter(p2, font, bold, 2, 3, theme)
 
   // Page 3 — Payment Plan / Related Portfolio & UAE Fee Summary
   const p3 = pdf.addPage([595.28, 841.89])
@@ -448,7 +618,7 @@ export async function buildCatalogBrochurePdf(entity: CatalogKitEntity, rec: Rec
   p3.drawText(toPdfSafeText(`${ctx.fees.authority} | ZERO TAX RENTAL INCOME & CAPITAL GAINS`), { x: 36, y: 790, size: 8.5, font: bold, color: gold })
 
   let y3 = 745
-  if (ctx.payment.rows.length > 0) {
+  if (theme.showPaymentPlan && ctx.payment.rows.length > 0) {
     p3.drawText(toPdfSafeText(`PAYMENT SCHEDULE: ${ctx.payment.planLabel}`), { x: 36, y: y3, size: 10.5, font: bold, color: forest })
     y3 -= 22
     p3.drawRectangle({ x: 36, y: y3 - 4, width: 523, height: 20, color: forest })
@@ -486,21 +656,30 @@ export async function buildCatalogBrochurePdf(entity: CatalogKitEntity, rec: Rec
   p3.drawText(toPdfSafeText(`10-Year UAE Golden Visa (AED 2M+): ${ctx.fees.goldenVisaEligible ? 'ELIGIBLE' : 'Combine with portfolio to reach AED 2M'}`), { x: 48, y: boxTop - 76, size: 9.5, font: bold, color: forest })
   p3.drawText(toPdfSafeText(`Advisory Desk: ${SWK_COMPANY_NAME} · ${SWK_COMPANY_PHONE} · ${SWK_COMPANY_EMAIL}`), { x: 48, y: boxTop - 98, size: 9, font, color: muted })
 
-  drawFooter(p3, font, bold, 3, 3)
+  drawFooter(p3, font, bold, 3, 3, theme)
 
   return Buffer.from(await pdf.save())
 }
 
-export async function buildPaymentPlanPdf(rec: Record<string, any>): Promise<Buffer> {
-  const ctx = resolveEnrichedContext('properties', rec)
+export async function buildPaymentPlanPdf(
+  rec: Record<string, any>,
+  entity: 'properties' | 'units' = 'properties',
+  themeOverride?: Partial<BrochureThemeConfig> | null,
+): Promise<Buffer> {
+  const ctx = resolveEnrichedContext(entity, rec)
+  const theme = resolveEffectiveBrochureTheme(rec, themeOverride)
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
 
-  const forest = rgb(0.055, 0.227, 0.184)
-  const gold = rgb(0.784, 0.635, 0.325)
-  const ivory = rgb(0.973, 0.965, 0.945)
-  const ink = rgb(0.11, 0.16, 0.15)
+  const [pr, pg, pb] = hexToRgbUnit(theme.primaryHex)
+  const [ar, ag, ab] = hexToRgbUnit(theme.accentHex)
+  const [sr, sg, sb] = hexToRgbUnit(theme.surfaceHex)
+  const [ir, ig, ib] = hexToRgbUnit(theme.inkHex)
+  const forest = rgb(pr, pg, pb)
+  const gold = rgb(ar, ag, ab)
+  const ivory = rgb(sr, sg, sb)
+  const ink = rgb(ir, ig, ib)
   const muted = rgb(0.35, 0.42, 0.40)
 
   const page = pdf.addPage([595.28, 841.89])
@@ -581,12 +760,17 @@ export async function buildPaymentPlanPdf(rec: Record<string, any>): Promise<Buf
   y -= 18
   page.drawText(toPdfSafeText(`Golden Visa Eligibility: ${ctx.fees.goldenVisaEligible ? 'YES — Qualifies for 10-Year UAE Golden Visa' : ctx.fees.investorVisaEligible ? 'Qualifies for 2-Year Investor Visa (AED 750K+)' : 'Standard Freehold Ownership'}`), { x: 44, y, size: 9.5, font: bold, color: forest })
 
-  drawFooter(page, font, bold, 1, 1)
+  drawFooter(page, font, bold, 1, 1, theme)
   return Buffer.from(await pdf.save())
 }
 
-export function buildCatalogDeckPptx(entity: CatalogKitEntity, rec: Record<string, any>): Buffer {
+export function buildCatalogDeckPptx(
+  entity: CatalogKitEntity,
+  rec: Record<string, any>,
+  themeOverride?: Partial<BrochureThemeConfig> | null,
+): Buffer {
   const ctx = resolveEnrichedContext(entity, rec)
+  const theme = resolveEffectiveBrochureTheme(rec, themeOverride)
   const footer = `${SWK_COMPANY_NAME} · RERA ORN ${SWK_RERA_ORN} · ${SWK_COMPANY_PHONE} · ${SWK_OFFICIAL_WEBSITES_TEXT}`
 
   const slides: PptxSlideSpec[] = [
@@ -662,7 +846,12 @@ export function buildCatalogDeckPptx(entity: CatalogKitEntity, rec: Record<strin
   ]
 
   assertZeroShabibPublicPayload(slides, `PPTX Deck (${ctx.title})`)
-  return buildPptxBuffer(slides)
+  return buildPptxBuffer(slides, {
+    primary: hexNoHash(theme.primaryHex, '0E3A2F'),
+    accent: hexNoHash(theme.accentHex, 'C8A253'),
+    surface: hexNoHash(theme.surfaceHex, 'F8F6F1'),
+    ink: hexNoHash(theme.inkHex, '22302C'),
+  })
 }
 
 export function buildCatalogSocialKit(entity: CatalogKitEntity, rec: Record<string, any>, shareUrl?: string): SocialKitBundle {
@@ -716,11 +905,12 @@ export function buildCatalogKitManifest(entity: CatalogKitEntity, rec: Record<st
     images: ctx.images,
     brochureUrl: uploadedBrochure || `${base}/brochure.pdf`,
     generatedBrochureUrl: `${base}/brochure.pdf`,
-    paymentPlanUrl: entity === 'properties' ? (uploadedPayPlan || `${base}/payment-plan.pdf`) : null,
-    generatedPaymentPlanUrl: entity === 'properties' ? `${base}/payment-plan.pdf` : null,
+    paymentPlanUrl: (entity === 'properties' || entity === 'units') ? (uploadedPayPlan || `${base}/payment-plan.pdf`) : null,
+    generatedPaymentPlanUrl: (entity === 'properties' || entity === 'units') ? `${base}/payment-plan.pdf` : null,
     pptUrl: uploadedPpt || `${base}/deck.pptx`,
     generatedPptUrl: `${base}/deck.pptx`,
     socialUrl: `${base}/social`,
+    theme: resolveEffectiveBrochureTheme(rec),
     videoUrl: rec.video_url || null,
     virtualTourUrl: rec.virtual_tour_url || null,
     model3dUrl: rec.model_3d_url || null,

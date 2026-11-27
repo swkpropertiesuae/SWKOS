@@ -57,9 +57,10 @@ export const get = <T = any>(p: string, params?: Record<string, any>, signal?: A
 }
 export const post = <T = any>(p: string, b?: unknown, extraHeaders?: Record<string, string>) => rawApi<T>('POST', p, b ?? {}, undefined, extraHeaders)
 export const put = <T = any>(p: string, b?: unknown, extraHeaders?: Record<string, string>) => rawApi<T>('PUT', p, b ?? {}, undefined, extraHeaders)
+export const patch = <T = any>(p: string, b?: unknown, extraHeaders?: Record<string, string>) => rawApi<T>('PATCH', p, b ?? {}, undefined, extraHeaders)
 export const del = <T = any>(p: string, extraHeaders?: Record<string, string>) => rawApi<T>('DELETE', p, undefined, undefined, extraHeaders)
 
-export const api = Object.assign(rawApi, { get, post, put, del })
+export const api = Object.assign(rawApi, { get, post, put, patch, del })
 
 export async function upload(files: File[], fields: Record<string, string | number | undefined>, path = '/api/files') {
   const fd = new FormData()

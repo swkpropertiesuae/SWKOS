@@ -116,7 +116,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
   const [sourceTemplateId, setSourceTemplateId] = useState<number | null>(null)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [exporting, setExporting] = useState<'' | 'docx' | 'pdf'>('')
+  const [exporting, setExporting] = useState<'' | 'docx' | 'pdf' | 'jpeg'>('')
   const [importing, setImporting] = useState(false)
 
   const [docSearch, setDocSearch] = useState('')
@@ -369,7 +369,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
     }
   }
 
-  const exportFile = async (format: 'docx' | 'pdf' | 'txt') => {
+  const exportFile = async (format: 'docx' | 'pdf' | 'jpeg' | 'txt') => {
     const baseName = (title.trim() || 'swk-document').replace(/[^\w.\- ]+/g, '_')
     if (format === 'txt') {
       saveClientBlob(htmlToPlainText(htmlRef.current), `${baseName}.txt`, 'text/plain;charset=utf-8')
@@ -378,8 +378,15 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
     }
     setExporting(format)
     try {
+      const endpoint =
+        format === 'docx'
+          ? '/api/utilities/word/export-docx'
+          : format === 'jpeg'
+            ? '/api/utilities/word/export-jpeg'
+            : '/api/utilities/word/export-pdf'
+      const ext = format === 'jpeg' ? 'jpg' : format
       await postForDownload(
-        format === 'docx' ? '/api/utilities/word/export-docx' : '/api/utilities/word/export-pdf',
+        endpoint,
         {
           id: docId ?? undefined,
           title: title.trim() || 'SWK Document',
@@ -389,9 +396,9 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
           include_seal: canSeal ? includeSeal : false,
           include_signature: canSeal ? includeSignature : false,
         },
-        `${baseName}.${format}`,
+        `${baseName}.${ext}`,
       )
-      toast.ok(`Exported .${format}`)
+      toast.ok(`Exported .${ext}`)
     } catch (e: any) {
       toast.error(e?.message || `Export .${format} failed`)
     } finally {
@@ -546,6 +553,10 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
                 {exporting === 'pdf' ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
                 .pdf
               </button>
+              <button type="button" className="btn outline sm" disabled={!!exporting} onClick={() => void exportFile('jpeg')}>
+                {exporting === 'jpeg' ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                .jpeg
+              </button>
               <button type="button" className="btn outline sm" onClick={() => void exportFile('txt')}>
                 <FileText size={15} /> .txt
               </button>
@@ -573,6 +584,7 @@ export default function WordStudioPage({ embedded = false }: { embedded?: boolea
             </button>
             <button type="button" className="btn outline sm" disabled={!!exporting} onClick={() => void exportFile('docx')}><Download size={14} /> .docx</button>
             <button type="button" className="btn outline sm" disabled={!!exporting} onClick={() => void exportFile('pdf')}><Download size={14} /> .pdf</button>
+            <button type="button" className="btn outline sm" disabled={!!exporting} onClick={() => void exportFile('jpeg')}><Download size={14} /> .jpeg</button>
             <button type="button" className="btn outline sm" onClick={() => void exportFile('txt')}><FileText size={14} /> .txt</button>
             <button type="button" className="btn outline sm" onClick={() => void handleShareInside()}><MessagesSquare size={14} /> Inside</button>
           </div>

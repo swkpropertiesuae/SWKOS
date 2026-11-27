@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CustomSelect } from '../../components/CustomSelect'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,12 +6,18 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
+  ClipboardCheck,
   Crown,
   Database,
+  FileSignature,
   FileText,
   Flame,
   KanbanSquare,
+  ListChecks,
   Lock,
+  MapPin,
+  Palette,
+  Percent,
   Plus,
   Receipt,
   ShieldCheck,
@@ -25,17 +31,51 @@ import { del, get, post, put } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { PIPELINE_12_STAGES } from '@shared/swk-pipeline'
 import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
+import { ShabibTeamTasksTab } from '../../components/shabib/ShabibTeamTasksTab'
+import { ShabibForensicVisitsTab } from '../../components/shabib/ShabibForensicVisitsTab'
+import { ShabibCatalogStudioTab } from '../../components/shabib/ShabibCatalogStudioTab'
+import { ShabibLegalFormsTab } from '../../components/shabib/ShabibLegalFormsTab'
+import { ShabibClosingsTab } from '../../components/shabib/ShabibClosingsTab'
+import { ShabibCommissionsTab } from '../../components/shabib/ShabibCommissionsTab'
 
-type Tab = 'fast-track' | 'playbook' | 'approvals' | 'bulk-ai' | 'ledger'
+type Tab =
+  | 'team-tasks'
+  | 'forensic-visits'
+  | 'catalog-studio'
+  | 'legal-forms'
+  | 'closings'
+  | 'commissions'
+  | 'fast-track'
+  | 'playbook'
+  | 'approvals'
+  | 'bulk-ai'
+  | 'ledger'
+
+const VALID_TABS: Tab[] = [
+  'team-tasks',
+  'forensic-visits',
+  'catalog-studio',
+  'legal-forms',
+  'closings',
+  'commissions',
+  'fast-track',
+  'playbook',
+  'approvals',
+  'bulk-ai',
+  'ledger',
+]
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
 export default function ShabibsCornerPage() {
   const [sp, setSp] = useSearchParams()
-  const initialTab = (['fast-track', 'playbook', 'approvals', 'bulk-ai', 'ledger'].includes(sp.get('tab') || '')
-    ? sp.get('tab')
-    : 'fast-track') as Tab
+  const paramTab = sp.get('tab') as Tab | null
+  const initialTab: Tab = paramTab && VALID_TABS.includes(paramTab) ? paramTab : 'team-tasks'
   const [tab, setTab] = useState<Tab>(initialTab)
+  useEffect(() => {
+    const t = sp.get('tab') as Tab | null
+    if (t && VALID_TABS.includes(t) && t !== tab) setTab(t)
+  }, [sp, tab])
   const qc = useQueryClient()
   const toast = useToast()
 
@@ -188,8 +228,8 @@ export default function ShabibsCornerPage() {
             <Crown size={12} /> Owner Vault Lock
           </span>
         }
-        title="Shabib's Corner"
-        subtitle="Direct Owner workspace: Privacy Fast Track (bypass Master Log for urgent cash & VIP deals), 12-Stage Gold-Rush Playbook, Bulk AI Upload, Master Log Governance, and Owner Consolidated Ledger. Invisible to all staff and admin."
+        title="Shabib's Workspace"
+        subtitle="Owner's unified executive & forensic command suite: Team Daily Tasks & Verifier Control, GPS-Pinned Forensic Site Visits & Viewings, Catalog & Brochure Theme Studio, Legal Forms (Word/JPEG/Fillable), Pin-to-Pin Closing Dossiers, Commissions & Expenses, plus Privacy Fast Track."
         actions={
           <>
             <BracketLink to="/master-log" variant="light" size="sm">
@@ -233,29 +273,64 @@ export default function ShabibsCornerPage() {
         </div>
       </SwissHeroHeader>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { id: 'fast-track', label: `Privacy Fast Track (${ft.jobs.length})`, icon: Lock },
-          { id: 'playbook', label: '12-Stage Playbook & Gold Rush', icon: KanbanSquare },
-          { id: 'approvals', label: `Owner Approvals (${ap.total_pending})`, icon: ShieldCheck },
-          { id: 'bulk-ai', label: 'Bulk AI Upload', icon: Upload },
-          { id: 'ledger', label: 'Owner Consolidated Ledger', icon: Receipt },
-        ].map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => switchTab(t.id as Tab)}
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[12.5px] font-medium cursor-pointer transition-all ${
-              tab === t.id
-                ? 'border-[#121212] bg-[#121212] text-white shadow-sm'
-                : 'border-white/88 bg-white/85 text-[#121212] backdrop-blur-xl hover:border-[#121212]/30'
-            }`}
-          >
-            <t.icon size={14} className={tab === t.id ? 'text-[#51fec0]' : 'text-[#5b6778]'} /> {t.label}
-          </button>
-        ))}
+      {/* Grouped Quick-Access Tabs */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted mr-1">Operations &amp; Forensics:</span>
+          {[
+            { id: 'team-tasks', label: 'Team & Daily To-Do', icon: ListChecks },
+            { id: 'forensic-visits', label: 'Forensic Visits & Viewings', icon: MapPin },
+            { id: 'catalog-studio', label: 'Catalog & Brochure Studio', icon: Palette },
+            { id: 'legal-forms', label: 'Legal Forms (Word / JPEG)', icon: FileSignature },
+            { id: 'closings', label: 'Pin-to-Pin Closings (5 Tracks)', icon: ClipboardCheck },
+            { id: 'commissions', label: 'Commissions & Expenses', icon: Percent },
+          ].map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => switchTab(t.id as Tab)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12px] font-semibold cursor-pointer transition-all ${
+                tab === t.id
+                  ? 'border-[#121212] bg-[#121212] text-white shadow-sm'
+                  : 'border-white/88 bg-white/90 text-[#121212] backdrop-blur-xl hover:border-[#121212]/35'
+              }`}
+            >
+              <t.icon size={13.5} className={tab === t.id ? 'text-[#51fec0]' : 'text-[#0e9f6e]'} /> {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted mr-1">Owner Vault:</span>
+          {[
+            { id: 'fast-track', label: `Privacy Fast Track (${ft.jobs.length})`, icon: Lock },
+            { id: 'playbook', label: '12-Stage Playbook & Gold Rush', icon: KanbanSquare },
+            { id: 'approvals', label: `Owner Approvals (${ap.total_pending})`, icon: ShieldCheck },
+            { id: 'bulk-ai', label: 'Bulk AI Upload', icon: Upload },
+            { id: 'ledger', label: 'Consolidated Ledger', icon: Receipt },
+          ].map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => switchTab(t.id as Tab)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11.5px] font-medium cursor-pointer transition-all ${
+                tab === t.id
+                  ? 'border-[#121212] bg-[#121212] text-white shadow-sm'
+                  : 'border-white/88 bg-white/80 text-[#121212] backdrop-blur-xl hover:border-[#121212]/30'
+              }`}
+            >
+              <t.icon size={13} className={tab === t.id ? 'text-[#51fec0]' : 'text-[#5b6778]'} /> {t.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* NEW SHABIB WORKSPACE EXECUTIVE TABS */}
+      {tab === 'team-tasks' && <ShabibTeamTasksTab />}
+      {tab === 'forensic-visits' && <ShabibForensicVisitsTab />}
+      {tab === 'catalog-studio' && <ShabibCatalogStudioTab />}
+      {tab === 'legal-forms' && <ShabibLegalFormsTab />}
+      {tab === 'closings' && <ShabibClosingsTab />}
+      {tab === 'commissions' && <ShabibCommissionsTab />}
 
       {/* TAB 1: PRIVACY FAST TRACK */}
       {tab === 'fast-track' && (

@@ -75,23 +75,34 @@ function rectShape(id: number, name: string, x: number, y: number, cx: number, c
 </p:sp>`
 }
 
+export interface PptxThemePalette {
+  primary?: string
+  accent?: string
+  surface?: string
+  ink?: string
+}
+
 // 16:9 widescreen slide canvas: 12192000 x 6858000 EMU (13.333 in x 7.5 in)
-function buildSlideXml(slide: PptxSlideSpec, index: number, total: number): string {
+function buildSlideXml(slide: PptxSlideSpec, index: number, total: number, pal?: PptxThemePalette): string {
+  const primary = pal?.primary || '0E3A2F'
+  const accent = pal?.accent || 'C8A253'
+  const surface = pal?.surface || 'F8F6F1'
+  const ink = pal?.ink || '22302C'
   const dark = Boolean(slide.dark)
-  const bgColor = dark ? '0E3A2F' : 'F8F6F1'
-  const titleColor = dark ? 'FFFFFF' : '0E3A2F'
+  const bgColor = dark ? primary : surface
+  const titleColor = dark ? 'FFFFFF' : primary
   const subColor = dark ? 'E2D5B5' : '4A5A54'
-  const bodyColor = dark ? 'F0EFEA' : '22302C'
-  const gold = 'C8A253'
+  const bodyColor = dark ? 'F0EFEA' : ink
+  const gold = accent
 
   const shapes: string[] = []
   let sid = 2
 
-  // Top gold accent strip
+  // Top accent strip
   shapes.push(rectShape(sid++, 'TopGoldBar', 0, 0, 12192000, 95000, gold))
   // Left brand spine bar on dark slides
   if (dark) {
-    shapes.push(rectShape(sid++, 'SidePanel', 0, 95000, 220000, 6763000, '092820'))
+    shapes.push(rectShape(sid++, 'SidePanel', 0, 95000, 220000, 6763000, primary))
   }
 
   // Eyebrow + Title + Subtitle
@@ -312,7 +323,10 @@ function createZip(entries: { name: string; content: string | Buffer }[]): Buffe
 }
 
 /** Build a valid 16:9 OOXML PowerPoint (.pptx) file from slide specs. */
-export function buildPptxBuffer(slides: PptxSlideSpec[]): Buffer {
+export function buildPptxBuffer(slides: PptxSlideSpec[], palette?: PptxThemePalette): Buffer {
+  const primary = palette?.primary || '0E3A2F'
+  const accent = palette?.accent || 'C8A253'
+  const surface = palette?.surface || 'F8F6F1'
   const safeSlides = slides.length ? slides : [{ eyebrow: 'SWK Properties', title: 'Presentation', footer: 'SWK Properties LLC' }]
   const n = safeSlides.length
 
@@ -377,12 +391,12 @@ export function buildPptxBuffer(slides: PptxSlideSpec[]): Buffer {
 <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="SWK Luxury">
   <a:themeElements>
     <a:clrScheme name="SWK">
-      <a:dk1><a:srgbClr val="0E3A2F"/></a:dk1><a:lt1><a:srgbClr val="F8F6F1"/></a:lt1>
+      <a:dk1><a:srgbClr val="${primary}"/></a:dk1><a:lt1><a:srgbClr val="${surface}"/></a:lt1>
       <a:dk2><a:srgbClr val="1C2B27"/></a:dk2><a:lt2><a:srgbClr val="EFECE4"/></a:lt2>
-      <a:accent1><a:srgbClr val="C8A253"/></a:accent1><a:accent2><a:srgbClr val="0E3A2F"/></a:accent2>
+      <a:accent1><a:srgbClr val="${accent}"/></a:accent1><a:accent2><a:srgbClr val="${primary}"/></a:accent2>
       <a:accent3><a:srgbClr val="2D6A5B"/></a:accent3><a:accent4><a:srgbClr val="8A621C"/></a:accent4>
       <a:accent5><a:srgbClr val="4A5A54"/></a:accent5><a:accent6><a:srgbClr val="DDD4C2"/></a:accent6>
-      <a:hlink><a:srgbClr val="0E3A2F"/></a:hlink><a:folHlink><a:srgbClr val="8A621C"/></a:folHlink>
+      <a:hlink><a:srgbClr val="${primary}"/></a:hlink><a:folHlink><a:srgbClr val="8A621C"/></a:folHlink>
     </a:clrScheme>
     <a:fontScheme name="SWK"><a:majorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>
     <a:fmtScheme name="SWK">
@@ -412,7 +426,7 @@ export function buildPptxBuffer(slides: PptxSlideSpec[]): Buffer {
   ]
 
   safeSlides.forEach((s, idx) => {
-    files.push({ name: `ppt/slides/slide${idx + 1}.xml`, content: buildSlideXml(s, idx + 1, n) })
+    files.push({ name: `ppt/slides/slide${idx + 1}.xml`, content: buildSlideXml(s, idx + 1, n, palette) })
     files.push({ name: `ppt/slides/_rels/slide${idx + 1}.xml.rels`, content: slideRel })
   })
 

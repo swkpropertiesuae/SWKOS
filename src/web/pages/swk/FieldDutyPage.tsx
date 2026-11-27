@@ -27,6 +27,7 @@ import { getVerifiedDeviceFix, isNativeMobile, onNativeDutyEnded, startNativeFie
 import { useToast } from '../../lib/toast'
 import { ModuleHeader, Pill } from '../../swk/ui'
 import { ErrorBox, Loading, Modal } from '../../ui/kit'
+import { StaffFieldForensicsPanel } from '../../components/shabib/StaffFieldForensicsPanel'
 
 const PURPOSES = ['Viewing', 'Snagging', 'Developer Visit', 'Key Handover', 'DLD Trustee'] as const
 
@@ -846,6 +847,8 @@ export default function FieldDutyPage() {
           </section>
         </div>
       </div>
+
+      <StaffFieldForensicsPanel />
 
       <Modal
         open={sosModalOpen}

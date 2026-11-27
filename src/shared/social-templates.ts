@@ -27,7 +27,7 @@ export interface SocialPlatformDraft {
 }
 
 export interface SocialKitInput {
-  entity: 'properties' | 'developers' | 'communities'
+  entity: 'properties' | 'developers' | 'communities' | 'units'
   title: string
   projectName?: string
   developerName?: string

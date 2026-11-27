@@ -28,6 +28,7 @@ import { can, type SessionUser } from '../engine'
 import { extractText } from '../ocr'
 import { publicSettings } from '../settings'
 import { htmlToText, STUDIO_CLASSES } from '../studio/sanitize'
+import { renderWordHtmlToJpegBuffer } from '../domain/forensic-exports'
 import { bad, forbidden, HttpError, notFound, nowIso, todayStr } from '../util'
 import { idOf } from './helpers'
 
@@ -905,6 +906,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
 
   const exportSchema = z.object({
     id: z.number().int().positive().optional(),
+    source_id: z.number().int().positive().optional(),
     title: z.string().trim().min(1).max(200).optional(),
     html_content: z.string().max(MAX_HTML).optional(),
     rtl: z.boolean().optional(),
@@ -915,11 +917,12 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
 
   function resolveExportPayload(user: SessionUser, rawBody: unknown) {
     const b = exportSchema.parse(rawBody ?? {})
+    const docId = b.id ?? b.source_id
     let saved: any = null
-    if (b.id !== undefined) {
+    if (docId !== undefined) {
       saved = q.get<any>(
         `SELECT * FROM word_documents WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-        b.id,
+        docId,
         user.id,
       )
       if (!saved) throw notFound('Word document not found')
@@ -936,7 +939,7 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     const includeSeal = b.include_seal !== undefined ? b.include_seal : Boolean(saved?.include_seal)
     const includeSignature =
       b.include_signature !== undefined ? b.include_signature : Boolean(saved?.include_signature)
-    assertSealAllowed(user, includeSeal, includeSignature, saved?.id ?? b.id ?? null)
+    assertSealAllowed(user, includeSeal, includeSignature, saved?.id ?? docId ?? null)
     return {
       title,
       html_content: htmlContent,
@@ -964,6 +967,16 @@ export default async function utilitiesRoutes(app: FastifyInstance) {
     reply
       .header('content-type', 'application/pdf')
       .header('content-disposition', `attachment; filename="${safeFilename(payload.title, 'pdf')}"`)
+    return buf
+  })
+
+  app.post('/api/utilities/word/export-jpeg', async (req, reply) => {
+    const user = requireStaff(req)
+    const payload = resolveExportPayload(user, req.body)
+    const buf = await renderWordHtmlToJpegBuffer(payload)
+    reply
+      .header('content-type', 'image/jpeg')
+      .header('content-disposition', `attachment; filename="${safeFilename(payload.title, 'jpg')}"`)
     return buf
   })
 

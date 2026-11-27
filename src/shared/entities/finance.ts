@@ -11,6 +11,7 @@ const PAY_METHODS = [
   'Worldwide Currency Exchange (Licensed UAE Exchange House)',
   'UAE-Permitted Crypto / USDT (VARA-Licensed Gateway)',
   'Bank transfer',
+  'Botim',
   'Cheque',
   'Cash',
   'Card',

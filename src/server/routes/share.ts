@@ -23,7 +23,7 @@ import { buildCatalogBrochurePdf, buildCatalogDeckPptx, buildPaymentPlanPdf, typ
 import { assertZeroShabibPublicPayload, findShabibViolations, isRestrictedPublicProfile } from '../../shared/zero-shabib-guard'
 
 export const SHAREABLE = ['properties', 'units', 'website_listings', 'developers', 'communities'] as const
-const KIT_ENTITIES = new Set<string>(['properties', 'developers', 'communities'])
+const KIT_ENTITIES = new Set<string>(['properties', 'units', 'developers', 'communities'])
 
 type SharedAssetRef = {
   kind: ProjectMediaKind
@@ -556,8 +556,8 @@ export default async function (app: FastifyInstance) {
         return buf
       }
       if (kind === 'payment-plan.pdf') {
-        if (ent !== 'properties') throw new HttpError(404, 'Payment plan PDF applies to projects')
-        const buf = await buildPaymentPlanPdf(rec)
+        if (ent !== 'properties' && ent !== 'units') throw new HttpError(404, 'Payment plan PDF applies to projects and units')
+        const buf = await buildPaymentPlanPdf(rec, ent)
         reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${slug}-payment-plan.pdf"`).header('cache-control', 'public, max-age=300')
         return buf
       }
