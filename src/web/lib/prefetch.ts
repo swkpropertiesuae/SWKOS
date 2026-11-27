@@ -47,9 +47,16 @@ export function preloadRoute(to: string) {
   }
 }
 
+function isNonInteractiveRoute(): boolean {
+  if (typeof window === 'undefined') return true
+  const p = window.location.pathname || ''
+  return p.startsWith('/print/') || p.startsWith('/l/') || p.startsWith('/t/') || p === '/accept-invite'
+}
+
 export function warmCoreRoutesOnIdle() {
-  if (typeof window === 'undefined') return
+  if (isNonInteractiveRoute()) return
   const run = () => {
+    if (isNonInteractiveRoute()) return
     const core = ['/dashboard', '/e/properties', '/offplan', '/listings', '/pipeline', '/dubai-agency-hub']
     core.forEach((p, idx) => {
       globalThis.setTimeout(() => preloadRoute(p), idx * 140)
@@ -128,7 +135,7 @@ export function setFastCacheIdentity(qc: QueryClient, user: { id: number; demo?:
 }
 
 export function installFastQueryCacheSync(qc: QueryClient) {
-  if (typeof window === 'undefined') return
+  if (isNonInteractiveRoute()) return
   const flush = () => {
     flushTimer = undefined
     if (!activeIdentity) return

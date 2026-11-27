@@ -172,13 +172,13 @@ export function PrintPage() {
   const signature = canApplySig && (sp.get('sig') === '1' || sp.get('sig') === 'true')
   const sheet = useRef<HTMLDivElement>(null), [ready, setReady] = useState(false)
   const fetching = useIsFetching({ predicate: query => /^(print|statement)/.test(String(query.queryKey[0])) })
+  const ids = entity === 'jobs' ? id.split(',') : [id]
+  const q = useQuery({ queryKey: ['print-all', entity, id], enabled: entity !== 'statement' && entity !== 'parties', queryFn: () => Promise.all(ids.map(i => get<any>(`/api/e/${entity}/${i}`))) })
   useEffect(() => {
     setReady(false)
     const timer = window.setTimeout(() => setReady(!!sheet.current && !sheet.current.querySelector('.document-loading, [role=alert]') && fetching === 0), 0)
     return () => window.clearTimeout(timer)
-  }, [fetching, entity, id, sp.toString(), meta, seal, signature])
-  const ids = entity === 'jobs' ? id.split(',') : [id]
-  const q = useQuery({ queryKey: ['print-all', entity, id], enabled: entity !== 'statement' && entity !== 'parties', queryFn: () => Promise.all(ids.map(i => get<any>(`/api/e/${entity}/${i}`))) })
+  }, [fetching, q.data, q.status, entity, id, sp.toString(), meta, seal, signature])
   if (!meta) return <DocumentPrinter />
   const docTitle = q.data?.[0]?.title || q.data?.[0]?._title || `${entity} #${id}`
   const body = (() => {

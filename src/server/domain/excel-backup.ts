@@ -592,7 +592,7 @@ export async function runDailyFullBackup(reason: 'daily-auto' | 'manual' = 'manu
   if (inDemo()) throw forbidden('Production backups cannot be created from the demo workspace')
   if (reason === 'daily-auto') {
     const prev = getDailyBackupStatus()
-    if (prev.reason === 'daily-auto' && prev.last_run_at && prev.last_run_at.slice(0, 10) === todayStr()) {
+    if (prev.reason === 'daily-auto' && prev.last_run_at && todayStr(new Date(prev.last_run_at)) === todayStr()) {
       return prev
     }
   }

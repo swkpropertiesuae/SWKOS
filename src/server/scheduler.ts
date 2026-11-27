@@ -28,6 +28,8 @@ export function startScheduler() {
 
 const done = new Map<string, string>()
 const once = (key: string, stamp: string) => { if (done.get(key) === stamp) return false; done.set(key, stamp); return true }
+/** Record that a once-per-period scheduled task has already completed (e.g. demo rebuild at server boot). */
+export function markScheduledDone(key: string, stamp = todayStr()) { done.set(key, stamp) }
 
 async function periodic() {
   const now = nowLocal(), hhmm = now.slice(11, 16), day = now.slice(0, 10)
@@ -46,7 +48,7 @@ async function periodic() {
   if (hhmm >= '10:30' && once('swk-att-1030', day)) await safe('swk-att-1030', async () => (await import('./routes/swk-ops')).sendOwner1030AttendanceReport())
   if (hhmm >= '06:00' && once('swk-dld-daily', day)) await safe('swk-dld-daily', async () => (await import('./routes/swk-ops')).syncDailyDldTransactionsAndNews())
   if (hhmm >= '10:00' && once('wa-overdue', day)) await safe('wa-overdue', async () => (await import('./integrations/whatsapp')).overdueReminders())
-  if (hhmm >= '02:30' && hhmm < '05:00' && once('swk-daily-full-backup', day)) await safe('swk-daily-full-backup', async () => {
+  if (process.uptime() >= 60 && hhmm >= '02:30' && hhmm < '05:00' && once('swk-daily-full-backup', day)) await safe('swk-daily-full-backup', async () => {
     const eb = await import('./domain/excel-backup')
     await eb.runDailyFullBackup('daily-auto')
   })

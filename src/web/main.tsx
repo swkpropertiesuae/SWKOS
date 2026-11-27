@@ -62,11 +62,10 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && !(window
 const qc = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60_000,
-      gcTime: 30 * 60_000,
+      staleTime: 60_000,
+      gcTime: 15 * 60_000,
       refetchOnWindowFocus: false,
       retry: 1,
-      placeholderData: (prev: unknown) => prev,
     },
   },
 })

@@ -351,10 +351,11 @@ export function Shell() {
     })
   const userRef = useClickOutside<HTMLDivElement>(() => setUserMenu(false))
 
+  const isPrint = loc.pathname.startsWith('/print')
   const chatUnread =
     useQuery({
       queryKey: ['chat-unread'],
-      enabled: isStaff && !mustChangePw,
+      enabled: isStaff && !mustChangePw && !isPrint,
       queryFn: () => get<{ unread: number }>('/api/chat/unread'),
       refetchInterval: 60000,
     }).data?.unread ?? 0
@@ -417,7 +418,6 @@ export function Shell() {
     nav('/login')
   }
 
-  const isPrint = loc.pathname.startsWith('/print')
   const here = findNav(loc.pathname)
   const isHome = loc.pathname === '/home'
   // Same visibility rule as AppSidebar: it renders nothing when the user can see none of the section's items,

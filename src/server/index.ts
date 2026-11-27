@@ -3,7 +3,7 @@ import { syncSchema } from './schema'
 import { validateMeta } from '../shared/entities'
 import { seedReference } from './seed'
 import { buildApp } from './app'
-import { startScheduler } from './scheduler'
+import { markScheduledDone, startScheduler } from './scheduler'
 import { db } from './db'
 import { config as cfg } from './config'
 
@@ -15,7 +15,7 @@ async function main() {
   await seedReference()
   ;(await import('./ai/agents')).ensureAgents()
   await (await import('./startup-data')).runStartupDataTasks()
-  if (cfg.demo.enabled) { try { const td = Date.now(); await (await import('./demo/workspace')).rebuildDemoWorkspace(); console.log(`Demo workspace ready (${Date.now() - td} ms)`) } catch (e) { console.error('Demo workspace could not be built – continuing without it', e) } }
+  if (cfg.demo.enabled) { try { const td = Date.now(); await (await import('./demo/workspace')).rebuildDemoWorkspace(); markScheduledDone('demo-rebuild'); console.log(`Demo workspace ready (${Date.now() - td} ms)`) } catch (e) { console.error('Demo workspace could not be built – continuing without it', e) } }
   const app = await buildApp()
   await app.listen({ port: config.port, host: config.host })
   startScheduler()

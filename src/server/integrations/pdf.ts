@@ -35,8 +35,8 @@ export async function renderPrintPdf(printPath: string, cookie: { name: string; 
   try {
     await ctx.addCookies([{ name: cookie.name, value: cookie.value, domain: '127.0.0.1', path: '/', httpOnly: true, secure: false }])
     const page = await ctx.newPage()
-    await page.goto(`http://127.0.0.1:${config.port}${printPath}`, { waitUntil: 'networkidle', timeout: 30000 })
-    await page.waitForSelector('.print-sheet[data-print-ready="true"]', { timeout: 15000 }).catch(async () => {
+    await page.goto(`http://127.0.0.1:${config.port}${printPath}`, { waitUntil: 'load', timeout: 30000 })
+    await page.waitForSelector('.print-sheet[data-print-ready="true"]', { timeout: 25000 }).catch(async () => {
       const message = await page.locator('.print-sheet [role=alert]').first().textContent().catch(() => '')
       throw bad(message || 'The document could not finish loading. Check the record and try again.')
     })
