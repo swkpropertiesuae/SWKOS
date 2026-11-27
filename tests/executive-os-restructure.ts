@@ -126,7 +126,7 @@ async function run() {
       method: 'POST',
       url: '/api/core-masters/change-requests',
       headers: hdr(cMeenakshi),
-      payload: { entity: 'communities', action: 'create', payload: { code: 'TILAL', name: 'Tilal Al Ghaf', emirate: 'Dubai', area: 'Dubai', avg_price_sqft: 2150 }, reason: 'New luxury villa launch' },
+      payload: { entity: 'communities', action: 'create', payload: { code: 'TILALTEST', name: 'Tilal Al Ghaf Test Phase', emirate: 'Dubai', area: 'Dubai', avg_price_sqft: 2150 }, reason: 'New luxury villa launch' },
     })
     assert.equal(propRes.statusCode, 201, propRes.body)
     const reqId = propRes.json().id
@@ -137,7 +137,7 @@ async function run() {
 
     const goodDecide = await app.inject({ method: 'POST', url: `/api/core-masters/change-requests/${reqId}/decide`, headers: hdr(cOwner), payload: { decision: 'approve', note: 'Approved' } })
     assert.equal(goodDecide.statusCode, 200, goodDecide.body)
-    assert.ok(q.val(`SELECT id FROM communities WHERE code = 'TILAL' AND deleted_at IS NULL`), 'Approved Master Log request must commit to DB')
+    assert.ok(q.val(`SELECT id FROM communities WHERE code = 'TILALTEST' AND deleted_at IS NULL`), 'Approved Master Log request must commit to DB')
 
     // 5. 12-Stage Pipeline + Command Center + Client Vault + Mortgage Desk + AI Case Studies
     const p12 = await app.inject({ method: 'GET', url: '/api/pipeline/12-stage', headers: hdr(cOwner) })
