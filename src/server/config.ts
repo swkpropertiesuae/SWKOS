@@ -36,6 +36,8 @@ export const config = {
   timezone: env.APP_TIMEZONE ?? 'Asia/Dubai',
   /** Keep production database clean at first start unless STARTER_DATA=true is explicitly set. */
   starterData: bool(env.STARTER_DATA, false),
+  /** Adds the catalogued Dubai off-plan launches (src/shared/offplan-launches.ts) once each at start-up. */
+  offplanLaunches: bool(env.OFFPLAN_LAUNCHES, true),
   /** Set to a new token (for example a date) to clear all business data once, after taking a backup, on the next start. */
   resetToken: (env.RESET_BUSINESS_DATA_ON_START ?? '').trim(),
   baseCurrency: env.BASE_CURRENCY ?? 'AED',

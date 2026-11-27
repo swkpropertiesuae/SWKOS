@@ -9,6 +9,7 @@ import { nowIso } from './util'
 import { businessDataSummary,clearStarterDeclined,loadSwkStarterData,resetBusinessData,starterDeclined,starterLoaded } from './domain/business-data'
 import { ensureHardcodedSwkStaffAccounts,applyConfiguredPasswords,applyPasswordReset,syncSwkStaffRoster,applySwk2026Passwords,recoverFromRetiredPatternPasswords } from './seed'
 import { SWK_STAFF_ACCOUNTS } from '../shared/swk-staff-access'
+import { ensureOffPlanLaunches } from './domain/offplan-launches'
 
 const FRESH_OWNER_ADMIN_RESET_KEY = 'reset:fresh-staff-2026-11-17'
 
@@ -67,5 +68,9 @@ export async function runStartupDataTasks() {
   if (config.starterData && !starterLoaded() && !starterDeclined() && businessDataSummary().total === 0) {
     const r = loadSwkStarterData(SYSTEM_CTX) as any
     if (r.loaded) console.log(`SWK OS starter data loaded (${r.invoices?.length} invoices, ${r.jobs?.length} jobs).`)
+  }
+  // after the starter-data check, so an empty database still gets the starter data first
+  if (config.offplanLaunches) {
+    try { const r = ensureOffPlanLaunches(); if (r.added) console.log(`Off-plan launches added: ${r.added}.`) } catch (e) { console.warn('[launches] skipped:', (e as Error).message) }
   }
 }
