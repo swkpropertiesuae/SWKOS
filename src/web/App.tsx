@@ -29,6 +29,7 @@ const WorkQueuePage = lazy(() => import('./pages/WorkPages').then(m => ({ defaul
 const HandoverPage = lazy(() => import('./pages/WorkPages').then(m => ({ default: m.HandoverPage })))
 const PublicTrack = lazy(() => import('./pages/PublicTrack').then(m => ({ default: m.PublicTrack })))
 const PublicListing = lazy(() => import('./pages/PublicListing').then(m => ({ default: m.PublicListing })))
+const PromoterShowcasePage = lazy(() => import('./pages/PromoterShowcasePage').then(m => ({ default: m.PromoterShowcasePage })))
 const AcceptInvite = lazy(() => import('./pages/AcceptInvite').then(m => ({ default: m.AcceptInvite })))
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })))
 const AiPage = lazy(() => import('./pages/AiPage').then(m => ({ default: m.AiPage })))
@@ -155,7 +156,7 @@ export default function App() {
     if (typeof window === 'undefined') return false
     // Native Android/iOS already renders a hardware SplashScreen; skip the secondary web splash for instant boot
     if ((window as any).Capacitor?.isNativePlatform?.() || (window as any).__SWK_CONFIG__?.MOBILE_SHELL) return false
-    if (loc.pathname.startsWith('/l/') || loc.pathname.startsWith('/t/') || loc.pathname.startsWith('/print/')) return false
+    if (loc.pathname.startsWith('/l/') || loc.pathname.startsWith('/p/') || loc.pathname.startsWith('/t/') || loc.pathname.startsWith('/print/')) return false
     try {
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false
       if (sessionStorage.getItem('swk.splash.shown') === '1') return false
@@ -169,6 +170,7 @@ export default function App() {
   if (loc.pathname === '/accept-invite') return <Suspense fallback={<Loading />}><AcceptInvite /></Suspense>
   if (loc.pathname.startsWith('/t/')) return <Suspense fallback={<Loading />}><Routes><Route path="/t/:token" element={<PublicTrack />} /></Routes></Suspense>
   if (loc.pathname.startsWith('/l/')) return <Suspense fallback={<Loading />}><Routes><Route path="/l/:token" element={<PublicListing />} /></Routes></Suspense>
+  if (loc.pathname.startsWith('/p/')) return <Suspense fallback={<Loading />}><Routes><Route path="/p/:slug" element={<PromoterShowcasePage />} /></Routes></Suspense>
   const isStandaloneReceptionQr =
     loc.pathname === '/qr-checkin' ||
     loc.pathname.startsWith('/qr-checkin/') ||

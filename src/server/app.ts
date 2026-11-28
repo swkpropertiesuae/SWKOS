@@ -203,7 +203,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     import('./routes/studio'), import('./routes/writing'), import('./routes/sync'), import('./routes/daily'), import('./routes/email'), import('./routes/auth'), import('./routes/meta'), import('./routes/crud'), import('./routes/panel'), import('./routes/files'),
     import('./routes/enterprise'), import('./routes/work'), import('./routes/jobs'), import('./routes/sales'), import('./routes/finance'), import('./routes/insights'), import('./routes/admin'), import('./routes/integrations'), import('./routes/compliance'), import('./routes/demo'),
     import('./routes/properties'), import('./routes/mandates'), import('./routes/transactions'), import('./routes/leases'), import('./routes/aml'), import('./routes/voice'), import('./routes/sip'),
-    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/executive-os'), import('./routes/catalog-kit'), import('./routes/shabib-workspace'), import('./routes/agency-hub'), import('./routes/ui-preferences'), import('./routes/task-followups'),
+    import('./routes/swk-ops'), import('./routes/chat'), import('./routes/push'), import('./routes/growth'), import('./routes/crm-vault'), import('./routes/website'), import('./routes/share'), import('./routes/promo'), import('./routes/ocr'), import('./routes/omni-ai'), import('./routes/utilities'), import('./routes/search-unified'), import('./routes/field-gps'), import('./routes/seal-approvals'), import('./routes/executive-os'), import('./routes/catalog-kit'), import('./routes/shabib-workspace'), import('./routes/agency-hub'), import('./routes/ui-preferences'), import('./routes/task-followups'),
   ])
   for (const m of mods) await app.register(m.default)
   app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }))
@@ -221,8 +221,36 @@ export async function buildApp(): Promise<FastifyInstance> {
   const webDir = path.resolve('dist/web')
   if (fs.existsSync(webDir)) {
     await app.register(fstatic, { root: webDir, wildcard: false, cacheControl: false, setHeaders(res, p) { if (/[/\\]assets[/\\]/.test(p)) res.header('Cache-Control', 'public, max-age=31536000, immutable'); else res.header('Cache-Control', 'no-cache') } })
+    const { buildPromoOgMeta } = await import('./routes/promo')
+    const escAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'Not found' })
+      const cleanPath = req.url.split('?')[0]
+      const promoMatch = /^\/p\/([a-z0-9-]+)\/?$/i.exec(cleanPath)
+      if (promoMatch) {
+        const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim()
+        const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'os.swk.properties').split(',')[0].trim()
+        const og = buildPromoOgMeta(promoMatch[1]!, `${proto}://${host}`)
+        const idxPath = path.join(webDir, 'index.html')
+        if (og && fs.existsSync(idxPath)) {
+          let html = fs.readFileSync(idxPath, 'utf8')
+          const ogTags = [
+            `<title>${escAttr(og.title)}</title>`,
+            `<meta name="description" content="${escAttr(og.description)}" />`,
+            `<meta property="og:type" content="website" />`,
+            `<meta property="og:title" content="${escAttr(og.title)}" />`,
+            `<meta property="og:description" content="${escAttr(og.description)}" />`,
+            `<meta property="og:image" content="${escAttr(og.image)}" />`,
+            `<meta property="og:url" content="${escAttr(og.url)}" />`,
+            `<meta name="twitter:card" content="summary_large_image" />`,
+            `<meta name="twitter:title" content="${escAttr(og.title)}" />`,
+            `<meta name="twitter:description" content="${escAttr(og.description)}" />`,
+            `<meta name="twitter:image" content="${escAttr(og.image)}" />`,
+          ].join('\n    ')
+          html = html.replace(/<title>[\s\S]*?<\/title>/i, ogTags)
+          return reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-cache').send(html)
+        }
+      }
       return reply.sendFile('index.html')
     })
   } else {

@@ -420,6 +420,9 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
     '', `Unit at ${aed(price)}: ${plan.rows.slice(0, 2).map(r => `${r.label} ${aed(r.amount)}`).join(' + ')}`,
     '', 'SWK Properties · RERA ORN 51517', 'Prices & availability subject to developer confirmation.',
   ].filter(Boolean).join('\n')
+  const promoSlug = p.project.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const promoPath = `/p/${promoSlug}`
+  const promoFullUrl = typeof window !== 'undefined' ? `${window.location.origin}${promoPath}` : `https://os.swk.properties${promoPath}`
   const waPromoter = p.promoterName
     ? [
         `*${p.project}*`,
@@ -430,6 +433,7 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
         '',
         `Unit at ${aed(price)}: ${plan.rows.slice(0, 2).map(r => `${r.label} ${aed(r.amount)}`).join(' + ')}`,
         '',
+        `🌐 *Interactive Showcase, Film & 3D Floor Plans:* ${promoFullUrl}`,
         `👤 *CRM Promoter:* ${p.promoterName}${p.promoterPhone ? ` · ${p.promoterPhone}` : ''}`,
         'Direct VIP allocation & private tour bookings — reply now to reserve.',
       ].join('\n')
@@ -512,14 +516,20 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
             <div className="text-[11.5px] text-muted mt-0.5">Assigned inside CRM (Projects, Agents &amp; Campaigns) · Internal CRM only.</div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="swk-btn swk-btn-gold !h-9 text-[12px]" onClick={async () => { if (await copyText(waPromoter)) onToast(`Copied promoter pitch (${p.promoterName})`) }}>
-              <Copy size={13} /> Copy Promoter Pitch
+            <a className="swk-btn swk-btn-primary !h-9 text-[12px] no-underline" href={promoPath} target="_blank" rel="noreferrer">
+              <ExternalLink size={13} /> Open Promo Link
+            </a>
+            <button type="button" className="swk-btn swk-btn-gold !h-9 text-[12px]" onClick={async () => { if (await copyText(promoFullUrl)) onToast(`Copied promoter link: ${promoFullUrl}`) }}>
+              <Copy size={13} /> Copy Promo Link
             </button>
-            <a className="swk-btn swk-btn-primary !h-9 text-[12px] no-underline" href={promoterWaHref} target="_blank" rel="noreferrer">
-              <MessageCircle size={13} /> Promote via WhatsApp
+            <button type="button" className="swk-btn swk-btn-ghost !h-9 text-[12px]" onClick={async () => { if (await copyText(waPromoter)) onToast(`Copied promoter pitch (${p.promoterName})`) }}>
+              <Copy size={13} /> Copy Pitch
+            </button>
+            <a className="swk-btn swk-btn-ghost !h-9 text-[12px] no-underline" href={promoterWaHref} target="_blank" rel="noreferrer">
+              <MessageCircle size={13} /> WhatsApp
             </a>
             <Link to="/e/campaigns" className="swk-btn swk-btn-ghost !h-9 text-[12px] no-underline">
-              <Megaphone size={13} /> CRM Campaigns
+              <Megaphone size={13} /> Campaigns
             </Link>
           </div>
         </div>

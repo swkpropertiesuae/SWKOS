@@ -495,7 +495,29 @@ try {
   assert.equal(artsKitRes.statusCode, 200, `Catalog kit for Arts District failed: ${artsKitRes.body}`)
   assertZeroShabibPublicPayload(artsKitRes.json(), 'Catalog Kit Arts District (Zero-Shabib Guard)')
 
-  console.log('uae-projects-catalog Review-Fix regression checks: OK (payment milestones 100%, website URL hygiene, 8 payment templates, uploaded brochure precedence, 960x600 SVG watermark plate, CRM Promoter Shabib Siraj + zero public leak)')
+  // R7: Dedicated CRM Promoter Showcase Link (/api/public/promo/the-arts-district-by-binghatti) serves Shabib Siraj (+971 55 155 4680) + routes VIP enquiries to Shabib in CRM
+  const promoGet = await app.inject({ method: 'GET', url: '/api/public/promo/the-arts-district-by-binghatti' })
+  assert.equal(promoGet.statusCode, 200, `Public promo API failed: ${promoGet.body}`)
+  const promoBody = promoGet.json()
+  assert.equal(promoBody.promoter?.name, 'Shabib Siraj')
+  assert.equal(promoBody.promoter?.phone, '+971 55 155 4680')
+  assert.equal(promoBody.typologies?.length, 3, 'Expected 3 Arts District unit typologies')
+  assert.ok(promoBody.project?.videoUrl?.includes('the-arts-district-by-binghatti-film'), 'Promo payload missing narrated film URL')
+  assert.ok(promoBody.project?.brochureUrl?.includes('the-arts-district-by-binghatti-brochure'), 'Promo payload missing brochure PDF URL')
+  const promoEnq = await app.inject({
+    method: 'POST',
+    url: '/api/public/promo/the-arts-district-by-binghatti/enquiry',
+    headers: { 'content-type': 'application/json' },
+    payload: { name: 'VIP Launch Buyer', phone: '+971 50 987 6543', unit_type: '2-Bedroom Corner (AED 1,300,000)', consent: true },
+  })
+  assert.equal(promoEnq.statusCode, 200, `Promo enquiry failed: ${promoEnq.body}`)
+  const createdLeadId = promoEnq.json().lead_id
+  assert.ok(createdLeadId, 'Promo enquiry must create a CRM lead')
+  const promoLead = q.get<any>(`SELECT id, promoter_id, campaign_id, destination FROM leads WHERE id = ?`, createdLeadId)
+  assert.equal(promoLead?.promoter_id, artsRow.promoter_id, 'Promo lead must be attributed to Shabib Siraj as CRM promoter')
+  assert.equal(promoLead?.campaign_id, artsCampaign.id, 'Promo lead must link to the active Arts District CRM campaign')
+
+  console.log('uae-projects-catalog Review-Fix regression checks: OK (payment milestones 100%, website URL hygiene, 8 payment templates, uploaded brochure precedence, 960x600 SVG watermark plate, CRM Promoter Shabib Siraj + /p/ promo link + zero public share leak)')
 } finally {
   await app.close()
   db.close()
