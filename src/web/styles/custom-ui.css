@@ -1,186 +1,209 @@
 /* =====================================================================================
    SWK OS — Customise UI Live Override Engine, Highlight System, Pinned Dock & Quick-Pad
-   Activated ONLY under html[data-ui-customized="1"] so untouched workspaces stay 100%
-   identical to SWK Signature Pure White & Obsidian. Never applies on /print/* or print.
+   Activated ONLY under @media screen + html[data-ui-customized="1"].
+   Studio controls (.swk-customise-studio-panel), A4 document papers (.studio-paper),
+   and print sheets (.print-sheet) remain 100% immune so controls and legal documents
+   are ALWAYS crisp and high-contrast regardless of user color experiments.
    ===================================================================================== */
 
-/* ---------------- 1. LIVE CUSTOM THEME SURFACE & TYPOGRAPHY ENGINE ---------------- */
-html[data-ui-customized='1'] {
-  font-size: var(--swk-ui-font-size, 15px);
+@media screen {
+  /* ---------------- 1. LIVE CUSTOM THEME SURFACE & TYPOGRAPHY ENGINE ---------------- */
+  html[data-ui-customized='1'] {
+    font-size: var(--swk-ui-font-size, 15px);
+  }
+
+  html[data-ui-customized='1'] body {
+    font-family: var(--font-sans) !important;
+    font-size: var(--swk-ui-font-size, 15px) !important;
+    font-weight: var(--swk-ui-font-weight, 450) !important;
+    font-style: var(--swk-ui-font-style, normal) !important;
+    letter-spacing: var(--swk-ui-letter-spacing, -0.01em) !important;
+    color: var(--body) !important;
+    background-color: var(--bg) !important;
+    background-image: var(--swk-ui-bg-image, none) !important;
+  }
+
+  html[data-ui-customized='1'] .swk-atmosphere {
+    background: var(--swk-ui-bg-image, var(--bg)) !important;
+  }
+
+  html[data-ui-customized='1'][data-ui-watermark='0'] .swk-atmosphere img {
+    display: none !important;
+  }
+
+  /* Headings (exclude immune studio panels, print sheets, and studio paper previews) */
+  html[data-ui-customized='1'] :where(h1, h2, h3, h4, .font-display):not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    font-family: var(--font-display) !important;
+    color: var(--ink);
+    font-style: var(--swk-ui-font-style, normal);
+  }
+
+  html[data-ui-customized='1'] h1:not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    font-size: calc(clamp(1.65rem, 2.8vw, 2.5rem) * var(--swk-ui-heading-scale, 1));
+  }
+  html[data-ui-customized='1'] h2:not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    font-size: calc(clamp(1.2rem, 1.8vw, 1.6rem) * var(--swk-ui-heading-scale, 1));
+  }
+  html[data-ui-customized='1'] h3:not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    font-size: calc(1.08rem * var(--swk-ui-heading-scale, 1));
+  }
+
+  html[data-ui-customized='1'][data-ui-uppercase-headings='1'] :where(h1, h2, h3):not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  html[data-ui-customized='1'] :where(.font-mono, code, pre):not(.swk-customise-studio-panel *) {
+    font-family: var(--font-mono) !important;
+  }
+
+  /* Header & Sidebar */
+  html[data-ui-customized='1'] .swk-top {
+    background: var(--swk-ui-header-bg, var(--card)) !important;
+    border-bottom-color: var(--line) !important;
+    color: var(--ink) !important;
+  }
+  html[data-ui-customized='1'] .swk-top::after {
+    background: linear-gradient(90deg, var(--swk-ui-accent, #d4a955) 0%, var(--swk-ui-highlight, #d4a955) 55%, var(--logo-emerald, #1e6b43) 100%) !important;
+  }
+  html[data-ui-customized='1'] .swk-app-sidebar {
+    background: var(--swk-ui-sidebar-bg, var(--card)) !important;
+    border-right-color: var(--line) !important;
+    color: var(--ink) !important;
+  }
+  html[data-ui-customized='1'] .swk-sidebar-link {
+    color: var(--body) !important;
+  }
+  html[data-ui-customized='1'] .swk-sidebar-link.active,
+  html[data-ui-customized='1'] .swk-sidebar-link:hover {
+    background: var(--swk-ui-highlight-bg, var(--hover)) !important;
+    color: var(--ink) !important;
+    border-color: var(--swk-ui-highlight, var(--logo-gold)) !important;
+  }
+
+  /* True Card Surfaces (radius + shadow + background) */
+  html[data-ui-customized='1'] :where(.card, .swk-card, .panel, .web-card, .swk-stat, .swk-workflow-bar, .swk-menu, .modal):not(.swk-customise-studio-panel):not(.swk-customise-studio-panel *):not(.studio-paper):not(.print-sheet) {
+    background-color: var(--card) !important;
+    border-color: var(--line) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--swk-ui-card-shadow, var(--surface-raised)) !important;
+  }
+
+  /* White Tailwind card/surface backgrounds inside .swk-main (background + border ONLY — preserves rounded-full pills & circles!) */
+  html[data-ui-customized='1'] .swk-main :where(.bg-white, .bg-white\/95, .bg-white\/92, .bg-white\/90, .bg-white\/88, .bg-white\/86, .bg-white\/80):not(.swk-customise-studio-panel):not(.swk-customise-studio-panel *):not(.studio-paper):not(.studio-paper *):not(.print-sheet):not(.print-sheet *) {
+    background-color: var(--card) !important;
+    border-color: var(--line) !important;
+  }
+
+  /* Dark-mode remapping for light-tinted badges, icon boxes & Mobile Ops Sheet */
+  html[data-ui-customized='1'][data-theme='dark'] .swk-main :where(.bg-\[\#faf7ef\], .bg-\[\#f7f7f9\], .bg-\[\#f4f7fa\], .bg-\[\#f8f7f4\], .bg-\[\#faf9f6\]):not(.swk-customise-studio-panel):not(.swk-customise-studio-panel *):not(.studio-paper *) {
+    background-color: var(--soft) !important;
+    border-color: var(--line) !important;
+  }
+  html[data-ui-customized='1'][data-theme='dark'] .swk-ops-sheet {
+    background-color: var(--card) !important;
+    color: var(--ink) !important;
+    border-color: var(--line) !important;
+  }
+  html[data-ui-customized='1'][data-theme='dark'] .swk-ops-sheet :where(.bg-white, .bg-soft\/80, .bg-soft\/75) {
+    background-color: var(--soft) !important;
+    border-color: var(--line) !important;
+    color: var(--ink) !important;
+  }
+  html[data-ui-customized='1'][data-theme='dark'] .swk-ops-sheet :where(.text-\[\#121212\], .text-ink) {
+    color: var(--ink) !important;
+  }
+  html[data-ui-customized='1'][data-theme='dark'] .swk-ops-sheet :where(.text-\[\#475569\], .text-muted) {
+    color: var(--muted) !important;
+  }
+
+  /* Text ink override inside workspace (excluding immune studio panels & A4 papers) */
+  html[data-ui-customized='1'] .swk-main :where(.text-\[\#0a0b0e\], .text-\[\#121212\], .text-ink):not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    color: var(--ink) !important;
+  }
+  html[data-ui-customized='1'] .swk-main :where(.text-\[\#4b5262\], .text-\[\#5b616e\], .text-\[\#5b6778\], .text-\[\#475569\], .text-\[\#64748b\], .text-muted):not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    color: var(--muted) !important;
+  }
+
+  /* Glossy Dark Cards (always crisp white ink on top of user's chosen glossy dark fill) */
+  html[data-ui-customized='1'] .swk-gloss-black {
+    background: linear-gradient(152deg, color-mix(in srgb, var(--swk-ui-gloss-bg, #0a0b0e) 86%, #ffffff 14%) 0%, var(--swk-ui-gloss-bg, #0a0b0e) 58%, color-mix(in srgb, var(--swk-ui-gloss-bg, #0a0b0e) 82%, #000000 18%) 100%) !important;
+    border-color: color-mix(in srgb, var(--swk-ui-accent, #d4a955) 45%, transparent) !important;
+    border-radius: var(--radius) !important;
+  }
+  html[data-ui-customized='1'] .swk-gloss-black :where(h1, h2, h3, h4, .text-white) {
+    color: #ffffff !important;
+  }
+  html[data-ui-customized='1'] .swk-gloss-black :where(.text-white\/75, .text-white\/70) {
+    color: rgba(255, 255, 255, 0.78) !important;
+  }
+
+  /* Inputs, Selects (excluding semantic tone-* status selects & studio panels), Tables */
+  html[data-ui-customized='1'] :where(input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']), select:not([class*='tone-']), textarea):not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) {
+    background-color: var(--card) !important;
+    color: var(--ink) !important;
+    border-color: var(--line) !important;
+  }
+  html[data-ui-customized='1'] table:not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) th {
+    color: var(--muted) !important;
+    border-color: var(--line) !important;
+  }
+  html[data-ui-customized='1'] table:not(.swk-customise-studio-panel *):not(.studio-paper *):not(.print-sheet *) td {
+    color: var(--body) !important;
+    border-color: var(--line) !important;
+  }
+
+  /* Primary Buttons (excluding studio panel controls) */
+  html[data-ui-customized='1'] :where(.btn:not(.outline):not(.ghost):not(.red):not(.emerald):not(.grey), .swk-btn:not(.swk-btn-outline):not(.swk-btn-ghost), .swk-create):not(.swk-customise-studio-panel *) {
+    background: linear-gradient(155deg, color-mix(in srgb, var(--swk-ui-btn-bg, #0a0b0e) 88%, #ffffff 12%) 0%, var(--swk-ui-btn-bg, #0a0b0e) 60%, color-mix(in srgb, var(--swk-ui-btn-bg, #0a0b0e) 85%, #000000 15%) 100%) !important;
+    color: var(--swk-ui-btn-text, #ebc97c) !important;
+    border-color: color-mix(in srgb, var(--swk-ui-accent, #d4a955) 55%, transparent) !important;
+  }
+  html[data-ui-customized='1'] :where(.btn.outline, .swk-btn-outline):not(.swk-customise-studio-panel *) {
+    background: var(--card) !important;
+    color: var(--ink) !important;
+    border-color: var(--line) !important;
+  }
+
+  /* Shimmer Toggle */
+  html[data-ui-customized='1'][data-ui-shimmer='0'] .btn::after,
+  html[data-ui-customized='1'][data-ui-shimmer='0'] .swk-btn::after {
+    display: none !important;
+  }
+
+  /* Density Presets */
+  html[data-ui-customized='1'][data-ui-density='compact'] .swk-main {
+    padding: 14px clamp(12px, 1.6vw, 22px) 84px !important;
+  }
+  html[data-ui-customized='1'][data-ui-density='compact'] .card:not(.swk-customise-studio-panel),
+  html[data-ui-customized='1'][data-ui-density='compact'] .swk-card:not(.swk-customise-studio-panel) {
+    padding: 12px 14px !important;
+  }
+  html[data-ui-customized='1'][data-ui-density='spacious'] .swk-main {
+    padding: 28px clamp(20px, 3vw, 44px) 112px !important;
+  }
+  html[data-ui-customized='1'][data-ui-density='spacious'] .card:not(.swk-customise-studio-panel),
+  html[data-ui-customized='1'][data-ui-density='spacious'] .swk-card:not(.swk-customise-studio-panel) {
+    padding: 24px 26px !important;
+  }
 }
 
-html[data-ui-customized='1'] body {
-  font-family: var(--font-sans) !important;
-  font-size: var(--swk-ui-font-size, 15px) !important;
-  font-weight: var(--swk-ui-font-weight, 450) !important;
-  font-style: var(--swk-ui-font-style, normal) !important;
-  letter-spacing: var(--swk-ui-letter-spacing, -0.01em) !important;
-  color: var(--body) !important;
-  background-color: var(--bg) !important;
-  background-image: var(--swk-ui-bg-image, none) !important;
+/* Immune Customise UI Studio Panel — ALWAYS clean, legible recovery controls in any theme */
+.swk-customise-studio-panel {
+  font-family: 'Switzer', system-ui, -apple-system, sans-serif !important;
+  font-size: 14px !important;
+  font-style: normal !important;
+  font-weight: 450 !important;
+  letter-spacing: -0.01em !important;
+  background-color: #ffffff !important;
+  color: #0a0b0e !important;
+  border-color: rgba(10, 11, 14, 0.12) !important;
 }
-
-html[data-ui-customized='1'] .swk-atmosphere {
-  background: var(--swk-ui-bg-image, var(--bg)) !important;
-}
-
-html[data-ui-customized='1'][data-ui-watermark='0'] .swk-atmosphere img {
-  display: none !important;
-}
-
-html[data-ui-customized='1'] h1,
-html[data-ui-customized='1'] h2,
-html[data-ui-customized='1'] h3,
-html[data-ui-customized='1'] h4,
-html[data-ui-customized='1'] .font-display {
-  font-family: var(--font-display) !important;
-  color: var(--ink);
-  font-style: var(--swk-ui-font-style, normal);
-}
-
-html[data-ui-customized='1'] h1 {
-  font-size: calc(clamp(1.65rem, 2.8vw, 2.5rem) * var(--swk-ui-heading-scale, 1));
-}
-html[data-ui-customized='1'] h2 {
-  font-size: calc(clamp(1.2rem, 1.8vw, 1.6rem) * var(--swk-ui-heading-scale, 1));
-}
-html[data-ui-customized='1'] h3 {
-  font-size: calc(1.08rem * var(--swk-ui-heading-scale, 1));
-}
-
-html[data-ui-customized='1'][data-ui-uppercase-headings='1'] h1,
-html[data-ui-customized='1'][data-ui-uppercase-headings='1'] h2,
-html[data-ui-customized='1'][data-ui-uppercase-headings='1'] h3 {
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-}
-
-html[data-ui-customized='1'] .font-mono,
-html[data-ui-customized='1'] code,
-html[data-ui-customized='1'] pre {
-  font-family: var(--font-mono) !important;
-}
-
-/* Header & Sidebar */
-html[data-ui-customized='1'] .swk-top {
-  background: var(--swk-ui-header-bg, var(--card)) !important;
-  border-bottom-color: var(--line) !important;
-  color: var(--ink) !important;
-}
-html[data-ui-customized='1'] .swk-top::after {
-  background: linear-gradient(90deg, var(--swk-ui-accent, #d4a955) 0%, var(--swk-ui-highlight, #d4a955) 55%, var(--logo-emerald, #1e6b43) 100%) !important;
-}
-html[data-ui-customized='1'] .swk-app-sidebar {
-  background: var(--swk-ui-sidebar-bg, var(--card)) !important;
-  border-right-color: var(--line) !important;
-  color: var(--ink) !important;
-}
-html[data-ui-customized='1'] .swk-sidebar-link {
-  color: var(--body) !important;
-}
-html[data-ui-customized='1'] .swk-sidebar-link.active,
-html[data-ui-customized='1'] .swk-sidebar-link:hover {
-  background: var(--swk-ui-highlight-bg, var(--hover)) !important;
-  color: var(--ink) !important;
-  border-color: var(--swk-ui-highlight, var(--logo-gold)) !important;
-}
-
-/* Standard Cards & Surfaces (also covers Tailwind white surfaces inside workspace) */
-html[data-ui-customized='1'] .card,
-html[data-ui-customized='1'] .swk-card,
-html[data-ui-customized='1'] .panel,
-html[data-ui-customized='1'] .web-card,
-html[data-ui-customized='1'] .swk-stat,
-html[data-ui-customized='1'] .swk-workflow-bar,
-html[data-ui-customized='1'] .swk-menu,
-html[data-ui-customized='1'] .modal,
-html[data-ui-customized='1'] .swk-main .bg-white,
-html[data-ui-customized='1'] .swk-main .bg-white\/95,
-html[data-ui-customized='1'] .swk-main .bg-white\/92,
-html[data-ui-customized='1'] .swk-main .bg-white\/90,
-html[data-ui-customized='1'] .swk-main .bg-white\/88,
-html[data-ui-customized='1'] .swk-main .bg-white\/86 {
-  background-color: var(--card) !important;
-  border-color: var(--line) !important;
-  border-radius: var(--radius) !important;
-  box-shadow: var(--swk-ui-card-shadow, var(--surface-raised)) !important;
-}
-
-/* Text ink override inside custom light/dark cards (preserves white ink on glossy dark cards) */
-html[data-ui-customized='1'] .swk-main :where(.text-\[\#0a0b0e\], .text-\[\#121212\], .text-ink) {
-  color: var(--ink) !important;
-}
-html[data-ui-customized='1'] .swk-main :where(.text-\[\#4b5262\], .text-\[\#5b616e\], .text-\[\#5b6778\], .text-\[\#475569\], .text-\[\#64748b\], .text-muted) {
-  color: var(--muted) !important;
-}
-html[data-ui-customized='1'] .swk-main :where(.swk-gloss-black, .swk-gloss-black *, .swk-keep-dark, .swk-keep-dark *) {
-  --local-keep-dark: 1;
-}
-html[data-ui-customized='1'] .swk-gloss-black {
-  background: linear-gradient(152deg, color-mix(in srgb, var(--swk-ui-gloss-bg, #0a0b0e) 86%, #ffffff 14%) 0%, var(--swk-ui-gloss-bg, #0a0b0e) 58%, color-mix(in srgb, var(--swk-ui-gloss-bg, #0a0b0e) 82%, #000000 18%) 100%) !important;
-  border-color: color-mix(in srgb, var(--swk-ui-accent, #d4a955) 45%, transparent) !important;
-  border-radius: var(--radius) !important;
-}
-html[data-ui-customized='1'] .swk-gloss-black :where(h1, h2, h3, h4, .text-white) {
-  color: #ffffff !important;
-}
-html[data-ui-customized='1'] .swk-gloss-black .text-white\/75,
-html[data-ui-customized='1'] .swk-gloss-black .text-white\/70 {
-  color: rgba(255, 255, 255, 0.78) !important;
-}
-
-/* Inputs, Selects, Tables */
-html[data-ui-customized='1'] input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
-html[data-ui-customized='1'] select,
-html[data-ui-customized='1'] textarea {
-  background-color: var(--card) !important;
-  color: var(--ink) !important;
-  border-color: var(--line) !important;
-}
-html[data-ui-customized='1'] table th {
-  color: var(--muted) !important;
-  border-color: var(--line) !important;
-}
-html[data-ui-customized='1'] table td {
-  color: var(--body) !important;
-  border-color: var(--line) !important;
-}
-
-/* Primary Buttons */
-html[data-ui-customized='1'] .btn:not(.outline):not(.ghost):not(.red):not(.emerald):not(.grey),
-html[data-ui-customized='1'] .swk-btn:not(.swk-btn-outline):not(.swk-btn-ghost),
-html[data-ui-customized='1'] .swk-create {
-  background: linear-gradient(155deg, color-mix(in srgb, var(--swk-ui-btn-bg, #0a0b0e) 88%, #ffffff 12%) 0%, var(--swk-ui-btn-bg, #0a0b0e) 60%, color-mix(in srgb, var(--swk-ui-btn-bg, #0a0b0e) 85%, #000000 15%) 100%) !important;
-  color: var(--swk-ui-btn-text, #ebc97c) !important;
-  border-color: color-mix(in srgb, var(--swk-ui-accent, #d4a955) 55%, transparent) !important;
-}
-html[data-ui-customized='1'] .btn.outline,
-html[data-ui-customized='1'] .swk-btn-outline {
-  background: var(--card) !important;
-  color: var(--ink) !important;
-  border-color: var(--line) !important;
-}
-
-/* Shimmer Toggle */
-html[data-ui-customized='1'][data-ui-shimmer='0'] .btn::after,
-html[data-ui-customized='1'][data-ui-shimmer='0'] .swk-btn::after {
-  display: none !important;
-}
-
-/* Density Presets */
-html[data-ui-customized='1'][data-ui-density='compact'] .swk-main {
-  padding: 14px clamp(12px, 1.6vw, 22px) 84px !important;
-}
-html[data-ui-customized='1'][data-ui-density='compact'] .card,
-html[data-ui-customized='1'][data-ui-density='compact'] .swk-card {
-  padding: 12px 14px !important;
-}
-html[data-ui-customized='1'][data-ui-density='spacious'] .swk-main {
-  padding: 28px clamp(20px, 3vw, 44px) 112px !important;
-}
-html[data-ui-customized='1'][data-ui-density='spacious'] .card,
-html[data-ui-customized='1'][data-ui-density='spacious'] .swk-card {
-  padding: 24px 26px !important;
+.swk-customise-studio-panel input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+.swk-customise-studio-panel select {
+  background-color: #ffffff !important;
+  color: #0a0b0e !important;
+  border-color: rgba(10, 11, 14, 0.16) !important;
 }
 
 /* ---------------- 2. HIGHLIGHT FEATURE SYSTEM ---------------- */
@@ -191,7 +214,7 @@ html[data-ui-customized='1'][data-ui-density='spacious'] .swk-card {
     0 0 0 2px color-mix(in srgb, var(--swk-ui-highlight, #d4a955) 55%, transparent),
     0 18px 42px -14px color-mix(in srgb, var(--swk-ui-highlight, #d4a955) 45%, transparent) !important;
 }
-html[data-ui-highlight='vivid'] .swk-ui-highlighted {
+html[data-ui-highlight='vivid'] .swk-ui-highlighted:not(.swk-gloss-black) {
   background-color: var(--swk-ui-highlight-bg, #fbf6ea) !important;
   box-shadow:
     0 0 0 2.5px var(--swk-ui-highlight, #d4a955),
@@ -237,42 +260,65 @@ html[data-ui-customized='1'][data-ui-focus-glow='1'][data-ui-highlight='vivid'] 
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
-  max-width: min(94vw, 980px);
+  max-width: min(92vw, 760px);
   padding: 7px 12px;
   border: 1px solid color-mix(in srgb, var(--swk-ui-accent, #d4a955) 45%, var(--line, #eae7e0));
   border-radius: 999px;
   box-shadow: 0 22px 54px -16px rgba(10, 11, 14, 0.34);
   overflow-x: auto;
   scrollbar-width: none;
-  z-index: 65;
+  z-index: 62;
 }
 @media (max-width: 767px) {
   .swk-pin-dock--bottom {
     bottom: 86px;
+    max-width: calc(100vw - 20px);
   }
 }
-.swk-pin-dock--left,
-.swk-pin-dock--right {
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  flex-direction: column;
-  align-items: stretch;
-  max-height: 70vh;
-  max-width: 196px;
-  overflow-y: auto;
-  padding: 10px 8px;
-  border: 1px solid color-mix(in srgb, var(--swk-ui-accent, #d4a955) 42%, var(--line, #eae7e0));
-  border-radius: 20px;
-  box-shadow: 0 20px 52px -18px rgba(10, 11, 14, 0.3);
-  z-index: 60;
+
+/* Desktop left/right vertical rails reserve safe margin on .swk-body so zero content/sidebar is covered */
+@media (min-width: 960px) {
+  .swk-pin-dock--left,
+  .swk-pin-dock--right {
+    position: fixed;
+    top: 84px;
+    flex-direction: column;
+    align-items: stretch;
+    max-height: calc(100vh - 108px);
+    width: 178px;
+    overflow-y: auto;
+    padding: 10px 8px;
+    border: 1px solid color-mix(in srgb, var(--swk-ui-accent, #d4a955) 42%, var(--line, #eae7e0));
+    border-radius: 20px;
+    box-shadow: 0 20px 52px -18px rgba(10, 11, 14, 0.28);
+    z-index: 45;
+  }
+  .swk-pin-dock--left {
+    left: 10px;
+  }
+  .swk-pin-dock--right {
+    right: 10px;
+  }
+  html[data-ui-dock='left'] .swk-body {
+    padding-left: 196px;
+  }
+  html[data-ui-dock='right'] .swk-body {
+    padding-right: 196px;
+  }
 }
-.swk-pin-dock--left {
-  left: 10px;
+
+/* Mobile fallback (< 960px): left/right rails cleanly dock as a horizontal strip under header so mobile content stays 100% readable */
+@media (max-width: 959px) {
+  .swk-pin-dock--left,
+  .swk-pin-dock--right {
+    width: 100%;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--line, #eae7e0);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
 }
-.swk-pin-dock--right {
-  right: 10px;
-}
+
 .swk-pin-pill {
   display: inline-flex;
   align-items: center;
@@ -301,21 +347,14 @@ html[data-ui-customized='1'][data-ui-focus-glow='1'][data-ui-highlight='vivid'] 
 .swk-floating-pad {
   position: fixed;
   z-index: 75;
+}
+.swk-floating-pad-handle {
   touch-action: none;
   user-select: none;
 }
 
 /* ---------------- 5. PRINT IMMUNITY GUARD ---------------- */
 @media print {
-  html[data-ui-customized='1'],
-  html[data-ui-customized='1'] body {
-    font-size: 15px !important;
-    font-style: normal !important;
-    font-weight: 400 !important;
-    background: #ffffff !important;
-    background-image: none !important;
-    color: #0a0b0e !important;
-  }
   .swk-pin-dock,
   .swk-floating-pad,
   .swk-customise-drawer {

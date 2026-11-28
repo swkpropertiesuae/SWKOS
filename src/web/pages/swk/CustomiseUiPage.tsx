@@ -1,11 +1,15 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Crown, Palette, Pin, Sparkles, Star } from 'lucide-react'
+import { useMeta } from '../../lib/meta'
 import { useUiCustomization } from '../../lib/uiCustomization'
 import { CustomiseUiControls } from '../../components/CustomiseUiControls'
 import { GlossyBlackCard, LogoPresenceBadge } from '../../components/ui/PremiumPrimitives'
 
 export default function CustomiseUiPage() {
+  const { me } = useMeta()
   const ui = useUiCustomization()
+  const backTarget = me?.party_id ? '/portal' : '/home'
+  const backLabel = me?.party_id ? 'Back to Portal' : 'Back to Home'
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-6 pb-12">
@@ -28,18 +32,18 @@ export default function CustomiseUiPage() {
               </span>
             )}
             <Link
-              to="/home"
+              to={backTarget}
               className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white no-underline hover:bg-[#d4a955] hover:text-[#0a0b0e]"
             >
-              <ArrowLeft size={14} /> Back to Home
+              <ArrowLeft size={14} /> {backLabel}
             </Link>
           </div>
         </div>
       </GlossyBlackCard>
 
-      {/* Main Split: Controls + Live Interactive Preview */}
+      {/* Main Split: Controls (immune high-contrast panel) + Live Interactive Preview */}
       <div className="grid gap-6 lg:grid-cols-12 items-start">
-        <div className="lg:col-span-7 rounded-[24px] border border-black/10 bg-white p-5 sm:p-6 shadow-sm">
+        <div className="swk-customise-studio-panel lg:col-span-7 rounded-[24px] border border-black/10 bg-white p-5 sm:p-6 shadow-sm">
           <CustomiseUiControls />
         </div>
 

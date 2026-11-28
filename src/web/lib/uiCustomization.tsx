@@ -4,9 +4,10 @@
  * Applies colors, typography, layout, highlight emphasis, pinned dock, and draggable
  * floating quick-pad live across the workspace with:
  *  - Zero-flash user-scoped localStorage hydration (`swk.ui.prefs.v1:<userId>:<demo>`)
- *  - Full DB sync via `/api/auth/ui-preferences` (sparse `theme` vs `pinning`)
+ *  - Strict logout/401/user-switch localStorage cleanup (`clearAllUiPrefsCache`)
+ *  - Section-versioned concurrent DB sync via `/api/auth/ui-preferences` (pinning NEVER clobbers theme)
+ *  - Pure React state updates (zero side-effects inside `<StrictMode>` updaters)
  *  - Strict `/print/*` immunity so official invoices/PDFs stay pure corporate letterhead
- *  - Clean undo stack + cross-user logout/401 wipe
  */
 import {
   createContext,
@@ -23,11 +24,11 @@ import { useMeta } from './meta'
 import { del, get, put } from './api'
 import { useToast } from './toast'
 import {
-  DEFAULT_UI_CUSTOMIZATION,
   DEFAULT_UI_PINNING,
   DEFAULT_UI_THEME,
   UI_PRESETS,
   autoContrastThemeColors,
+  filterPinningForUser,
   fontStackFor,
   isColorDark,
   isRoutePinnableForUser,
@@ -66,6 +67,8 @@ interface UiCustomizationCtx {
   saving: boolean
   canUndo: boolean
   drawerOpen: boolean
+  isCustomDomActive: boolean
+  lookupEntityModule: (entityKey: string) => string | undefined
   openDrawer: () => void
   closeDrawer: () => void
   toggleDrawer: () => void
@@ -83,7 +86,6 @@ interface UiCustomizationCtx {
   applyAsCompanyDefault: () => Promise<void>
   clearCompanyDefault: () => Promise<void>
   importThemeJson: (rawJson: string) => boolean
-  // Pinning & Dragging controls (never freeze user's theme!)
   setDockPosition: (pos: DockPosition) => void
   togglePinItem: (item: UiPinnedItem) => void
   removePin: (id: string) => void
@@ -107,6 +109,20 @@ export function useUiCustomization(): UiCustomizationCtx {
 
 const STORAGE_PREFIX = 'swk.ui.prefs.v1:'
 const storageKeyFor = (userId: number, demo?: boolean) => `${STORAGE_PREFIX}${userId}:${demo ? '1' : '0'}`
+
+/** Wipe every persisted Customise UI localStorage entry (called on sign-out, 401, or account switch). */
+export function clearAllUiPrefsCache() {
+  try {
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith(STORAGE_PREFIX)) keys.push(k)
+    }
+    for (const k of keys) localStorage.removeItem(k)
+  } catch {
+    /* ignore */
+  }
+}
 
 const MANAGED_CSS_VARS = [
   '--bg',
@@ -164,15 +180,31 @@ function clearDomCustomTheme() {
   root.removeAttribute('data-ui-shimmer')
   root.removeAttribute('data-ui-focus-glow')
   root.removeAttribute('data-ui-watermark')
+  root.removeAttribute('data-ui-dock')
   root.dataset.theme = 'light'
   for (const v of MANAGED_CSS_VARS) root.style.removeProperty(v)
 }
 
-function applyDomCustomTheme(prefs: UiCustomization, active: boolean) {
+function applyDomCustomTheme(prefs: UiCustomization, active: boolean, dockPos: DockPosition) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
+  if (dockPos === 'left' || dockPos === 'right') {
+    root.setAttribute('data-ui-dock', dockPos)
+  } else {
+    root.removeAttribute('data-ui-dock')
+  }
+
   if (!active) {
-    clearDomCustomTheme()
+    root.removeAttribute('data-ui-customized')
+    root.removeAttribute('data-ui-mode')
+    root.removeAttribute('data-ui-density')
+    root.removeAttribute('data-ui-highlight')
+    root.removeAttribute('data-ui-uppercase-headings')
+    root.removeAttribute('data-ui-shimmer')
+    root.removeAttribute('data-ui-focus-glow')
+    root.removeAttribute('data-ui-watermark')
+    root.dataset.theme = 'light'
+    for (const v of MANAGED_CSS_VARS) root.style.removeProperty(v)
     return
   }
 
@@ -279,16 +311,43 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [undoStack, setUndoStack] = useState<Array<UiThemeConfig | null>>([])
 
+  // Latest-state & concurrency-version refs (zero stale closures, zero cross-section clobbering)
+  const companyDefaultRef = useRef<UiThemeConfig | null>(null)
+  const personalThemeRef = useRef<UiThemeConfig | null>(null)
+  const pinningRef = useRef<UiPinningPrefs>(structuredClone(DEFAULT_UI_PINNING))
+  const isOwnerRef = useRef(false)
+  const undoStackRef = useRef<Array<UiThemeConfig | null>>([])
+  const sessionGenRef = useRef(0)
+  const themeVersionRef = useRef(0)
+  const pinVersionRef = useRef(0)
+
   const themeTimer = useRef<number | null>(null)
   const pinTimer = useRef<number | null>(null)
   const pendingThemeRef = useRef<UiThemeConfig | null | undefined>(undefined)
   const pendingPinningRef = useRef<UiPinningPrefs | undefined>(undefined)
+
+  const entityModMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const e of meta?.entities ?? []) {
+      if (!e.child) m.set(e.key, e.module)
+    }
+    return m
+  }, [meta?.entities])
+
+  const lookupEntityModule = useCallback(
+    (key: string) => entityModMap.get(key),
+    [entityModMap],
+  )
+  const lookupEntityModuleRef = useRef(lookupEntityModule)
+  lookupEntityModuleRef.current = lookupEntityModule
 
   const isPrintRoute =
     loc.pathname.startsWith('/print') ||
     loc.pathname.startsWith('/t/') ||
     loc.pathname.startsWith('/l/') ||
     loc.pathname === '/accept-invite'
+  const isPrintRouteRef = useRef(isPrintRoute)
+  isPrintRouteRef.current = isPrintRoute
 
   const effectivePrefs = useMemo(
     () => resolveUiCustomization(companyDefault, personalTheme, pinning),
@@ -296,14 +355,15 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
   )
   const hasPersonalTheme = personalTheme !== null
   const hasCompanyDefault = companyDefault !== null
-  const shouldApplyCustomDom = Boolean(me && !isPrintRoute && (hasPersonalTheme || hasCompanyDefault))
+  const shouldApplyCustomDom = Boolean(me && !me.mustChangePassword && !isPrintRoute && (hasPersonalTheme || hasCompanyDefault))
 
   // Apply or strip DOM custom variables whenever prefs or route changes
   useEffect(() => {
-    applyDomCustomTheme(effectivePrefs, shouldApplyCustomDom)
-  }, [effectivePrefs, shouldApplyCustomDom])
+    const activeDock: DockPosition =
+      me && !me.mustChangePassword && !isPrintRoute ? pinning.dockPosition : 'hidden'
+    applyDomCustomTheme(effectivePrefs, shouldApplyCustomDom, activeDock)
+  }, [effectivePrefs, shouldApplyCustomDom, me, isPrintRoute, pinning.dockPosition])
 
-  // Persist user-scoped snapshot to localStorage for zero-flash next boot
   const persistLocalSnapshot = useCallback(
     (
       userId: number,
@@ -319,92 +379,124 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const clearTimers = useCallback(() => {
+  const cancelThemeTimer = useCallback(() => {
     if (themeTimer.current !== null) {
       window.clearTimeout(themeTimer.current)
       themeTimer.current = null
     }
+    pendingThemeRef.current = undefined
+  }, [])
+
+  const cancelPinTimer = useCallback(() => {
     if (pinTimer.current !== null) {
       window.clearTimeout(pinTimer.current)
       pinTimer.current = null
     }
-    pendingThemeRef.current = undefined
     pendingPinningRef.current = undefined
   }, [])
 
-  // Hydrate per-user localStorage immediately + fetch authoritative server state
-  useEffect(() => {
-    clearTimers()
+  const clearAllTimers = useCallback(() => {
+    cancelThemeTimer()
+    cancelPinTimer()
+  }, [cancelThemeTimer, cancelPinTimer])
+
+  const resetLocalState = useCallback(() => {
+    companyDefaultRef.current = null
+    personalThemeRef.current = null
+    pinningRef.current = structuredClone(DEFAULT_UI_PINNING)
+    isOwnerRef.current = false
+    undoStackRef.current = []
+    setCompanyDefault(null)
+    setPersonalTheme(null)
+    setPinning(structuredClone(DEFAULT_UI_PINNING))
+    setIsOwner(false)
     setUndoStack([])
+    setDrawerOpen(false)
+  }, [])
+
+  // Hydrate per-user localStorage & fetch authoritative server state (keyed ONLY on identity, NOT route!)
+  useEffect(() => {
+    sessionGenRef.current += 1
+    const gen = sessionGenRef.current
+    clearAllTimers()
+    resetLocalState()
+
     if (!me?.id) {
-      setCompanyDefault(null)
-      setPersonalTheme(null)
-      setPinning(structuredClone(DEFAULT_UI_PINNING))
-      setIsOwner(false)
-      setDrawerOpen(false)
+      clearAllUiPrefsCache()
       clearDomCustomTheme()
       return
     }
-    let cancelled = false
+    if (me.mustChangePassword) {
+      clearDomCustomTheme()
+      return
+    }
+
+    // Hydrate user-scoped cache (RBAC-filtered) for zero-flash paint
     const key = storageKeyFor(me.id, me.demo)
     try {
       const cached = localStorage.getItem(key)
       if (cached) {
         const parsed = JSON.parse(cached)
         if (parsed && typeof parsed === 'object') {
-          setCompanyDefault(parsed.companyDefault ? sanitizeUiTheme(parsed.companyDefault) : null)
-          setPersonalTheme(parsed.personalTheme ? sanitizeUiTheme(parsed.personalTheme) : null)
-          setPinning(sanitizeUiPinning(parsed.pinning))
-          setIsOwner(Boolean(parsed.isOwner))
+          const cd = parsed.companyDefault ? sanitizeUiTheme(parsed.companyDefault) : null
+          const pt = parsed.personalTheme ? sanitizeUiTheme(parsed.personalTheme) : null
+          const pn = filterPinningForUser(sanitizeUiPinning(parsed.pinning), me, can, lookupEntityModuleRef.current).pinning
+          const own = Boolean(parsed.isOwner)
+          companyDefaultRef.current = cd
+          personalThemeRef.current = pt
+          pinningRef.current = pn
+          isOwnerRef.current = own
+          setCompanyDefault(cd)
+          setPersonalTheme(pt)
+          setPinning(pn)
+          setIsOwner(own)
         }
       }
     } catch {
       /* ignore corrupt cache */
     }
 
-    if (isPrintRoute) return () => { cancelled = true }
+    // Never fire background API call when mounted directly on a /print/* route (PDF rendering)
+    if (isPrintRouteRef.current) return
 
     void get<ServerUiPrefsResponse>('/api/auth/ui-preferences')
       .then(res => {
-        if (cancelled) return
-        setCompanyDefault(res.companyDefault ?? null)
-        setPersonalTheme(res.personalTheme ?? null)
-        setPinning(sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING))
-        setIsOwner(Boolean(res.isOwner))
-        persistLocalSnapshot(me.id, me.demo, {
-          companyDefault: res.companyDefault ?? null,
-          personalTheme: res.personalTheme ?? null,
-          pinning: sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING),
-          isOwner: Boolean(res.isOwner),
-        })
+        if (gen !== sessionGenRef.current) return
+        const cd = res.companyDefault ?? null
+        const pt = res.personalTheme ?? null
+        const pn = sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING)
+        const own = Boolean(res.isOwner)
+        companyDefaultRef.current = cd
+        personalThemeRef.current = pt
+        pinningRef.current = pn
+        isOwnerRef.current = own
+        setCompanyDefault(cd)
+        setPersonalTheme(pt)
+        setPinning(pn)
+        setIsOwner(own)
+        persistLocalSnapshot(me.id, me.demo, { companyDefault: cd, personalTheme: pt, pinning: pn, isOwner: own })
       })
       .catch(() => {
-        /* stay with cached or default cleanly */
+        /* keep cached/default gracefully */
       })
+  }, [me?.id, me?.demo, me?.mustChangePassword, clearAllTimers, resetLocalState, persistLocalSnapshot, can])
 
-    return () => {
-      cancelled = true
-    }
-  }, [me?.id, me?.demo, isPrintRoute, clearTimers, persistLocalSnapshot])
-
-  // Wipe DOM & state on forced 401 sign-out
+  // Wipe DOM, state & localStorage on forced 401 sign-out
   useEffect(() => {
     const onUnauthorized = () => {
-      clearTimers()
-      setCompanyDefault(null)
-      setPersonalTheme(null)
-      setPinning(structuredClone(DEFAULT_UI_PINNING))
-      setIsOwner(false)
-      setDrawerOpen(false)
+      sessionGenRef.current += 1
+      clearAllTimers()
+      resetLocalState()
+      clearAllUiPrefsCache()
       clearDomCustomTheme()
     }
     window.addEventListener('swk:unauthorized', onUnauthorized)
     return () => window.removeEventListener('swk:unauthorized', onUnauthorized)
-  }, [clearTimers])
+  }, [clearAllTimers, resetLocalState])
 
   // Keyboard shortcut: Alt + U opens/closes Customise UI drawer
   useEffect(() => {
-    if (!me?.id || isPrintRoute) return
+    if (!me?.id || me.mustChangePassword || isPrintRoute) return
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'u') {
         const tag = (e.target as HTMLElement | null)?.tagName
@@ -415,85 +507,129 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [me?.id, isPrintRoute])
+  }, [me?.id, me?.mustChangePassword, isPrintRoute])
 
   const flushPut = useCallback(
-    async (payload: { theme?: UiThemeConfig | null; pinning?: UiPinningPrefs }, notify = false) => {
-      if (!me?.id) return
+    async (
+      payload: { theme?: UiThemeConfig | null; pinning?: UiPinningPrefs },
+      opts: { notify?: boolean; themeVer?: number; pinVer?: number } = {},
+    ) => {
+      if (!me?.id || me.mustChangePassword) return
+      const gen = sessionGenRef.current
+      const reqThemeVer = opts.themeVer ?? themeVersionRef.current
+      const reqPinVer = opts.pinVer ?? pinVersionRef.current
       setSaving(true)
       try {
         const res = await put<ServerUiPrefsResponse>('/api/auth/ui-preferences', payload)
-        setCompanyDefault(res.companyDefault ?? null)
-        setPersonalTheme(res.personalTheme ?? null)
-        setPinning(sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING))
-        setIsOwner(Boolean(res.isOwner))
+        if (gen !== sessionGenRef.current) return
+
+        const nextCd = res.companyDefault ?? null
+        companyDefaultRef.current = nextCd
+        setCompanyDefault(nextCd)
+
+        const nextOwn = Boolean(res.isOwner)
+        isOwnerRef.current = nextOwn
+        setIsOwner(nextOwn)
+
+        // Section-scoped stale-response protection: NEVER clobber newer local edits!
+        let nextPt = personalThemeRef.current
+        if (payload.theme !== undefined && themeVersionRef.current === reqThemeVer) {
+          nextPt = res.personalTheme ?? null
+          personalThemeRef.current = nextPt
+          setPersonalTheme(nextPt)
+        }
+        let nextPn = pinningRef.current
+        if (payload.pinning !== undefined && pinVersionRef.current === reqPinVer) {
+          nextPn = sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING)
+          pinningRef.current = nextPn
+          setPinning(nextPn)
+        }
+
         persistLocalSnapshot(me.id, me.demo, {
-          companyDefault: res.companyDefault ?? null,
-          personalTheme: res.personalTheme ?? null,
-          pinning: sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING),
-          isOwner: Boolean(res.isOwner),
+          companyDefault: nextCd,
+          personalTheme: nextPt,
+          pinning: nextPn,
+          isOwner: nextOwn,
         })
-        if (notify) toast.ok('Customise UI saved & synced to your account')
+        if (opts.notify) toast.ok('Customise UI saved & synced to your account')
       } catch (err: any) {
-        if (notify) toast.error(err?.message || 'Could not save UI customisation')
+        if (opts.notify) toast.error(err?.message || 'Could not save UI customisation')
       } finally {
-        setSaving(false)
+        if (gen === sessionGenRef.current) setSaving(false)
       }
     },
-    [me?.id, me?.demo, persistLocalSnapshot, toast],
+    [me?.id, me?.demo, me?.mustChangePassword, persistLocalSnapshot, toast],
   )
 
   const scheduleThemeSave = useCallback(
-    (nextTheme: UiThemeConfig) => {
-      if (!me?.id) return
+    (nextTheme: UiThemeConfig, ver: number) => {
+      if (!me?.id || me.mustChangePassword) return
       pendingThemeRef.current = nextTheme
-      persistLocalSnapshot(me.id, me.demo, { companyDefault, personalTheme: nextTheme, pinning, isOwner })
+      persistLocalSnapshot(me.id, me.demo, {
+        companyDefault: companyDefaultRef.current,
+        personalTheme: nextTheme,
+        pinning: pinningRef.current,
+        isOwner: isOwnerRef.current,
+      })
       if (themeTimer.current !== null) window.clearTimeout(themeTimer.current)
       themeTimer.current = window.setTimeout(() => {
         themeTimer.current = null
         const t = pendingThemeRef.current
         pendingThemeRef.current = undefined
-        if (t !== undefined) void flushPut({ theme: t }, false)
+        if (t !== undefined) void flushPut({ theme: t }, { themeVer: ver })
       }, 480)
     },
-    [me?.id, me?.demo, companyDefault, pinning, isOwner, persistLocalSnapshot, flushPut],
+    [me?.id, me?.demo, me?.mustChangePassword, persistLocalSnapshot, flushPut],
   )
 
   const schedulePinningSave = useCallback(
-    (nextPinning: UiPinningPrefs) => {
-      if (!me?.id) return
+    (nextPinning: UiPinningPrefs, ver: number) => {
+      if (!me?.id || me.mustChangePassword) return
       pendingPinningRef.current = nextPinning
-      persistLocalSnapshot(me.id, me.demo, { companyDefault, personalTheme, pinning: nextPinning, isOwner })
+      persistLocalSnapshot(me.id, me.demo, {
+        companyDefault: companyDefaultRef.current,
+        personalTheme: personalThemeRef.current,
+        pinning: nextPinning,
+        isOwner: isOwnerRef.current,
+      })
       if (pinTimer.current !== null) window.clearTimeout(pinTimer.current)
       pinTimer.current = window.setTimeout(() => {
         pinTimer.current = null
         const p = pendingPinningRef.current
         pendingPinningRef.current = undefined
-        if (p !== undefined) void flushPut({ pinning: p }, false)
+        if (p !== undefined) void flushPut({ pinning: p }, { pinVer: ver })
       }, 280)
     },
-    [me?.id, me?.demo, companyDefault, personalTheme, isOwner, persistLocalSnapshot, flushPut],
+    [me?.id, me?.demo, me?.mustChangePassword, persistLocalSnapshot, flushPut],
   )
 
   const mutateTheme = useCallback(
     (updater: (cur: UiThemeConfig) => UiThemeConfig) => {
-      const prevPersonal = personalTheme
-      const base = themeFromPrefs(effectivePrefs)
+      const prevPersonal = personalThemeRef.current
+      const currentEffective = resolveUiCustomization(companyDefaultRef.current, prevPersonal, pinningRef.current)
+      const base = themeFromPrefs(currentEffective)
       const next = sanitizeUiTheme(updater(base), base)
-      setUndoStack(s => [...s.slice(-14), prevPersonal])
+      const nextStack = [...undoStackRef.current.slice(-14), prevPersonal]
+      undoStackRef.current = nextStack
+      personalThemeRef.current = next
+      themeVersionRef.current += 1
+      const ver = themeVersionRef.current
+      setUndoStack(nextStack)
       setPersonalTheme(next)
-      scheduleThemeSave(next)
+      scheduleThemeSave(next, ver)
     },
-    [personalTheme, effectivePrefs, scheduleThemeSave],
+    [scheduleThemeSave],
   )
 
   const mutatePinning = useCallback(
     (updater: (cur: UiPinningPrefs) => UiPinningPrefs) => {
-      setPinning(cur => {
-        const next = sanitizeUiPinning(updater(cur), cur)
-        schedulePinningSave(next)
-        return next
-      })
+      const cur = pinningRef.current
+      const next = sanitizeUiPinning(updater(cur), cur)
+      pinningRef.current = next
+      pinVersionRef.current += 1
+      const ver = pinVersionRef.current
+      setPinning(next)
+      schedulePinningSave(next, ver)
     },
     [schedulePinningSave],
   )
@@ -526,7 +662,7 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
       mode: isColorDark(cur.colors.background) ? 'dark' : 'light',
       colors: autoContrastThemeColors(cur.colors),
     }))
-    toast.ok('Text & border contrast auto-balanced')
+    toast.ok('Text, border & highlight contrast auto-balanced')
   }, [mutateTheme, toast])
 
   const updateTypography = useCallback(
@@ -575,117 +711,165 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
   )
 
   const undoTheme = useCallback(() => {
-    setUndoStack(stack => {
-      if (!stack.length) return stack
-      const prev = stack[stack.length - 1] ?? null
-      setPersonalTheme(prev)
-      if (prev === null) {
-        void flushPut({ theme: null }, false)
-      } else {
-        scheduleThemeSave(prev)
-      }
-      return stack.slice(0, -1)
-    })
-  }, [flushPut, scheduleThemeSave])
+    const stack = undoStackRef.current
+    if (!stack.length) return
+    const prev = stack[stack.length - 1] ?? null
+    const nextStack = stack.slice(0, -1)
+    undoStackRef.current = nextStack
+    setUndoStack(nextStack)
+
+    // Cancel any pending debounced theme save so the undone theme can NEVER resurrect!
+    cancelThemeTimer()
+    personalThemeRef.current = prev
+    themeVersionRef.current += 1
+    const ver = themeVersionRef.current
+    setPersonalTheme(prev)
+    if (prev === null) {
+      void flushPut({ theme: null }, { themeVer: ver })
+    } else {
+      scheduleThemeSave(prev, ver)
+    }
+  }, [cancelThemeTimer, flushPut, scheduleThemeSave])
 
   const saveNow = useCallback(async () => {
-    clearTimers()
-    await flushPut({ theme: personalTheme, pinning }, true)
-  }, [clearTimers, flushPut, personalTheme, pinning])
+    clearAllTimers()
+    await flushPut({ theme: personalThemeRef.current, pinning: pinningRef.current }, { notify: true })
+  }, [clearAllTimers, flushPut])
 
   const resetThemeToCompanyDefault = useCallback(async () => {
-    if (!me?.id) return
-    clearTimers()
+    if (!me?.id || me.mustChangePassword) return
+    const gen = sessionGenRef.current
+    cancelThemeTimer()
     setSaving(true)
     try {
       const res = await del<ServerUiPrefsResponse>('/api/auth/ui-preferences?scope=theme')
-      setCompanyDefault(res.companyDefault ?? null)
+      if (gen !== sessionGenRef.current) return
+      const cd = res.companyDefault ?? null
+      const pn = pinTimer.current !== null ? pinningRef.current : sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING)
+      companyDefaultRef.current = cd
+      personalThemeRef.current = null
+      themeVersionRef.current += 1
+      undoStackRef.current = []
+      pinningRef.current = pn
+      setCompanyDefault(cd)
       setPersonalTheme(null)
-      setPinning(sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING))
+      setPinning(pn)
       setUndoStack([])
       persistLocalSnapshot(me.id, me.demo, {
-        companyDefault: res.companyDefault ?? null,
+        companyDefault: cd,
         personalTheme: null,
-        pinning: sanitizeUiPinning(res.pinning, DEFAULT_UI_PINNING),
+        pinning: pn,
         isOwner: Boolean(res.isOwner),
       })
       toast.ok(res.hasCompanyDefault ? 'Theme reset to SWK Company Default (pins preserved)' : 'Theme reset to SWK Signature Default (pins preserved)')
     } catch (err: any) {
       toast.error(err?.message || 'Could not reset theme')
     } finally {
-      setSaving(false)
+      if (gen === sessionGenRef.current) setSaving(false)
     }
-  }, [me?.id, me?.demo, clearTimers, persistLocalSnapshot, toast])
+  }, [me?.id, me?.demo, me?.mustChangePassword, cancelThemeTimer, persistLocalSnapshot, toast])
 
   const resetAllPreferences = useCallback(async () => {
-    if (!me?.id) return
-    clearTimers()
+    if (!me?.id || me.mustChangePassword) return
+    const gen = sessionGenRef.current
+    clearAllTimers()
     setSaving(true)
     try {
       const res = await del<ServerUiPrefsResponse>('/api/auth/ui-preferences?scope=all')
-      setCompanyDefault(res.companyDefault ?? null)
+      if (gen !== sessionGenRef.current) return
+      const cd = res.companyDefault ?? null
+      const emptyPin = structuredClone(DEFAULT_UI_PINNING)
+      companyDefaultRef.current = cd
+      personalThemeRef.current = null
+      pinningRef.current = emptyPin
+      themeVersionRef.current += 1
+      pinVersionRef.current += 1
+      undoStackRef.current = []
+      setCompanyDefault(cd)
       setPersonalTheme(null)
-      setPinning(structuredClone(DEFAULT_UI_PINNING))
+      setPinning(emptyPin)
       setUndoStack([])
       persistLocalSnapshot(me.id, me.demo, {
-        companyDefault: res.companyDefault ?? null,
+        companyDefault: cd,
         personalTheme: null,
-        pinning: structuredClone(DEFAULT_UI_PINNING),
+        pinning: emptyPin,
         isOwner: Boolean(res.isOwner),
       })
       toast.ok('All UI settings, pins & drag positions reset')
     } catch (err: any) {
       toast.error(err?.message || 'Could not reset UI preferences')
     } finally {
-      setSaving(false)
+      if (gen === sessionGenRef.current) setSaving(false)
     }
-  }, [me?.id, me?.demo, clearTimers, persistLocalSnapshot, toast])
+  }, [me?.id, me?.demo, me?.mustChangePassword, clearAllTimers, persistLocalSnapshot, toast])
 
   const applyAsCompanyDefault = useCallback(async () => {
-    if (!me?.id || !isOwner) return
-    clearTimers()
+    if (!me?.id || !isOwnerRef.current || me.mustChangePassword) return
+    const gen = sessionGenRef.current
+    // Flush any pending personal edits first so Owner's own row stays in sync on reload!
+    const hadPendingTheme = themeTimer.current !== null
+    const hadPendingPin = pinTimer.current !== null
+    clearAllTimers()
     setSaving(true)
     try {
-      const currentTheme = themeFromPrefs(effectivePrefs)
+      if (hadPendingTheme || hadPendingPin) {
+        await put<ServerUiPrefsResponse>('/api/auth/ui-preferences', {
+          ...(hadPendingTheme ? { theme: personalThemeRef.current } : {}),
+          ...(hadPendingPin ? { pinning: pinningRef.current } : {}),
+        })
+      }
+      const currentTheme = themeFromPrefs(
+        resolveUiCustomization(companyDefaultRef.current, personalThemeRef.current, pinningRef.current),
+      )
       const res = await put<ServerUiPrefsResponse>('/api/auth/ui-preferences/company-default', { theme: currentTheme })
-      setCompanyDefault(res.companyDefault ?? currentTheme)
+      if (gen !== sessionGenRef.current) return
+      const nextCd = res.companyDefault ?? currentTheme
+      companyDefaultRef.current = nextCd
+      setCompanyDefault(nextCd)
       persistLocalSnapshot(me.id, me.demo, {
-        companyDefault: res.companyDefault ?? currentTheme,
-        personalTheme,
-        pinning,
+        companyDefault: nextCd,
+        personalTheme: personalThemeRef.current,
+        pinning: pinningRef.current,
         isOwner: true,
       })
       toast.ok('Applied as SWK Company Default for all staff')
     } catch (err: any) {
       toast.error(err?.message || 'Could not set Company Default')
     } finally {
-      setSaving(false)
+      if (gen === sessionGenRef.current) setSaving(false)
     }
-  }, [me?.id, me?.demo, isOwner, clearTimers, effectivePrefs, personalTheme, pinning, persistLocalSnapshot, toast])
+  }, [me?.id, me?.demo, me?.mustChangePassword, clearAllTimers, persistLocalSnapshot, toast])
 
   const clearCompanyDefault = useCallback(async () => {
-    if (!me?.id || !isOwner) return
+    if (!me?.id || !isOwnerRef.current || me.mustChangePassword) return
+    const gen = sessionGenRef.current
     setSaving(true)
     try {
-      const res = await del<ServerUiPrefsResponse>('/api/auth/ui-preferences/company-default')
+      await del<ServerUiPrefsResponse>('/api/auth/ui-preferences/company-default')
+      if (gen !== sessionGenRef.current) return
+      companyDefaultRef.current = null
       setCompanyDefault(null)
       persistLocalSnapshot(me.id, me.demo, {
         companyDefault: null,
-        personalTheme: res.personalTheme ?? personalTheme,
-        pinning,
+        personalTheme: personalThemeRef.current,
+        pinning: pinningRef.current,
         isOwner: true,
       })
       toast.ok('Company Default cleared back to SWK Signature White & Obsidian')
     } catch (err: any) {
       toast.error(err?.message || 'Could not clear Company Default')
     } finally {
-      setSaving(false)
+      if (gen === sessionGenRef.current) setSaving(false)
     }
-  }, [me?.id, me?.demo, isOwner, personalTheme, pinning, persistLocalSnapshot, toast])
+  }, [me?.id, me?.demo, me?.mustChangePassword, persistLocalSnapshot, toast])
 
   const importThemeJson = useCallback(
     (rawJson: string): boolean => {
       try {
+        if (rawJson.length > 64 * 1024) {
+          toast.error('Theme file is too large (max 64 KB)')
+          return false
+        }
         const parsed = JSON.parse(rawJson)
         const candidate = parsed?.theme ?? parsed
         if (!candidate || typeof candidate !== 'object' || !candidate.colors) return false
@@ -708,11 +892,6 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
     [mutatePinning],
   )
 
-  const lookupEntityModule = useCallback(
-    (key: string) => meta?.entities.find(e => e.key === key)?.module,
-    [meta?.entities],
-  )
-
   const togglePinItem = useCallback(
     (item: UiPinnedItem) => {
       if (!isRoutePinnableForUser(item.to, me, can, lookupEntityModule)) {
@@ -725,12 +904,11 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
           return { ...cur, pinnedItems: cur.pinnedItems.filter(p => p.to !== item.to && p.id !== item.id) }
         }
         const nextItems = [...cur.pinnedItems, { ...item, id: item.id || item.to }].slice(0, 24)
-        // Auto-reveal top dock if user pins their very first item while dock and floating pad are both hidden
         const nextDock = cur.dockPosition === 'hidden' && !cur.floatingPad.enabled ? 'top' : cur.dockPosition
         return { ...cur, dockPosition: nextDock, pinnedItems: nextItems }
       })
     },
-    [me, can, mutatePinning, toast],
+    [me, can, lookupEntityModule, mutatePinning, toast],
   )
 
   const removePin = useCallback(
@@ -826,6 +1004,8 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
       saving,
       canUndo: undoStack.length > 0,
       drawerOpen,
+      isCustomDomActive: shouldApplyCustomDom,
+      lookupEntityModule,
       openDrawer: () => setDrawerOpen(true),
       closeDrawer: () => setDrawerOpen(false),
       toggleDrawer: () => setDrawerOpen(o => !o),
@@ -864,6 +1044,8 @@ export function UiCustomizationProvider({ children }: { children: ReactNode }) {
       saving,
       undoStack.length,
       drawerOpen,
+      shouldApplyCustomDom,
+      lookupEntityModule,
       applyPreset,
       updateColors,
       autoFixContrast,

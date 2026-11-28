@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   ArrowDown,
@@ -23,10 +23,11 @@ import {
 } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { useUiCustomization } from '../lib/uiCustomization'
-import { findNav, launcherApps, SWK_NAV } from '../swk/nav'
+import { findNav, isNavItemVisible, launcherApps, SWK_NAV } from '../swk/nav'
 import {
   UI_FONT_CATALOG,
   UI_PRESETS,
+  isColorDark,
   isRoutePinnableForUser,
   type DockPosition,
   type UiColorConfig,
@@ -71,13 +72,15 @@ const COLOR_GROUPS: Array<{
 ]
 
 const HIGHLIGHT_SWATCHES = [
-  { name: 'Imperial Gold', color: '#d4a955', bg: '#fbf6ea' },
-  { name: 'UAE Emerald', color: '#1e6b43', bg: '#ecfdf5' },
-  { name: 'UAE Crimson', color: '#96202f', bg: '#fef2f2' },
-  { name: 'Royal Sapphire', color: '#2563eb', bg: '#eff6ff' },
-  { name: 'Amber Spotlight', color: '#d97706', bg: '#fef3c7' },
-  { name: 'Electric Mint', color: '#10b981', bg: '#ecfdf5' },
+  { name: 'Imperial Gold', color: '#d4a955', bg: '#fbf6ea', darkBg: '#262014' },
+  { name: 'UAE Emerald', color: '#1e6b43', bg: '#ecfdf5', darkBg: '#10261b' },
+  { name: 'UAE Crimson', color: '#96202f', bg: '#fef2f2', darkBg: '#2b1216' },
+  { name: 'Royal Sapphire', color: '#2563eb', bg: '#eff6ff', darkBg: '#121d33' },
+  { name: 'Amber Spotlight', color: '#d97706', bg: '#fef3c7', darkBg: '#291f10' },
+  { name: 'Electric Mint', color: '#10b981', bg: '#ecfdf5', darkBg: '#0f2620' },
 ]
+
+const PIN_DRAG_MIME = 'application/x-swk-pin-idx'
 
 const DOCK_OPTIONS: Array<{ value: DockPosition; label: string; hint: string }> = [
   { value: 'top', label: 'Top Bar', hint: 'Strip below header' },
@@ -96,6 +99,11 @@ function ColorPickerRow({
   value: string
   onChange: (hex: string) => void
 }) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
+
   return (
     <label className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-2.5 py-2 text-xs">
       <span className="font-medium text-[#1e2430] truncate">{label}</span>
@@ -109,13 +117,18 @@ function ColorPickerRow({
         />
         <input
           type="text"
-          value={value}
+          value={draft}
           aria-label={`${label} hex`}
           maxLength={7}
           onChange={e => {
-            const v = e.target.value.trim()
-            if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v.toLowerCase())
+            const raw = e.target.value.trim()
+            setDraft(raw)
+            const normalized = raw.startsWith('#') ? raw : `#${raw}`
+            if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+              onChange(normalized.toLowerCase())
+            }
           }}
+          onBlur={() => setDraft(value)}
           className="w-[70px] rounded-md border border-black/15 px-1.5 py-1 font-mono text-[11px] uppercase text-[#0a0b0e]"
         />
       </span>
@@ -147,15 +160,15 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
         { label: 'My Receipts', to: '/e/receipts', group: 'Records' },
         { label: 'Maintenance', to: '/e/maintenance', group: 'Records' },
       ]
-      return portalChoices.filter(c => isRoutePinnableForUser(c.to, me, can))
+      return portalChoices.filter(c => isRoutePinnableForUser(c.to, me, can, ui.lookupEntityModule))
     }
     for (const app of permittedApps) {
-      if (!seen.has(app.landing)) {
+      if (!seen.has(app.landing) && isRoutePinnableForUser(app.landing, me, can, ui.lookupEntityModule)) {
         seen.add(app.landing)
         out.push({ label: app.label, to: app.landing, group: 'Apps' })
       }
       for (const item of app.items) {
-        if (!seen.has(item.to) && isRoutePinnableForUser(item.to, me, can)) {
+        if (!seen.has(item.to) && isRoutePinnableForUser(item.to, me, can, ui.lookupEntityModule)) {
           seen.add(item.to)
           out.push({ label: item.label, to: item.to, group: app.label })
         }
@@ -163,17 +176,21 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
     }
     for (const sec of SWK_NAV) {
       for (const item of sec.items) {
-        if (!seen.has(item.to) && isRoutePinnableForUser(item.to, me, can)) {
+        if (
+          !seen.has(item.to) &&
+          isNavItemVisible(item, can, me) &&
+          isRoutePinnableForUser(item.to, me, can, ui.lookupEntityModule)
+        ) {
           seen.add(item.to)
           out.push({ label: item.label, to: item.to, group: sec.label })
         }
       }
     }
-    if (!seen.has('/customise-ui') && isRoutePinnableForUser('/customise-ui', me, can)) {
+    if (!seen.has('/customise-ui') && isRoutePinnableForUser('/customise-ui', me, can, ui.lookupEntityModule)) {
       out.push({ label: 'Customise UI Studio', to: '/customise-ui', group: 'Personal' })
     }
     return out
-  }, [me, can, permittedApps])
+  }, [me, can, permittedApps, ui.lookupEntityModule])
 
   const currentFullRoute = loc.pathname + (loc.search || '')
   const currentNavHit = findNav(loc.pathname)
@@ -184,7 +201,7 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
       : loc.pathname === '/customise-ui'
         ? 'Customise UI'
         : loc.pathname.split('/').filter(Boolean).pop()?.replace(/[-_]/g, ' ') || 'Current Page')
-  const canPinCurrent = isRoutePinnableForUser(currentFullRoute, me, can)
+  const canPinCurrent = isRoutePinnableForUser(currentFullRoute, me, can, ui.lookupEntityModule)
   const currentAlreadyPinned = ui.isPinned(currentFullRoute)
 
   const handleExportJson = () => {
@@ -214,12 +231,13 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
   const onPinDragStart = (idx: number, e: DragEvent) => {
     setDragIdx(idx)
     e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', String(idx))
+    e.dataTransfer.setData(PIN_DRAG_MIME, String(idx))
   }
   const onPinDrop = (targetIdx: number, e: DragEvent) => {
     e.preventDefault()
-    const from = dragIdx ?? Number(e.dataTransfer.getData('text/plain'))
-    if (Number.isFinite(from) && from !== targetIdx) ui.reorderPins(from, targetIdx)
+    const raw = e.dataTransfer.getData(PIN_DRAG_MIME)
+    const from = dragIdx ?? (raw !== '' ? Number(raw) : NaN)
+    if (Number.isInteger(from) && from >= 0 && from !== targetIdx) ui.reorderPins(from, targetIdx)
     setDragIdx(null)
   }
 
@@ -679,7 +697,14 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
                   <button
                     key={sw.name}
                     type="button"
-                    onClick={() => ui.updateColors({ highlightColor: sw.color, highlightBg: sw.bg, accentColor: sw.color })}
+                    onClick={() => {
+                      const dark = isColorDark(ui.prefs.colors.cardBg)
+                      ui.updateColors({
+                        highlightColor: sw.color,
+                        highlightBg: dark ? sw.darkBg : sw.bg,
+                        accentColor: sw.color,
+                      })
+                    }}
                     className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-2.5 py-2 text-left text-[11px] font-semibold cursor-pointer hover:border-[#0a0b0e]"
                   >
                     <span className="size-4 rounded-full shrink-0 border border-black/20" style={{ backgroundColor: sw.color }} />
@@ -924,6 +949,14 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
                       <div className="font-bold text-[#0a0b0e] truncate">{item.label}</div>
                       <div className="font-mono text-[10px] text-[#5c6270] truncate">{item.to}</div>
                     </div>
+                    <input
+                      type="color"
+                      value={item.accentColor || ui.prefs.colors.highlightColor}
+                      title={`Custom badge color for ${item.label}`}
+                      aria-label={`Badge color for ${item.label}`}
+                      onChange={e => ui.setPinAccentColor(item.id, e.target.value.toLowerCase())}
+                      className="size-6 cursor-pointer rounded-md border border-black/15 bg-transparent p-0.5 shrink-0"
+                    />
                     <button
                       type="button"
                       title={item.highlighted ? 'Remove highlight star' : 'Highlight this shortcut'}
@@ -1030,6 +1063,11 @@ export function CustomiseUiControls({ compact = false }: { compact?: boolean }) 
                 onChange={async e => {
                   const file = e.target.files?.[0]
                   if (!file) return
+                  if (file.size > 64 * 1024) {
+                    ui.importThemeJson('x'.repeat(65 * 1024))
+                    e.target.value = ''
+                    return
+                  }
                   const text = await file.text()
                   ui.importThemeJson(text)
                   e.target.value = ''

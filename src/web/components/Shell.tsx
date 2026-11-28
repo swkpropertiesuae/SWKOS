@@ -53,7 +53,8 @@ import { SwissAtmosphereBackdrop } from './ui/ShaderBackground'
 import { CustomiseUiDrawer } from './CustomiseUiDrawer'
 import { PinnedQuickDock } from './PinnedQuickDock'
 import { FloatingQuickPad } from './FloatingQuickPad'
-import { useUiCustomization } from '../lib/uiCustomization'
+import { clearAllUiPrefsCache, useUiCustomization } from '../lib/uiCustomization'
+import { isColorDark } from '@shared/ui-customization'
 import { clearFastQueryCache, preloadRoute } from '../lib/prefetch'
 import { clearMobileSession, lockScreenNow, openManageLockPin, registerNativePush, stopNativeFieldDuty, unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient, useSipClient } from '../lib/sipClient'
@@ -420,6 +421,7 @@ export function Shell() {
     try { await sipClient.disconnect() } catch { /* ignore */ }
     await clearMobileSession()
     clearFastQueryCache(qc)
+    clearAllUiPrefsCache()
     setMe(null)
     nav('/login')
   }
@@ -459,7 +461,15 @@ export function Shell() {
           )}
           <Link to="/home" className="swk-top-brand" aria-label="SWK Properties OS, all apps">
             <img className="icon" src="/brand/web/swk-icon-192.webp?v=swk-8k-v1" alt="" />
-            <img className="word swk-hide-sm" src="/brand/web/swk-logo-light.webp?v=swk-8k-v1" alt="SWK Properties" />
+            <img
+              className="word swk-hide-sm"
+              src={
+                uiCustom.isCustomDomActive && isColorDark(uiCustom.prefs.colors.headerBg)
+                  ? '/brand/web/swk-logo-dark.webp?v=swk-8k-v1'
+                  : '/brand/web/swk-logo-light.webp?v=swk-8k-v1'
+              }
+              alt="SWK Properties"
+            />
           </Link>
 
           {/* Mobile compact location/office pill */}
@@ -492,16 +502,18 @@ export function Shell() {
             <span className="swk-hide-sm">Search leads, properties…</span>
             <kbd>Ctrl K</kbd>
           </button>
-          <button
-            type="button"
-            className="swk-tbtn !w-auto px-2.5 gap-1.5"
-            onClick={uiCustom.toggleDrawer}
-            aria-label="Customise UI (Alt+U)"
-            title="Customise UI — Colors, Fonts, Highlights, Pin & Drag (Alt+U)"
-          >
-            <Palette size={16} />
-            <span className="hidden xl:inline text-[12px] font-semibold">Customise UI</span>
-          </button>
+          {!mustChangePw && (
+            <button
+              type="button"
+              className="swk-tbtn !w-auto px-2.5 gap-1.5"
+              onClick={uiCustom.toggleDrawer}
+              aria-label="Customise UI (Alt+U)"
+              title="Customise UI — Colors, Fonts, Highlights, Pin & Drag (Alt+U)"
+            >
+              <Palette size={16} />
+              <span className="hidden xl:inline text-[12px] font-semibold">Customise UI</span>
+            </button>
+          )}
           {!mustChangePw && <ChatNotifier />}
           {!mustChangePw && <NotificationBell />}
           <span className="hidden sm:inline-flex">
@@ -544,9 +556,11 @@ export function Shell() {
                   <Link to="/workspace-tools" onClick={() => setUserMenu(false)}>
                     <span className="ic"><Languages size={16} /></span>Language &amp; preferences
                   </Link>
-                  <button type="button" className="item" onClick={() => { setUserMenu(false); uiCustom.openDrawer() }}>
-                    <span className="ic"><Palette size={16} /></span>Customise UI (Colors, Fonts &amp; Pins)
-                  </button>
+                  {!mustChangePw && (
+                    <button type="button" className="item" onClick={() => { setUserMenu(false); uiCustom.openDrawer() }}>
+                      <span className="ic"><Palette size={16} /></span>Customise UI (Colors, Fonts &amp; Pins)
+                    </button>
+                  )}
                   <Link to="/mobile-apps" onClick={() => setUserMenu(false)} onMouseEnter={() => preloadRoute('/mobile-apps')}>
                     <span className="ic"><QrCode size={16} /></span>Mobile Apps (Android &amp; iOS)
                   </Link>
@@ -567,7 +581,7 @@ export function Shell() {
         </header>
 
         {/* Dockable Pinned Quick-Launch Bar (top/bottom/left/right) */}
-        <PinnedQuickDock />
+        {!mustChangePw && <PinnedQuickDock />}
 
         {/* Mobile Active SIP Call Ribbon (only appears when a live call is active — zero idle clutter!) */}
         {isStaff && activeCall && (
@@ -714,7 +728,7 @@ export function Shell() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="max-h-[84dvh] overflow-y-auto rounded-t-[28px] border-t border-line bg-white px-5 pt-4 pb-[calc(92px+env(safe-area-inset-bottom,0px))] shadow-2xl space-y-4"
+              className="swk-ops-sheet max-h-[84dvh] overflow-y-auto rounded-t-[28px] border-t border-line bg-white px-5 pt-4 pb-[calc(92px+env(safe-area-inset-bottom,0px))] shadow-2xl space-y-4"
             >
               <div className="mx-auto h-1.5 w-11 rounded-full bg-[#cbd5e1]" />
               <div className="flex items-center justify-between gap-2">
@@ -813,8 +827,8 @@ export function Shell() {
 
       {isStaff && <BiometricLockOverlay onLogout={logout} />}
       {!mustChangePw && <LiveNotifications />}
-      <FloatingQuickPad />
-      <CustomiseUiDrawer />
+      {!mustChangePw && <FloatingQuickPad />}
+      {!mustChangePw && <CustomiseUiDrawer />}
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>
         <div className="grid gap-4 text-sm text-body">

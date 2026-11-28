@@ -7,10 +7,12 @@ import { preloadRoute } from '../lib/prefetch'
 import { findNav } from '../swk/nav'
 import { isRoutePinnableForUser } from '@shared/ui-customization'
 
+const DOCK_DRAG_MIME = 'application/x-swk-dock-idx'
+
 /**
  * Dockable Pinned Quick-Launch Bar.
  * Supports Top / Bottom / Left / Right placement, live drag-and-drop pill reordering,
- * Highlight Star emphasis, and 1-click "+ Pin page" for the active route.
+ * inline Highlight Star toggle, per-pin accent color, and 1-click "+ Pin page".
  */
 export function PinnedQuickDock() {
   const { me, can } = useMeta()
@@ -20,8 +22,8 @@ export function PinnedQuickDock() {
 
   const pos = ui.prefs.pinning.dockPosition
   const visiblePins = useMemo(
-    () => ui.prefs.pinning.pinnedItems.filter(p => isRoutePinnableForUser(p.to, me, can)),
-    [ui.prefs.pinning.pinnedItems, me, can],
+    () => ui.prefs.pinning.pinnedItems.filter(p => isRoutePinnableForUser(p.to, me, can, ui.lookupEntityModule)),
+    [ui.prefs.pinning.pinnedItems, me, can, ui.lookupEntityModule],
   )
 
   if (pos === 'hidden') return null
@@ -35,17 +37,22 @@ export function PinnedQuickDock() {
       : loc.pathname === '/customise-ui'
         ? 'Customise UI'
         : loc.pathname.split('/').filter(Boolean).pop()?.replace(/[-_]/g, ' ') || 'Page')
-  const canPinHere = isRoutePinnableForUser(currentFullRoute, me, can)
+  const canPinHere = isRoutePinnableForUser(currentFullRoute, me, can, ui.lookupEntityModule)
   const alreadyPinnedHere = ui.isPinned(currentFullRoute)
 
   const onDragStart = (idx: number, e: DragEvent) => {
     setDragIdx(idx)
     e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', String(idx))
+    e.dataTransfer.setData(DOCK_DRAG_MIME, String(idx))
   }
   const onDrop = (targetIdx: number, e: DragEvent) => {
     e.preventDefault()
-    const from = dragIdx ?? Number(e.dataTransfer.getData('text/plain'))
+    const raw = e.dataTransfer.getData(DOCK_DRAG_MIME)
+    const from = dragIdx ?? (raw !== '' ? Number(raw) : NaN)
+    if (!Number.isInteger(from) || from < 0) {
+      setDragIdx(null)
+      return
+    }
     const fromId = visiblePins[from]?.id
     const toId = visiblePins[targetIdx]?.id
     if (fromId && toId && fromId !== toId) {
@@ -81,17 +88,26 @@ export function PinnedQuickDock() {
             style={item.accentColor ? { borderColor: item.accentColor } : undefined}
             className={`swk-pin-pill group ${item.highlighted ? 'swk-ui-highlighted' : ''} ${
               active ? 'ring-1 ring-[#d4a955]' : ''
-            } ${dragIdx === idx ? 'is-dragging' : ''} ${isVertical ? 'w-full justify-between' : ''}`}
+            } ${dragIdx === idx ? 'is-dragging' : ''} ${isVertical ? 'lg:w-full lg:justify-between' : ''}`}
           >
             <GripVertical size={11} className="opacity-40 shrink-0" aria-hidden />
             <Link
               to={item.to}
+              draggable={false}
               onMouseEnter={() => preloadRoute(item.to)}
               className="inline-flex items-center gap-1.5 min-w-0 truncate no-underline text-inherit"
             >
-              {item.highlighted && <Star size={11} className="fill-[#d4a955] text-[#d4a955] shrink-0" />}
-              <span className="truncate max-w-[140px]">{item.label}</span>
+              <span className="truncate max-w-[130px]">{item.label}</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => ui.togglePinHighlight(item.id)}
+              title={item.highlighted ? 'Remove highlight' : 'Highlight shortcut'}
+              aria-label={`Highlight ${item.label}`}
+              className="grid size-4 place-items-center rounded-full border-0 bg-transparent text-muted hover:text-[#d4a955] cursor-pointer shrink-0 p-0"
+            >
+              <Star size={10} className={item.highlighted ? 'fill-[#d4a955] text-[#d4a955]' : 'opacity-45'} />
+            </button>
             <button
               type="button"
               onClick={() => ui.removePin(item.id)}
@@ -127,7 +143,7 @@ export function PinnedQuickDock() {
         onClick={ui.openDrawer}
         title="Customise pinned bar & UI"
         aria-label="Customise pinned bar"
-        className="ml-auto inline-flex items-center gap-1 rounded-full border border-black/10 bg-white/80 px-2 py-1 text-[10.5px] font-bold text-[#0a0b0e] hover:border-[#d4a955] cursor-pointer shrink-0"
+        className="ml-auto inline-flex items-center gap-1 rounded-full border border-line bg-card px-2 py-1 text-[10.5px] font-bold text-ink hover:border-[#d4a955] cursor-pointer shrink-0"
       >
         <Palette size={11} />
         {!isVertical && <span>Customise</span>}

@@ -47,7 +47,7 @@ export function CustomiseUiDrawer() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-            className="swk-customise-drawer no-print fixed right-0 top-0 bottom-0 z-[95] flex w-full max-w-[440px] flex-col border-l border-[#d4a955]/40 bg-white text-[#0a0b0e] shadow-[-16px_0_60px_rgba(10,11,14,0.28)]"
+            className="swk-customise-drawer swk-customise-studio-panel no-print fixed right-0 top-0 bottom-0 z-[95] flex w-full max-w-[440px] flex-col border-l border-[#d4a955]/40 bg-white text-[#0a0b0e] shadow-[-16px_0_60px_rgba(10,11,14,0.28)]"
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-2 border-b border-black/10 bg-[#0a0b0e] px-4 py-3.5 text-white shrink-0">

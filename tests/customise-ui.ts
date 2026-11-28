@@ -17,6 +17,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+const ownsDataDir = !process.env.DATA_DIR
 const dataDir = process.env.DATA_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'swk-customise-ui-'))
 process.env.DATA_DIR = dataDir
 if (!process.env.DATABASE_URL) {
@@ -31,7 +32,7 @@ process.env.NODE_ENV = 'test'
 const { ensureDirs, config } = await import('../src/server/config')
 const { syncSchema } = await import('../src/server/schema')
 const { seedReference, syncSwkStaffRoster } = await import('../src/server/seed')
-const { q } = await import('../src/server/db')
+const { q, db } = await import('../src/server/db')
 const { buildApp } = await import('../src/server/app')
 const { hashPassword } = await import('../src/server/auth')
 const { DEFAULT_UI_THEME, UI_PRESETS } = await import('../src/shared/ui-customization')
@@ -42,15 +43,16 @@ await seedReference()
 syncSwkStaffRoster()
 q.run(`UPDATE users SET must_change_password = 0 WHERE deleted_at IS NULL`)
 
-// Create a Customer Portal user fixture (party_id != null) to test portal UI customization & route allowlist
+// Create a Customer Portal user fixture (party_id != null) via q.insert (works on BOTH SQLite & PostgreSQL 16!)
 const now = new Date().toISOString()
-const portalParty = q.run(
+const portalPartyId = q.insert(
   `INSERT INTO parties (code, name, is_customer, status, created_at, updated_at) VALUES (?, ?, 1, 'Active', ?, ?)`,
   'CUST-PORTAL-UI',
   'Portal VIP Buyer',
   now,
   now,
 )
+assert.ok(portalPartyId > 0, 'Portal party insert must return positive ID on SQLite and PostgreSQL')
 const portalRoleId = q.val<number>(`SELECT id FROM roles WHERE name = 'Customer Portal'`) ?? 1
 q.run(
   `INSERT INTO users (name, email, password_hash, role_id, party_id, active, must_change_password, created_at, updated_at)
@@ -59,7 +61,7 @@ q.run(
   'portal-ui-test@example.test',
   hashPassword('Portal@swk2026'),
   portalRoleId,
-  Number(portalParty.lastInsertRowid),
+  portalPartyId,
   now,
   now,
 )
@@ -82,6 +84,8 @@ try {
   const ownerH = await loginAs(config.accounts.ownerEmail, config.accounts.ownerPassword)
   const adminH = await loginAs(config.accounts.adminSwkEmail, config.accounts.adminSwkPassword)
   const haseebH = await loginAs('haseeb@swk.properties', config.accounts.managerPassword)
+  const officeAdminH = await loginAs('meenakshi@swk.properties', config.accounts.bdmPassword)
+  const hrH = await loginAs('rahaba@swk.properties', config.accounts.bdmPassword)
   const restrictedH = await loginAs('fareed@swk.rent', config.accounts.bdmPassword)
   const portalH = await loginAs('portal-ui-test@example.test', 'Portal@swk2026')
 
@@ -281,7 +285,68 @@ try {
   })
   assert.equal(badFontSize.statusCode, 400, 'Out-of-range font size must be rejected')
 
-  // 9. Owner clears Company Default
+  const badLoginSlash = await app.inject({
+    method: 'PUT',
+    url: '/api/auth/ui-preferences',
+    headers: { ...ownerH, 'content-type': 'application/json' },
+    payload: { pinning: { pinnedItems: [{ id: 'l', label: 'Login', to: '/login/' }] } },
+  })
+  assert.equal(badLoginSlash.statusCode, 400, '/login/ trailing slash must be rejected')
+
+  // 8b. Deep RBAC regression: Office Admin blocked from HR PII & /hr/wps; Manager Haseeb blocked from /e/doc_templates; HR blocked from finance/sales app keys
+  const meenakshiPin = await app.inject({
+    method: 'PUT',
+    url: '/api/auth/ui-preferences',
+    headers: { ...officeAdminH, 'content-type': 'application/json' },
+    payload: {
+      pinning: {
+        pinnedItems: [
+          { id: '/e/attendance', label: 'Attendance', to: '/e/attendance' },
+          { id: '/e/employees', label: 'Employees PII', to: '/e/employees' },
+          { id: '/e/payslips', label: 'Payslips PII', to: '/e/payslips' },
+          { id: '/hr/wps', label: 'Payroll WPS', to: '/hr/wps' },
+        ],
+        highlightedAppKeys: ['clients', 'finance', 'sales'],
+      },
+    },
+  })
+  assert.equal(meenakshiPin.statusCode, 200)
+  assert.deepEqual(meenakshiPin.json().pinning.pinnedItems.map((p: any) => p.to), ['/e/attendance'])
+  assert.deepEqual(meenakshiPin.json().pinning.highlightedAppKeys, ['clients'])
+
+  const haseebDocTpl = await app.inject({
+    method: 'PUT',
+    url: '/api/auth/ui-preferences',
+    headers: { ...haseebH, 'content-type': 'application/json' },
+    payload: {
+      pinning: {
+        pinnedItems: [
+          { id: '/documents', label: 'Documents', to: '/documents' },
+          { id: '/e/doc_templates', label: 'Doc Templates', to: '/e/doc_templates' },
+          { id: '/studio', label: 'Studio', to: '/studio' },
+        ],
+      },
+    },
+  })
+  assert.equal(haseebDocTpl.statusCode, 200)
+  assert.deepEqual(haseebDocTpl.json().pinning.pinnedItems.map((p: any) => p.to), ['/documents'])
+
+  const hrAppKeys = await app.inject({
+    method: 'PUT',
+    url: '/api/auth/ui-preferences',
+    headers: { ...hrH, 'content-type': 'application/json' },
+    payload: {
+      pinning: {
+        pinnedItems: [{ id: '/e/employees', label: 'Employees', to: '/e/employees' }],
+        highlightedAppKeys: ['team', 'finance', 'compliance'],
+      },
+    },
+  })
+  assert.equal(hrAppKeys.statusCode, 200)
+  assert.deepEqual(hrAppKeys.json().pinning.pinnedItems.map((p: any) => p.to), ['/e/employees'])
+  assert.deepEqual(hrAppKeys.json().pinning.highlightedAppKeys, ['team'])
+
+  // 9. Owner clears Company Default & verify audit log captured company default actions
   const clearCoDef = await app.inject({
     method: 'DELETE',
     url: '/api/auth/ui-preferences/company-default',
@@ -289,9 +354,12 @@ try {
   })
   assert.equal(clearCoDef.statusCode, 200)
   assert.equal(clearCoDef.json().hasCompanyDefault, false)
+  const auditCount = q.val<number>(`SELECT COUNT(*) FROM audit_log WHERE action IN ('ui_company_default', 'ui_company_default_clear')`) ?? 0
+  assert.equal(auditCount, 2, 'Company Default set & clear must both be audited')
 
-  console.log('✅ customise-ui passed all 9 suites (DB sync, sparse inheritance, Owner Company Default, RBAC pin stripping, Portal & security rejection)!')
+  console.log('✅ customise-ui passed all 10 suites (DB sync, PG-safe q.insert, sparse inheritance, Owner Company Default + audit, HR PII/doc_templates RBAC stripping, Portal & security rejection)!')
 } finally {
   await app.close()
-  if (!process.env.DATA_DIR) fs.rmSync(dataDir, { recursive: true, force: true })
+  try { db.close() } catch {}
+  if (ownsDataDir) { try { fs.rmSync(dataDir, { recursive: true, force: true }) } catch {} }
 }

@@ -14,7 +14,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { inDemo, q } from '../db'
-import { can } from '../engine'
+import { audit, can, getDef } from '../engine'
 import { forbidden, nowIso, safeJson } from '../util'
 import { ENTITIES } from '../../shared/entities'
 import { isOwnerSwkUser } from '../../shared/swk-staff-access'
@@ -100,7 +100,10 @@ const pinnedItemSchema = z
       .string()
       .trim()
       .regex(/^\/[a-zA-Z0-9/_?=&%-]{0,180}$/, 'Route must be an internal path starting with /')
-      .refine(p => !p.startsWith('//') && !p.startsWith('/print') && p !== '/login', 'Disallowed route'),
+      .refine(
+        p => !p.startsWith('//') && !p.startsWith('/print') && p !== '/login' && !p.startsWith('/login/') && !p.startsWith('/login?'),
+        'Disallowed route',
+      ),
     icon: z.string().trim().regex(/^[a-zA-Z0-9_-]{1,36}$/).optional(),
     highlighted: z.boolean().optional(),
     accentColor: hex6.optional(),
@@ -179,7 +182,11 @@ function writeUserRow(userId: number, data: StoredUserUiPrefs) {
   )
 }
 
-const lookupEntityModule = (key: string) => ENTITIES[key]?.module
+const lookupEntityModule = (key: string) => {
+  const def = ENTITIES[key]
+  if (!def || def.child) return undefined
+  return def.module
+}
 
 function buildPayload(user: any, strippedCount = 0) {
   const companyDefault = readCompanyDefault()
@@ -273,6 +280,7 @@ export default async function uiPreferencesRoutes(app: FastifyInstance) {
       JSON.stringify(clean),
       now,
     )
+    audit(req.ctx, getDef('branches'), 0, 'ui_company_default', { presetId: clean.presetId, mode: clean.mode }, 'Company Default UI Theme')
     return buildPayload(u)
   })
 
@@ -282,6 +290,7 @@ export default async function uiPreferencesRoutes(app: FastifyInstance) {
       throw forbidden('Only Owner Shabib Siraj can clear the Company Default UI theme')
     }
     q.run(`DELETE FROM settings WHERE key = ?`, COMPANY_DEFAULT_KEY)
+    audit(req.ctx, getDef('branches'), 0, 'ui_company_default_clear', { cleared: true }, 'Company Default UI Theme')
     return buildPayload(u)
   })
 }

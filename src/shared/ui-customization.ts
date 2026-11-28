@@ -11,6 +11,7 @@
  *    Company Default NEVER leaks Owner-only module keys to staff or portal accounts.
  */
 import {
+  RESTRICTED_HR_PII_ENTITIES,
   canAccessCrmVault,
   canAccessDocumentTemplates,
   canAccessFieldLiveMap,
@@ -18,6 +19,7 @@ import {
   canAccessShabibsCorner,
   canAccessSwkAdminLogic,
   canPrintReceptionQr,
+  canViewEmployeeRecords,
   isAllowedPathForRestrictedStaff,
   isRestrictedStaffUser,
 } from './swk-staff-access'
@@ -484,7 +486,7 @@ export function isColorDark(hex: string): boolean {
   return yiq < 135
 }
 
-/** Auto-adjust primary/body/muted/border/button text colors so contrast stays crisp against cardBg & buttonBg. */
+/** Auto-adjust primary/body/muted/border/highlightBg/button text colors so contrast stays crisp against cardBg & buttonBg. */
 export function autoContrastThemeColors(colors: UiColorConfig): UiColorConfig {
   const cardDark = isColorDark(colors.cardBg)
   const btnDark = isColorDark(colors.buttonBg)
@@ -495,6 +497,7 @@ export function autoContrastThemeColors(colors: UiColorConfig): UiColorConfig {
     textMuted: cardDark ? '#94a3b8' : '#5c6270',
     borderColor: cardDark ? '#2a3142' : '#e5e2d9',
     buttonText: btnDark ? '#ffffff' : '#0a0b0e',
+    highlightBg: cardDark ? '#231e14' : '#fbf6ea',
   }
 }
 
@@ -594,7 +597,17 @@ export function sanitizeUiPinning(input: unknown, base: UiPinningPrefs = DEFAULT
     for (const item of raw.pinnedItems) {
       if (!item || typeof item !== 'object') continue
       const to = typeof item.to === 'string' ? item.to.trim() : ''
-      if (!to || !SAFE_PATH_RE.test(to) || to.startsWith('//') || to.startsWith('/print') || to === '/login') continue
+      if (
+        !to ||
+        !SAFE_PATH_RE.test(to) ||
+        to.startsWith('//') ||
+        to.startsWith('/print') ||
+        to === '/login' ||
+        to.startsWith('/login/') ||
+        to.startsWith('/login?')
+      ) {
+        continue
+      }
       const id = (typeof item.id === 'string' && item.id.trim() ? item.id.trim() : to).slice(0, 80)
       if (seenIds.has(id)) continue
       seenIds.add(id)
@@ -733,7 +746,14 @@ export function isRoutePinnableForUser(
   const trimmed = String(rawPath || '').trim()
   if (!trimmed || !SAFE_PATH_RE.test(trimmed) || trimmed.startsWith('//')) return false
   const clean = trimmed.split('?')[0] || ''
-  if (!clean || clean === '/login' || clean.startsWith('/print') || clean.startsWith('/t/') || clean.startsWith('/l/')) {
+  if (
+    !clean ||
+    clean === '/login' ||
+    clean.startsWith('/login/') ||
+    clean.startsWith('/print') ||
+    clean.startsWith('/t/') ||
+    clean.startsWith('/l/')
+  ) {
     return false
   }
 
@@ -750,6 +770,7 @@ export function isRoutePinnableForUser(
   if (clean === '/reception-display' || clean.startsWith('/reception-display/')) return canPrintReceptionQr(user)
   if (clean === '/studio' || clean.startsWith('/studio/')) return canAccessDocumentTemplates(user) && canModule('documents', 'view')
   if (clean === '/command-center' || clean.startsWith('/command-center/')) return canAccessSwkAdminLogic(user) || canPrintReceptionQr(user)
+  if (clean === '/hr/wps' || clean.startsWith('/hr/wps/')) return canViewEmployeeRecords(user) && canModule('hr', 'view')
 
   // Restricted staff allowlist check
   if (isRestrictedStaffUser(user) && !isAllowedPathForRestrictedStaff(clean)) return false
@@ -759,17 +780,18 @@ export function isRoutePinnableForUser(
     return canAccessSwkAdminLogic(user) && canModule('admin', 'view')
   }
 
-  // Generic entity routes /e/:entity or /e/:entity/:id
+  // Generic entity routes /e/:entity or /e/:entity/:id (fail-closed when lookup missing or entity unknown/child)
   if (clean.startsWith('/e/')) {
     const entityKey = clean.split('/')[2] || ''
     if (!/^[a-z0-9_]+$/.test(entityKey)) return false
     if (entityKey === 'universal_approvals' && !canAccessSwkAdminLogic(user)) return false
-    if (entityModuleLookup) {
-      const mod = entityModuleLookup(entityKey)
-      if (!mod) return false
-      return canModule(mod, 'view')
-    }
-    return true
+    if (entityKey === 'doc_templates' && !canAccessDocumentTemplates(user)) return false
+    if (RESTRICTED_HR_PII_ENTITIES.has(entityKey) && !canViewEmployeeRecords(user)) return false
+    if (!entityModuleLookup) return false
+    const mod = entityModuleLookup(entityKey)
+    if (!mod) return false
+    if (mod === 'admin' && !canAccessSwkAdminLogic(user)) return false
+    return canModule(mod, 'view')
   }
 
   // Module-gated feature routes
@@ -785,6 +807,25 @@ export function isRoutePinnableForUser(
 
 const RESTRICTED_APP_KEYS = new Set(['messages', 'phone', 'attendance', 'tools', 'market_pulse', 'general'])
 
+const APP_KEY_REQUIRED_MODULES: Record<string, string[]> = {
+  messages: [],
+  phone: [],
+  tools: [],
+  field: [],
+  team: [],
+  dashboard: ['dashboard', 'reports'],
+  work: ['projects', 'admin'],
+  pipeline: ['sales', 'properties'],
+  clients: ['crm'],
+  mortgage_desk: ['crm'],
+  sales: ['sales', 'mandates', 'transactions', 'leases', 'finance'],
+  vault: ['documents'],
+  finance: ['finance'],
+  compliance: ['compliance'],
+  website: ['website'],
+  ai_lab: ['ai'],
+}
+
 export function isAppKeyAllowedForUser(
   key: string,
   user: UiAccessUser | null | undefined,
@@ -796,7 +837,10 @@ export function isAppKeyAllowedForUser(
   if (key === 'master_log') return canAccessMasterLog(user)
   if (key === 'admin') return canAccessSwkAdminLogic(user) && canModule('admin', 'view')
   if (key === 'command') return canAccessSwkAdminLogic(user) || canPrintReceptionQr(user)
-  return /^[a-z0-9_-]{1,32}$/.test(key)
+  if (!(key in APP_KEY_REQUIRED_MODULES)) return false
+  const mods = APP_KEY_REQUIRED_MODULES[key]!
+  if (mods.length === 0) return true
+  return mods.some(m => canModule(m, 'view'))
 }
 
 export function filterPinningForUser(

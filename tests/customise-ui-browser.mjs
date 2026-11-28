@@ -72,9 +72,19 @@ try {
   const dialog = page.getByRole('dialog', { name: 'Customise UI Studio' })
   await dialog.waitFor()
 
-  // 2. Apply Obsidian Night Gold preset -> updates DOM live
+  // 2. Apply Obsidian Night Gold preset -> updates DOM live + verify studio panel stays crisp light contrast!
   await dialog.getByRole('button', { name: /Obsidian Night Gold/ }).click()
   await page.waitForFunction(() => document.documentElement.getAttribute('data-ui-customized') === '1' && document.documentElement.dataset.theme === 'dark')
+  const studioContrast = await dialog.evaluate(el => {
+    const cs = getComputedStyle(el)
+    return { bg: cs.backgroundColor, color: cs.color }
+  })
+  assert.equal(studioContrast.bg, 'rgb(255, 255, 255)', 'Customise UI drawer must stay crisp white in Dark mode')
+
+  // Verify hex typing works cleanly in ColorPickerRow
+  const bgHex = dialog.getByLabel('Page Background hex')
+  await bgHex.fill('#101520')
+  await page.waitForFunction(() => document.documentElement.style.getPropertyValue('--bg') === '#101520')
 
   // 3. Fonts & Size tab: set XL font (19px), Italic, Uppercase Headings
   await dialog.getByRole('tab', { name: 'Fonts & Size' }).click()
