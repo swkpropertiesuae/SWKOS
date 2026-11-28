@@ -510,6 +510,98 @@ export function seedUaeProjectsCatalog(): number {
       }
     }
 
+    // One-time idempotent internal CRM Promoter assignment for The Arts District by Binghatti:
+    // Registers Shabib Siraj (+971 55 155 4680) in internal CRM agents, assigns him as CRM Promoter on
+    // The Arts District by Binghatti, and creates an active CRM Launch Campaign. Strictly internal CRM only
+    // (never exposed on public website / /api/public/share/:token / catalog-kit exports).
+    const promoterSyncKey = 'crm-promoter:the-arts-district-by-binghatti:shabib-siraj:v1'
+    if (!q.val(`SELECT 1 FROM settings WHERE key = ?`, promoterSyncKey)) {
+      const artsProp = q.get<{ id: number }>(
+        `SELECT id FROM properties WHERE deleted_at IS NULL AND (lower(title) = 'the arts district by binghatti' OR notes LIKE '%Slug: the-arts-district-by-binghatti.%') ORDER BY id DESC LIMIT 1`,
+      )
+      if (artsProp?.id) {
+        const propId = Number(artsProp.id)
+        const shabibUserId = tableExists('users')
+          ? (q.val<number>(`SELECT id FROM users WHERE lower(email) IN ('shabib@swk.properties', 'shabib@swk.property') AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`) ?? null)
+          : null
+        const shabibEmpId = tableExists('employees')
+          ? (q.val<number>(`SELECT id FROM employees WHERE (emp_no = 'EMP-OWNER' OR lower(email) = 'shabib@swk.properties') AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`) ?? null)
+          : null
+        const dxbBranchId = tableExists('branches')
+          ? (q.val<number>(`SELECT id FROM branches WHERE code = 'DXB' AND deleted_at IS NULL LIMIT 1`) ?? null)
+          : null
+
+        let shabibAgentId: number | null = null
+        if (tableExists('agents')) {
+          shabibAgentId = q.val<number>(
+            `SELECT id FROM agents WHERE deleted_at IS NULL AND (lower(email) = 'shabib@swk.properties' OR dld_broker_id = 'SWK-OWNER-PROMOTER' OR lower(name) = 'shabib siraj') ORDER BY id ASC LIMIT 1`,
+          ) ?? null
+          if (!shabibAgentId) {
+            const insAgent = q.get<{ id: number }>(
+              `INSERT INTO agents (
+                agent_no, employee_id, name, department_division, company_visa_no_basic,
+                dld_broker_id, dld_license_type, specialization, phone, email, branch_id,
+                status, join_date, commission_split_pct, commission_tier, monthly_target,
+                portal_access, bio, notes, created_at, updated_at, version
+              ) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'Active', ?, 50, 'Partner', ?, 1, ?, ?, ?, ?, 1) RETURNING id`,
+              'AGT-OWNER',
+              shabibEmpId,
+              'Shabib Siraj',
+              'Sales of Off-Plan Projects',
+              'SWK-OWNER-PROMOTER',
+              'Managing Director & Off-Plan Promoter',
+              'Off-Plan Launch Promotion & VIP Private Client Advisory',
+              '+971 55 155 4680',
+              'shabib@swk.properties',
+              dxbBranchId,
+              ts.slice(0, 10),
+              toCents(500000),
+              'Founder, Managing Director & Internal CRM Lead Promoter — The Arts District by Binghatti & Flagship UAE Off-Plan Launches.',
+              'Internal CRM Promoter profile (never exposed on public company website).',
+              ts,
+              ts,
+            )
+            shabibAgentId = insAgent?.id ? Number(insAgent.id) : null
+          }
+        }
+
+        q.run(
+          `UPDATE properties SET promoter_id = COALESCE(promoter_id, ?), promoter_name = COALESCE(NULLIF(promoter_name, ''), ?), promoter_phone = COALESCE(NULLIF(promoter_phone, ''), ?), agent_id = COALESCE(agent_id, ?), updated_at = ? WHERE id = ?`,
+          shabibUserId,
+          'Shabib Siraj',
+          '+971 55 155 4680',
+          shabibAgentId,
+          ts,
+          propId,
+        )
+
+        if (tableExists('campaigns')) {
+          const campName = 'The Arts District by Binghatti — Official Launch Promotion (Shabib Siraj)'
+          const existingCamp = q.val<number>(`SELECT id FROM campaigns WHERE lower(name) = lower(?) AND deleted_at IS NULL LIMIT 1`, campName)
+          if (!existingCamp) {
+            q.run(
+              `INSERT INTO campaigns (
+                name, type, status, start_date, end_date, budget, owner_id,
+                property_id, promoter_name, promoter_phone, description,
+                created_at, updated_at, version
+              ) VALUES (?, 'WhatsApp', 'Running', '2026-11-28', '2027-02-28', ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+              campName,
+              toCents(250000),
+              shabibUserId,
+              propId,
+              'Shabib Siraj',
+              '+971 55 155 4680',
+              'Internal CRM flagship off-plan promotion for The Arts District by Binghatti (Dubai Silicon Oasis / Nadd Hessa). CRM Promoter: Shabib Siraj (+971 55 155 4680). Studios from AED 525,000 (AED 2,500/mo), 1BR from AED 850,000 (AED 4,250/mo), 2BR Corner from AED 1,300,000 on official 60/40 flexible payment plan. Backed by Narrated Veo 3.1 Film, 12-Page Binghatti Brand Brochure PDF, 3-Page 60/40 Payment Plan PDF & 16-Slide Brand Deck.',
+              ts,
+              ts,
+            )
+          }
+        }
+
+        newSettingRows.push([promoterSyncKey, String(propId)])
+      }
+    }
+
     if (added > 0) {
       q.run(
         `INSERT INTO sequences(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,

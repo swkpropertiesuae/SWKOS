@@ -473,7 +473,29 @@ try {
   assert.equal(wmImg.width, 960, `Expected 960px emblem plate width, got ${wmImg.width}`)
   assert.equal(wmImg.height, 600, `Expected 600px emblem plate height, got ${wmImg.height}`)
 
-  console.log('uae-projects-catalog Review-Fix regression checks: OK (payment milestones 100%, website URL hygiene, 8 payment templates, uploaded brochure precedence, 960x600 SVG watermark plate)')
+  // R6: Internal CRM Promoter (Shabib Siraj) registered in CRM properties, agents & campaigns — while public share & catalog-kit stay 100% zero-shabib clean
+  const artsRow = q.get<any>(`SELECT id, promoter_id, promoter_name, promoter_phone, agent_id FROM properties WHERE lower(title) = 'the arts district by binghatti' AND deleted_at IS NULL LIMIT 1`)
+  assert.ok(artsRow, 'The Arts District by Binghatti must be seeded')
+  assert.equal(artsRow.promoter_name, 'Shabib Siraj', 'Internal CRM promoter_name must be Shabib Siraj')
+  assert.equal(artsRow.promoter_phone, '+971 55 155 4680', 'Internal CRM promoter_phone must be +971 55 155 4680')
+  assert.ok(artsRow.agent_id, 'Internal CRM agent_id must be linked for The Arts District by Binghatti')
+  const shabibAgent = q.get<any>(`SELECT id, name, phone, status FROM agents WHERE id = ? AND deleted_at IS NULL`, artsRow.agent_id)
+  assert.equal(shabibAgent?.name, 'Shabib Siraj', 'Shabib Siraj must be registered in CRM agents')
+  assert.equal(shabibAgent?.phone, '+971 55 155 4680')
+  const artsCampaign = q.get<any>(`SELECT id, name, status, promoter_name, promoter_phone, property_id FROM campaigns WHERE property_id = ? AND deleted_at IS NULL LIMIT 1`, artsRow.id)
+  assert.ok(artsCampaign, 'Active CRM campaign for The Arts District by Binghatti must exist')
+  assert.equal(artsCampaign.status, 'Running')
+  assert.equal(artsCampaign.promoter_name, 'Shabib Siraj')
+  assert.equal(artsCampaign.promoter_phone, '+971 55 155 4680')
+  // Confirm ZERO leak into public share endpoint & catalog-kit manifest
+  const artsPubRes = await app.inject({ method: 'GET', url: '/api/public/share/the-arts-district-by-binghatti' })
+  assert.equal(artsPubRes.statusCode, 200, `Public share for Arts District failed: ${artsPubRes.body}`)
+  assertZeroShabibPublicPayload(artsPubRes.json(), 'Public Share Arts District (Zero-Shabib Guard)')
+  const artsKitRes = await app.inject({ method: 'GET', url: `/api/catalog-kit/properties/${artsRow.id}`, headers: authHeaders })
+  assert.equal(artsKitRes.statusCode, 200, `Catalog kit for Arts District failed: ${artsKitRes.body}`)
+  assertZeroShabibPublicPayload(artsKitRes.json(), 'Catalog Kit Arts District (Zero-Shabib Guard)')
+
+  console.log('uae-projects-catalog Review-Fix regression checks: OK (payment milestones 100%, website URL hygiene, 8 payment templates, uploaded brochure precedence, 960x600 SVG watermark plate, CRM Promoter Shabib Siraj + zero public leak)')
 } finally {
   await app.close()
   db.close()

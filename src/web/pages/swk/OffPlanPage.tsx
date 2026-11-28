@@ -7,7 +7,7 @@ import { useEffect,useMemo,useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { AnimatePresence,motion,useMotionValue,useReducedMotion,useSpring,useTransform } from 'motion/react'
-import { ArrowUpRight,Box,Building,CalendarClock,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Film,HandCoins,Image as ImageIcon,Landmark,Lock,MessageCircle,Plus,Rocket,Share2,ShieldCheck,Trophy } from 'lucide-react'
+import { ArrowUpRight,Box,Building,CalendarClock,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Film,HandCoins,Image as ImageIcon,Landmark,Lock,Megaphone,MessageCircle,Phone,Plus,Rocket,Share2,ShieldCheck,Trophy,UserCheck } from 'lucide-react'
 import { coverPhotoUrl,normalizeMediaList,type ProjectMediaItem } from '@shared/media'
 import { get,openAuthFile } from '../../lib/api'
 import { useMeta } from '../../lib/meta'
@@ -25,6 +25,7 @@ type Project = {
   id: string; project: string; projectName: string; developer: string; community: string; emirate: string; image: string; from: number; types: string[]; handoverQ: string; handover: Date
   plan: Plan; completion: number; escrow: string; reraNo: string; oqood: boolean; avail: number; total: number; commission: number; minPaidResale: number
   blurb: string; promoBadge?: string; promoHeadline?: string; featured?: boolean; swkId: number
+  promoterName?: string | null; promoterPhone?: string | null
   beds: number | null; areaSqft: number | null; ptype: string
   media: ProjectMediaItem[]; videoUrl?: string | null; tourUrl?: string | null; model3dUrl?: string | null; floorPlanUrl?: string | null; brochureUrl?: string | null; pptUrl?: string | null; paymentPlanPdfUrl?: string | null
 }
@@ -125,6 +126,8 @@ export default function OffPlanPage() {
         blurb: r.description || `${r.property_type || 'Residential'} off-plan launch in ${c?.name ?? r.community_id ?? emirate}.`,
         promoBadge: r.promo_badge || undefined,
         promoHeadline: r.promo_headline || undefined,
+        promoterName: r.promoter_name || r._labels?.promoter_id || null,
+        promoterPhone: r.promoter_phone || null,
         featured: Boolean(r.is_exclusive || /the arts district|shahrukhz|fahid|saadiyat|palm jebel ali|creek haven|damac islands/i.test(String(r.title || ''))),
         swkId: r.id,
         beds: r.bedrooms != null && r.bedrooms !== '' ? Number(r.bedrooms) : null, areaSqft: Number(r.area_sqft) || null, ptype: r.property_type || 'Apartment',
@@ -167,7 +170,7 @@ export default function OffPlanPage() {
     (year === 'all' || String(p.handover.getFullYear()) === year) &&
     (p.from <= budget || budget >= maxBudget) &&
     (!postOnly || isPost(p)) &&
-    (!qLow || `${p.project} ${p.developer} ${p.community} ${p.emirate} ${p.promoBadge ?? ''}`.toLowerCase().includes(qLow)),
+    (!qLow || `${p.project} ${p.developer} ${p.community} ${p.emirate} ${p.promoBadge ?? ''} ${p.promoterName ?? ''}`.toLowerCase().includes(qLow)),
   )
   const opt = (a: string[]) => [{ value: 'all', label: 'All' }, ...[...new Set(a)].sort().map(v => ({ value: v, label: v }))]
   const avgEntry = all.length ? all.reduce((s, p) => s + p.from, 0) / all.length : 0
@@ -272,6 +275,7 @@ function Spotlight({ items, now, onOpen }: { items: Project[]; now: Date; onOpen
             <div className="flex items-center gap-2 flex-wrap">
               <span className="swk-pill" style={{ background: 'rgba(138,98,28,.2)', color: '#f8f5ef' }}>Featured launch</span>
               <span className="swk-pill" style={{ background: 'rgba(255,255,255,.12)', color: '#fff' }}>{p.handoverQ} handover</span>
+              {p.promoterName && <span className="swk-pill" style={{ background: 'rgba(200,162,83,.28)', color: '#fde7b2' }}><UserCheck size={12} /> CRM Promoter: {p.promoterName}</span>}
               {logo && <span className="h-7 px-2 rounded-lg bg-white/95 grid place-items-center"><img src={logo} alt={p.developer} className="h-5 object-contain" /></span>}
             </div>
             <h2 className="font-display text-[30px] md:text-[42px] font-semibold leading-[1.05] !text-white" style={{ color: '#fff' }}>{p.project}</h2>
@@ -354,6 +358,7 @@ function ProjectCard({ p, i, now, onOpen }: { p: Project; i: number; now: Date; 
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           <Pill tone={p.emirate === 'Abu Dhabi' ? 'champ' : 'oasis'}>{p.emirate}</Pill>
           {p.promoBadge && <Pill tone="sky">{p.promoBadge}</Pill>}
+          {p.promoterName && <Pill tone="champ"><UserCheck size={11} /> {p.promoterName}</Pill>}
           {photoCount > 0 && <Pill tone="grey"><ImageIcon size={11} /> {photoCount}</Pill>}
           {p.videoUrl && <Pill tone="champ"><Film size={11} /> Video</Pill>}
           <Pill tone="sky"><Box size={11} /> 3D</Pill>
@@ -415,6 +420,23 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
     '', `Unit at ${aed(price)}: ${plan.rows.slice(0, 2).map(r => `${r.label} ${aed(r.amount)}`).join(' + ')}`,
     '', 'SWK Properties · RERA ORN 51517', 'Prices & availability subject to developer confirmation.',
   ].filter(Boolean).join('\n')
+  const waPromoter = p.promoterName
+    ? [
+        `*${p.project}*`,
+        `📍 ${p.community}, ${p.emirate}`,
+        `🏠 ${p.types.join(', ')}`,
+        `💰 From ${aed(p.from)}`,
+        `🗓 Handover ${p.handoverQ} · Payment plan ${planLabel(p.plan)}`,
+        '',
+        `Unit at ${aed(price)}: ${plan.rows.slice(0, 2).map(r => `${r.label} ${aed(r.amount)}`).join(' + ')}`,
+        '',
+        `👤 *CRM Promoter:* ${p.promoterName}${p.promoterPhone ? ` · ${p.promoterPhone}` : ''}`,
+        'Direct VIP allocation & private tour bookings — reply now to reserve.',
+      ].join('\n')
+    : wa
+  const promoterWaHref = p.promoterPhone
+    ? `https://wa.me/${p.promoterPhone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(waPromoter)}`
+    : `https://wa.me/?text=${encodeURIComponent(waPromoter)}`
   return (
     <div className="flex flex-col gap-5">
       {/* Interactive Media Header (Photos / Video / 3D Tour) */}
@@ -469,7 +491,39 @@ function ProjectDetail({ p, now, onToast, onShare }: { p: Project; now: Date; on
         <div className="swk-kv"><span>Escrow bank</span><b>{p.escrow}</b></div>
         <div className="swk-kv"><span>Units left</span><b>{p.avail} / {p.total}</b></div>
         <div className="swk-kv"><span>Oqood</span><b style={{ color: p.oqood ? SWK.oasis : SWK.dune }}>{p.oqood ? 'Available' : 'Pending'}</b></div>
+        {p.promoterName && <div className="swk-kv"><span>CRM Promoter</span><b>{p.promoterName}</b></div>}
+        {p.promoterPhone && <div className="swk-kv"><span>Promoter Direct</span><b>{p.promoterPhone}</b></div>}
       </div>
+
+      {p.promoterName && (
+        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{ background: 'linear-gradient(135deg, #fdf8ee 0%, #f7efe0 100%)', border: '1px solid #e1cb99' }}>
+          <div className="min-w-0 flex-1">
+            <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider" style={{ color: '#8a621c' }}>
+              <Megaphone size={12} /> Internal CRM Lead Promoter
+            </div>
+            <div className="font-display text-[17px] font-semibold text-ink mt-0.5 flex items-center gap-2 flex-wrap">
+              <span>{p.promoterName}</span>
+              {p.promoterPhone && (
+                <span className="inline-flex items-center gap-1 text-[12px] font-mono font-semibold text-[#0e3a2f] bg-white/80 border border-[#e1cb99] rounded-full px-2.5 py-0.5">
+                  <Phone size={11} /> {p.promoterPhone}
+                </span>
+              )}
+            </div>
+            <div className="text-[11.5px] text-muted mt-0.5">Assigned inside CRM (Projects, Agents &amp; Campaigns) · Internal CRM only.</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="swk-btn swk-btn-gold !h-9 text-[12px]" onClick={async () => { if (await copyText(waPromoter)) onToast(`Copied promoter pitch (${p.promoterName})`) }}>
+              <Copy size={13} /> Copy Promoter Pitch
+            </button>
+            <a className="swk-btn swk-btn-primary !h-9 text-[12px] no-underline" href={promoterWaHref} target="_blank" rel="noreferrer">
+              <MessageCircle size={13} /> Promote via WhatsApp
+            </a>
+            <Link to="/e/campaigns" className="swk-btn swk-btn-ghost !h-9 text-[12px] no-underline">
+              <Megaphone size={13} /> CRM Campaigns
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="swk-card"><div className="swk-card-body flex flex-col gap-4">
         <div className="flex items-end gap-3 flex-wrap">
