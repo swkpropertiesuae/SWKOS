@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { useQuery } from '@tanstack/react-query'
@@ -9,22 +9,27 @@ import {
   Building2,
   CalendarCheck,
   Clock3,
+  GripVertical,
   LayoutDashboard,
   LineChart,
   MapPin,
   MessagesSquare,
   Navigation,
+  Palette,
   PhoneCall,
+  Pin,
   QrCode,
   Search,
   SlidersHorizontal,
   Sparkles,
+  Star,
   Workflow,
   X,
 } from 'lucide-react'
 import { useMeta } from '../lib/meta'
 import { get } from '../lib/api'
 import { preloadRoute } from '../lib/prefetch'
+import { useUiCustomization } from '../lib/uiCustomization'
 import { launcherApps, recentItems, SWK_CORE_SUITE_KEYS, type LauncherApp } from '../swk/nav'
 import { aed, num } from '../swk/ui'
 import { isRestrictedStaffUser } from '@shared/swk-staff-access'
@@ -101,67 +106,139 @@ const CORE_SUITE_META: Record<
   },
 }
 
-/** Premium White + Glossy Obsidian & SWK Logo Gold/Emerald hover app tile with instant hover preload */
-function AppCard({ app, badge }: { app: LauncherApp; badge?: ReactNode }) {
+/** Premium White + Glossy Obsidian & SWK Logo Gold/Emerald hover app tile with instant hover preload, Pin, Highlight Star & Drag-to-Reorder */
+function AppCard({
+  app,
+  badge,
+  pinned,
+  highlighted,
+  dragging,
+  onTogglePin,
+  onToggleHighlight,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: {
+  app: LauncherApp
+  badge?: ReactNode
+  pinned: boolean
+  highlighted: boolean
+  dragging: boolean
+  onTogglePin: () => void
+  onToggleHighlight: () => void
+  onDragStart: (e: DragEvent) => void
+  onDragOver: (e: DragEvent) => void
+  onDrop: (e: DragEvent) => void
+  onDragEnd: () => void
+}) {
   const isOwnerApp = app.key === 'shabib_corner'
   return (
-    <Link
-      to={app.landing}
-      title={app.blurb}
-      onMouseEnter={() => preloadRoute(app.landing)}
-      onFocus={() => preloadRoute(app.landing)}
-      className={
-        isOwnerApp
-          ? 'swk-gloss-black group relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] p-4 no-underline transition-all duration-300'
-          : 'group relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] border border-black/[0.08] bg-white p-4 no-underline shadow-[0_12px_32px_-16px_rgba(10,11,14,0.1)] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[#d4a955]/55 hover:bg-white hover:shadow-[0_22px_48px_-18px_rgba(10,11,14,0.18)]'
-      }
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`group relative h-full rounded-[22px] transition-opacity ${dragging ? 'opacity-45' : ''}`}
     >
-      <div
-        className={`relative z-10 flex size-[46px] shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      <Link
+        to={app.landing}
+        title={app.blurb}
+        onMouseEnter={() => preloadRoute(app.landing)}
+        onFocus={() => preloadRoute(app.landing)}
+        className={
           isOwnerApp
-            ? 'border-[#d4a955]/50 bg-[#d4a955]/20 text-[#ebc97c]'
-            : 'border-black/[0.08] bg-[#f7f7f9] text-[#0a0b0e] group-hover:border-[#d4a955]/55 group-hover:bg-[#0a0b0e] group-hover:text-[#ebc97c]'
-        }`}
+            ? `swk-gloss-black relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] p-4 pr-14 no-underline transition-all duration-300 ${highlighted ? 'swk-ui-highlighted' : ''}`
+            : `relative flex h-full items-center gap-4 overflow-hidden rounded-[22px] border border-black/[0.08] bg-white p-4 pr-14 no-underline shadow-[0_12px_32px_-16px_rgba(10,11,14,0.1)] transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:border-[#d4a955]/55 hover:bg-white hover:shadow-[0_22px_48px_-18px_rgba(10,11,14,0.18)] ${highlighted ? 'swk-ui-highlighted' : ''}`
+        }
       >
-        <app.icon size={20} strokeWidth={1.85} />
-      </div>
+        <div
+          className={`relative z-10 flex size-[46px] shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            isOwnerApp
+              ? 'border-[#d4a955]/50 bg-[#d4a955]/20 text-[#ebc97c]'
+              : 'border-black/[0.08] bg-[#f7f7f9] text-[#0a0b0e] group-hover:border-[#d4a955]/55 group-hover:bg-[#0a0b0e] group-hover:text-[#ebc97c]'
+          }`}
+        >
+          <app.icon size={20} strokeWidth={1.85} />
+        </div>
 
-      <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex items-center gap-2">
-          <span className={`truncate font-display text-[15.5px] font-bold tracking-[-0.02em] ${isOwnerApp ? 'text-white' : 'text-[#0a0b0e]'}`}>
-            {app.label}
+        <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex items-center gap-2">
+            <span className={`truncate font-display text-[15.5px] font-bold tracking-[-0.02em] ${isOwnerApp ? 'text-white' : 'text-[#0a0b0e]'}`}>
+              {app.label}
+            </span>
+            {highlighted && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-[#d4a955] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#0a0b0e]">
+                <Star size={9} className="fill-current" /> VIP
+              </span>
+            )}
+            {badge}
           </span>
-          {badge}
+          <span className={`line-clamp-1 text-[12.5px] ${isOwnerApp ? 'text-white/75' : 'text-[#5b616e]'}`}>{app.blurb}</span>
+          {app.items.length > 1 && (
+            <span className={`mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] ${isOwnerApp ? 'text-[#ebc97c]' : 'text-[#1e6b43]'}`}>
+              <span className={`inline-block size-[4px] rounded-full ${isOwnerApp ? 'bg-[#ebc97c]' : 'bg-[#1e6b43]'}`} aria-hidden />
+              {app.items.length} screens
+            </span>
+          )}
         </span>
-        <span className={`line-clamp-1 text-[12.5px] ${isOwnerApp ? 'text-white/75' : 'text-[#5b616e]'}`}>{app.blurb}</span>
-        {app.items.length > 1 && (
-          <span className={`mt-1 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] ${isOwnerApp ? 'text-[#ebc97c]' : 'text-[#1e6b43]'}`}>
-            <span className={`inline-block size-[4px] rounded-full ${isOwnerApp ? 'bg-[#ebc97c]' : 'bg-[#1e6b43]'}`} aria-hidden />
-            {app.items.length} screens
-          </span>
-        )}
-      </span>
+      </Link>
 
-      <span
-        aria-hidden
-        className={`relative z-10 inline-flex size-8 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          isOwnerApp
-            ? 'border-[#d4a955]/45 bg-white/10 text-[#ebc97c] group-hover:bg-[#d4a955] group-hover:text-[#0a0b0e]'
-            : 'border-black/[0.09] bg-white text-[#0a0b0e] group-hover:border-[#d4a955]/60 group-hover:bg-[#0a0b0e] group-hover:text-[#ebc97c]'
-        }`}
-      >
-        <ArrowUpRight size={14} />
-      </span>
-    </Link>
+      {/* Sibling Pin / Star / Drag Handle Controls (outside <a> for valid accessible HTML) */}
+      <div className="absolute right-2.5 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={onTogglePin}
+          title={pinned ? `Unpin ${app.label}` : `Pin ${app.label} to Quick-Launch Bar`}
+          aria-label={pinned ? `Unpin ${app.label}` : `Pin ${app.label}`}
+          className={`grid size-6 place-items-center rounded-full border transition-all cursor-pointer ${
+            pinned
+              ? 'border-[#d4a955] bg-[#d4a955] text-[#0a0b0e] opacity-100'
+              : isOwnerApp
+                ? 'border-white/20 bg-white/10 text-white/75 opacity-60 group-hover:opacity-100 hover:bg-[#d4a955] hover:text-[#0a0b0e]'
+                : 'border-black/10 bg-white/95 text-[#5b616e] opacity-0 group-hover:opacity-100 focus:opacity-100 hover:border-[#d4a955] hover:bg-[#0a0b0e] hover:text-[#ebc97c]'
+          }`}
+        >
+          <Pin size={11} />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleHighlight}
+          title={highlighted ? `Remove highlight on ${app.label}` : `Highlight ${app.label}`}
+          aria-label={highlighted ? `Remove highlight on ${app.label}` : `Highlight ${app.label}`}
+          className={`grid size-6 place-items-center rounded-full border transition-all cursor-pointer ${
+            highlighted
+              ? 'border-[#d4a955] bg-[#0a0b0e] text-[#ebc97c] opacity-100'
+              : isOwnerApp
+                ? 'border-white/20 bg-white/10 text-white/75 opacity-60 group-hover:opacity-100 hover:bg-[#d4a955] hover:text-[#0a0b0e]'
+                : 'border-black/10 bg-white/95 text-[#5b616e] opacity-0 group-hover:opacity-100 focus:opacity-100 hover:border-[#d4a955] hover:bg-[#0a0b0e] hover:text-[#ebc97c]'
+          }`}
+        >
+          <Star size={11} className={highlighted ? 'fill-current' : ''} />
+        </button>
+        <span
+          aria-hidden="true"
+          title="Drag card to reorder"
+          className={`grid size-5 place-items-center rounded text-[10px] cursor-grab opacity-0 group-hover:opacity-60 ${
+            isOwnerApp ? 'text-white' : 'text-[#5b616e]'
+          }`}
+        >
+          <GripVertical size={12} />
+        </span>
+      </div>
+    </div>
   )
 }
 
 export function Launcher() {
   const { me, can } = useMeta()
+  const uiCustom = useUiCustomization()
   const sipSnap = useSipClient()
   const nav = useNavigate()
   const reduce = useReducedMotion()
   const [animate] = useState(() => !entrancePlayed)
+  const [dragAppKey, setDragAppKey] = useState<string | null>(null)
   useEffect(() => {
     entrancePlayed = true
   }, [])
@@ -178,7 +255,30 @@ export function Launcher() {
       .map(k => apps.find(a => a.key === k))
       .filter((a): a is LauncherApp => Boolean(a))
   }, [apps])
-  const workspaceApps = useMemo(() => apps.filter(a => !SWK_CORE_SUITE_KEYS.has(a.key)), [apps])
+  const workspaceApps = useMemo(() => {
+    const raw = apps.filter(a => !SWK_CORE_SUITE_KEYS.has(a.key))
+    const customOrder = uiCustom.prefs.pinning.appOrder
+    if (!customOrder.length) return raw
+    const rank = new Map(customOrder.map((k, i) => [k, i]))
+    return [...raw].sort((a, b) => {
+      const ra = rank.has(a.key) ? rank.get(a.key)! : 999
+      const rb = rank.has(b.key) ? rank.get(b.key)! : 999
+      return ra - rb
+    })
+  }, [apps, uiCustom.prefs.pinning.appOrder])
+
+  const handleReorderApp = (fromKey: string, toKey: string) => {
+    if (!fromKey || !toKey || fromKey === toKey) return
+    const keys = workspaceApps.map(a => a.key)
+    const fromIdx = keys.indexOf(fromKey)
+    const toIdx = keys.indexOf(toKey)
+    if (fromIdx < 0 || toIdx < 0) return
+    const next = [...keys]
+    const [moved] = next.splice(fromIdx, 1)
+    if (!moved) return
+    next.splice(toIdx, 0, moved)
+    uiCustom.setAppOrder(next)
+  }
   const recents = useMemo(() => recentItems(can, 4, me), [can, me])
   const lastVisit = recents[0] ?? null
 
@@ -446,6 +546,13 @@ export function Launcher() {
             <Link to="/mobile-apps" onMouseEnter={() => preloadRoute('/mobile-apps')} className="inline-flex items-center gap-1.5 rounded-full border border-[#d4a955]/40 bg-[#d4a955]/15 px-3 py-1.5 text-[11px] font-semibold text-[#ebc97c] no-underline transition-colors hover:bg-[#d4a955] hover:text-[#0a0b0e]">
               <Navigation size={12} /> Mobile Apps
             </Link>
+            <button
+              type="button"
+              onClick={uiCustom.openDrawer}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white cursor-pointer transition-colors hover:border-[#d4a955] hover:bg-[#d4a955] hover:text-[#0a0b0e]"
+            >
+              <Palette size={12} /> Customise UI
+            </button>
           </div>
         </GlossyBlackCard>
       </motion.section>
@@ -563,9 +670,14 @@ export function Launcher() {
                 {cat === 'all' || needle ? 'SWK Workspace Apps' : activeCat.label}
               </h2>
             </div>
-            <span className="shrink-0 whitespace-nowrap rounded-full border border-white/88 bg-white/86 px-3.5 py-1.5 font-mono text-[11px] font-medium text-[#475569] shadow-[0_6px_18px_rgba(12,56,96,0.06)] backdrop-blur-xl">
-              {shownApps.length} {shownApps.length === 1 ? 'module' : 'modules'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-[#5b616e]">
+                <GripVertical size={12} /> Drag tiles to reorder · Hover to Pin or Star
+              </span>
+              <span className="shrink-0 whitespace-nowrap rounded-full border border-white/88 bg-white/86 px-3.5 py-1.5 font-mono text-[11px] font-medium text-[#475569] shadow-[0_6px_18px_rgba(12,56,96,0.06)] backdrop-blur-xl">
+                {shownApps.length} {shownApps.length === 1 ? 'module' : 'modules'}
+              </span>
+            </div>
           </div>
 
           {/* Exact `section[aria-label="Apps"]` contract preserved for CI */}
@@ -581,6 +693,31 @@ export function Launcher() {
               <motion.div key={a.key} variants={rise} className="h-full">
                 <AppCard
                   app={a}
+                  pinned={uiCustom.isPinned(a.landing)}
+                  highlighted={uiCustom.prefs.pinning.highlightedAppKeys.includes(a.key)}
+                  dragging={dragAppKey === a.key}
+                  onTogglePin={() =>
+                    uiCustom.togglePinItem({
+                      id: a.landing,
+                      label: a.label,
+                      to: a.landing,
+                      highlighted: false,
+                    })
+                  }
+                  onToggleHighlight={() => uiCustom.toggleAppHighlight(a.key)}
+                  onDragStart={e => {
+                    setDragAppKey(a.key)
+                    e.dataTransfer.effectAllowed = 'move'
+                    e.dataTransfer.setData('text/plain', a.key)
+                  }}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault()
+                    const fromKey = dragAppKey || e.dataTransfer.getData('text/plain')
+                    handleReorderApp(fromKey, a.key)
+                    setDragAppKey(null)
+                  }}
+                  onDragEnd={() => setDragAppKey(null)}
                   badge={
                     a.key === 'shabib_corner' ? (
                       <span className="rounded-full bg-[#d4a955] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#0a0b0e]">

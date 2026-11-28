@@ -941,6 +941,13 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
     );
     CREATE INDEX IF NOT EXISTS ix_sce_agent ON shabib_commission_expenses(entry_type, status, agent_name);
   ` },
+  { id: '019_user_ui_preferences', sql: `
+    CREATE TABLE IF NOT EXISTS user_ui_preferences (
+      user_id INTEGER PRIMARY KEY,
+      prefs_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  ` },
 ]
 
 /** Translate SQLite-dialect DDL to PostgreSQL-compatible DDL. */

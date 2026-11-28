@@ -23,6 +23,7 @@ import {
   Mic,
   MicOff,
   Navigation,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Phone,
@@ -49,6 +50,10 @@ import { BiometricLockOverlay } from './BiometricLockOverlay'
 import { ChatDock } from './ChatDock'
 import { StaffPhoto } from './ui/staff-photo'
 import { SwissAtmosphereBackdrop } from './ui/ShaderBackground'
+import { CustomiseUiDrawer } from './CustomiseUiDrawer'
+import { PinnedQuickDock } from './PinnedQuickDock'
+import { FloatingQuickPad } from './FloatingQuickPad'
+import { useUiCustomization } from '../lib/uiCustomization'
 import { clearFastQueryCache, preloadRoute } from '../lib/prefetch'
 import { clearMobileSession, lockScreenNow, openManageLockPin, registerNativePush, stopNativeFieldDuty, unregisterNativePush } from '../lib/mobileBridge'
 import { sipClient, useSipClient } from '../lib/sipClient'
@@ -319,6 +324,7 @@ function WorkflowStepper({ pathname }: { pathname: string }) {
 
 export function Shell() {
   const { me, setMe, meta, can } = useMeta()
+  const uiCustom = useUiCustomization()
   const qc = useQueryClient()
   const nav = useNavigate()
   const loc = useLocation()
@@ -486,6 +492,16 @@ export function Shell() {
             <span className="swk-hide-sm">Search leads, properties…</span>
             <kbd>Ctrl K</kbd>
           </button>
+          <button
+            type="button"
+            className="swk-tbtn !w-auto px-2.5 gap-1.5"
+            onClick={uiCustom.toggleDrawer}
+            aria-label="Customise UI (Alt+U)"
+            title="Customise UI — Colors, Fonts, Highlights, Pin & Drag (Alt+U)"
+          >
+            <Palette size={16} />
+            <span className="hidden xl:inline text-[12px] font-semibold">Customise UI</span>
+          </button>
           {!mustChangePw && <ChatNotifier />}
           {!mustChangePw && <NotificationBell />}
           <span className="hidden sm:inline-flex">
@@ -528,6 +544,9 @@ export function Shell() {
                   <Link to="/workspace-tools" onClick={() => setUserMenu(false)}>
                     <span className="ic"><Languages size={16} /></span>Language &amp; preferences
                   </Link>
+                  <button type="button" className="item" onClick={() => { setUserMenu(false); uiCustom.openDrawer() }}>
+                    <span className="ic"><Palette size={16} /></span>Customise UI (Colors, Fonts &amp; Pins)
+                  </button>
                   <Link to="/mobile-apps" onClick={() => setUserMenu(false)} onMouseEnter={() => preloadRoute('/mobile-apps')}>
                     <span className="ic"><QrCode size={16} /></span>Mobile Apps (Android &amp; iOS)
                   </Link>
@@ -546,6 +565,9 @@ export function Shell() {
             </AnimatePresence>
           </div>
         </header>
+
+        {/* Dockable Pinned Quick-Launch Bar (top/bottom/left/right) */}
+        <PinnedQuickDock />
 
         {/* Mobile Active SIP Call Ribbon (only appears when a live call is active — zero idle clutter!) */}
         {isStaff && activeCall && (
@@ -742,8 +764,11 @@ export function Shell() {
                 <button type="button" onClick={() => { setOpsSheet(false); setPalette(true) }} className="btn outline sm flex-1 justify-center">
                   <Search size={14} /> Quick Search
                 </button>
+                <button type="button" onClick={() => { setOpsSheet(false); uiCustom.openDrawer() }} className="btn outline sm flex-1 justify-center">
+                  <Palette size={14} /> Customise UI
+                </button>
                 <button type="button" onClick={() => { setOpsSheet(false); lockScreenNow('manual') }} className="btn outline sm flex-1 justify-center">
-                  <Lock size={14} /> Lock Screen
+                  <Lock size={14} /> Lock
                 </button>
               </div>
 
@@ -788,6 +813,8 @@ export function Shell() {
 
       {isStaff && <BiometricLockOverlay onLogout={logout} />}
       {!mustChangePw && <LiveNotifications />}
+      <FloatingQuickPad />
+      <CustomiseUiDrawer />
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <Modal open={guide} onClose={() => setGuide(false)} title="How to use SWK OS" width={660}>
         <div className="grid gap-4 text-sm text-body">

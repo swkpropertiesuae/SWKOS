@@ -17,6 +17,7 @@ const ROUTE_LOADERS: Array<[RegExp, () => Promise<unknown>]> = [
   [/^\/shabibs-corner/, () => import('../pages/swk/ShabibsCornerPage')],
   [/^\/dubai-agency-hub/, () => import('../pages/swk/DubaiAgencyHubPage')],
   [/^\/mobile-apps/, () => import('../pages/swk/MobileAppsPage')],
+  [/^\/customise-ui/, () => import('../pages/swk/CustomiseUiPage')],
   [/^\/command-center/, () => import('../pages/swk/CommandCenterPage')],
   [/^\/offplan/, () => import('../pages/swk/OffPlanPage')],
   [/^\/listings/, () => import('../pages/swk/ListingsStudio')],

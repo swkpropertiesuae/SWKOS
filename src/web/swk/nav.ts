@@ -86,6 +86,7 @@ import {
   FolderLock,
   Brain,
   Radio,
+  Palette,
 } from 'lucide-react'
 import {
   canAccessCrmVault,
@@ -328,12 +329,14 @@ export const SWK_NAV: NavSection[] = [
       { label: 'Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage & PDC calculators' },
       { label: 'Unified Search', to: '/utilities/search', icon: Search, desc: 'Search OS, website & live market' },
       { label: 'Mobile Apps (Android & iOS)', to: '/mobile-apps', icon: QrCode, isNew: true, desc: 'Install Android APK, iOS App & download 8K SWK logo kit' },
+      { label: 'Customise UI Studio', to: '/customise-ui', icon: Palette, isNew: true, desc: 'Change colors, fonts, sizes, highlights & pin/drag shortcuts anywhere' },
     ],
   },
   {
     key: 'admin',
     label: 'Settings',
     items: [
+      { label: 'Customise UI & Theme', to: '/customise-ui', icon: Palette, isNew: true, desc: 'Personalise colors, fonts, highlights, pins & Company Default' },
       { label: 'Company & Wi-Fi Settings', to: '/admin/settings', icon: Settings, module: 'admin', desc: 'Logo, seal, Al Saqr Wi-Fi & company details' },
       { label: 'Office Branches & Geofence', to: '/e/branches', icon: Building, module: 'admin', desc: 'Registered Dubai office & GPS perimeter' },
       { label: 'Roles & Permissions', to: '/admin/roles', icon: ShieldHalf, module: 'admin', desc: 'Hardcoded RBAC & access controls' },
@@ -439,6 +442,7 @@ export const RESTRICTED_STAFF_LAUNCHER_APPS: LauncherApp[] = [
       { label: 'Unified Search', to: '/utilities/search', icon: Search, desc: 'Search permitted records & market' },
       { label: 'Deal Calculators & QR', to: '/toolkit', icon: Calculator, desc: 'DLD fee, ROI, mortgage & PDC calculators' },
       { label: 'Mobile Apps (Android & iOS)', to: '/mobile-apps', icon: QrCode, isNew: true, desc: 'Install Android APK, iOS App & 8K logo assets' },
+      { label: 'Customise UI Studio', to: '/customise-ui', icon: Palette, isNew: true, desc: 'Change colors, fonts, sizes, highlights & pin/drag shortcuts' },
     ],
   },
   {

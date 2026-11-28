@@ -22,6 +22,7 @@ jobs:
           node tests/checkin-ui.mjs
           node tests/custom-dropdowns-ui.mjs
           node tests/project-launch-ui.mjs
+          node tests/customise-ui-browser.mjs
         env: { UI_CAPTURE_PRINT: 'true', CALENDAR_CAPTURE_DIR: '.impeccable/review/calendar' }
       - uses: actions/upload-artifact@v4
         if: always()
