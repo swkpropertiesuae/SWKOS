@@ -1,23 +1,30 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowUpRight,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
   Clock,
   Landmark,
   MapPinned,
+  MessageSquarePlus,
+  Paperclip,
   QrCode,
   Radio,
   Users,
 } from 'lucide-react'
 import { get } from '../../lib/api'
 import { BracketLink, LiveStatusDot, SectionEyebrow, SwissCarousel, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
+import { TaskFollowUpDrawer, followUpStageBadgeClass } from '../../components/TaskFollowUpDrawer'
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
 export default function CommandCenterPage() {
+  const qc = useQueryClient()
+  const [activeTask, setActiveTask] = useState<{ id: number; title: string } | null>(null)
   const q = useQuery({
     queryKey: ['command-center-overview'],
     queryFn: () => get<any>('/api/command-center/overview'),
@@ -116,10 +123,35 @@ export default function CommandCenterPage() {
           </div>
           <div className="space-y-2 max-h-[260px] overflow-auto">
             {tasks.my_tasks.length === 0 ? <p className="text-xs text-muted">All caught up on personal tasks.</p> : tasks.my_tasks.map((t: any) => (
-              <Link key={t.id} to={`/e/tasks/${t.id}`} className="block rounded-xl border border-line bg-white/80 p-2.5 text-xs no-underline hover:bg-soft">
-                <div className="font-semibold text-ink">{t.title}</div>
-                <div className="mt-0.5 text-muted flex justify-between"><span>{t.priority || 'Normal'}</span><span>Due {t.due_date || 'Today'}</span></div>
-              </Link>
+              <div key={t.id} className="rounded-xl border border-line bg-white/80 p-2.5 text-xs space-y-1 hover:bg-soft">
+                <div className="flex items-start justify-between gap-2">
+                  <Link to={`/e/tasks/${t.id}`} className="font-semibold text-ink no-underline hover:underline min-w-0 truncate">{t.title}</Link>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTask({ id: t.id, title: t.title })}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border-0 bg-[#121212] px-2 py-0.5 text-[10px] font-bold text-[#51fec0] cursor-pointer"
+                  >
+                    <MessageSquarePlus size={10} /> Follow Up{t._followup_count > 0 ? ` (${t._followup_count})` : ''}
+                    {t._attachment_count > 0 && <span className="text-white inline-flex items-center gap-0.5"><Paperclip size={9} />{t._attachment_count}</span>}
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>{t.priority || 'Normal'}</span>
+                    {t._followup_stage && t._followup_stage !== 'To do' && (
+                      <span className={`rounded-full border px-1.5 py-0 text-[9.5px] font-bold ${followUpStageBadgeClass(t._followup_stage)}`}>
+                        {t._followup_stage}
+                      </span>
+                    )}
+                    {t._next_followup_date && (
+                      <span className="inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold text-emerald-700">
+                        <CalendarClock size={9} /> {t._next_followup_date}
+                      </span>
+                    )}
+                  </span>
+                  <span>Due {t.due_date || 'Today'}</span>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -210,6 +242,12 @@ export default function CommandCenterPage() {
           </div>
         </div>
       </section>
+      <TaskFollowUpDrawer
+        taskId={activeTask?.id ?? null}
+        initialTitle={activeTask?.title}
+        onClose={() => setActiveTask(null)}
+        onUpdated={() => void qc.invalidateQueries({ queryKey: ['command-center-overview'] })}
+      />
     </div>
   )
 }

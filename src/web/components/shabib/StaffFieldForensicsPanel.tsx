@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  CalendarClock,
   Camera,
   CheckCircle2,
   Circle,
@@ -8,7 +9,9 @@ import {
   Download,
   Flag,
   MapPin,
+  MessageSquarePlus,
   Navigation,
+  Paperclip,
   Plus,
   ShieldCheck,
   XCircle,
@@ -17,6 +20,8 @@ import { get, openAuthFile, patch, post, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { AuthImg } from '../AuthMedia'
 import { CustomSelect } from '../CustomSelect'
+import { AttachmentChips, FormAttachmentField } from '../FormAttachmentField'
+import { TaskFollowUpDrawer, followUpStageBadgeClass } from '../TaskFollowUpDrawer'
 
 export function StaffFieldForensicsPanel() {
   const qc = useQueryClient()
@@ -25,6 +30,8 @@ export function StaffFieldForensicsPanel() {
   const [showForm, setShowForm] = useState(false)
   const [verifNote, setVerifNote] = useState<Record<number, string>>({})
   const [photos, setPhotos] = useState<File[]>([])
+  const [docFiles, setDocFiles] = useState<File[]>([])
+  const [activeTask, setActiveTask] = useState<{ id: number; title: string } | null>(null)
   const [f, setF] = useState({
     report_type: 'Viewing',
     visit_date: new Date().toISOString().slice(0, 10),
@@ -120,9 +127,13 @@ export function StaffFieldForensicsPanel() {
       if (photos.length > 0 && created?.id) {
         await upload(photos, { caption: `${f.building_or_project || 'Unit'} ${f.unit_no}` }, `/api/field-reports/${created.id}/photos`)
       }
+      if (docFiles.length > 0 && created?.id) {
+        await upload(docFiles, { link_entity: 'forensic_field_reports', link_id: created.id, category: 'Field Evidence' })
+      }
       toast.ok(`Submitted Forensic ${f.report_type} (${created.report_no}) for Authority Verification`)
       setShowForm(false)
       setPhotos([])
+      setDocFiles([])
       refresh()
     } catch (err: any) {
       toast.error(err.message || 'Submission failed')
@@ -179,18 +190,50 @@ export function StaffFieldForensicsPanel() {
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
             {myTasks.map(t => (
-              <div key={t.id} className="flex items-start gap-2 rounded-xl border border-line bg-soft/40 p-2.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => void toggleMyTask(t.id)}
-                  className="mt-0.5 bg-transparent border-0 p-0 cursor-pointer text-emerald-600"
-                >
-                  {t.status === 'Done' ? <CheckCircle2 size={15} /> : <Circle size={15} className="text-muted" />}
-                </button>
-                <div className="min-w-0 flex-1">
-                  <div className={`font-semibold text-ink ${t.status === 'Done' ? 'line-through opacity-65' : ''}`}>{t.title}</div>
-                  <div className="text-[11px] text-muted">Due {t.due_date || 'Today'} · {t.priority || 'Normal'}</div>
+              <div key={t.id} className="rounded-xl border border-line bg-soft/40 p-3 text-xs space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void toggleMyTask(t.id)}
+                    className="mt-0.5 bg-transparent border-0 p-0 cursor-pointer text-emerald-600"
+                  >
+                    {t.status === 'Done' ? <CheckCircle2 size={15} /> : <Circle size={15} className="text-muted" />}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className={`font-semibold text-ink ${t.status === 'Done' ? 'line-through opacity-65' : ''}`}>{t.title}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                      <span>Due {t.due_date || 'Today'} · {t.priority || 'Normal'}</span>
+                      {t._followup_stage && t._followup_stage !== 'To do' && (
+                        <span className={`rounded-full border px-1.5 py-0 text-[10px] font-bold ${followUpStageBadgeClass(t._followup_stage)}`}>
+                          {t._followup_stage}
+                        </span>
+                      )}
+                      {t._next_followup_date && t.status !== 'Done' && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0 font-mono text-[10px] font-semibold text-emerald-800">
+                          <CalendarClock size={9} /> {t._next_followup_date}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTask({ id: t.id, title: t.title })}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border-0 bg-[#121212] px-2.5 py-1 text-[10.5px] font-bold text-[#51fec0] cursor-pointer"
+                  >
+                    <MessageSquarePlus size={11} />
+                    <span>Follow Up{t._followup_count > 0 ? ` (${t._followup_count})` : ''}</span>
+                    {t._attachment_count > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-white">
+                        <Paperclip size={9} />{t._attachment_count}
+                      </span>
+                    )}
+                  </button>
                 </div>
+                {Array.isArray(t._attachments) && t._attachments.length > 0 && (
+                  <div className="pl-6">
+                    <AttachmentChips attachments={t._attachments} compact />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -263,6 +306,7 @@ export function StaffFieldForensicsPanel() {
               </label>
             </div>
             <textarea className="input min-h-[60px] text-xs" placeholder="Forensic summary & payment notes…" value={f.forensic_notes} onChange={e => setF({ ...f, forensic_notes: e.target.value })} />
+            <FormAttachmentField compact files={docFiles} onChange={setDocFiles} label="Attach supporting docs (PDF / Cheques / Form F)" />
             <button disabled={busy} type="submit" className="btn green text-xs">Submit Forensic Dossier</button>
           </form>
         )}
@@ -351,6 +395,13 @@ export function StaffFieldForensicsPanel() {
           ))}
         </div>
       </section>
+
+      <TaskFollowUpDrawer
+        taskId={activeTask?.id ?? null}
+        initialTitle={activeTask?.title}
+        onClose={() => setActiveTask(null)}
+        onUpdated={refresh}
+      />
     </div>
   )
 }

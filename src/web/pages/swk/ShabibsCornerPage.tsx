@@ -27,8 +27,9 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react'
-import { del, downloadAuthFile, get, post, put } from '../../lib/api'
+import { del, downloadAuthFile, get, post, put, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
+import { FormAttachmentField } from '../../components/FormAttachmentField'
 import { PIPELINE_12_STAGES } from '@shared/swk-pipeline'
 import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
 import { GlossyBlackCard } from '../../components/ui/PremiumPrimitives'
@@ -120,6 +121,9 @@ export default function ShabibsCornerPage() {
   const [bulkText, setBulkText] = useState('')
   const [bulkPreview, setBulkPreview] = useState<any>(null)
   const [busy, setBusy] = useState(false)
+  const [ftJobFiles, setFtJobFiles] = useState<File[]>([])
+  const [ftInvFiles, setFtInvFiles] = useState<File[]>([])
+  const [ftDocFiles, setFtDocFiles] = useState<File[]>([])
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['owner-corner-overview'] })
@@ -135,12 +139,16 @@ export default function ShabibsCornerPage() {
     e.preventDefault()
     setBusy(true)
     try {
-      await post('/api/privacy-fast-track/jobs', {
+      const created = await post<any>('/api/privacy-fast-track/jobs', {
         ...ftJob,
         deal_value_aed: Number(ftJob.deal_value_aed) || 0,
         expected_cash_aed: Number(ftJob.expected_cash_aed) || 0,
       })
+      if (ftJobFiles.length > 0 && created?.id) {
+        await upload(ftJobFiles, { link_entity: 'privacy_fast_track_jobs', link_id: created.id, category: 'Private Fast-Track' })
+      }
       toast.ok('Privacy Fast-Track deal created (Master Log bypassed)')
+      setFtJobFiles([])
       setFtJob({
         client_name: '', client_phone: '', property_label: '', community: '',
         deal_type: 'Secondary Sale', deal_value_aed: '', expected_cash_aed: '',
@@ -154,7 +162,7 @@ export default function ShabibsCornerPage() {
     e.preventDefault()
     setBusy(true)
     try {
-      await post('/api/privacy-fast-track/invoices', {
+      const created = await post<any>('/api/privacy-fast-track/invoices', {
         job_id: ftInv.job_id ? Number(ftInv.job_id) : undefined,
         client_name: ftInv.client_name,
         client_trn: ftInv.client_trn || undefined,
@@ -163,7 +171,11 @@ export default function ShabibsCornerPage() {
         vat_rate: Number(ftInv.vat_rate) || 5,
         due_date: ftInv.due_date || undefined,
       })
+      if (ftInvFiles.length > 0 && created?.id) {
+        await upload(ftInvFiles, { link_entity: 'privacy_fast_track_invoices', link_id: created.id, category: 'Private Invoice' })
+      }
       toast.ok('Custom private UAE VAT invoice issued')
+      setFtInvFiles([])
       setFtInv({ job_id: '', client_name: '', client_trn: '', description: '', subtotal_aed: '', vat_rate: '5', due_date: '' })
       refresh()
     } catch (err: any) { toast.error(err.message) } finally { setBusy(false) }
@@ -173,13 +185,17 @@ export default function ShabibsCornerPage() {
     e.preventDefault()
     setBusy(true)
     try {
-      await post('/api/privacy-fast-track/docs', {
+      const created = await post<any>('/api/privacy-fast-track/docs', {
         job_id: ftDoc.job_id ? Number(ftDoc.job_id) : undefined,
         title: ftDoc.title,
         doc_type: ftDoc.doc_type,
         content_text: ftDoc.content_text,
       })
+      if (ftDocFiles.length > 0 && created?.id) {
+        await upload(ftDocFiles, { link_entity: 'privacy_fast_track_docs', link_id: created.id, category: 'Private Document' })
+      }
       toast.ok('Private executive document saved to Owner Vault')
+      setFtDocFiles([])
       setFtDoc({ job_id: '', title: '', doc_type: 'Private Memo', content_text: '' })
       refresh()
     } catch (err: any) { toast.error(err.message) } finally { setBusy(false) }
@@ -370,6 +386,7 @@ export default function ShabibsCornerPage() {
                 <input className="input" type="date" value={ftJob.target_cash_date} onChange={e => setFtJob({ ...ftJob, target_cash_date: e.target.value })} />
               </div>
               <textarea className="input min-h-[68px]" placeholder="Confidential instructions / cash arrangement notes…" value={ftJob.notes} onChange={e => setFtJob({ ...ftJob, notes: e.target.value })} />
+              <FormAttachmentField compact files={ftJobFiles} onChange={setFtJobFiles} label="Attach confidential file / PDF" />
               <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
                 <Plus size={15} /> Create Private Fast-Track File
               </button>
@@ -394,6 +411,7 @@ export default function ShabibsCornerPage() {
                 <input className="input" type="number" required placeholder="Subtotal (AED) *" value={ftInv.subtotal_aed} onChange={e => setFtInv({ ...ftInv, subtotal_aed: e.target.value })} />
                 <input className="input" type="number" placeholder="VAT %" value={ftInv.vat_rate} onChange={e => setFtInv({ ...ftInv, vat_rate: e.target.value })} />
               </div>
+              <FormAttachmentField compact files={ftInvFiles} onChange={setFtInvFiles} label="Attach payment proof / receipt" />
               <button disabled={busy} type="submit" className="btn green w-full justify-center">
                 <Receipt size={15} /> Generate Segregated Private Invoice
               </button>
@@ -411,6 +429,7 @@ export default function ShabibsCornerPage() {
                 </CustomSelect>
               </div>
               <textarea className="input min-h-[76px]" required placeholder="Private terms, payment undertaking, or VIP client instructions…" value={ftDoc.content_text} onChange={e => setFtDoc({ ...ftDoc, content_text: e.target.value })} />
+              <FormAttachmentField compact files={ftDocFiles} onChange={setFtDocFiles} label="Attach signed copy / scan" />
               <button disabled={busy} type="submit" className="btn outline w-full justify-center">
                 <Lock size={14} /> Save to Owner Private Docs
               </button>

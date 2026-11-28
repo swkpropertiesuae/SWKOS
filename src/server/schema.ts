@@ -948,6 +948,29 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       updated_at TEXT NOT NULL
     );
   ` },
+  { id: '020_task_followups', sql: `
+    CREATE TABLE IF NOT EXISTS task_followups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL,
+      author_id INTEGER NOT NULL,
+      author_name TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'Call',
+      outcome TEXT NOT NULL DEFAULT 'Reached — Moving Forward',
+      stage TEXT NOT NULL DEFAULT 'In progress',
+      note TEXT NOT NULL,
+      next_action TEXT,
+      next_followup_date TEXT,
+      next_followup_time TEXT,
+      contact_name TEXT,
+      contact_phone TEXT,
+      attachment_ids_json TEXT NOT NULL DEFAULT '[]',
+      escalated INTEGER NOT NULL DEFAULT 0,
+      reassigned_to_id INTEGER,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_task_followups_task ON task_followups(task_id, id);
+    CREATE INDEX IF NOT EXISTS ix_task_followups_next ON task_followups(next_followup_date);
+  ` },
 ]
 
 /** Translate SQLite-dialect DDL to PostgreSQL-compatible DDL. */

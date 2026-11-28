@@ -2,8 +2,9 @@ import { useEffect,useMemo,useState } from 'react'
 import { Save,X,ListPlus } from 'lucide-react'
 import type { FieldDef } from '@shared/types'
 import { useMeta,type MetaEntity } from '../lib/meta'
-import { get,post,put } from '../lib/api'
+import { get,post,put,upload } from '../lib/api'
 import { FieldInput,CellValue } from './Fields'
+import { FormAttachmentField } from './FormAttachmentField'
 import { ChildEditor,type Row } from './ChildEditor'
 import { Modal,Loading,Badge } from '../ui/kit'
 import { useToast } from '../lib/toast'
@@ -51,6 +52,8 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
   const [saving, setSaving] = useState(false)
   const [picker, setPicker] = useState<null | 'docs'>(null)
   const [auditReason, setAuditReason] = useState('')
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const showAttachments = def.key !== 'attachments' && !def.readonlyApi
 
   const fields = useMemo(() => def.fields.filter(f => {
     if (f.hidden || f.secret) return false
@@ -96,7 +99,18 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
       const saved = edit
         ? await put<Row>(`/api/e/${def.key}/${record!.id}`, body, { 'x-swk-audit-reason': encodeURIComponent(auditReason.trim()) })
         : await post<Row>(`/api/e/${def.key}`, body)
-      toast.ok(edit ? `${def.label} updated & logged to Audit Trail` : `${def.label} created`)
+      let uploadedCount = 0
+      if (showAttachments && pendingFiles.length > 0 && saved?.id) {
+        try {
+          const uploaded = await upload(pendingFiles, { link_entity: def.key, link_id: saved.id, category: 'General' })
+          uploadedCount = Array.isArray(uploaded) ? uploaded.length : pendingFiles.length
+          setPendingFiles([])
+        } catch (upErr: any) {
+          toast.error(`${def.label} saved, but attachment upload failed: ${upErr?.message || 'Unknown error'}`)
+        }
+      }
+      const attSuffix = uploadedCount > 0 ? ` · ${uploadedCount} attachment${uploadedCount === 1 ? '' : 's'} uploaded` : ''
+      toast.ok((edit ? `${def.label} updated & logged to Audit Trail` : `${def.label} created`) + attSuffix)
       onSaved(saved)
     } catch (e: any) { setBanner(e.message ?? 'Could not save'); if (e.details?.field) setErrors({ [e.details.field]: true }) }
     finally { setSaving(false) }
@@ -149,6 +163,20 @@ export function EntityForm({ def, record, presets, onSaved, onCancel, lockedOnEd
           <ChildEditor child={c} rows={kids[c.key] ?? []} onChange={r => setKids(k => ({ ...k, [c.key]: r }))} parent={parentView} />
         </div>
       ))}
+      {showAttachments && (
+        <div className="swk-form-section mt-6">
+          <div className="swk-form-section-title">Attachments &amp; Supporting Documents</div>
+          <FormAttachmentField
+            entity={edit ? def.key : undefined}
+            recordId={edit ? record!.id : null}
+            immediate={edit}
+            files={pendingFiles}
+            onChange={setPendingFiles}
+            label={edit ? `Attach files to this ${def.label.toLowerCase()}` : `Attach files to this new ${def.label.toLowerCase()} (optional)`}
+            hint={edit ? 'Files upload immediately · PDF, JPG/PNG, Word, Excel, CSV, ZIP (max 25 MB)' : 'Files upload automatically as soon as you save · PDF, JPG/PNG, Word, Excel, CSV (max 25 MB)'}
+          />
+        </div>
+      )}
       {edit && (
         <div className="swk-form-section mt-6" style={{ borderColor: 'rgba(190, 152, 76, 0.45)', background: 'rgba(190, 152, 76, 0.06)' }}>
           <div className="swk-form-section-title">Mandatory Edit Reason — Audit Log & Leadership Notification</div>

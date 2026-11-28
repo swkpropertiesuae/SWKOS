@@ -1,19 +1,24 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  CalendarClock,
   CheckCircle2,
   Circle,
   ClipboardList,
   Clock,
   MapPin,
+  MessageSquarePlus,
+  Paperclip,
   Plus,
   ShieldCheck,
   UserCheck,
   Users,
 } from 'lucide-react'
-import { get, patch, post, put } from '../../lib/api'
+import { get, patch, post, put, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { CustomSelect } from '../CustomSelect'
+import { AttachmentChips, FormAttachmentField } from '../FormAttachmentField'
+import { TaskFollowUpDrawer, followUpStageBadgeClass } from '../TaskFollowUpDrawer'
 
 export function ShabibTeamTasksTab() {
   const qc = useQueryClient()
@@ -28,6 +33,8 @@ export function ShabibTeamTasksTab() {
     description: '',
   })
   const [busy, setBusy] = useState(false)
+  const [taskFiles, setTaskFiles] = useState<File[]>([])
+  const [activeTask, setActiveTask] = useState<{ id: number; title: string } | null>(null)
 
   const q = useQuery({
     queryKey: ['shabib-team-daily', date],
@@ -55,15 +62,19 @@ export function ShabibTeamTasksTab() {
     if (!newTask.title.trim()) return
     setBusy(true)
     try {
-      await post('/api/shabib-workspace/tasks', {
+      const created = await post<any>('/api/shabib-workspace/tasks', {
         title: newTask.title.trim(),
         assigned_to_id: newTask.assigned_to_id ? Number(newTask.assigned_to_id) : null,
         due_date: newTask.due_date || date,
         priority: newTask.priority,
         description: newTask.description.trim() || undefined,
       })
-      toast.ok('Task assigned and added to daily to-do list')
+      if (taskFiles.length > 0 && created?.id) {
+        await upload(taskFiles, { link_entity: 'tasks', link_id: created.id, category: 'Task Attachment' })
+      }
+      toast.ok(taskFiles.length ? `Task assigned with ${taskFiles.length} attachment(s)` : 'Task assigned and added to daily to-do list')
       setNewTask({ title: '', assigned_to_id: '', due_date: date, priority: 'High', description: '' })
+      setTaskFiles([])
       refresh()
     } catch (err: any) {
       toast.error(err.message || 'Could not create task')
@@ -248,6 +259,12 @@ export function ShabibTeamTasksTab() {
             value={newTask.description}
             onChange={e => setNewTask({ ...newTask, description: e.target.value })}
           />
+          <FormAttachmentField
+            compact
+            files={taskFiles}
+            onChange={setTaskFiles}
+            label="Attach files / brief"
+          />
           <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
             <Plus size={15} /> Add to Daily To-Do List
           </button>
@@ -271,23 +288,58 @@ export function ShabibTeamTasksTab() {
             ) : (focusedStaff ? focusedStaff.tasks_todo : (d?.team_todo ?? [])).map((t: any) => {
               const assignee = staff.find(s => s.user_id === Number(t.assigned_to_id))
               return (
-                <div key={t.id} className="flex items-start gap-2.5 rounded-xl border border-line bg-soft/40 p-2.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => void toggleTask(t.id)}
-                    title="Mark Done"
-                    className="mt-0.5 text-muted hover:text-emerald-600 bg-transparent border-0 p-0 cursor-pointer"
-                  >
-                    <Circle size={16} />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-ink">{t.title}</div>
-                    <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-muted">
-                      <span>{assignee ? assignee.name : 'Team Shared'}</span>
-                      <span>· Due {t.due_date || 'No due date'}</span>
-                      <span className="font-semibold text-amber-700">{t.priority || 'Normal'}</span>
+                <div key={t.id} className="rounded-xl border border-line bg-soft/40 p-2.5 text-xs space-y-1.5">
+                  <div className="flex items-start gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => void toggleTask(t.id)}
+                      title="Mark Done"
+                      className="mt-0.5 text-muted hover:text-emerald-600 bg-transparent border-0 p-0 cursor-pointer"
+                    >
+                      <Circle size={16} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-ink">{t.title}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                        <span>{assignee ? assignee.name : 'Team Shared'}</span>
+                        <span>· Due {t.due_date || 'No due date'}</span>
+                        <span className="font-semibold text-amber-700">{t.priority || 'Normal'}</span>
+                        {t._followup_stage && t._followup_stage !== 'To do' && (
+                          <span className={`rounded-full border px-1.5 py-0 text-[10px] font-bold ${followUpStageBadgeClass(t._followup_stage)}`}>
+                            {t._followup_stage}
+                          </span>
+                        )}
+                        {t._next_followup_date && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0 font-mono text-[10px] font-semibold text-emerald-800">
+                            <CalendarClock size={9} /> {t._next_followup_date}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTask({ id: t.id, title: t.title })}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border-0 bg-[#121212] px-2.5 py-1 text-[10.5px] font-bold text-[#51fec0] cursor-pointer"
+                    >
+                      <MessageSquarePlus size={11} />
+                      <span>Follow Up{t._followup_count > 0 ? ` (${t._followup_count})` : ''}</span>
+                      {t._attachment_count > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-white">
+                          <Paperclip size={9} />{t._attachment_count}
+                        </span>
+                      )}
+                    </button>
                   </div>
+                  {t._last_followup && (
+                    <div className="pl-6 text-[10.5px] text-muted truncate">
+                      <b className="text-ink">{t._last_followup.channel}:</b> {t._last_followup.note}
+                    </div>
+                  )}
+                  {Array.isArray(t._attachments) && t._attachments.length > 0 && (
+                    <div className="pl-6">
+                      <AttachmentChips attachments={t._attachments} compact />
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -320,12 +372,26 @@ export function ShabibTeamTasksTab() {
                       {assignee ? assignee.name : 'Team'} · Completed {String(t.completed_at || t.updated_at || '').slice(11, 16) || date}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTask({ id: t.id, title: t.title })}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-900 cursor-pointer"
+                  >
+                    <MessageSquarePlus size={10} /> Log{t._followup_count > 0 ? ` (${t._followup_count})` : ''}
+                  </button>
                 </div>
               )
             })}
           </div>
         </div>
       </div>
+
+      <TaskFollowUpDrawer
+        taskId={activeTask?.id ?? null}
+        initialTitle={activeTask?.title}
+        onClose={() => setActiveTask(null)}
+        onUpdated={refresh}
+      />
     </div>
   )
 }

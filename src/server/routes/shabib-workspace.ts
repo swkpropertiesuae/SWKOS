@@ -26,6 +26,7 @@ import {
 } from '../../shared/shabib-workspace'
 import { canAccessShabibsCorner, isOwnerSwkUser } from '../../shared/swk-staff-access'
 import { exportStructuredDossier, type ForensicExportFormat, type StructuredForensicDoc } from '../domain/forensic-exports'
+import { hydrateTasksWithFollowUps } from './task-followups'
 import { body, idOf } from './helpers'
 
 const VERIFIERS_SETTING_KEY = 'shabib:field_verifiers_json'
@@ -361,7 +362,7 @@ export default async function (app: FastifyInstance) {
       return true
     })
 
-    const allTasks = tableExists('tasks')
+    const rawTasks = tableExists('tasks')
       ? q.all<any>(
           `SELECT id, title, status, priority, due_date, completed_at, assignee_id, assignee_id AS assigned_to_id, link_entity, link_id, description, updated_at
            FROM tasks
@@ -370,6 +371,7 @@ export default async function (app: FastifyInstance) {
            LIMIT 500`,
         )
       : []
+    const allTasks = hydrateTasksWithFollowUps(rawTasks)
 
     const attendanceToday = tableExists('attendance')
       ? q.all<any>(
@@ -552,9 +554,9 @@ export default async function (app: FastifyInstance) {
   app.get('/api/field-reports/my-context', async (req) => {
     const user = requireStaff(req)
     const isVerifier = isFieldVerificationAuthority(user)
-    const myTasks = tableExists('tasks')
+    const rawMyTasks = tableExists('tasks')
       ? q.all<any>(
-          `SELECT id, title, status, priority, due_date, completed_at, description
+          `SELECT id, title, status, priority, due_date, completed_at, description, assignee_id
            FROM tasks
            WHERE deleted_at IS NULL AND assignee_id = ?
            ORDER BY CASE WHEN status = 'Done' THEN 1 ELSE 0 END, COALESCE(due_date, '9999-12-31') ASC, id DESC
@@ -562,6 +564,7 @@ export default async function (app: FastifyInstance) {
           user.id,
         )
       : []
+    const myTasks = hydrateTasksWithFollowUps(rawMyTasks)
     return {
       user_id: user.id,
       is_verifier: isVerifier,

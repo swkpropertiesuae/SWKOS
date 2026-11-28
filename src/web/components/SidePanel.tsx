@@ -2,12 +2,14 @@ import { useState,type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { MessageSquare,Hand,Paperclip,Link as LinkIcon,Tag,Link2,ThumbsUp,MessageCircleWarning,Video,History,X,Trash2,Plus,Download,Send,ExternalLink,Check } from 'lucide-react'
+import { MessageSquare,Hand,Paperclip,Link as LinkIcon,Tag,Link2,ThumbsUp,MessageCircleWarning,Video,History,X,Trash2,Plus,Download,Send,ExternalLink,Check,MessageSquarePlus } from 'lucide-react'
 import { del,get,openAuthFile,post,put,resolveApiUrl,upload } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { Badge,Loading,useDialogs } from '../ui/kit'
 import { RefSelect } from './RefSelect'
 import { CustomSelect } from './CustomSelect'
+import { FormAttachmentField } from './FormAttachmentField'
+import { TaskFollowUpDrawer, followUpStageBadgeClass } from './TaskFollowUpDrawer'
 import { useToast } from '../lib/toast'
 import { cls,fmtDate,fmtIsoStamp,fmtDateTime,todayIso } from '../lib/format'
 import { recordPath } from './EntityList'
@@ -75,16 +77,30 @@ function FollowUps({ entity, id, title, refresh }: any) {
   const filters = JSON.stringify([{ field: 'link_entity', op: 'eq', value: entity }, { field: 'link_id', op: 'eq', value: id }])
   const q = useQuery({ queryKey: ['followups', entity, id], queryFn: () => get<{ rows: any[] }>('/api/e/tasks', { filters, pageSize: 100, sort: 'due_date', dir: 'asc' }) })
   const [t, setT] = useState(''); const [due, setDue] = useState(todayIso()); const [who, setWho] = useState<number | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [activeTask, setActiveTask] = useState<{ id: number; title: string } | null>(null)
   const { me } = useMeta()
   const inv = () => { void qc.invalidateQueries({ queryKey: ['followups', entity, id] }); refresh() }
-  const add = async () => { try { await post('/api/e/tasks', { title: t, due_date: due, assignee_id: who ?? me?.id, kind: 'Follow-up', link_entity: entity, link_id: id }); setT(''); inv() } catch (e: any) { toast.error(e.message) } }
+  const add = async () => { try { const created = await post<any>('/api/e/tasks', { title: t, due_date: due, assignee_id: who ?? me?.id, kind: 'Follow-up', link_entity: entity, link_id: id }); if (files.length > 0 && created?.id) { await upload(files, { link_entity: 'tasks', link_id: created.id, category: 'Task Attachment' }) } setT(''); setFiles([]); inv() } catch (e: any) { toast.error(e.message) } }
   return (<div>
     <div className="grid gap-2"><input className="input" placeholder={`Follow-up for ${title ?? 'this record'}…`} value={t} onChange={e => setT(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && t.trim()) void add() }} />
       <div className="grid grid-cols-2 gap-2"><input className="input" type="date" value={due} onChange={e => setDue(e.target.value)} /><RefSelect entity="users" value={who ?? me?.id} onChange={id => setWho(id)} /></div>
+      <FormAttachmentField compact files={files} onChange={setFiles} label="Attach file" />
       <button className="btn green sm self-end" disabled={!t.trim()} onClick={() => void add()}><Plus /> Add follow-up</button></div>
     <div className="mt-3">{!q.data ? <Loading /> : q.data.rows.length === 0 ? <p className="text-sm text-muted text-center py-6">No follow-ups.</p> : q.data.rows.map(r => (
       <Row key={r.id}><div className="flex items-start gap-2"><input type="checkbox" className="mt-1 accent-emerald" checked={r.status === 'Done'} onChange={async e => { await put(`/api/e/tasks/${r.id}`, { status: e.target.checked ? 'Done' : 'To do', version: r.version }); inv() }} aria-label="Done" />
-        <div className="flex-1"><div className={cls('font-semibold text-ink', r.status === 'Done' && 'line-through text-muted')}>{r.title}</div><div className="text-xs text-muted">Due {fmtDate(r.due_date)} · {r._labels.assignee_id} {r.due_date < todayIso() && r.status !== 'Done' && <span className="text-signal font-bold">· overdue</span>}</div></div></div></Row>))}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className={cls('font-semibold text-ink', r.status === 'Done' && 'line-through text-muted')}>{r.title}</div>
+            <button type="button" onClick={() => setActiveTask({ id: r.id, title: r.title })} className="inline-flex shrink-0 items-center gap-1 rounded-full border-0 bg-[#121212] px-2 py-0.5 text-[10px] font-bold text-[#51fec0] cursor-pointer"><MessageSquarePlus size={10} /> Log{r._followup_count > 0 ? ` (${r._followup_count})` : ''}</button>
+          </div>
+          <div className="text-xs text-muted flex flex-wrap items-center gap-1.5 mt-0.5">
+            <span>Due {fmtDate(r.due_date)} · {r._labels.assignee_id}</span>
+            {r.due_date < todayIso() && r.status !== 'Done' && <span className="text-signal font-bold">· overdue</span>}
+            {r._followup_stage && r._followup_stage !== 'To do' && <span className={cls('rounded-full border px-1.5 py-0 text-[10px] font-bold', followUpStageBadgeClass(r._followup_stage))}>{r._followup_stage}</span>}
+          </div>
+        </div></div></Row>))}</div>
+    <TaskFollowUpDrawer taskId={activeTask?.id ?? null} initialTitle={activeTask?.title} onClose={() => setActiveTask(null)} onUpdated={inv} />
   </div>)
 }
 

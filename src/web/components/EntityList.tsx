@@ -2,7 +2,8 @@ import { AccountCarousel } from './ui/account-card'
 import { useMemo,useState,useEffect,type ReactNode } from 'react'
 import { useNavigate,useSearchParams,Link } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X,CalendarDays,ChevronLeft,ChevronRight,Bookmark,Check,Share2,ScanText } from 'lucide-react'
+import { Plus,Search,Download,Upload,Filter,RefreshCw,Trash2,ArrowUp,ArrowDown,Columns3,Table2,X,CalendarDays,ChevronLeft,ChevronRight,Bookmark,Check,Share2,ScanText,MessageSquarePlus,Paperclip } from 'lucide-react'
+import { TaskFollowUpDrawer, followUpStageBadgeClass } from './TaskFollowUpDrawer'
 import { SmartImport } from './SmartImport'
 import { BulkInventoryModal } from './BulkInventoryModal'
 import { ShareWithClient,SHAREABLE_ENTITIES } from './ShareWithClient'
@@ -71,6 +72,8 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
   const [showFilters, setShowFilters] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [showBulkInventory, setShowBulkInventory] = useState(false)
+  const [followUpTask, setFollowUpTask] = useState<{ id: number; title: string } | null>(null)
+  const isTasks = entity === 'tasks'
   const filters: Flt[] = useMemo(() => { try { return param('filters') ? JSON.parse(param('filters')) : [] } catch { return [] } }, [param('filters')])
   const status = param('status')
   useEffect(() => { const t = setTimeout(() => { if (search !== param('q')) setParam({ q: search, page: null }) }, 280); return () => clearTimeout(t) }, [search])
@@ -149,7 +152,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
             <button className="btn sm ghost" onClick={() => setSelected(new Set())}><X /> Clear</button></div>)}
         {view !== 'list' && query.data && query.data.total > rows.length && <div className="px-3 pt-2 text-xs text-muted">Showing the first {rows.length} of {query.data.total.toLocaleString()}. Search or filter to narrow it down.</div>}
         {query.error ? <ErrorBox error={query.error} onRetry={() => void query.refetch()} /> : !query.data ? <Loading /> : view === 'kanban' && groupField ? (
-          <Kanban def={def} field={groupField} rows={rows} onOpen={open} onMoved={refresh} onAdd={canCreate ? v => { setNewPresets({ [groupField.name]: v }); setEditing('new') } : undefined} />
+          <Kanban def={def} field={groupField} rows={rows} onOpen={open} onMoved={refresh} onFollowUp={isTasks ? r => setFollowUpTask({ id: r.id, title: r._title || r.title }) : undefined} onAdd={canCreate ? v => { setNewPresets({ [groupField.name]: v }); setEditing('new') } : undefined} />
         ) : view === 'calendar' && dateField ? (
           <CalendarView def={def} field={dateField} month={month} rows={rows} onMonth={m => setParam({ month: m })} onOpen={open} onMoved={refresh} onAdd={canCreate ? d => { setNewPresets({ [dateField.name]: dateField.type === 'datetime' ? `${d}T09:00` : d }); setEditing('new') } : undefined} />
         ) : rows.length === 0 ? (
@@ -160,6 +163,7 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
               <thead><tr>
                 <th style={{ width: 34 }}><input type="checkbox" aria-label="Select all" checked={allSel} onChange={e => setSelected(e.target.checked ? new Set(rows.map(r => r.id)) : new Set())} /></th>
                 {cols.map(f => <th key={f.name} className={cls('sortable', ['money', 'number', 'int', 'percent'].includes(f.type) && 'num')} onClick={() => setParam({ sort: f.name, dir: sort === f.name && dir === 'asc' ? 'desc' : 'asc', page: null })} aria-sort={sort === f.name ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>{f.label}<SortIcon f={f} /></th>)}
+                {isTasks && <th>Follow-Up</th>}
                 {canDelete && <th>Actions</th>}
               </tr></thead>
               <tbody>
@@ -167,10 +171,34 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
                   <tr key={r.id} className={lockedRows ? undefined : 'clickable'} onClick={() => open(r)}>
                     <td onClick={e => e.stopPropagation()}><input type="checkbox" aria-label="Select row" checked={selected.has(r.id)} onChange={e => setSelected(s => { const n = new Set(s); e.target.checked ? n.add(r.id) : n.delete(r.id); return n })} /></td>
                     {cols.map((f, i) => <td key={f.name} className={['money', 'number', 'int', 'percent'].includes(f.type) ? 'num' : ''}>{i === 0 ? <Link to={recordPath(entity, r.id)} className="link" onClick={e => e.stopPropagation()}><CellValue f={f} rec={r} statusField={def.statusField} /></Link> : canInline(f) && can(def.module, 'edit') && !def.readonlyApi ? <InlineCell entity={entity} f={f} rec={r} statusField={def.statusField} onSaved={refresh} /> : <CellValue f={f} rec={r} statusField={def.statusField} />}</td>)}
+                    {isTasks && (
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setFollowUpTask({ id: r.id, title: r._title || r.title })}
+                            className="inline-flex items-center gap-1 rounded-full border-0 bg-[#121212] px-2.5 py-1 text-[11px] font-bold text-[#51fec0] cursor-pointer whitespace-nowrap"
+                          >
+                            <MessageSquarePlus size={11} />
+                            <span>Follow Up{(r._followup_count ?? 0) > 0 ? ` (${r._followup_count})` : ''}</span>
+                            {(r._attachment_count ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-0.5 text-white">
+                                <Paperclip size={9} />{r._attachment_count}
+                              </span>
+                            )}
+                          </button>
+                          {r._next_followup_date && (
+                            <span className="font-mono text-[10.5px] font-semibold text-[#0e9f6e] whitespace-nowrap">
+                              {r._next_followup_date}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    )}
                     {canDelete && <td onClick={e => e.stopPropagation()}><button className="btn red sm" aria-label={`Delete ${def.label} ${r._title ?? r.id}`} onClick={() => void deleteOne(r)}><Trash2 size={14} /> Delete</button></td>}
                   </tr>))}
               </tbody>
-              {cols.some(f => f.type === 'money') && rows.length > 1 && <tfoot><tr><td /> {cols.map((f, i) => <td key={f.name} className={f.type === 'money' ? 'num' : ''}>{f.type === 'money' ? fmtMoney(rows.reduce((s, r) => s + (Number(r[f.name]) || 0), 0)) : i === 0 ? 'Page total' : ''}</td>)}{canDelete && <td />}</tr></tfoot>}
+              {cols.some(f => f.type === 'money') && rows.length > 1 && <tfoot><tr><td /> {cols.map((f, i) => <td key={f.name} className={f.type === 'money' ? 'num' : ''}>{f.type === 'money' ? fmtMoney(rows.reduce((s, r) => s + (Number(r[f.name]) || 0), 0)) : i === 0 ? 'Page total' : ''}</td>)}{isTasks && <td />}{canDelete && <td />}</tr></tfoot>}
             </table>
           </div>
         )}
@@ -181,6 +209,14 @@ export function EntityList({ entity, preset, embedded, title, hideNew, createPre
       {smart && <SmartImport def={def} onClose={() => setSmart(false)} onDone={refresh} />}
       {showImport && <ImportModal def={def} onClose={() => setShowImport(false)} onDone={() => { refresh(); }} />}
       {showBulkInventory && <BulkInventoryModal onClose={() => setShowBulkInventory(false)} onDone={refresh} />}
+      {isTasks && (
+        <TaskFollowUpDrawer
+          taskId={followUpTask?.id ?? null}
+          initialTitle={followUpTask?.title}
+          onClose={() => setFollowUpTask(null)}
+          onUpdated={refresh}
+        />
+      )}
     </div>
   )
   return content
@@ -211,7 +247,7 @@ function FilterBuilder({ def, value, onApply }: { def: MetaEntity; value: Flt[];
   )
 }
 
-function Kanban({ def, field, rows, onOpen, onMoved, onAdd }: { def: MetaEntity; field: FieldDef; rows: any[]; onOpen: (r: any) => void; onMoved: () => void; onAdd?: (value: string) => void }) {
+function Kanban({ def, field, rows, onOpen, onMoved, onAdd, onFollowUp }: { def: MetaEntity; field: FieldDef; rows: any[]; onOpen: (r: any) => void; onMoved: () => void; onAdd?: (value: string) => void; onFollowUp?: (r: any) => void }) {
   const toast = useToast()
   const [over, setOver] = useState<string | null>(null)
   const known = (field.options ?? []).map(optValue)
@@ -234,6 +270,23 @@ function Kanban({ def, field, rows, onOpen, onMoved, onAdd }: { def: MetaEntity;
                 <div key={r.id} draggable onDragStart={e => e.dataTransfer.setData('text/plain', String(r.id))} onClick={() => onOpen(r)} className="bg-card border border-line rounded-lg p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
                   <div className="font-bold text-ink text-[13.5px] leading-snug">{r._title}</div>
                   {cols.map(f => <div key={f.name} className="text-xs text-muted mt-1 truncate"><span className="font-semibold">{f.label}: </span><CellValue f={f} rec={r} /></div>)}
+                  {onFollowUp && (
+                    <div className="mt-2 flex items-center justify-between gap-1.5 pt-2 border-t border-line" onClick={e => e.stopPropagation()}>
+                      {r._followup_stage && r._followup_stage !== 'To do' ? (
+                        <span className={cls('rounded-full border px-2 py-0.5 text-[10px] font-bold', followUpStageBadgeClass(r._followup_stage))}>
+                          {r._followup_stage}
+                        </span>
+                      ) : <span />}
+                      <button
+                        type="button"
+                        onClick={() => onFollowUp(r)}
+                        className="inline-flex items-center gap-1 rounded-full border-0 bg-[#121212] px-2.5 py-0.5 text-[10.5px] font-bold text-[#51fec0] cursor-pointer"
+                      >
+                        <MessageSquarePlus size={10} /> Follow Up{(r._followup_count ?? 0) > 0 ? ` (${r._followup_count})` : ''}
+                        {(r._attachment_count ?? 0) > 0 && <span className="text-white inline-flex items-center gap-0.5"><Paperclip size={9} />{r._attachment_count}</span>}
+                      </button>
+                    </div>
+                  )}
                 </div>))}
               {!list.length && <div className="text-xs text-muted text-center py-4">Drop here</div>}
               {onAdd && o && <button type="button" className="btn ghost sm w-full justify-start" onClick={() => onAdd(o)}><Plus size={14} /> Add {def.label.toLowerCase()}</button>}

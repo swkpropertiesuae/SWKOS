@@ -12,9 +12,10 @@ import {
   Plus,
   ShieldCheck,
 } from 'lucide-react'
-import { get, post, put } from '../../lib/api'
+import { get, post, put, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { BracketLink, SwissHeroHeader } from '../../components/ui/SwissPrimitives'
+import { AttachmentChips, FormAttachmentField } from '../../components/FormAttachmentField'
 
 const aed = (n: number) => 'AED ' + Math.round(Number(n) || 0).toLocaleString('en-US')
 
@@ -22,6 +23,7 @@ export default function MortgageDeskPage() {
   const qc = useQueryClient()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
+  const [evFiles, setEvFiles] = useState<File[]>([])
   const [ev, setEv] = useState({
     client_name: '',
     bank_name: 'Emirates NBD',
@@ -69,13 +71,17 @@ export default function MortgageDeskPage() {
     e.preventDefault()
     setBusy(true)
     try {
-      await post('/api/mortgage-desk/events', {
+      const created = await post<any>('/api/mortgage-desk/events', {
         ...ev,
         valuation_fee_aed: Number(ev.valuation_fee_aed) || 0,
         loan_amount_aed: Number(ev.loan_amount_aed) || 0,
       })
-      toast.ok('Mortgage Desk schedule / valuation booked')
+      if (evFiles.length > 0 && created?.id) {
+        await upload(evFiles, { link_entity: 'mortgage_desk_events', link_id: created.id, category: 'Mortgage Document' })
+      }
+      toast.ok(evFiles.length ? `Mortgage schedule booked with ${evFiles.length} attachment(s)` : 'Mortgage Desk schedule / valuation booked')
       setEv({ ...ev, client_name: '', rm_name: '', rm_phone: '', valuation_company: '', loan_amount_aed: '', notes: '' })
+      setEvFiles([])
       void qc.invalidateQueries({ queryKey: ['mortgage-desk-overview'] })
     } catch (err: any) { toast.error(err.message) } finally { setBusy(false) }
   }
@@ -141,6 +147,7 @@ export default function MortgageDeskPage() {
             <input className="input" type="number" placeholder="Valuation Fee (AED)" value={ev.valuation_fee_aed} onChange={e => setEv({ ...ev, valuation_fee_aed: e.target.value })} />
           </div>
           <textarea className="input min-h-[60px]" placeholder="Schedule notes, access contact, trustee timing…" value={ev.notes} onChange={e => setEv({ ...ev, notes: e.target.value })} />
+          <FormAttachmentField compact files={evFiles} onChange={setEvFiles} label="Attach FOL / Pre-Approval / Valuation PDF" />
           <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
             <Plus size={14} /> Schedule &amp; Track Follow-Up
           </button>
@@ -169,6 +176,9 @@ export default function MortgageDeskPage() {
                       {item.valuation_company && <span>Valuer: {item.valuation_company}</span>}
                       {item.rm_name && <span className="inline-flex items-center gap-1"><PhoneCall size={11} /> RM: {item.rm_name} {item.rm_phone || ''}</span>}
                     </div>
+                    {Array.isArray(item._attachments) && item._attachments.length > 0 && (
+                      <AttachmentChips attachments={item._attachments} compact />
+                    )}
                   </div>
                   <CustomSelect
                     compact

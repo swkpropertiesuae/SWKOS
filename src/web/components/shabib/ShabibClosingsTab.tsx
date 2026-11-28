@@ -9,9 +9,10 @@ import {
   Trash2,
 } from 'lucide-react'
 import { CLOSING_TRACKS, SHABIB_PAYMENT_MODES, type ClosingStageItem, type ClosingTrack } from '@shared/shabib-workspace'
-import { del, get, openAuthFile, post, put } from '../../lib/api'
+import { del, get, openAuthFile, post, put, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { CustomSelect } from '../CustomSelect'
+import { FormAttachmentField } from '../FormAttachmentField'
 
 const aed = (n: unknown) => {
   const v = Number(n || 0)
@@ -25,6 +26,7 @@ export function ShabibClosingsTab() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [dossierFiles, setDossierFiles] = useState<File[]>([])
 
   const [form, setForm] = useState({
     track: 'Secondary' as ClosingTrack,
@@ -132,7 +134,11 @@ export function ShabibClosingsTab() {
         keys_and_meters_summary: optStr(form.keys_and_meters_summary),
         notes: optStr(form.notes),
       })
+      if (dossierFiles.length > 0 && created?.id) {
+        await upload(dossierFiles, { link_entity: 'closing_forensic_dossiers', link_id: created.id, category: 'Closing Document' })
+      }
       toast.ok(`Pin-to-Pin Closing Dossier ${created.dossier_no} created`)
+      setDossierFiles([])
       setSelectedId(created.id)
       setShowCreate(false)
       refresh()
@@ -264,6 +270,7 @@ export function ShabibClosingsTab() {
             <input type="date" className="input" value={form.handover_date} onChange={e => setForm({ ...form, handover_date: e.target.value })} />
             <input className="input" placeholder="Keys / DEWA / Chiller Summary" value={form.keys_and_meters_summary} onChange={e => setForm({ ...form, keys_and_meters_summary: e.target.value })} />
           </div>
+          <FormAttachmentField compact files={dossierFiles} onChange={setDossierFiles} label="Attach Title Deed / Form F / NOC / Cheque copies" />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowCreate(false)} className="btn outline">Cancel</button>
             <button disabled={busy} type="submit" className="btn green">Create Closing Dossier</button>

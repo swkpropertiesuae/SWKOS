@@ -9,6 +9,7 @@ import { legacyStageFor12, OFFICE_ADMIN_GATED_MASTER_ENTITIES, OWNER_ONLY_MASTER
 import { bad,HttpError,forbidden,notFound,parseCsv,safeJson,toCsv,nowLocal,nowIso,todayStr } from '../util'
 import { body,idOf,parseListParams } from './helpers'
 import { checkBulkExportDlp } from '../domain/enterprise'
+import { hydrateTasksWithFollowUps } from './task-followups'
 
 function guard(def: EntityDef) {
   if (def.child) throw notFound('Unknown record type')
@@ -184,6 +185,9 @@ export default async function (app: FastifyInstance) {
     assertHrPiiRouteAccess(def, req.ctx)
     const res = listRecords(def, parseListParams(req.query as any), req.ctx)
     maskRecs(def, res.rows, req.ctx)
+    if (def.key === 'tasks') {
+      res.rows = hydrateTasksWithFollowUps(res.rows)
+    }
     return res
   })
 
@@ -287,7 +291,11 @@ export default async function (app: FastifyInstance) {
     const p = req.params as any
     const def = guard(getDef(p.entity))
     assertHrPiiRouteAccess(def, req.ctx)
-    return maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
+    const rec = maskRecs(def, [getRecord(def, idOf(p.id), req.ctx)], req.ctx)[0]
+    if (def.key === 'tasks' && rec) {
+      return hydrateTasksWithFollowUps([rec])[0]
+    }
+    return rec
   })
   // Party blocks for print documents (invoices, quotations, …): { [party_id]: { name, address… } }
   app.get('/api/print/:entity/:id/parties', async (req) => {

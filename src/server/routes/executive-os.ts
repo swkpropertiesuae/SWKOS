@@ -36,6 +36,7 @@ import {
 } from '../../shared/swk-pipeline'
 import { assertZeroShabibPublicPayload } from '../../shared/zero-shabib-guard'
 import { body, idOf } from './helpers'
+import { hydrateRecordAttachments, hydrateTasksWithFollowUps } from './task-followups'
 
 const SEEDED_CASE_STUDIES = [
   {
@@ -733,14 +734,15 @@ export default async function (app: FastifyInstance) {
       : []
 
     // Tasks Today + Team & Individual Monitor
-    const allOpenTasks = tableExists('tasks')
+    const rawOpenTasks = tableExists('tasks')
       ? q.all<any>(
-          `SELECT t.id, t.title, t.status, t.priority, t.due_date, t.assignee_id, u.name AS assignee_name
+          `SELECT t.id, t.title, t.status, t.priority, t.due_date, t.assignee_id, t.description, u.name AS assignee_name
            FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
            WHERE t.deleted_at IS NULL AND COALESCE(t.status, '') NOT IN ('Done', 'Completed', 'Cancelled')
            ORDER BY COALESCE(t.due_date, '9999-12-31') ASC, t.id DESC LIMIT 120`,
         )
       : []
+    const allOpenTasks = hydrateTasksWithFollowUps(rawOpenTasks)
     const myTasksToday = allOpenTasks.filter(t => t.assignee_id === req.user!.id)
     const byAssignee = new Map<string, { name: string; total: number; overdue: number; high: number }>()
     for (const t of allOpenTasks) {
@@ -904,7 +906,8 @@ export default async function (app: FastifyInstance) {
     const cases = q.all<any>(
       `SELECT m.*, u.name AS advisor_name FROM mortgage_cases m LEFT JOIN users u ON u.id = m.owner_id WHERE m.deleted_at IS NULL ORDER BY m.id DESC LIMIT 100`,
     )
-    const events = q.all<any>(`SELECT * FROM mortgage_desk_events ORDER BY CASE WHEN status = 'Overdue' THEN 0 WHEN status = 'Urgent' THEN 1 WHEN status = 'Scheduled' THEN 2 ELSE 3 END, due_date ASC LIMIT 100`)
+    const rawEvents = q.all<any>(`SELECT * FROM mortgage_desk_events ORDER BY CASE WHEN status = 'Overdue' THEN 0 WHEN status = 'Urgent' THEN 1 WHEN status = 'Scheduled' THEN 2 ELSE 3 END, due_date ASC LIMIT 100`)
+    const events = hydrateRecordAttachments('mortgage_desk_events', rawEvents)
     const today = todayStr()
     const totalLoanAed = cases.reduce((s, c) => s + (Number(fromCents(c.loan_amount)) || 0), 0)
     const totalRefCommAed = cases.reduce((s, c) => s + (Number(fromCents(c.referral_commission)) || 0), 0)

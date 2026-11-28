@@ -4,8 +4,10 @@ import { PdfDownload,DocumentPrinter,SealChoice } from '../components/ui/documen
 import { useEffect,useState } from 'react'
 import { Link,useNavigate,useParams,useSearchParams } from 'react-router-dom'
 import { useQuery,useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft,Pencil,Trash2,Printer,MoreHorizontal,Plus,Mail as MailIcon,Share2 } from 'lucide-react'
+import { ArrowLeft,Pencil,Trash2,Printer,MoreHorizontal,Plus,Mail as MailIcon,Share2,MessageSquarePlus,CalendarClock,Paperclip } from 'lucide-react'
 import { ShareWithClient,SHAREABLE_ENTITIES } from '../components/ShareWithClient'
+import { AttachmentChips } from '../components/FormAttachmentField'
+import { TaskFollowUpDrawer, followUpStageBadgeClass } from '../components/TaskFollowUpDrawer'
 import { del,get,post } from '../lib/api'
 import { useMeta } from '../lib/meta'
 import { EntityList,recordPath } from '../components/EntityList'
@@ -65,6 +67,7 @@ export function EntityRecordPage() {
   const [sharing, setSharing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteReason, setDeleteReason] = useState('')
+  const [followUpOpen, setFollowUpOpen] = useState(false)
   const [dialog, setDialog] = useState<{ name: string; props: any } | null>(null)
   if (entity === 'doc_templates' && !canAccessDocumentTemplates(me)) {
     return <ErrorBox error={new Error('Document Templates are restricted strictly to Owner, Admin, HR, and Office Admin.')} />
@@ -129,6 +132,11 @@ export function EntityRecordPage() {
     <div className="fade-in record-page">
       <PageHeader back={<Link className="btn grey" to={`/e/${entity}`}><ArrowLeft /> Back</Link>} icon={<Icon size={20} />} title={<span className="flex items-center gap-3 flex-wrap">{rec._title}{status && <Badge value={status} />}{approvalBadge}{rec.doc_type && <Badge value={rec.doc_type} tone="blue" />}</span>} subtitle={`${def.label} · last updated ${new Date(rec.updated_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`}
         actions={<>
+          {entity === 'tasks' && (
+            <button type="button" className="btn bg-[#121212] text-[#51fec0]" onClick={() => setFollowUpOpen(true)}>
+              <MessageSquarePlus size={15} /> Follow Up{(rec._followup_count ?? 0) > 0 ? ` (${rec._followup_count})` : ''}
+            </button>
+          )}
           {primary.map(a => <button key={a.key} className={cls('btn', a.tone ?? 'green')} onClick={() => void a.run(helpers)}>{a.label}</button>)}
           {PRINTABLE.has(entity) && <Link className="btn outline" to={`/print/${entity}/${rid}`}><Printer /> Print</Link>}
           {PRINTABLE.has(entity) && <PdfDownload entity={entity} id={rid} />}
@@ -140,6 +148,37 @@ export function EntityRecordPage() {
         </>} />
       {sharing && <ShareWithClient entity={entity} ids={[rid]} label={String(rec._title ?? '')} onClose={() => setSharing(false)} />}
       {facts.length > 0 && <div className="grid gap-3 mb-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">{facts.map(f => <div key={f.name} className="card px-4 py-3"><div className="text-[11.5px] font-semibold text-muted">{f.label}</div><div className="font-display font-extrabold text-[17px] text-ink mt-0.5 break-words"><CellValue f={f} rec={rec} statusField={def.statusField} /></div></div>)}</div>}
+      {entity === 'tasks' && (
+        <div className="card p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold uppercase tracking-wider text-muted">Follow-Up Status:</span>
+              <span className={cls('rounded-full border px-2.5 py-0.5 text-[11px] font-bold', followUpStageBadgeClass(rec._followup_stage || rec.status))}>
+                {rec._followup_stage || rec.status}
+              </span>
+              {rec._next_followup_date && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-800">
+                  <CalendarClock size={12} /> Next: {rec._next_followup_date}{rec._next_followup_time ? ` · ${rec._next_followup_time}` : ''}
+                </span>
+              )}
+              <span className="text-muted">
+                {rec._followup_count ?? 0} follow-up{(rec._followup_count ?? 0) === 1 ? '' : 's'} · <Paperclip size={11} className="inline" /> {rec._attachment_count ?? 0} file{(rec._attachment_count ?? 0) === 1 ? '' : 's'}
+              </span>
+            </div>
+            {rec._last_followup && (
+              <div className="text-xs text-muted truncate">
+                <b className="text-ink">Latest ({rec._last_followup.channel}):</b> {rec._last_followup.outcome} — {rec._last_followup.note}
+              </div>
+            )}
+            {Array.isArray(rec._attachments) && rec._attachments.length > 0 && (
+              <AttachmentChips attachments={rec._attachments} compact />
+            )}
+          </div>
+          <button type="button" className="btn bg-[#121212] text-[#51fec0] sm" onClick={() => setFollowUpOpen(true)}>
+            <MessageSquarePlus size={14} /> Open Follow-Up &amp; Attachments
+          </button>
+        </div>
+      )}
       <div className="record-workspace flex gap-4 items-start flex-col lg:flex-row">
         <div className="flex-1 min-w-0 w-full card overflow-hidden">
           {tabs.length > 1 && <Tabs variant="sub" tabs={tabs} value={tab} onChange={setTab} />}
@@ -195,6 +234,14 @@ export function EntityRecordPage() {
       {dialog?.name === 'allocate' && <AllocateDialog kind={dialog.props.kind} rec={dialog.props.rec} onClose={() => setDialog(null)} onDone={() => { setDialog(null); reload() }} />}
       {dialog?.name === 'reconcile' && <ReconcileDialog txn={dialog.props.txn} onClose={() => setDialog(null)} onDone={() => { setDialog(null); reload() }} />}
       {dialog?.name === 'payExpense' && <PayExpense rec={dialog.props.rec} onClose={() => setDialog(null)} onDone={() => { setDialog(null); reload() }} />}
+      {entity === 'tasks' && (
+        <TaskFollowUpDrawer
+          taskId={followUpOpen ? rid : null}
+          initialTitle={String(rec._title || rec.title || '')}
+          onClose={() => setFollowUpOpen(false)}
+          onUpdated={reload}
+        />
+      )}
     </div>
   )
 }

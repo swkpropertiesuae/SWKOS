@@ -9,9 +9,10 @@ import {
   Wallet,
 } from 'lucide-react'
 import { CLOSING_TRACKS, SHABIB_PAYMENT_MODES, SHABIB_SETTLEMENT_STATUSES } from '@shared/shabib-workspace'
-import { del, get, openAuthFile, post, put } from '../../lib/api'
+import { del, get, openAuthFile, post, put, upload } from '../../lib/api'
 import { useToast } from '../../lib/toast'
 import { CustomSelect } from '../CustomSelect'
+import { FormAttachmentField } from '../FormAttachmentField'
 
 const aed = (n: unknown) => 'AED ' + Math.round(Number(n || 0)).toLocaleString('en-US')
 
@@ -22,6 +23,7 @@ export function ShabibCommissionsTab() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [modeFilter, setModeFilter] = useState('all')
   const [busy, setBusy] = useState(false)
+  const [entryFiles, setEntryFiles] = useState<File[]>([])
 
   const [form, setForm] = useState({
     entry_type: 'Commission',
@@ -67,13 +69,17 @@ export function ShabibCommissionsTab() {
       const gross = Number(form.gross_amount_aed) || 0
       const pct = Number(form.split_pct) || 50
       const net = Number(form.net_amount_aed) || (form.entry_type === 'Commission' && gross > 0 ? Math.round(gross * (pct / 100)) : gross)
-      await post('/api/shabib-workspace/commissions-expenses', {
+      const created = await post<any>('/api/shabib-workspace/commissions-expenses', {
         ...form,
         gross_amount_aed: gross || net,
         split_pct: pct,
         net_amount_aed: net,
       })
-      toast.ok(`${form.entry_type} logged in Owner Settlement Sheet`)
+      if (entryFiles.length > 0 && created?.id) {
+        await upload(entryFiles, { link_entity: 'shabib_commission_expenses', link_id: created.id, category: 'Settlement Proof' })
+      }
+      toast.ok(`${form.entry_type} logged in Owner Settlement Sheet${entryFiles.length ? ` (${entryFiles.length} attachment(s))` : ''}`)
+      setEntryFiles([])
       setForm(f => ({
         ...f,
         deal_ref: '', property_label: '', gross_amount_aed: '', net_amount_aed: '', payment_reference: '',
@@ -210,6 +216,7 @@ export function ShabibCommissionsTab() {
             </div>
           )}
           <textarea className="input min-h-[54px] text-xs" placeholder="Notes / Deal breakdown…" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          <FormAttachmentField compact files={entryFiles} onChange={setEntryFiles} label="Attach receipt / invoice / cheque copy" />
           <button disabled={busy} type="submit" className="btn w-full justify-center bg-[#121212] text-[#51fec0]">
             <Wallet size={14} /> Save to Commissions &amp; Expenses Ledger
           </button>
