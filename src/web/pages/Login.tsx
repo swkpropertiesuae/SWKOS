@@ -105,14 +105,14 @@ export function Login() {
               aria-label="SWK Properties Dubai"
             >
               <img
-                src="/brand/web/swk-icon-192.webp?v=swk-8k-v1"
+                src="/brand/web/swk-icon-192.webp?v=swk-8k-v2"
                 width={42}
                 height={42}
                 alt="SWK Properties Emblem"
                 className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 object-contain drop-shadow-[0_4px_12px_rgba(212,169,85,0.28)] transition-transform duration-300 group-hover:scale-[1.06]"
               />
               <img
-                src="/brand/web/swk-logo-light.webp?v=swk-8k-v1"
+                src="/brand/web/swk-logo-light.webp?v=swk-8k-v2"
                 width={132}
                 height={58}
                 alt="SWK Properties"
@@ -387,7 +387,10 @@ export function Login() {
       <footer className="relative z-10 mt-auto border-t border-[#d4a955]/30 bg-[linear-gradient(155deg,#181a22_0%,#0a0b0e_60%,#050507_100%)] text-white">
         <div className="mx-auto flex max-w-[1260px] flex-wrap items-center justify-between gap-4 px-4 py-4 text-[11.5px] text-white/75 sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
-            <img src="/brand/web/swk-logo-dark.webp?v=swk-8k-v1" alt={SWK_COMPANY_NAME} className="h-8 w-auto object-contain" />
+            <span className="inline-flex items-center gap-2">
+              <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" className="h-7 w-7 object-contain" />
+              <img src="/brand/web/swk-logo-dark.webp?v=swk-8k-v2" alt={SWK_COMPANY_NAME} className="h-7 w-auto object-contain" />
+            </span>
             <span className="hidden text-white/25 sm:inline" aria-hidden>|</span>
             <span>
               © {new Date().getFullYear()} {SWK_COMPANY_NAME} · RERA ORN <strong className="text-[#ebc97c]">{SWK_RERA_ORN}</strong> · DET Licence <strong className="text-white">{SWK_TRADE_LICENSE}</strong>

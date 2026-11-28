@@ -1188,7 +1188,10 @@ export default function ToolkitPage({ embedded = false }: { embedded?: boolean }
               {qrDataUrl && !qrErr ? (
                 <>
                   <div className="rounded-2xl bg-white p-5 border border-line shadow-sm text-center">
-                    <img src="/brand/web/swk-logo-light.webp" alt="SWK Properties" className="h-8 w-auto mx-auto mb-3" />
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" className="h-8 w-8 object-contain" />
+                      <img src="/brand/web/swk-logo-light.webp?v=swk-8k-v2" alt="SWK Properties" className="h-7 w-auto object-contain" />
+                    </div>
                     <img src={qrDataUrl} alt="Generated SWK Public QR Code" className="w-56 h-56 mx-auto rounded-lg" />
                     {qrCaption.trim() && <div className="mt-2.5 text-xs font-semibold text-[#121212]">{qrCaption}</div>}
                   </div>

@@ -135,7 +135,7 @@ export function LogoPresenceBadge({
           : 'border-[#d4a955]/45 bg-[#faf7ef] text-[#0a0b0e]'
       }`}
     >
-      <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v1" alt="" className="h-4 w-4 object-contain" />
+      <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" className="h-4 w-4 object-contain" />
       <span>{label}</span>
       {subtitle && <span className={dark ? 'text-white/70 font-medium' : 'text-[#5b616e] font-medium'}>· {subtitle}</span>}
       <span className="inline-flex items-center gap-0.5">

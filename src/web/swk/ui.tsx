@@ -195,7 +195,7 @@ export function Field({ label, value, onChange, suffix, prefix, step = 1, min = 
 
 /** Empty / placeholder state with brand mark. */
 export function EmptyState({ title, hint, action }: { title: string; hint?: ReactNode; action?: ReactNode }) {
-  return <div className="swk-empty"><img src="/brand/os/SWK_OS_Wordmark_Logo_Transparent.svg" alt="" aria-hidden /><b>{title}</b>{hint && <p>{hint}</p>}{action}</div>
+  return <div className="swk-empty"><img src="/brand/web/swk-logo-light.webp?v=swk-8k-v2" alt="" aria-hidden /><b>{title}</b>{hint && <p>{hint}</p>}{action}</div>
 }
 
 /** Parallax-free tilt-on-hover photo card for properties/communities. */

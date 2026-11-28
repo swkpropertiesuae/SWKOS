@@ -202,7 +202,10 @@ export default function ReceptionQrPage() {
     >
       <div className="w-full max-w-[420px] rounded-3xl bg-white border border-black/5 p-6 shadow-[0_24px_60px_rgba(15,42,51,0.12)]">
         <div className="flex flex-col items-center text-center mb-5">
-          <img src="/brand/web/swk-logo-light.webp" alt="SWK Properties OS" className="h-14 w-auto" />
+          <div className="flex items-center justify-center gap-2.5">
+            <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" className="h-12 w-12 object-contain" />
+            <img src="/brand/web/swk-logo-light.webp?v=swk-8k-v2" alt="SWK Properties OS" className="h-10 w-auto object-contain" />
+          </div>
           <h1 className="font-display font-bold text-xl m-0 mt-2">{step === 'done' ? 'Attendance confirmed' : 'Office check-in'}</h1>
           <p className="text-[11.5px] text-[#55636a] m-0 mt-0.5">
             {net?.qr_mode === 'rotating' ? `Rotating ${stepS}s QR · Live Camera · Office Wi-Fi` : 'Office Wi-Fi · Live Camera Check-In'}

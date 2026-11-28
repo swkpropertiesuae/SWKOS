@@ -61,7 +61,7 @@ export default function MobileAppsPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <img
-                  src="/brand/web/swk-icon-192.webp?v=swk-8k-v1"
+                  src="/brand/web/swk-icon-192.webp?v=swk-8k-v2"
                   alt="SWK OS Android App Icon"
                   className="size-14 rounded-2xl border border-[#d4a955]/50 bg-[#0a0b0e] p-1.5 object-contain shadow-[0_10px_24px_rgba(0,0,0,0.5)]"
                 />
@@ -120,7 +120,7 @@ export default function MobileAppsPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <img
-                  src="/apple-touch-icon.png?v=swk-8k-v1"
+                  src="/apple-touch-icon.png?v=swk-8k-v2"
                   alt="SWK OS iOS App Icon"
                   className="size-14 rounded-2xl border border-[#d4a955]/55 object-cover shadow-[0_10px_24px_rgba(0,0,0,0.5)]"
                 />
@@ -181,13 +181,16 @@ export default function MobileAppsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href={resolveApiUrl('/brand/swk-emblem-8k-transparent.png')} download="SWK-Emblem-8K-Transparent.png" target="_blank" rel="noopener noreferrer" className="btn green sm no-underline">
-              <Download size={13} /> 8K Transparent PNG (7680×7680)
+            <a href={resolveApiUrl('/brand/swk-emblem-8k-transparent.png?v=swk-8k-v2')} download="SWK-Emblem-8K-Transparent.png" target="_blank" rel="noopener noreferrer" className="btn green sm no-underline">
+              <Download size={13} /> 8K Icon PNG (7680×7680)
             </a>
-            <a href="/favicon/favicon.svg?v=swk-8k-v1" download="swk-favicon.svg" className="btn outline sm no-underline">
+            <a href={resolveApiUrl('/brand/swk-wordmark-8k-transparent.png?v=swk-8k-v2')} download="SWK-Logo-Wordmark-8K-Transparent.png" target="_blank" rel="noopener noreferrer" className="btn outline sm no-underline">
+              <Download size={13} /> 8K Logo PNG
+            </a>
+            <a href="/favicon/favicon.svg?v=swk-8k-v2" download="swk-favicon.svg" className="btn outline sm no-underline">
               <Download size={13} /> Favicon SVG
             </a>
-            <a href="/brand/swk-watermark.png?v=swk-8k-v1" download="swk-watermark.png" className="btn outline sm no-underline">
+            <a href="/brand/swk-watermark.png?v=swk-8k-v2" download="swk-watermark.png" className="btn outline sm no-underline">
               <Download size={13} /> Watermark PNG
             </a>
           </div>
@@ -195,23 +198,29 @@ export default function MobileAppsPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-black/[0.08] bg-white p-6 flex flex-col items-center justify-center gap-3">
-            <img src="/brand/web/swk-icon.png?v=swk-8k-v1" alt="SWK Emblem on Pure White" className="size-28 object-contain" />
+            <div className="flex items-center justify-center gap-3">
+              <img src="/brand/web/swk-icon.png?v=swk-8k-v2" alt="SWK Icon on Pure White" className="size-20 object-contain" />
+              <img src="/brand/web/swk-logo-light.webp?v=swk-8k-v2" alt="SWK Properties Wordmark on Pure White" className="h-14 w-auto object-contain" />
+            </div>
             <div className="text-xs font-bold text-[#0a0b0e]">Pure White Background</div>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1e6b43]"><CheckCircle2 size={12} /> Zero Halo Transparent</span>
           </div>
 
           <GlossyBlackCard accent="tricolor" className="p-6 flex flex-col items-center justify-center gap-3">
-            <img src="/brand/web/swk-icon.png?v=swk-8k-v1" alt="SWK Emblem on Glossy Black" className="size-28 object-contain" />
+            <div className="flex items-center justify-center gap-3">
+              <img src="/brand/web/swk-icon.png?v=swk-8k-v2" alt="SWK Icon on Glossy Black" className="size-20 object-contain" />
+              <img src="/brand/web/swk-logo-dark.webp?v=swk-8k-v2" alt="SWK Properties Wordmark on Glossy Black" className="h-14 w-auto object-contain" />
+            </div>
             <div className="text-xs font-bold text-white">Glossy Obsidian Background</div>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#ebc97c]"><ShieldCheck size={12} /> Official Gold · Emerald · Crimson</span>
           </GlossyBlackCard>
 
           <div className="rounded-2xl border border-black/[0.08] bg-[#faf8f4] p-6 flex flex-col items-center justify-center gap-4">
             <div className="flex items-end gap-4">
-              <img src="/favicon/favicon-16.png?v=swk-8k-v1" alt="16px" className="size-4" />
-              <img src="/favicon/favicon-32.png?v=swk-8k-v1" alt="32px" className="size-8" />
-              <img src="/favicon/favicon-64.png?v=swk-8k-v1" alt="64px" className="size-12" />
-              <img src="/favicon/favicon-192.png?v=swk-8k-v1" alt="192px" className="size-16" />
+              <img src="/favicon/favicon-16.png?v=swk-8k-v2" alt="16px" className="size-4" />
+              <img src="/favicon/favicon-32.png?v=swk-8k-v2" alt="32px" className="size-8" />
+              <img src="/favicon/favicon-64.png?v=swk-8k-v2" alt="64px" className="size-12" />
+              <img src="/favicon/favicon-192.png?v=swk-8k-v2" alt="192px" className="size-16" />
             </div>
             <div className="text-xs font-bold text-[#0a0b0e]">Full-Bleed 100%-Visible Favicons</div>
             <span className="text-[11px] text-muted">16px · 32px · 64px · 192px · 512px · ICO · SVG</span>

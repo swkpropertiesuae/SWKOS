@@ -38,10 +38,10 @@ async function getBrandAssets(): Promise<{ icon: Image | null; crest: Image | nu
         resolvePublicFile('brand/swk-mark.png') ||
         iconPath
       const logoPath =
-        resolvePublicFile('brand/os/SWK_OS_Horizontal_Logo_Transparent_2048.png') ||
+        resolvePublicFile('brand/web/swk-wordmark-dark.png') ||
+        resolvePublicFile('brand/web/swk-logo-dark.webp') ||
         resolvePublicFile('brand/swk-watermark.png') ||
-        resolvePublicFile('brand/swk-logo-gold.png') ||
-        resolvePublicFile('brand/web/swk-logo-dark.webp')
+        resolvePublicFile('brand/swk-logo-gold.png')
       const [icon, crest, logo] = await Promise.all([
         iconPath ? loadImage(fs.readFileSync(iconPath)).catch(() => null) : Promise.resolve(null),
         crestPath ? loadImage(fs.readFileSync(crestPath)).catch(() => null) : Promise.resolve(null),

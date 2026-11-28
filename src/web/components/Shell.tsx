@@ -206,7 +206,7 @@ function AppSidebar({ pathname, collapsed, onToggle, onCloseMobile }: { pathname
       <nav className="swk-sidebar-nav" aria-label={`${here.section.label} pages`}>
         <div className="flex items-center justify-between gap-2 pb-2 mb-1 border-b border-line lg:hidden">
           <Link to="/home" onClick={onCloseMobile} className="inline-flex items-center gap-2 no-underline">
-            <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v1" alt="" className="size-8 object-contain" />
+            <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" className="size-8 object-contain" />
             <span className="font-display font-bold text-sm text-ink">SWK OS</span>
           </Link>
           <button type="button" onClick={onCloseMobile} aria-label="Close navigation" className="swk-sidebar-collapse-btn">
@@ -460,13 +460,13 @@ export function Shell() {
             </button>
           )}
           <Link to="/home" className="swk-top-brand" aria-label="SWK Properties OS, all apps">
-            <img className="icon" src="/brand/web/swk-icon-192.webp?v=swk-8k-v1" alt="" />
+            <img className="icon" src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" />
             <img
               className="word swk-hide-sm"
               src={
                 uiCustom.isCustomDomActive && isColorDark(uiCustom.prefs.colors.headerBg)
-                  ? '/brand/web/swk-logo-dark.webp?v=swk-8k-v1'
-                  : '/brand/web/swk-logo-light.webp?v=swk-8k-v1'
+                  ? '/brand/web/swk-logo-dark.webp?v=swk-8k-v2'
+                  : '/brand/web/swk-logo-light.webp?v=swk-8k-v2'
               }
               alt="SWK Properties"
             />

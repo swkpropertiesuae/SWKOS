@@ -37,9 +37,9 @@ export function BrandSplashScreen({
     >
       <div className="swk-gloss-black relative z-10 flex w-full max-w-[360px] flex-col items-center rounded-[28px] px-8 py-9 text-center">
         <img
-          src="/brand/swk-logo.png"
+          src="/brand/swk-logo.png?v=swk-8k-v2"
           alt="SWK Properties"
-          className="h-24 w-auto object-contain drop-shadow-[0_10px_28px_rgba(212,169,85,0.28)]"
+          className="h-28 w-auto object-contain drop-shadow-[0_10px_28px_rgba(212,169,85,0.28)]"
         />
         <div className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#ebc97c]">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#10b981]" />

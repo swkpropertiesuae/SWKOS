@@ -463,7 +463,7 @@ export function SwissAtmosphereBackdrop() {
     >
       <div className="bg-arch-grid absolute inset-0 opacity-45" />
       <img
-        src="/brand/web/swk-icon-192.webp?v=swk-8k-v1"
+        src="/brand/web/swk-icon-192.webp?v=swk-8k-v2"
         alt=""
         className="pointer-events-none select-none absolute -bottom-24 -right-20 h-[420px] w-[420px] object-contain opacity-[0.032]"
       />

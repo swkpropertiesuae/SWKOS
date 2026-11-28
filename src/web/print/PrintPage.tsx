@@ -23,8 +23,8 @@ export function Letterhead() {
   return (
     <header className="swk-letterhead">
       <div className="swk-letterhead-brand">
-        <img src="/brand/web/swk-icon-192.webp" alt="" className="swk-letterhead-icon" />
-        <img src="/brand/web/swk-logo-light.webp" alt={c.name} className="swk-letterhead-word" />
+        <img src="/brand/web/swk-icon-192.webp?v=swk-8k-v2" alt="" className="swk-letterhead-icon" />
+        <img src="/brand/web/swk-logo-light.webp?v=swk-8k-v2" alt={c.name} className="swk-letterhead-word" />
       </div>
       <div className="swk-letterhead-details">
         <b>{c.name}</b>

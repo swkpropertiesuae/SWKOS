@@ -325,7 +325,7 @@ export function PublicListing() {
     return (
       <div className="grid min-h-screen place-items-center p-6 text-center" style={pageBg}>
         <div className="max-w-md rounded-3xl border border-[#e3d9c6] bg-white p-10 shadow-xl">
-          <img src="/brand/swk-app-icon-rounded.png" alt="SWK Properties" className="mx-auto h-16 w-16 rounded-2xl shadow-md mb-4" />
+          <img src="/brand/swk-app-icon-rounded.png?v=swk-8k-v2" alt="SWK Properties" className="mx-auto h-16 w-16 rounded-2xl shadow-md mb-4" />
           <h1 className="m-0 text-2xl font-bold text-[#0b1f2a]">Brochure Link Unavailable</h1>
           <p className="mt-2 text-sm text-[#475569]">{err}</p>
           <a className="btn green mt-5 no-underline" href="https://www.swkpropertiesuae.com">Visit SWK Properties Dubai</a>
@@ -338,7 +338,7 @@ export function PublicListing() {
     return (
       <div className="grid min-h-screen place-items-center bg-[#0b1824] text-white">
         <div className="text-center">
-          <img src="/brand/swk-app-icon-rounded.png" alt="" className="mx-auto h-16 w-16 rounded-2xl shadow-lg mb-4 animate-pulse" />
+          <img src="/brand/swk-app-icon-rounded.png?v=swk-8k-v2" alt="" className="mx-auto h-16 w-16 rounded-2xl shadow-lg mb-4 animate-pulse" />
           <div className="text-xs font-bold uppercase tracking-[0.22em] text-[#f3d27a]">PREPARING SWK LUXURY BROCHURE…</div>
         </div>
       </div>
@@ -356,9 +356,9 @@ export function PublicListing() {
       <header className="no-print sticky top-0 z-30 border-b border-[#d4a752]/25 bg-[#0b1824]/92 backdrop-blur-xl text-white">
         <div className="mx-auto flex h-[74px] max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-8">
           <div className="flex items-center gap-3 min-w-0">
-            <img src="/brand/swk-app-icon-rounded.png" alt="SWK Crest" className="size-10 rounded-xl shadow-md border border-[#d4a752]/40 shrink-0" />
+            <img src="/brand/swk-app-icon-rounded.png?v=swk-8k-v2" alt="SWK Crest" className="size-10 rounded-xl shadow-md border border-[#d4a752]/40 shrink-0" />
             <div className="min-w-0">
-              <img src="/brand/web/swk-logo-dark.webp" alt="SWK Properties" className="h-7 object-contain block" />
+              <img src="/brand/web/swk-logo-dark.webp?v=swk-8k-v2" alt="SWK Properties" className="h-7 object-contain block" />
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f3d27a] mt-0.5">
                 PRIVATE OFFICE · RERA ORN {data.company.orn}
               </div>
@@ -681,8 +681,8 @@ export function PublicListing() {
       <footer className="border-t border-[#d4a752]/30 bg-[#0b1824] py-10 px-4 text-center text-white">
         <div className="mx-auto max-w-[1100px] flex flex-col items-center gap-3">
           <div className="flex items-center gap-3">
-            <img src="/brand/swk-app-icon-rounded.png" alt="SWK Icon" className="h-12 w-12 rounded-xl border border-[#d4a752]/40" />
-            <img src="/brand/web/swk-logo-dark.webp" alt="SWK Properties" className="h-10 object-contain" />
+            <img src="/brand/swk-app-icon-rounded.png?v=swk-8k-v2" alt="SWK Icon" className="h-12 w-12 rounded-xl border border-[#d4a752]/40" />
+            <img src="/brand/web/swk-logo-dark.webp?v=swk-8k-v2" alt="SWK Properties" className="h-10 object-contain" />
           </div>
           <div className="text-xs text-slate-300 leading-relaxed">
             {data.company.name} · RERA ORN {data.company.orn} · DET Licence {data.company.trade_license || '1511391'}<br />
