@@ -158,8 +158,18 @@ try {
   await page.getByRole('button', { name: /Reset Everything/ }).click()
   await page.waitForFunction(() => document.documentElement.getAttribute('data-ui-customized') === null)
 
+  // 10. Regression guard: clicking the Settings app tile on /home must open /admin/settings directly (never redirect to /customise-ui)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.goto(`${base}/home`)
+  const settingsTile = page.locator('a[href="/admin/settings"]').filter({ hasText: 'Settings' }).first()
+  await settingsTile.waitFor()
+  await settingsTile.click()
+  await page.waitForURL(url => url.pathname === '/admin/settings')
+  await page.getByRole('heading', { name: /Company settings/i }).waitFor()
+  assert.equal(new URL(page.url()).pathname, '/admin/settings', 'Settings tile must land on /admin/settings')
+
   assert.deepEqual(errors.filter(e => !/401/.test(e)), [])
-  console.log('PASS: Customise UI live drawer, colors, fonts, highlights, pin/drag dock & floating pad, reload persistence, print immunity & mobile layout')
+  console.log('PASS: Customise UI live drawer, colors, fonts, highlights, pin/drag dock & floating pad, reload persistence, print immunity, mobile layout & Settings route')
 } finally {
   await browser?.close()
   server.kill('SIGTERM')

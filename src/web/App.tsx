@@ -294,6 +294,7 @@ export default function App() {
           <Route path="/tools" element={<ToolsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin/roles" element={<Guard module="admin"><RolesPage /></Guard>} />
+          <Route path="/settings" element={<Navigate to="/admin/settings" replace />} />
           <Route path="/admin/settings" element={<Guard module="admin"><SettingsPage /></Guard>} />
           <Route path="/admin/audit" element={<Guard module="admin"><AuditPage /></Guard>} />
           <Route path="/admin/integrations" element={<Guard module="admin"><IntegrationsPage /></Guard>} />

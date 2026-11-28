@@ -336,7 +336,6 @@ export const SWK_NAV: NavSection[] = [
     key: 'admin',
     label: 'Settings',
     items: [
-      { label: 'Customise UI & Theme', to: '/customise-ui', icon: Palette, isNew: true, desc: 'Personalise colors, fonts, highlights, pins & Company Default' },
       { label: 'Company & Wi-Fi Settings', to: '/admin/settings', icon: Settings, module: 'admin', desc: 'Logo, seal, Al Saqr Wi-Fi & company details' },
       { label: 'Office Branches & Geofence', to: '/e/branches', icon: Building, module: 'admin', desc: 'Registered Dubai office & GPS perimeter' },
       { label: 'Roles & Permissions', to: '/admin/roles', icon: ShieldHalf, module: 'admin', desc: 'Hardcoded RBAC & access controls' },
