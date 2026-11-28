@@ -47,7 +47,7 @@ const LAUNCH_GALLERY_COUNTS: Record<string, number> = {
   'samana-south-haven-2': 1, 'seef-residences-by-alef-building-5': 1, 'seven-x-seven-residences': 1,
   'shahrukhz-residences-by-danube': 1, 'shione-by-beyond': 8, 'sol-terra-gardens': 1, 'soma-residence': 1,
   'sor-i-by-zoya': 1, 'sorrento': 1, 'soulever-1-and-2-by-beyond': 1, 'south-lofts-2': 1, 'soyo-by-zimaya': 1,
-  'stax': 1, 'sunrise-valley': 1, 'the-bay-interiors-by-missoni': 3, 'the-level': 1, 'the-vault-by-imtiaz': 1,
+  'stax': 1, 'sunrise-valley': 1, 'the-arts-district-by-binghatti': 12, 'the-bay-interiors-by-missoni': 3, 'the-level': 1, 'the-vault-by-imtiaz': 1,
   'the-wow-tower': 1, 'the-yards-plaza': 1, 'tilal-binghatti': 6, 'velora-residence': 1, 'vista-hub': 1,
   'vivo-south': 1, 'volant-by-zoya': 1, 'zenith-d1': 1, 'zeta': 1,
 }
@@ -204,7 +204,7 @@ function buildProject(s: ProjectSeed, idx: number): UaeProjectSpec {
   const latJitter = (((idx * 37) % 19) - 9) * 0.0007
   const lngJitter = (((idx * 53) % 19) - 9) * 0.0007
 
-  return {
+  const spec: UaeProjectSpec = {
     slug,
     projectName,
     title,
@@ -243,6 +243,70 @@ function buildProject(s: ProjectSeed, idx: number): UaeProjectSpec {
     isFeatured: Boolean(isFeatured),
     source: isOffPlan ? `SWK UAE 2026 Master Off-Plan Register (${emirate === 'Dubai' ? 'DLD/RERA' : 'ADM/DMT'})` : `SWK UAE Flagship Portfolio (${emirate})`,
   }
+
+  if (slug === 'the-arts-district-by-binghatti') {
+    spec.launchStatus = 'New Launch'
+    spec.launchDate = '2026-11-28'
+    spec.handoverQuarter = 'Q4 2028'
+    spec.expectedYieldPct = 8.1
+    spec.lat = 25.1286
+    spec.lng = 55.3792
+    spec.paymentPlan = {
+      label: '60/40 Flexible Launch Plan (20% Booking Dec 2026 · 0.4%–0.5% Monthly from AED 2,500/Mo + Milestones · 40% Handover Q4 2028)',
+      option: '60/40',
+      bookingPct: 20,
+      constructionPct: 40,
+      handoverPct: 40,
+      postHandoverPct: 0,
+    }
+    spec.promoHeadline = 'The Arts District by Binghatti — Studio from AED 525K (AED 2,500/Mo), 1BR AED 850K, 2BR Corner AED 1.30M · 60/40 Plan'
+    spec.promoBadge = 'EOI Open Nov 28 · From AED 2,500/Mo · 60/40'
+    spec.promoBenefits = [
+      'Direct Developer EOI Priority Allocation Open 28 Nov 2026 via SWK Properties (0% Buyer Commission)',
+      '60/40 Flexible Launch Plan: 20% Booking (Dec 2026) · 0.4%–0.5% Monthly from AED 2,500/Mo · 40% On Completion (Q4 2028)',
+      'Launch Arbitrage Pricing: Studio AED 525,000 (-27.2% vs DSO Median) · 1BR AED 850,000 (-12.4%) · 2BR Corner AED 1,300,000 (-14.7%)',
+      'Prime Dubai Connectivity: 10m Meydan · 14m Creek Harbour · 15m DXB Airport · 17m Burj Khalifa & Dubai Mall · 20m Museum of the Future',
+      'Backed by Binghatti (39,065 DLD Sales · AED 60.02B 2022–2026) · Est. 6.3%–8.6% Ejari Gross Rental Yields',
+    ]
+    spec.amenities = [
+      'Open-Air Monumental Sculpture Promenade & Art Plazas',
+      'Signature Crimson Veil Pavilion & Cultural Amphitheatre Deck',
+      'Resort Infinity Pool with Monumental Violin Sculpture',
+      'Architectural Bronze Gallery Portals & Double-Height Atriums',
+      'Private Collector Lounges & Creative Atelier Co-Working',
+      'Panoramic Fitness Studio, Wellness Spa & Landscaped Terraces',
+      'Smart Home Automation, EV Bays & 24/7 Concierge / Valet',
+      'Direct E311, D54, E66, E611 & Future Blue Line Metro Access',
+    ]
+    spec.features = [
+      'Master Developer: Binghatti (Tier-1 · 39,065 DLD Sales · AED 60.02B)',
+      'Corridor: Dubai Silicon Oasis / Nadd Hessa — Adjacent to Nad Al Sheba',
+      'Pricing Tiers: Studio AED 525K (AED 2,500/mo) · 1BR AED 850K (AED 4,250/mo) · 2BR Corner AED 1.30M (AED 5,200/mo)',
+      '60/40 Plan: 20% Booking + 4% DLD & Oqood · Monthly Instalments Jan 2027–Oct 2028 · 40% On Completion',
+      'Drive Times: 10m Meydan · 14m Creek Harbour · 15m DXB · 17m Burj Khalifa · 35m Palm Jumeirah',
+      'Floor Plans: Official 2D Blueprints + Photorealistic 3D Isometric Cutaways (Studio, 1BR & 2BR Corner)',
+    ]
+    spec.description = 'The Arts District by Binghatti is Dubai’s landmark master-planned cultural residential district positioned at the high-growth Nadd Hessa / Dubai Silicon Oasis & Nad Al Sheba corridor along E311, D54, and E66. Designed around a museum-grade open-air sculpture promenade, signature Crimson Veil Pavilion, monumental poolside violin monolith, and bronze architectural portals, the launch opens EOI on 28 November 2026 with Studios from AED 525,000 (AED 2,500/month), 1-Bedroom Residences from AED 850,000 (AED 4,250/month), and Dual-Aspect 2-Bedroom Corner Residences with wrap-around terraces from AED 1,300,000 (AED 5,200/month) on an official 60/40 Flexible Payment Plan (20% Booking Dec 2026, 0.4%–0.5% monthly + semi-annual milestones through Oct 2028, 40% on Completion Q4 2028). Priced 12.4%–27.2% below verified 2025–2026 Nadd Hessa DLD medians with 6.3%–8.6% Ejari gross rental yields and 17-minute connectivity to Burj Khalifa & Dubai Mall.'
+    spec.floorPlans = [
+      {
+        title: 'Studio Residence — Official 2D Blueprint & Photorealistic 3D Cutaway (From AED 525,000 · AED 2,500/mo)',
+        url: '/media/launches/the-arts-district-by-binghatti-fp-studio.webp',
+        category: 'Floor Plan',
+      },
+      {
+        title: '1-Bedroom Residence — Official 2D Blueprint & Photorealistic 3D Cutaway (From AED 850,000 · AED 4,250/mo)',
+        url: '/media/launches/the-arts-district-by-binghatti-fp-1br.webp',
+        category: 'Floor Plan',
+      },
+      {
+        title: '2-Bedroom Corner Residence — Official 2D Blueprint & 3D Wrap-Around Terrace Cutaway (From AED 1,300,000)',
+        url: '/media/launches/the-arts-district-by-binghatti-fp-2br.webp',
+        category: 'Floor Plan',
+      },
+    ]
+  }
+
+  return spec
 }
 
 // =================================================================================================
@@ -376,6 +440,7 @@ const PROJECT_SEEDS: ProjectSeed[] = [
   // ===============================================================================================
   // 8. BINGHATTI (Dubai)
   // ===============================================================================================
+  ['The Arts District', 'BINGHATTI', 'DSO', 'Apartment', true, '2028-12-31', 525_000, [0, 1, 2], 385, 1_320, '60/40', 'the-arts-district-by-binghatti', 'EOI Open Nov 28 · From AED 2,500/Mo · 60/40', true],
   ['Binghatti Spectre', 'BINGHATTI', 'ALJADDAF', 'Apartment', true, '2028-12-31', 1_057_000, [0, 1, 2, 3], 430, 1_850, '70/30', 'binghatti-spectre', 'Hyper-Architecture Creekside Launch', true],
   ['Tilal Binghatti', 'BINGHATTI', 'DLRC', 'Villa', true, '2029-12-31', 1_332_000, [2, 3, 4], 1_520, 3_200, '70/30', 'tilal-binghatti', 'Master Townhouse & Villa Enclave', true],
   ['Mercedes-Benz Places', 'BINGHATTI', 'DOWNTOWN', 'Apartment', true, '2027-06-30', 8_800_000, [2, 3, 4, 5], 1_836, 13_000, '70/30', undefined, 'World-First Mercedes-Benz Tower', true],

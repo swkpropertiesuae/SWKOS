@@ -125,7 +125,7 @@ export default function OffPlanPage() {
         blurb: r.description || `${r.property_type || 'Residential'} off-plan launch in ${c?.name ?? r.community_id ?? emirate}.`,
         promoBadge: r.promo_badge || undefined,
         promoHeadline: r.promo_headline || undefined,
-        featured: Boolean(r.is_exclusive || /shahrukhz|fahid|saadiyat|palm jebel ali|creek haven|damac islands/i.test(String(r.title || ''))),
+        featured: Boolean(r.is_exclusive || /the arts district|shahrukhz|fahid|saadiyat|palm jebel ali|creek haven|damac islands/i.test(String(r.title || ''))),
         swkId: r.id,
         beds: r.bedrooms != null && r.bedrooms !== '' ? Number(r.bedrooms) : null, areaSqft: Number(r.area_sqft) || null, ptype: r.property_type || 'Apartment',
         media,
@@ -141,7 +141,9 @@ export default function OffPlanPage() {
   }, [props.data, unitsQ.data, devsQ.data, now])
 
   const featured = useMemo(() => {
-    const excl = all.filter(p => p.featured)
+    const excl = all
+      .filter(p => p.featured)
+      .sort((a, b) => Number(/the arts district/i.test(b.project)) - Number(/the arts district/i.test(a.project)))
     if (excl.length) return excl.slice(0, 8)
     const withPhotos = all.filter(p => p.media.some(m => m.kind === 'photo' && m.url.startsWith('/media/launches/')))
     return (withPhotos.length ? withPhotos : all).slice(0, 8)

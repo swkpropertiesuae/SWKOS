@@ -21,6 +21,7 @@ import { sendStoredAttachment } from './files'
 import { normalizeMediaList, type ProjectMediaKind } from '../../shared/media'
 import { buildCatalogBrochurePdf, buildCatalogDeckPptx, buildPaymentPlanPdf, type CatalogKitEntity } from '../domain/catalog-kit'
 import { assertZeroShabibPublicPayload, findShabibViolations, isRestrictedPublicProfile } from '../../shared/zero-shabib-guard'
+import { UAE_PROJECTS_BY_SLUG } from '../../shared/uae-catalog/projects'
 
 export const SHAREABLE = ['properties', 'units', 'website_listings', 'developers', 'communities'] as const
 const KIT_ENTITIES = new Set<string>(['properties', 'units', 'developers', 'communities'])
@@ -478,10 +479,62 @@ export default async function (app: FastifyInstance) {
 
   const load = (token: string) => {
     const l = q.get<any>(`SELECT * FROM share_links WHERE token = ?`, token)
-    if (!l || l.revoked_at || (l.expires_at && l.expires_at < nowIso())) {
-      throw new HttpError(404, 'This listing link has expired. Ask your SWK consultant for a new one.')
+    if (l) {
+      if (l.revoked_at || (l.expires_at && l.expires_at < nowIso())) {
+        throw new HttpError(404, 'This listing link has expired. Ask your SWK consultant for a new one.')
+      }
+      return l
     }
-    return l
+    // Support permanent human-readable public launch slug links (e.g. /l/the-arts-district-by-binghatti)
+    const slugKey = token.trim().toLowerCase()
+    const spec = UAE_PROJECTS_BY_SLUG.get(slugKey)
+    if (spec && spec.isOffPlan) {
+      const prop = q.get<{ id: number; title: string }>(
+        `SELECT id, title FROM properties WHERE deleted_at IS NULL AND (lower(title) = ? OR notes LIKE ?) ORDER BY id DESC LIMIT 1`,
+        spec.title.toLowerCase(),
+        `%Slug: ${spec.slug}.%`,
+      )
+      if (prop?.id) {
+        const ts = nowIso()
+        const expires = '2029-12-31T23:59:59.000Z'
+        const ownerId = Number(
+          q.val<number>(`SELECT id FROM users WHERE party_id IS NULL AND active = 1 AND lower(email) NOT LIKE '%shabib%' ORDER BY id ASC LIMIT 1`) ??
+          q.val<number>(`SELECT id FROM users WHERE party_id IS NULL ORDER BY id ASC LIMIT 1`) ??
+          0,
+        )
+        const title = `${spec.title} — Official SWK Off-Plan Launch Showcase`
+        try {
+          q.run(
+            `INSERT INTO share_links (token, entity, ref_ids, title, client_name, created_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(token) DO NOTHING`,
+            slugKey,
+            'properties',
+            JSON.stringify([Number(prop.id)]),
+            title,
+            null,
+            ownerId,
+            ts,
+            expires,
+          )
+          const created = q.get<any>(`SELECT * FROM share_links WHERE token = ?`, slugKey)
+          if (created && !created.revoked_at) return created
+        } catch {
+          return {
+            id: 0,
+            token: slugKey,
+            entity: 'properties',
+            ref_ids: JSON.stringify([Number(prop.id)]),
+            title,
+            client_name: null,
+            created_by: ownerId,
+            created_at: ts,
+            expires_at: expires,
+            revoked_at: null,
+            views: 0,
+          }
+        }
+      }
+    }
+    throw new HttpError(404, 'This listing link has expired. Ask your SWK consultant for a new one.')
   }
 
   /** STRICT WATERMARKED IMAGE ENDPOINT: Every shared brochure photo is server-composited with SWK Logo + App Icon. */

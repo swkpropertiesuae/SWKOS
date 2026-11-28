@@ -171,6 +171,20 @@ function buildProjectMedia(propId: number, p: (typeof UAE_PROJECTS)[number], ts:
     category: 'Masterplan 3D',
     created_at: ts,
   })
+  if (p.floorPlans?.length) {
+    p.floorPlans.forEach((fp, fpIdx) => {
+      items.push({
+        id: `prj-${p.slug}-fp-${fpIdx + 1}`,
+        kind: 'floorplan',
+        url: fp.url,
+        order: items.length,
+        title: fp.title,
+        category: fp.category || 'Floor Plan',
+        mime: fp.url.endsWith('.png') ? 'image/png' : 'image/webp',
+        created_at: ts,
+      })
+    })
+  }
   items.push({
     id: `prj-${p.slug}-brochure`,
     kind: 'brochure',
@@ -437,11 +451,13 @@ export function seedUaeProjectsCatalog(): number {
       if (row?.id) {
         const id = Number(row.id)
         const media = buildProjectMedia(id, p, ts)
+        const primaryFloorPlan = p.floorPlans?.[0]?.url || null
         q.run(
-          `UPDATE properties SET brochure_url = ?, payment_plan_pdf_url = ?, ppt_url = ?, media = ? WHERE id = ?`,
+          `UPDATE properties SET brochure_url = ?, payment_plan_pdf_url = ?, ppt_url = ?, floor_plan_url = COALESCE(?, floor_plan_url), media = ? WHERE id = ?`,
           `/api/catalog-kit/properties/${id}/brochure.pdf`,
           `/api/catalog-kit/properties/${id}/payment-plan.pdf`,
           `/api/catalog-kit/properties/${id}/deck.pptx`,
+          primaryFloorPlan,
           JSON.stringify(media),
           id,
         )
