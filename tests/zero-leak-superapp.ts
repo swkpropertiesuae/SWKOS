@@ -937,6 +937,7 @@ async function run() {
       'my_assigned_deals_masked',
       'my_attendance_status',
       'my_daily_report_status',
+      'search_case_studies',
     ].sort()
     assert.deepEqual([...legacyOffered].sort(), expectedFieldAgentSafeTools, 'chatWithAgent(Field Agent) Jarvis tools must be clamped to safe field-agent read tools only')
     assert.ok(!directAgentReply.includes('INV-KENS-901'))
