@@ -35,11 +35,13 @@ export function AuthImg({
 export function MediaVideoPlayer({
   url,
   mime,
+  poster,
   title = 'Project Video',
   className = '',
 }: {
   url: string
   mime?: string
+  poster?: string
   title?: string
   className?: string
 }) {
@@ -90,7 +92,7 @@ export function MediaVideoPlayer({
 
   return (
     <div className={`relative aspect-video w-full overflow-hidden rounded-2xl bg-black ${className}`}>
-      <video src={videoSrc} controls playsInline preload="metadata" className="h-full w-full object-contain" />
+      <video src={videoSrc} poster={poster} controls playsInline preload="metadata" className="h-full w-full object-contain" />
     </div>
   )
 }

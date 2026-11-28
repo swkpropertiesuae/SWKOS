@@ -287,6 +287,10 @@ function buildProject(s: ProjectSeed, idx: number): UaeProjectSpec {
       'Floor Plans: Official 2D Blueprints + Photorealistic 3D Isometric Cutaways (Studio, 1BR & 2BR Corner)',
     ]
     spec.description = 'The Arts District by Binghatti is Dubai’s landmark master-planned cultural residential district positioned at the high-growth Nadd Hessa / Dubai Silicon Oasis & Nad Al Sheba corridor along E311, D54, and E66. Designed around a museum-grade open-air sculpture promenade, signature Crimson Veil Pavilion, monumental poolside violin monolith, and bronze architectural portals, the launch opens EOI on 28 November 2026 with Studios from AED 525,000 (AED 2,500/month), 1-Bedroom Residences from AED 850,000 (AED 4,250/month), and Dual-Aspect 2-Bedroom Corner Residences with wrap-around terraces from AED 1,300,000 (AED 5,200/month) on an official 60/40 Flexible Payment Plan (20% Booking Dec 2026, 0.4%–0.5% monthly + semi-annual milestones through Oct 2028, 40% on Completion Q4 2028). Priced 12.4%–27.2% below verified 2025–2026 Nadd Hessa DLD medians with 6.3%–8.6% Ejari gross rental yields and 17-minute connectivity to Burj Khalifa & Dubai Mall.'
+    spec.videoUrl = '/media/launches/the-arts-district-by-binghatti-film.mp4'
+    spec.brochureUrl = '/media/launches/the-arts-district-by-binghatti-brochure.pdf'
+    spec.paymentPlanPdfUrl = '/media/launches/the-arts-district-by-binghatti-payment-plan.pdf'
+    spec.pptUrl = '/media/launches/the-arts-district-by-binghatti-deck.pptx'
     spec.floorPlans = [
       {
         title: 'Studio Residence — Official 2D Blueprint & Photorealistic 3D Cutaway (From AED 525,000 · AED 2,500/mo)',

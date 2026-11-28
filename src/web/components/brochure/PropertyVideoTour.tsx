@@ -62,6 +62,40 @@ export function PropertyVideoTour({
       ? `Key highlights include ${features.slice(0, 4).join(', ')}.`
       : 'Crafted with floor-to-ceiling glazing, bespoke joinery, and private resort-grade amenities.'
 
+    const isArtsDistrict = /the\s+arts\s+district/i.test(title)
+    if (isArtsDistrict) {
+      return [
+        {
+          eyebrow: 'CHAPTER 01 · CULTURAL MASTERPLAN',
+          headline: 'The Arts District by Binghatti — Dubai',
+          narration: `Welcome to The Arts District by Binghatti, privately presented by SWK Properties Dubai. An elevated, self-contained cultural living community adjacent to Dubai Silicon Oasis and Nad Al Sheba — just ten minutes from Meydan, fourteen minutes from Creek Harbour, and seventeen minutes from Burj Khalifa.`,
+          image: pick(0),
+          motion: 'zoom-in',
+        },
+        {
+          eyebrow: 'CHAPTER 02 · SCULPTURE PROMENADE & PAVILION',
+          headline: 'Open-Air Monumental Art & Crimson Veil Pavilion',
+          narration: `Stroll sunlit travertine boulevards framed by monumental public art, crimson-awning gallery cafés, a signature poolside violin monolith, and the dramatic Crimson Veil exhibition pavilion.`,
+          image: pick(1),
+          motion: 'pan-right',
+        },
+        {
+          eyebrow: 'CHAPTER 03 · 3D FLOOR PLANS & LAUNCH PRICING',
+          headline: 'Studio AED 525K · 1BR AED 850K · 2BR Corner AED 1.30M',
+          narration: `Choose from efficiency-engineered Studios starting at five hundred twenty-five thousand dirhams, dual-zone One-Bedroom suites from eight hundred fifty thousand, and wrap-around Two-Bedroom Corner residences from one point three million — priced up to twenty-seven percent below Dubai Silicon Oasis medians.`,
+          image: pick(3),
+          motion: 'zoom-out',
+        },
+        {
+          eyebrow: 'CHAPTER 04 · 60/40 FLEX PLAN & PRIORITY EOI',
+          headline: 'From AED 2,500 / Month · Q4 2028 Completion',
+          narration: `Reserve today on Binghatti’s sixty-forty flexible plan with twenty percent down, monthly instalments from two thousand five hundred dirhams, and forty percent on handover in Q4 twenty twenty-eight — with zero buyer commission through ${advisorName || 'SWK Private Client Advisory Desk'}.`,
+          image: pick(2),
+          motion: 'pan-left',
+        },
+      ]
+    }
+
     return [
       {
         eyebrow: 'CHAPTER 01 · ARCHITECTURAL ARRIVAL',
@@ -164,25 +198,29 @@ export function PropertyVideoTour({
             <Film size={16} />
           </span>
           <div className="min-w-0">
-            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">GUIDED CINEMA VIDEO &amp; VOICE NARRATION</div>
-            <div className="text-[13.5px] font-semibold truncate">{ch.eyebrow}</div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d27a]">
+              {sourceMode === 'video' && videoUrl ? 'OFFICIAL NARRATED LAUNCH FILM · HD CINEMA' : 'GUIDED CINEMA VIDEO & VOICE NARRATION'}
+            </div>
+            <div className="text-[13.5px] font-semibold truncate">
+              {sourceMode === 'video' && videoUrl ? `${title} — Live-Action Narrated Tour` : ch.eyebrow}
+            </div>
           </div>
         </div>
         {videoUrl && (
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => { setSourceMode('narrated'); setPlaying(false) }}
-              className={`rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${sourceMode === 'narrated' ? 'bg-[#d4a752] text-[#0b1824]' : 'bg-white/10 text-white'}`}
-            >
-              Narrated Tour
-            </button>
-            <button
-              type="button"
               onClick={() => { setSourceMode('video'); setPlaying(false) }}
               className={`rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${sourceMode === 'video' ? 'bg-[#d4a752] text-[#0b1824]' : 'bg-white/10 text-white'}`}
             >
-              Property Film
+              Official Narrated Film
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSourceMode('narrated'); setPlaying(false) }}
+              className={`rounded-full px-3 py-1 text-xs font-bold border-0 cursor-pointer ${sourceMode === 'narrated' ? 'bg-[#d4a752] text-[#0b1824]' : 'bg-white/10 text-white'}`}
+            >
+              Interactive Slideshow
             </button>
           </div>
         )}
@@ -190,7 +228,7 @@ export function PropertyVideoTour({
 
       {sourceMode === 'video' && videoUrl ? (
         <div className="p-2 bg-black">
-          <MediaVideoPlayer url={videoUrl} title={title} className="!rounded-xl" />
+          <MediaVideoPlayer url={videoUrl} poster={images[0]} title={title} className="!rounded-xl" />
         </div>
       ) : (
         <div className="relative aspect-[16/9] min-h-[300px] overflow-hidden bg-[#08121c]">

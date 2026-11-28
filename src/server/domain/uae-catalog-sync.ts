@@ -162,6 +162,18 @@ function buildProjectMedia(propId: number, p: (typeof UAE_PROJECTS)[number], ts:
     mime: url.endsWith('.svg') ? 'image/svg+xml' : 'image/webp',
     created_at: ts,
   }))
+  if (p.videoUrl) {
+    items.push({
+      id: `prj-${p.slug}-video`,
+      kind: 'video',
+      url: p.videoUrl,
+      order: items.length,
+      title: `${p.title} — Official Narrated Cinema Launch Film`,
+      category: 'Project Launch Film',
+      mime: 'video/mp4',
+      created_at: ts,
+    })
+  }
   items.push({
     id: `prj-${p.slug}-3d`,
     kind: 'tour3d',
@@ -188,7 +200,7 @@ function buildProjectMedia(propId: number, p: (typeof UAE_PROJECTS)[number], ts:
   items.push({
     id: `prj-${p.slug}-brochure`,
     kind: 'brochure',
-    url: `/api/catalog-kit/properties/${propId}/brochure.pdf`,
+    url: p.brochureUrl || `/api/catalog-kit/properties/${propId}/brochure.pdf`,
     order: items.length,
     title: `${p.title} — Official Branded Brochure (PDF)`,
     category: 'Official Brochure',
@@ -198,7 +210,7 @@ function buildProjectMedia(propId: number, p: (typeof UAE_PROJECTS)[number], ts:
   items.push({
     id: `prj-${p.slug}-payplan`,
     kind: 'payment_plan',
-    url: `/api/catalog-kit/properties/${propId}/payment-plan.pdf`,
+    url: p.paymentPlanPdfUrl || `/api/catalog-kit/properties/${propId}/payment-plan.pdf`,
     order: items.length,
     title: `${p.title} — Payment Plan & ${p.emirate === 'Dubai' ? 'DLD' : 'ADM'} Fee Schedule (PDF)`,
     category: 'Payment Plan PDF',
@@ -208,7 +220,7 @@ function buildProjectMedia(propId: number, p: (typeof UAE_PROJECTS)[number], ts:
   items.push({
     id: `prj-${p.slug}-ppt`,
     kind: 'ppt',
-    url: `/api/catalog-kit/properties/${propId}/deck.pptx`,
+    url: p.pptUrl || `/api/catalog-kit/properties/${propId}/deck.pptx`,
     order: items.length,
     title: `${p.title} — Client Pitch Deck (PPTX)`,
     category: 'Sales Deck (PPT)',
@@ -453,10 +465,11 @@ export function seedUaeProjectsCatalog(): number {
         const media = buildProjectMedia(id, p, ts)
         const primaryFloorPlan = p.floorPlans?.[0]?.url || null
         q.run(
-          `UPDATE properties SET brochure_url = ?, payment_plan_pdf_url = ?, ppt_url = ?, floor_plan_url = COALESCE(?, floor_plan_url), media = ? WHERE id = ?`,
-          `/api/catalog-kit/properties/${id}/brochure.pdf`,
-          `/api/catalog-kit/properties/${id}/payment-plan.pdf`,
-          `/api/catalog-kit/properties/${id}/deck.pptx`,
+          `UPDATE properties SET video_url = COALESCE(?, video_url), brochure_url = ?, payment_plan_pdf_url = ?, ppt_url = ?, floor_plan_url = COALESCE(?, floor_plan_url), media = ? WHERE id = ?`,
+          p.videoUrl || null,
+          p.brochureUrl || `/api/catalog-kit/properties/${id}/brochure.pdf`,
+          p.paymentPlanPdfUrl || `/api/catalog-kit/properties/${id}/payment-plan.pdf`,
+          p.pptUrl || `/api/catalog-kit/properties/${id}/deck.pptx`,
           primaryFloorPlan,
           JSON.stringify(media),
           id,
@@ -465,6 +478,35 @@ export function seedUaeProjectsCatalog(): number {
         seededKeys.add(sKey)
         existingTitles.add(p.title.toLowerCase())
         added++
+      }
+    }
+
+    // One-time safe brand-kit refresh for already-seeded flagship launches with bespoke narrated video / brand brochure / PPTX assets
+    for (const p of UAE_PROJECTS) {
+      if (!p.videoUrl && !p.brochureUrl && !p.pptUrl && !p.paymentPlanPdfUrl) continue
+      const bkKey = `uae-project-brandkit:${p.slug}:v2`
+      if (q.val(`SELECT 1 FROM settings WHERE key = ?`, bkKey)) continue
+      const existing = q.get<{ id: number }>(
+        `SELECT id FROM properties WHERE deleted_at IS NULL AND (lower(title) = ? OR notes LIKE ?) ORDER BY id DESC LIMIT 1`,
+        p.title.toLowerCase(),
+        `%Slug: ${p.slug}.%`,
+      )
+      if (existing?.id) {
+        const id = Number(existing.id)
+        const media = buildProjectMedia(id, p, ts)
+        const primaryFloorPlan = p.floorPlans?.[0]?.url || null
+        q.run(
+          `UPDATE properties SET video_url = COALESCE(?, video_url), brochure_url = COALESCE(?, brochure_url), payment_plan_pdf_url = COALESCE(?, payment_plan_pdf_url), ppt_url = COALESCE(?, ppt_url), floor_plan_url = COALESCE(?, floor_plan_url), media = ?, updated_at = ? WHERE id = ?`,
+          p.videoUrl || null,
+          p.brochureUrl || null,
+          p.paymentPlanPdfUrl || null,
+          p.pptUrl || null,
+          primaryFloorPlan,
+          JSON.stringify(media),
+          ts,
+          id,
+        )
+        newSettingRows.push([bkKey, String(id)])
       }
     }
 

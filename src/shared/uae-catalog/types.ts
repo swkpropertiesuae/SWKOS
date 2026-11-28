@@ -116,6 +116,9 @@ export interface UaeProjectSpec {
   isFeatured?: boolean
   videoUrl?: string
   virtualTourUrl?: string
+  brochureUrl?: string
+  paymentPlanPdfUrl?: string
+  pptUrl?: string
   floorPlans?: { title: string; url: string; category?: string }[]
   source: string
 }
